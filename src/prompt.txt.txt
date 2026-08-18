@@ -1,0 +1,25 @@
+Hola Claude. Tienes toda la razón sobre la seguridad. Vamos a migrar el sistema de usuarios a Supabase Auth, pero es vital mantener la experiencia de usuario que diseñé: el cliente debe iniciar sesión únicamente con su Número de Celular y un PIN, nada de correos ni verificación por SMS.
+
+Para lograr esto con Supabase Auth sin costos de SMS, usaremos la estrategia del 'Dummy Email':
+
+En el Login, el usuario solo ve dos campos: 'Celular' y 'PIN'. Al enviar el formulario, el frontend concatena un dominio falso (ej. ${celular}@tonazo.app) y lo envía a Supabase Auth (signInWithPassword), usando el PIN como contraseña.
+
+Cuando el Administrador crea a un cliente desde el módulo FIADOS, registra su Nombre, Celular y PIN. El sistema debe crear el usuario en Supabase Auth (usando el dummy email y el PIN) y luego guardar el Nombre en una tabla pública ligada al auth.uid().
+
+Teniendo esto en cuenta, por favor dame lo siguiente:
+
+1. Configuración de Base de Datos y Auth
+¿Qué tablas necesito? (ej. una tabla perfiles o clientes ligada a auth.users que guarde el Nombre y el id del usuario).
+
+¿Cuáles son las políticas RLS para que el cliente solo vea sus propios fiados, pero el admin vea todo?
+
+Importante: ¿Cómo hace el Admin en React para crear un usuario en Auth sin que su propia sesión de administrador se cierre? (¿Debo usar la llave service_role solo para esta función de creación?).
+
+2. Arquitectura de Rutas (React Router)
+Configuración de react-router-dom.
+
+Ruta Pública (/): Catálogo limpio. Header con botón de Modo Oscuro/Claro (que funcione globalmente) y botón 'LOGIN' (que abre el modal de Celular + PIN).
+
+Rutas Protegidas: Cómo separar el estado cuando el que se loguea es un Cliente (ve el catálogo + su botón 'FIADO' para ver sus deudas) vs. cuando el que se loguea es el Admin (redirigido a /admin para ver el POS, ganancias y módulo de gestión).
+
+Dame la estructura de los componentes y el código clave para el enrutamiento y el login.
