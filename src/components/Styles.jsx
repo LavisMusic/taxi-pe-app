@@ -483,6 +483,13 @@ export default function Styles() {
         background: linear-gradient(180deg, var(--green-bg), var(--panel));
       }
       .tz-stat-chip-star {
+        /* El doble de ancho que un .tz-stat-chip normal — StatsSection
+           pone 4 chips sobre una grilla de 3 columnas, así que este
+           (el 5°) le tocaba 1 sola columna con un hueco vacío al lado;
+           span 2 se come ese hueco y de paso da lugar real para que
+           los 3 botones de rol entren en una sola fila y el carrusel
+           Top 5 respire. */
+        grid-column: span 2;
         border-color: rgba(215,255,59,0.4);
         background: linear-gradient(180deg, rgba(215,255,59,0.10), var(--panel));
       }
@@ -493,6 +500,58 @@ export default function Styles() {
         color: var(--yellow);
         text-shadow: 0 0 12px rgba(215,255,59,0.45);
         line-height: 1.25;
+      }
+      /* Fila de rol SIEMPRE horizontal, nunca se envuelve — antes con
+         'flex-wrap:wrap' y el chip angosto (1 sola columna) los 3
+         botones se apretaban tanto que terminaban en varias líneas,
+         pareciendo apilados verticalmente. */
+      .tz-star-roles { flex-wrap: nowrap; justify-content: space-around; }
+      /* Carrusel Top 5 — una tarjeta = 100% del ancho visible,
+         scroll-snap para que quede prolijamente encuadrada al soltar
+         el swipe (dedo en mobile, rueda/drag del mouse en desktop).
+         Scrollbar oculta a propósito (nativa fea, la navegación es por
+         swipe/snap, no por arrastrar una barra). */
+      .tz-star-carousel {
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        gap: 4px;
+        margin-top: 2px;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      .tz-star-carousel::-webkit-scrollbar { display: none; }
+      .tz-star-carousel-item {
+        flex: 0 0 100%;
+        min-width: 100%;
+        scroll-snap-align: center;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 2px 1px;
+      }
+      .tz-star-carousel-rank {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 22px;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 700;
+        font-size: 12px;
+        color: var(--yellow);
+      }
+      .tz-star-carousel-info {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+      .tz-star-carousel-name {
+        font-size: 14px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       /* ---------- BUSCADOR GLOBAL + ESCÁNER RÁPIDO (pantalla principal) ---------- */
@@ -2053,19 +2112,27 @@ export default function Styles() {
         /* Antes heredaba de .tz-modal: 'overflow-y:auto' + 'max-height:
            90vh' sobre TODO el modal — hacer scroll movía la tarjeta del
            conductor y el input de escribir junto con los mensajes.
-           Acá: altura tope fija (85vh) + flex-column + overflow:hidden
-           en el shell — el único hijo que puede crecer/scrollear es
-           .tz-chat-window (flex:1, ver abajo), todo lo demás
-           (tarjeta compacta, "Chat", input) queda fijo arriba/abajo. */
+           Acá: altura tope fija (85vh) + flex-column — el único hijo
+           que puede crecer/scrollear es .tz-chat-window (flex:1, ver
+           abajo), todo lo demás (tarjeta compacta, "Chat", input)
+           queda fijo arriba/abajo. 'overflow: visible' (no 'hidden'):
+           un 'hidden' acá decapitaba el glow/box-shadow de la tarjeta
+           compacta del conductor apenas se acercaba al borde — el
+           scroll aislado NO depende de que este contenedor recorte
+           nada, lo logran 'max-height' + 'min-height:0' en la cadena
+           flex + el 'overflow-y:auto' propio de .tz-chat-messages más
+           abajo, así que 'visible' acá es seguro. */
         display: flex;
         flex-direction: column;
         max-height: 85vh;
-        overflow: hidden;
+        overflow: visible;
       }
       .tz-chat-modal-shell .tz-payment-modal {
         flex: 1 1 auto;
         min-height: 0;
-        overflow: hidden;
+        /* Mismo motivo que arriba: visible, no hidden, para no
+           recortar el glow de la tarjeta compacta. */
+        overflow: visible;
       }
       /* Todo menos la ventana de mensajes se queda fijo (flex-shrink:0)
          — la tarjeta compacta del conductor, el "Chat" y el input no
@@ -2085,6 +2152,11 @@ export default function Styles() {
         flex-wrap: wrap;
         gap: 6px 10px;
         padding: 10px 14px;
+        /* Colchón extra además del padding del modal — margen propio
+           para que el glow (box-shadow) tenga de sobra dónde
+           expandirse sin llegar a tocar el 'overflow:visible' del
+           padre y sin superponerse al "Chat" de más abajo. */
+        margin: 4px 4px 8px;
         border-radius: 12px;
         background:
           linear-gradient(var(--panel-solid), var(--panel-solid)) padding-box,
@@ -2158,6 +2230,15 @@ export default function Styles() {
         overflow-y: auto;
         overflow-x: hidden;
         padding: 4px 6px;
+        /* #root (index.css, plantilla de Vite) hereda text-align:center
+           a todo el árbol — sin este reset, cada burbuja seguía
+           parada a la izquierda/derecha por 'align-self' (eso ya
+           andaba bien), pero el TEXTO de adentro quedaba centrado
+           dentro de su propia caja en vez de pegado al borde natural
+           de lectura, y en burbujas anchas eso se leía como "todo
+           centrado". Estilo WhatsApp real: recibidos a la izquierda,
+           enviados a la derecha — burbuja Y texto. */
+        text-align: left;
       }
       @keyframes tzChatBubbleIn {
         from { opacity: 0; transform: translateY(8px); }
@@ -2192,6 +2273,7 @@ export default function Styles() {
       }
       .tz-chat-bubble-mine {
         align-self: flex-end;
+        text-align: right;
         background: rgba(255,47,158,0.12);
         border-color: rgba(255,47,158,0.45);
         border-radius: 12px 12px 4px 12px;
