@@ -68,6 +68,20 @@ export default function Styles() {
         box-sizing: border-box;
       }
       .tz-root *, .tz-root *::before, .tz-root *::after { box-sizing: border-box; }
+      /* touch-action:manipulation en TODO control interactivo — saca el
+         delay de ~300ms que los navegadores móviles meten esperando a
+         ver si un tap es el primero de un doble-tap-para-zoom, y evita
+         el highlight azul feo de "tap" en iOS/Android. Selector amplio
+         (elemento, no una clase) para no depender de acordarse de
+         agregarlo botón por botón — la app tiene decenas de clases de
+         botón distintas. */
+      .tz-root button,
+      .tz-root input,
+      .tz-root select,
+      .tz-root textarea,
+      .tz-root a {
+        touch-action: manipulation;
+      }
       /* index.css (plantilla base de Vite) trae "h1, h2 { color:
          var(--text-h) }" — negro cuando el SO está en modo claro. Esa
          regla apunta directo al h1/h2, así que gana por sobre el
@@ -2036,6 +2050,74 @@ export default function Styles() {
         border-color: rgba(255,47,158,0.4);
         box-shadow: 0 0 50px rgba(255,47,158,0.18);
         padding-top: 52px;
+        /* Antes heredaba de .tz-modal: 'overflow-y:auto' + 'max-height:
+           90vh' sobre TODO el modal — hacer scroll movía la tarjeta del
+           conductor y el input de escribir junto con los mensajes.
+           Acá: altura tope fija (85vh) + flex-column + overflow:hidden
+           en el shell — el único hijo que puede crecer/scrollear es
+           .tz-chat-window (flex:1, ver abajo), todo lo demás
+           (tarjeta compacta, "Chat", input) queda fijo arriba/abajo. */
+        display: flex;
+        flex-direction: column;
+        max-height: 85vh;
+        overflow: hidden;
+      }
+      .tz-chat-modal-shell .tz-payment-modal {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+      }
+      /* Todo menos la ventana de mensajes se queda fijo (flex-shrink:0)
+         — la tarjeta compacta del conductor, el "Chat" y el input no
+         se comprimen ni se mueven cuando el chat scrollea. */
+      .tz-chat-modal-shell .tz-payment-modal > *:not(.tz-chat-window) {
+        flex-shrink: 0;
+      }
+      /* Cabecera COMPACTA del conductor dentro del Chat (distinta de
+         ConductorPublicCard a propósito, ver ChatModal.jsx): sin foto
+         ni descripción, solo Nombre/Placa/Estado, para no comerse
+         espacio vertical que le hace falta a los mensajes. Conserva el
+         glow por categoría (data-nivel) igual que la tarjeta completa. */
+      .tz-chat-conductor-compact {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 6px 10px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        background:
+          linear-gradient(var(--panel-solid), var(--panel-solid)) padding-box,
+          linear-gradient(135deg, rgba(43,232,255,0.55), rgba(255,47,158,0.5)) border-box;
+        border: 1px solid transparent;
+      }
+      .tz-chat-conductor-compact[data-nivel="vip"] {
+        background:
+          linear-gradient(var(--panel-solid), var(--panel-solid)) padding-box,
+          linear-gradient(135deg, #ffd700, #ff9f00) border-box;
+        box-shadow: 0 0 0 1.5px #ffd700, 0 0 16px rgba(255,215,0,0.3);
+      }
+      .tz-chat-conductor-compact[data-nivel="premium"] {
+        background:
+          linear-gradient(var(--panel-solid), var(--panel-solid)) padding-box,
+          linear-gradient(135deg, var(--pink), #ff85cf) border-box;
+        box-shadow: 0 0 0 1.5px var(--pink), 0 0 16px rgba(255,47,158,0.3);
+      }
+      .tz-chat-conductor-compact[data-nivel="ejecutivo"] {
+        background:
+          linear-gradient(var(--panel-solid), var(--panel-solid)) padding-box,
+          linear-gradient(135deg, var(--cyan), #8fe9ff) border-box;
+        box-shadow: 0 0 0 1.5px var(--cyan), 0 0 14px rgba(43,232,255,0.28);
+      }
+      .tz-chat-conductor-compact-name {
+        font-weight: 700;
+        color: var(--text);
+        font-size: 14px;
+      }
+      .tz-chat-conductor-compact-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
       }
       /* Recorte de 4 líneas EXACTO — compartido por ConductorPublicCard
          (Home/ConductorPage/ChatModal): sea cual sea la vista, una
@@ -2059,13 +2141,20 @@ export default function Styles() {
         flex-direction: column;
         gap: 10px;
         margin-top: 10px;
+        /* Único elemento que crece/se achica dentro del shell del chat
+           — 'min-height:0' es lo que permite que un hijo flex se
+           angoste por debajo de su alto de contenido en vez de forzar
+           al padre a desbordar (el motivo #1 por el que el scroll
+           aislado no funciona si se te olvida ponerlo). */
+        flex: 1 1 auto;
+        min-height: 0;
       }
       .tz-chat-messages {
         display: flex;
         flex-direction: column;
         gap: 8px;
-        max-height: 340px;
-        min-height: 140px;
+        flex: 1 1 auto;
+        min-height: 100px;
         overflow-y: auto;
         overflow-x: hidden;
         padding: 4px 6px;
@@ -3063,7 +3152,12 @@ export default function Styles() {
         padding: 11px 12px;
         color: var(--text);
         font-family: 'Rajdhani', sans-serif;
-        font-size: 14px;
+        /* Antes 14px: Safari/iOS hace zoom automático (feo, rompe el
+           layout) en cualquier input con font-size < 16px al tocarlo.
+           Es la clase compartida por casi todos los <input>/<textarea>
+           de la app (incluido el del chat, vía .tz-chat-input), así que
+           este único cambio cubre virtualmente todo. */
+        font-size: 16px;
         font-weight: 600;
         text-align: left;
       }
@@ -3602,7 +3696,7 @@ export default function Styles() {
         gap: 8px;
         flex-wrap: wrap;
       }
-      .tz-checkout-input { flex: 1 1 140px; font-size: 12.5px; padding: 9px 11px; }
+      .tz-checkout-input { flex: 1 1 140px; font-size: 16px; padding: 9px 11px; }
       /* Los inputs de Nombre/WhatsApp con autocompletado van envueltos en
          '.tz-global-search-wrap' (para poder anclar el dropdown) — ese
          wrap, no el <input> directamente, es ahora el hijo flex real

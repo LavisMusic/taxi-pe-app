@@ -48,7 +48,15 @@ export default function HomePage() {
   const [accesoConductorOpen, setAccesoConductorOpen] = useState(false);
   const [accesoRecolectorOpen, setAccesoRecolectorOpen] = useState(false);
   const [avisoPeticion, setAvisoPeticion] = useState("");
-  const [chatConductor, setChatConductor] = useState(null);
+  // Se guarda solo el ID, no una copia del objeto — `conductores` ya
+  // está suscrito a Realtime (useConductoresPublicos.js), así que
+  // derivar el conductor actual de ahí en cada render (en vez de
+  // clonarlo al abrir el chat) hace que, si cambia de Libre a En
+  // Carrera mientras el chat sigue abierto, la etiqueta de estado en
+  // ChatConductorHeader se actualice sola — sin esto quedaba una foto
+  // fija del momento en que se abrió el chat, ver ChatModal.jsx.
+  const [chatConductorId, setChatConductorId] = useState(null);
+  const chatConductor = chatConductorId ? conductores.find((c) => c.id === chatConductorId) ?? null : null;
 
   const categoriasConConductores = useMemo(
     () => categorias.filter((cat) => conductores.some((c) => c.categoria_id === cat.id)),
@@ -192,7 +200,7 @@ export default function HomePage() {
                             type="button"
                             className="tz-scan-btn tz-payment-save"
                             style={{ justifyContent: "center", marginTop: 10 }}
-                            onClick={() => setChatConductor(c)}
+                            onClick={() => setChatConductorId(c.id)}
                           >
                             <MessageCircle size={16} /> Contactar
                           </button>
@@ -247,7 +255,7 @@ export default function HomePage() {
       )}
 
       {chatConductor && esPasajero && (
-        <ChatModal conductor={chatConductor} pasajeroId={usuario.id} onClose={() => setChatConductor(null)} />
+        <ChatModal conductor={chatConductor} pasajeroId={usuario.id} onClose={() => setChatConductorId(null)} />
       )}
 
       {avisoPeticion && (
