@@ -1,9 +1,10 @@
-import { useState } from "react";
-import { LogOut, Pencil, Zap, Car, CreditCard, CalendarClock, MessageCircle, Save, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { LogOut, Pencil, Zap, Car, Ban, CreditCard, CalendarClock, MessageCircle, Save, Loader2 } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useConductorSesion } from "../hooks/useConductorSesion";
 import { useHilosChatConductor } from "../hooks/useChatMensajes";
-import { ESTADO_CONDUCTOR_ACTIVO, ESTADO_CONDUCTOR_OCUPADO } from "../lib/taxiEnums";
+import { useGpsBroadcaster } from "../hooks/useGpsBroadcaster";
+import { ESTADO_CONDUCTOR_ACTIVO, ESTADO_CONDUCTOR_OCUPADO, ESTADO_CONDUCTOR_DESCONECTADO } from "../lib/taxiEnums";
 import { formatDate } from "../utils/format";
 import Styles from "../components/Styles";
 import GestionImagenModal from "../components/admin/GestionImagenModal";
@@ -18,28 +19,90 @@ import logo from "../assets/logo.png";
 export default function ConductorPage() {
   const { usuario, logout } = useTaxiAuth();
   const { conductor, loading, error, setEstado, actualizar } = useConductorSesion(usuario);
-  const { unreadCount } = useHilosChatConductor(conductor?.id);
+  const { unreadCount, alertaSenas, descartarAlertaSenas, pasajeroEnCarrera } = useHilosChatConductor(conductor?.id);
+
+  // Paywall del Conductor: acceso si tiene membresía vigente O créditos
+  // (OR, no AND) — un conductor puede operar bajo cualquiera de los dos
+  // modelos de cobro de esta app (ver TIPO_ITEM_MEMBRESIA/CREDITOS en
+  // taxiEnums.js). Sin acceso solo cuando NINGUNO de los dos alcanza.
+  // Se calcula ACÁ ARRIBA (no más abajo, donde vivía antes) porque
+  // useGpsBroadcaster.js también lo necesita.
+  // Bug real encontrado acá (no era el fetch — `creditos` y
+  // `vencimiento_suscripcion` ya venían pedidos en useConductorSesion.js
+  // desde la ronda pasada): `vencida` solo daba `true` si HABÍA una
+  // fecha de vencimiento Y ya pasó. Un conductor que JAMÁS tuvo una
+  // membresía (vencimiento_suscripcion = null, típico de uno nuevo que
+  // solo opera a créditos) caía en `vencida = false` — "no vencida"
+  // interpretado como "vigente" — y `tieneAcceso` daba `true` sin
+  // importar los créditos, salteándose el Paywall entero. Ahora
+  // `tieneMembresiaVigente` exige una fecha REAL y no vencida; null ya
+  // no cuenta como "tiene membresía".
+  const diasRestantes = conductor?.vencimiento_suscripcion
+    ? Math.ceil((new Date(conductor.vencimiento_suscripcion) - new Date()) / 86400000)
+    : null;
+  const vencida = diasRestantes != null && diasRestantes < 0;
+  const tieneMembresiaVigente = diasRestantes != null && diasRestantes >= 0;
+  const tieneAcceso = tieneMembresiaVigente || (conductor?.creditos ?? 0) > 0;
+
+  // Fase 3 — transmite el GPS del conductor mientras tenga sesión, sin
+  // depender de que tenga algún chat abierto (ver useGpsBroadcaster.js:
+  // decide solo si va al radar público o al canal privado de la
+  // carrera, según conductor.estado). Fix Seguridad (Paywall Estricto):
+  // `tieneAcceso` corta el canal PÚBLICO de raíz — aunque `estado` en la
+  // base todavía diga "activo" (stale, ver el auto-apagado más abajo),
+  // este conductor deja de transmitirse al Radar en el instante en que
+  // se queda sin créditos ni membresía, sin esperar ningún UPDATE.
+  useGpsBroadcaster({
+    conductorId: conductor?.id,
+    estado: conductor?.estado,
+    pasajeroEnCarrera,
+    asientosOcupados: conductor?.asientos_ocupados,
+    asientosTotales: conductor?.asientos_totales,
+    tieneAcceso,
+  });
+
+  // Fix Seguridad (Auto-Apagado): si se detecta que ya no tiene acceso
+  // pero su `estado` en la base TODAVÍA dice Activo/Ocupado (quedó así
+  // desde antes de quedarse sin saldo — nadie lo tocó a mano todavía),
+  // se fuerza un UPDATE a Desconectado. Esto es lo que saca al
+  // conductor del Radar a nivel de DATOS, no solo de la UI/el Broadcast
+  // de arriba — cualquier otra consulta que mire `conductores.estado`
+  // directamente (ej. el fetch inicial de useRadarPublico.js) también
+  // deja de encontrarlo.
+  useEffect(() => {
+    if (!conductor || tieneAcceso) return;
+    if (conductor.estado === ESTADO_CONDUCTOR_ACTIVO || conductor.estado === ESTADO_CONDUCTOR_OCUPADO) {
+      setEstado(ESTADO_CONDUCTOR_DESCONECTADO);
+    }
+  }, [conductor, tieneAcceso, setEstado]);
+
   const [toggling, setToggling] = useState(false);
   const [toggleError, setToggleError] = useState("");
   const [editandoPerfil, setEditandoPerfil] = useState(false);
   const [mensajesOpen, setMensajesOpen] = useState(false);
+  // Con qué pasajero abrir la bandeja — normalmente null (arranca en la
+  // lista de hilos); si el conductor tocó "Ver Chat" desde la alerta de
+  // "Hacer Señas", entra directo a esa conversación.
+  const [pasajeroDesdeAlerta, setPasajeroDesdeAlerta] = useState(null);
   const [descripcion, setDescripcion] = useState("");
   const [editandoDescripcion, setEditandoDescripcion] = useState(false);
   const [savingDescripcion, setSavingDescripcion] = useState(false);
 
   const estadoActivo = conductor?.estado === ESTADO_CONDUCTOR_ACTIVO;
 
-  const diasRestantes = conductor?.vencimiento_suscripcion
-    ? Math.ceil((new Date(conductor.vencimiento_suscripcion) - new Date()) / 86400000)
-    : null;
-  const vencida = diasRestantes != null && diasRestantes < 0;
-
   const handleToggle = async () => {
     if (!conductor || toggling) return;
     const nuevoEstado = estadoActivo ? ESTADO_CONDUCTOR_OCUPADO : ESTADO_CONDUCTOR_ACTIVO;
     setToggling(true);
     setToggleError("");
-    const { error: setError } = await setEstado(nuevoEstado);
+    // Volver a Activo a mano también vacía el colectivo — "ya no tengo
+    // pasajeros, estoy libre otra vez" es justo lo que significa este
+    // botón, así el badge de asientos no se queda pegado en un número
+    // viejo de un turno anterior.
+    const { error: setError } =
+      nuevoEstado === ESTADO_CONDUCTOR_ACTIVO
+        ? await actualizar(conductor.id, { estado: nuevoEstado, asientos_ocupados: 0 })
+        : await setEstado(nuevoEstado);
     setToggling(false);
     if (setError) setToggleError("No se pudo actualizar tu estado. Intenta de nuevo.");
   };
@@ -136,21 +199,33 @@ export default function ConductorPage() {
 
             <button
               type="button"
-              className="tz-estado-toggle"
+              // Paywall del Conductor: rojo + "Inhabilitado" pisa
+              // cualquier otro estado visual — sin membresía ni
+              // créditos, ni siquiera importa si estaba Activo/Ocupado
+              // antes, el switch entero se ve y se comporta como
+              // bloqueado.
+              className={`tz-estado-toggle ${!tieneAcceso ? "tz-estado-toggle-bloqueado" : ""}`}
               data-estado={conductor.estado}
               onClick={handleToggle}
-              disabled={toggling}
-              aria-label={estadoActivo ? "Pasar a Ocupado" : "Pasar a Activo"}
+              disabled={toggling || !tieneAcceso}
+              aria-label={!tieneAcceso ? "Inhabilitado — sin membresía activa ni créditos" : estadoActivo ? "Pasar a Ocupado" : "Pasar a Activo"}
+              title={!tieneAcceso ? "Recarga tu membresía o tus créditos para poder ponerte Activo" : undefined}
             >
               {toggling ? (
                 <Loader2 size={40} className="tz-spin" />
+              ) : !tieneAcceso ? (
+                <Ban size={44} color="var(--danger)" />
               ) : estadoActivo ? (
                 <Zap size={44} color="var(--green)" />
               ) : (
                 <Car size={44} color="var(--orange)" />
               )}
-              <span className="tz-estado-toggle-label">{estadoActivo ? "ACTIVO" : "OCUPADO"}</span>
-              <span className="tz-estado-toggle-hint">Toca para pasar a {estadoActivo ? "Ocupado" : "Activo"}</span>
+              <span className="tz-estado-toggle-label">
+                {!tieneAcceso ? "🚫 Inhabilitado" : estadoActivo ? "ACTIVO" : "OCUPADO"}
+              </span>
+              <span className="tz-estado-toggle-hint">
+                {!tieneAcceso ? "Recarga tu membresía o tus créditos" : `Toca para pasar a ${estadoActivo ? "Ocupado" : "Activo"}`}
+              </span>
             </button>
 
             {toggleError && <p className="tz-error" style={{ textAlign: "center" }}>{toggleError}</p>}
@@ -233,7 +308,54 @@ export default function ConductorPage() {
       )}
 
       {mensajesOpen && conductor && (
-        <ConductorChatInboxModal conductorId={conductor.id} onClose={() => setMensajesOpen(false)} />
+        <ConductorChatInboxModal
+          // Bug de "Viaje Fantasma": sin este `key`, tocar "Ver chat" en
+          // una alerta NUEVA mientras la bandeja ya estaba abierta con
+          // OTRO pasajero no remontaba nada — `pasajeroInicial` es el
+          // valor inicial de un useState adentro (BandejaContenido), así
+          // que un cambio de PROP sin remount no hacía nada: seguía
+          // mostrando el hilo/mapa del pasajero anterior. El `key`
+          // fuerza a React a tirar la instancia vieja entera y montar
+          // una limpia cada vez que cambia a quién se le abre el chat.
+          key={pasajeroDesdeAlerta ?? "lista"}
+          conductorId={conductor.id}
+          pasajeroInicial={pasajeroDesdeAlerta}
+          nivelServicio={conductor.nivel_servicio}
+          onClose={() => {
+            setMensajesOpen(false);
+            setPasajeroDesdeAlerta(null);
+          }}
+        />
+      )}
+
+      {/* Alerta intrusiva de contacto — vive a nivel de página (no
+         adentro del chat) a propósito: tiene que aparecer aunque el
+         conductor no tenga la bandeja de Mensajes abierta en ese
+         momento, ver alertaSenas en useHilosChatConductor.js. Texto
+         contextual: "Libre" es un primer contacto de verdad (pide
+         precio); "En Carrera" es alguien pidiendo sumarse al colectivo
+         que ya está en curso — son situaciones distintas, el aviso lo
+         dice claro de entrada. */}
+      {alertaSenas && (
+        <div className="tz-modal-backdrop" onClick={descartarAlertaSenas}>
+          <div className="tz-senas-alert" onClick={(e) => e.stopPropagation()}>
+            <span className="tz-senas-alert-icon" aria-hidden="true">
+              🙋‍♂️
+            </span>
+            <h2>{estadoActivo ? "¡Alguien necesita tu servicio!" : "¡Alguien quiere unirse a la carrera!"}</h2>
+            <button
+              type="button"
+              className="tz-scan-btn tz-senas-alert-btn"
+              onClick={() => {
+                setPasajeroDesdeAlerta(alertaSenas.pasajeroId);
+                setMensajesOpen(true);
+                descartarAlertaSenas();
+              }}
+            >
+              Ver Chat
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

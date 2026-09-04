@@ -107,12 +107,20 @@ function PaqueteRow({ paquete, onActualizar, onEliminar }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [borrando, setBorrando] = useState(false);
+  const [error, setError] = useState("");
 
   const guardar = async (patch) => {
     setSaving(true);
-    const { error } = await onActualizar(paquete.id, patch);
+    const { error: saveError } = await onActualizar(paquete.id, patch);
     setSaving(false);
-    if (!error) setEditing(false);
+    if (saveError) {
+      // Antes esto se descartaba en silencio — el modal se quedaba en
+      // modo edición sin ninguna pista de qué había fallado.
+      setError(saveError.message || "No se pudo guardar.");
+      return;
+    }
+    setError("");
+    setEditing(false);
   };
 
   const eliminar = async () => {
@@ -125,6 +133,7 @@ function PaqueteRow({ paquete, onActualizar, onEliminar }) {
     return (
       <li className="tz-history-row">
         <div className="tz-history-row-detail" style={{ padding: 12 }}>
+          {error && <p className="tz-error">{error}</p>}
           <PaqueteForm initial={paquete} onGuardar={guardar} onCancelar={() => setEditing(false)} saving={saving} />
         </div>
       </li>
@@ -165,16 +174,34 @@ function PaqueteRow({ paquete, onActualizar, onEliminar }) {
 // LISTA de `paquetes` (Membresías y Paquetes de Créditos), cada uno
 // seleccionable desde un desplegable en Recarga Rápida. Reemplaza al
 // editor de precio único de la ronda anterior.
-export default function ConfigurarMembresiasModal({ paquetes, crearPaquete, actualizarPaquete, eliminarPaquete, onClose }) {
+export default function ConfigurarMembresiasModal({
+  paquetes,
+  loading,
+  error,
+  crearPaquete,
+  actualizarPaquete,
+  eliminarPaquete,
+  onClose,
+}) {
   const [tab, setTab] = useState(TIPO_ITEM_MEMBRESIA);
   const [addOpen, setAddOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
 
   const crear = async (patch) => {
     setSaving(true);
-    const { error } = await crearPaquete(patch);
+    setSuccessMsg("");
+    const { error: createError } = await crearPaquete(patch);
     setSaving(false);
-    if (!error) setAddOpen(false);
+    if (createError) {
+      setSaveError(createError.message || "No se pudo crear el paquete.");
+      return;
+    }
+    setSaveError("");
+    setAddOpen(false);
+    setSuccessMsg("Paquete guardado — ya está disponible para todos en Recarga Rápida.");
+    setTimeout(() => setSuccessMsg(""), 4000);
   };
 
   const paquetesDelTab = paquetes.filter((p) => p.tipo_item === tab);
@@ -192,6 +219,8 @@ export default function ConfigurarMembresiasModal({ paquetes, crearPaquete, actu
           <p className="tz-stock-editor-sub">
             Cada paquete que armes acá aparece como opción en el desplegable de Recarga Rápida.
           </p>
+
+          {successMsg && <p className="tz-success">{successMsg}</p>}
 
           <div className="tz-gasto-tipo-buttons" style={{ marginBottom: 10 }}>
             {TIPOS.map((t) => (
@@ -214,15 +243,28 @@ export default function ConfigurarMembresiasModal({ paquetes, crearPaquete, actu
               <Plus size={16} /> Añadir paquete
             </button>
           ) : (
-            <PaqueteForm
-              initial={{ tipo_item: tab }}
-              onGuardar={crear}
-              onCancelar={() => setAddOpen(false)}
-              saving={saving}
-            />
+            <>
+              {saveError && <p className="tz-error">{saveError}</p>}
+              <PaqueteForm
+                initial={{ tipo_item: tab }}
+                onGuardar={crear}
+                onCancelar={() => {
+                  setAddOpen(false);
+                  setSaveError("");
+                }}
+                saving={saving}
+              />
+            </>
           )}
 
-          {paquetesDelTab.length === 0 ? (
+          {loading ? (
+            <div className="tz-loading" style={{ minHeight: 100 }}>
+              <Loader2 className="tz-spin" size={22} />
+              <p>Cargando…</p>
+            </div>
+          ) : error ? (
+            <p className="tz-error">{error}</p>
+          ) : paquetesDelTab.length === 0 ? (
             <p className="tz-method-history-empty">No hay paquetes configurados todavía.</p>
           ) : (
             <ul className="tz-history-rows">

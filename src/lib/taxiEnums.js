@@ -73,12 +73,10 @@ export const ESTADO_CUENTA_ACTIVO = "activo";
 export const ESTADO_CUENTA_PENDIENTE = "pendiente";
 export const ESTADO_CUENTA_RECHAZADO = "rechazado";
 
-// `conductores.localidad` — lista cerrada (no texto libre) para que el
-// filtro de la Home pública sea un match exacto simple, no un buscador
-// de texto. Ajustar esta lista es un cambio de una línea si la zona de
-// cobertura real difiere (son distritos de la provincia de Chanchamayo,
-// Junín — el ejemplo que dio el enunciado).
-export const LOCALIDADES = ["San Ramón", "La Merced", "Chanchamayo", "Pichanaki", "Perené", "San Luis de Shuaro"];
+// `conductores.localidad` ya NO es una lista cerrada acá — el Panel
+// Admin las administra en la tabla `localidades` de Supabase (ver
+// useLocalidades.js/AdminLocalidadesModal.jsx), con sus coordenadas
+// reales en vez de un array de nombres sueltos.
 
 // Nombre completo: exige al menos 2 palabras (nombre + apellido) — sin
 // esto, un solo token ("Daniela") pasaba el form pero después es
@@ -144,6 +142,23 @@ export function fiadoEstaPendiente(fila) {
 export const ESTADO_RECARGA_PENDIENTE = "pendiente";
 export const ESTADO_RECARGA_APROBADO = "aprobado";
 export const ESTADO_RECARGA_RECHAZADO = "rechazado";
+
+// `anuncios.frecuencia_mostrar` — decide cuándo el pop-up de marketing
+// vuelve a saltarle al mismo visitante (ver useAnuncioActivo.js, la
+// lógica real vive en localStorage, esto solo nombra los 3 modos).
+export const FRECUENCIA_SIEMPRE = "siempre";
+export const FRECUENCIA_UNA_VEZ_DIA = "una_vez_dia";
+export const FRECUENCIA_UNA_VEZ_TOTAL = "una_vez_total";
+
+// "Siempre" ya no es una opción seleccionable en el Gestor de Anuncios
+// (el admin decidió que la vigencia/frecuencia son las únicas dos
+// palancas) — se deja la constante FRECUENCIA_SIEMPRE viva por si queda
+// algún registro viejo en la base con ese valor (tocaMostrar en
+// useAnuncioActivo.js todavía sabe interpretarlo).
+export const FRECUENCIAS_ANUNCIO = [
+  { value: FRECUENCIA_UNA_VEZ_TOTAL, label: "Una sola vez (total)" },
+  { value: FRECUENCIA_UNA_VEZ_DIA, label: "Una vez al día" },
+];
 
 // Costo operativo fijo diario que se descuenta de "Recaudado Hoy" para
 // obtener la "Ganancia Neta (Hoy)" — dado literal en el enunciado.

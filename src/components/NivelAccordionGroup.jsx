@@ -25,7 +25,15 @@ export default function NivelAccordionGroup({ nivel, label, count, defaultOpen =
                 flexShrink: 0,
               }}
             />
-            {label}
+            {/* Bug de Traducción Automática (Chrome): sin esto, el
+               traductor de Chrome confunde "VIP"/"PREMIUM" con palabras
+               comunes en inglés y las reemplaza ("Personaje", "De
+               primera calidad") — translate="no" + notranslate son las
+               dos señales que Chrome respeta para dejar un fragmento
+               puntual afuera de la traducción automática. */}
+            <span translate="no" className="notranslate">
+              {label}
+            </span>
           </span>
           <span className="tz-vis-category-meta">
             {count} {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}

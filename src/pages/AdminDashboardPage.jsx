@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, ChevronDown, X, Loader2 } from "lucide-react";
+import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, ChevronDown, Megaphone, MapPin, X, Loader2 } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
+import { useLocalidades } from "../hooks/useLocalidades";
 import { useVentas } from "../hooks/useVentas";
 import { useUsuarios } from "../hooks/useUsuarios";
 import { useConductores } from "../hooks/useConductores";
@@ -15,6 +16,7 @@ import { usePeticionesPin } from "../hooks/usePeticionesPin";
 import { usePaquetesRecolectores } from "../hooks/usePaquetesRecolectores";
 import { useRecargasRecolector } from "../hooks/useRecargasRecolector";
 import { useCierresCaja } from "../hooks/useCierresCaja";
+import { useAnuncios } from "../hooks/useAnuncios";
 import {
   ESTADO_CONDUCTOR_RECHAZADO,
   ESTADO_CUENTA_PENDIENTE,
@@ -32,6 +34,8 @@ import GastosOperativosModal from "../components/admin/GastosOperativosModal";
 import HistorialVentasModal from "../components/admin/HistorialVentasModal";
 import CierreCajaModal from "../components/admin/CierreCajaModal";
 import ConfigurarMembresiasModal from "../components/admin/ConfigurarMembresiasModal";
+import GestorAnunciosModal from "../components/admin/GestorAnunciosModal";
+import AdminLocalidadesModal from "../components/admin/AdminLocalidadesModal";
 import UsuariosModal from "../components/admin/UsuariosModal";
 import CategoriasModal from "../components/admin/CategoriasModal";
 import PeticionesModal from "../components/admin/PeticionesModal";
@@ -125,7 +129,22 @@ export default function AdminDashboardPage() {
     descartar: descartarPeticionPin,
   } = usePeticionesPin();
   const { gastos, gastosHoy, totalGastosHoy, agregarGasto, eliminarGasto } = useGastosOperativos();
-  const { paquetes, crearPaquete, actualizarPaquete, eliminarPaquete } = usePaquetes();
+  const {
+    paquetes,
+    loading: paquetesLoading,
+    error: paquetesError,
+    crearPaquete,
+    actualizarPaquete,
+    eliminarPaquete,
+  } = usePaquetes();
+  const {
+    anuncios,
+    loading: anunciosLoading,
+    error: anunciosError,
+    crearAnuncio,
+    actualizarAnuncio,
+    eliminarAnuncio,
+  } = useAnuncios();
   const { anular, busyId: anulandoId } = useAnularVenta({
     onDone: () => {
       refreshVentas();
@@ -163,6 +182,15 @@ export default function AdminDashboardPage() {
   const [membresiasOpen, setMembresiasOpen] = useState(false);
   const [usuariosOpen, setUsuariosOpen] = useState(false);
   const [categoriasOpen, setCategoriasOpen] = useState(false);
+  const [anunciosOpen, setAnunciosOpen] = useState(false);
+  const [localidadesOpen, setLocalidadesOpen] = useState(false);
+  const {
+    localidades,
+    loading: localidadesLoading,
+    crearLocalidad,
+    actualizarLocalidad,
+    eliminarLocalidad,
+  } = useLocalidades();
   const [peticionesOpen, setPeticionesOpen] = useState(false);
   const [pagosMenuOpen, setPagosMenuOpen] = useState(false);
   const [pagosMetodoAbierto, setPagosMetodoAbierto] = useState(null);
@@ -318,8 +346,15 @@ export default function AdminDashboardPage() {
         )}
       </main>
 
-      {/* ---------------- BARRA INFERIOR (estilo original de la caja) ---------------- */}
-      <footer className="tz-page-footer">
+      {/* ---------------- BARRA INFERIOR (grid 3 columnas) ----------------
+         Antes era 1 fila de 6 (flex-wrap); con el 7º botón (Localidades)
+         pasa a un grid de 3 columnas fijas — 2 filas completas + esta
+         última fila de un solo botón, centrado en la columna del medio
+         (ver .tz-page-footer-admin-grid .tz-footer-btn-localidades en
+         Styles.jsx). El modificador vive aparte de `.tz-page-footer`
+         porque esa clase la comparten RecolectorPage.jsx y el App.jsx
+         viejo — no se toca su layout flex original. */}
+      <footer className="tz-page-footer tz-page-footer-admin-grid">
         <button className="tz-footer-btn tz-footer-btn-cierre" onClick={() => setCierreOpen(true)}>
           <Receipt size={18} />
           Cerrar Caja
@@ -339,6 +374,14 @@ export default function AdminDashboardPage() {
         <button className="tz-footer-btn tz-footer-btn-catalogo" onClick={() => setCategoriasOpen(true)}>
           <LayoutGrid size={18} />
           Categorías
+        </button>
+        <button className="tz-footer-btn tz-footer-btn-stock" onClick={() => setAnunciosOpen(true)}>
+          <Megaphone size={18} />
+          Anuncios
+        </button>
+        <button className="tz-footer-btn tz-footer-btn-localidades" onClick={() => setLocalidadesOpen(true)}>
+          <MapPin size={18} />
+          Localidades
         </button>
       </footer>
 
@@ -462,10 +505,34 @@ export default function AdminDashboardPage() {
       {membresiasOpen && (
         <ConfigurarMembresiasModal
           paquetes={paquetes}
+          loading={paquetesLoading}
+          error={paquetesError}
           crearPaquete={crearPaquete}
           actualizarPaquete={actualizarPaquete}
           eliminarPaquete={eliminarPaquete}
           onClose={() => setMembresiasOpen(false)}
+        />
+      )}
+      {anunciosOpen && (
+        <GestorAnunciosModal
+          anuncios={anuncios}
+          loading={anunciosLoading}
+          error={anunciosError}
+          crearAnuncio={crearAnuncio}
+          actualizarAnuncio={actualizarAnuncio}
+          eliminarAnuncio={eliminarAnuncio}
+          onClose={() => setAnunciosOpen(false)}
+        />
+      )}
+
+      {localidadesOpen && (
+        <AdminLocalidadesModal
+          localidades={localidades}
+          loading={localidadesLoading}
+          crearLocalidad={crearLocalidad}
+          actualizarLocalidad={actualizarLocalidad}
+          eliminarLocalidad={eliminarLocalidad}
+          onClose={() => setLocalidadesOpen(false)}
         />
       )}
       {categoriasOpen && (

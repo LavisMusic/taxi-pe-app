@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Save, Loader2, Camera, Check } from "lucide-react";
 import GestionImagenModal from "../admin/GestionImagenModal";
+import Dropdown from "../Dropdown";
+import { useLocalidades } from "../../hooks/useLocalidades";
 import {
   NIVELES_SERVICIO,
   NIVEL_SERVICIO_ECONOMICO,
-  LOCALIDADES,
   esNombreCompletoValido,
   esTelefonoValido,
 } from "../../lib/taxiEnums";
@@ -46,14 +47,24 @@ export default function RegistroConductorForm({
   onCreatedUsuario,
   initialNombre = "",
 }) {
+  const { localidades } = useLocalidades();
   const [nombre, setNombre] = useState(initialNombre);
   const [placa, setPlaca] = useState("");
   const [telefono, setTelefono] = useState("");
   const [dni, setDni] = useState("");
-  const [localidad, setLocalidad] = useState(LOCALIDADES[0]);
+  const [localidad, setLocalidad] = useState("");
   const [categoriaId, setCategoriaId] = useState(categorias[0]?.id ?? "");
   const [subgrupoId, setSubgrupoId] = useState("");
   const [nivelServicio, setNivelServicio] = useState(NIVEL_SERVICIO_ECONOMICO);
+
+  // Localidad ya no es un array estático — llega async de la tabla
+  // `localidades` (useLocalidades.js). Se arranca vacío y se rellena
+  // con la primera de la lista apenas carga, mismo criterio que ya usa
+  // `categoriaId` con `categorias[0]?.id` (esa sí llega sincrónica por
+  // prop).
+  useEffect(() => {
+    if (!localidad && localidades.length > 0) setLocalidad(localidades[0].nombre);
+  }, [localidad, localidades]);
   const [fotoPerfilUrl, setFotoPerfilUrl] = useState("");
   const [fotos, setFotos] = useState({ fotoGeneralUrl: "", fotoInteriorUrl: "", fotoConductorDniUrl: "" });
   const [gestionandoFoto, setGestionandoFoto] = useState(null);
@@ -199,49 +210,44 @@ export default function RegistroConductorForm({
         />
 
         <label className="tz-field-label">Localidad</label>
-        <select className="tz-text-input" value={localidad} onChange={(e) => setLocalidad(e.target.value)}>
-          {LOCALIDADES.map((loc) => (
-            <option key={loc} value={loc}>
-              {loc}
-            </option>
-          ))}
-        </select>
+        <Dropdown
+          value={localidad}
+          onChange={setLocalidad}
+          options={localidades.map((loc) => ({ value: loc.nombre, label: loc.nombre }))}
+          placeholder={localidades.length === 0 ? "Sin localidades creadas" : "Selecciona una localidad"}
+          disabled={localidades.length === 0}
+          ariaLabel="Localidad"
+        />
 
         <label className="tz-field-label">Categoría</label>
-        <select className="tz-text-input" value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)}>
-          {categorias.length === 0 && <option value="">Sin categorías creadas</option>}
-          {categorias.map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.nombre}
-            </option>
-          ))}
-        </select>
+        <Dropdown
+          value={categoriaId}
+          onChange={setCategoriaId}
+          options={categorias.map((cat) => ({ value: cat.id, label: cat.nombre }))}
+          placeholder={categorias.length === 0 ? "Sin categorías creadas" : "Selecciona una categoría"}
+          disabled={categorias.length === 0}
+          ariaLabel="Categoría"
+        />
 
         <label className="tz-field-label">Subgrupo (empresa/flota)</label>
-        <select
-          className="tz-text-input"
+        <Dropdown
           value={subgrupoId}
-          onChange={(e) => setSubgrupoId(e.target.value)}
+          onChange={setSubgrupoId}
+          options={[
+            { value: "", label: subgruposDeLaCategoria.length === 0 ? "Sin subgrupos en esta categoría" : "Sin subgrupo" },
+            ...subgruposDeLaCategoria.map((s) => ({ value: s.id, label: s.nombre })),
+          ]}
           disabled={subgruposDeLaCategoria.length === 0}
-        >
-          <option value="">
-            {subgruposDeLaCategoria.length === 0 ? "Sin subgrupos en esta categoría" : "Sin subgrupo"}
-          </option>
-          {subgruposDeLaCategoria.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.nombre}
-            </option>
-          ))}
-        </select>
+          ariaLabel="Subgrupo"
+        />
 
         <label className="tz-field-label">Nivel de servicio</label>
-        <select className="tz-text-input" value={nivelServicio} onChange={(e) => setNivelServicio(e.target.value)}>
-          {NIVELES_SERVICIO.map((n) => (
-            <option key={n.value} value={n.value}>
-              {n.label}
-            </option>
-          ))}
-        </select>
+        <Dropdown
+          value={nivelServicio}
+          onChange={setNivelServicio}
+          options={NIVELES_SERVICIO.map((n) => ({ value: n.value, label: n.label }))}
+          ariaLabel="Nivel de servicio"
+        />
 
         <label className="tz-field-label">Foto de Perfil (obligatoria)</label>
         <button

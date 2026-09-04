@@ -621,6 +621,197 @@ export default function Styles() {
         color: var(--text-dim);
       }
 
+      /* ---------- Buscador + Radar (HomePage — Fase 1 "Rutas Dinámicas") ----------
+         Filtro de localidad + botón de Radar, siempre en columna y
+         centrados (ver HomePage.jsx) — ya NO se parte en fila a partir
+         de 480px como antes: ese layout horizontal era para el input de
+         búsqueda + botón lado a lado, que se mudó adentro de
+         RadarGlobal.jsx; acá lo que queda pide estar apilado y
+         centrado sin importar el ancho de pantalla. */
+      .tz-radar-bar {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      .tz-localidad-filtro-wrap { width: 100%; max-width: 320px; }
+      /* Envuelve el input para poder anclar el dropdown de sugerencias
+         justo debajo (position:relative acá, absolute en el dropdown). */
+      .tz-buscador-wrap {
+        position: relative;
+        width: 100%;
+      }
+      .tz-radar-input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(43,232,255,0.35);
+        /* Sólido (no el rgba(255,255,255,0.04) de antes) — este input
+           vive SUPERPUESTO al mapa (RadarGlobal.jsx), no sobre el fondo
+           oscuro parejo del resto de la app; casi transparente ahí
+           volvía el texto ilegible contra las calles/tiles debajo. */
+        background: var(--panel-solid);
+        color: var(--text);
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 15px;
+      }
+      /* Pill del destino ya elegido (HomePage.jsx) — reemplaza al input
+         de búsqueda que vivía acá antes de mudarse adentro de
+         <RadarGlobal/>; ahora solo muestra el resultado. */
+      .tz-destino-actual-pill {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 12px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(43,232,255,0.35);
+        background: rgba(255,255,255,0.04);
+        color: var(--text);
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 13.5px;
+      }
+      .tz-destino-actual-pill svg { flex-shrink: 0; color: var(--cyan); }
+      .tz-destino-actual-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .tz-radar-input::placeholder { color: var(--text-dim); }
+      .tz-radar-input:focus {
+        outline: none;
+        border-color: var(--cyan);
+        box-shadow: 0 0 0 1.5px var(--cyan), 0 0 20px rgba(43,232,255,0.3);
+      }
+      .tz-radar-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        padding: 15px;
+        border-radius: 14px;
+        border: none;
+        background: linear-gradient(135deg, var(--cyan), var(--pink));
+        color: #05030c;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 700;
+        font-size: 14px;
+        letter-spacing: 0.5px;
+        cursor: pointer;
+        box-shadow: 0 0 24px rgba(43,232,255,0.35), 0 0 24px rgba(255,47,158,0.25);
+        transition: transform 0.15s, box-shadow 0.15s;
+      }
+      .tz-radar-btn:hover { transform: translateY(-1px); box-shadow: 0 0 30px rgba(43,232,255,0.5), 0 0 30px rgba(255,47,158,0.35); }
+      .tz-radar-btn:active { transform: translateY(0); }
+      @media (min-width: 480px) {
+        .tz-radar-btn { width: auto; padding: 14px 22px; white-space: nowrap; }
+      }
+      /* Dropdown de sugerencias del Buscador Inteligente (Nominatim,
+         ver useBuscadorDireccion.js) — flota debajo del input, no
+         empuja el resto del layout. */
+      .tz-buscador-dropdown {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+        z-index: 30;
+        max-height: 260px;
+        overflow-y: auto;
+        border-radius: 14px;
+        background: var(--panel-solid);
+        border: 1px solid rgba(43,232,255,0.35);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      }
+      .tz-buscador-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 11px 14px;
+        border: none;
+        border-bottom: 1px solid var(--border-soft);
+        background: transparent;
+        color: var(--text);
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 13.5px;
+        text-align: left;
+        cursor: pointer;
+      }
+      .tz-buscador-item:last-child { border-bottom: none; }
+      .tz-buscador-item:hover { background: rgba(43,232,255,0.1); }
+      .tz-buscador-item svg { flex-shrink: 0; color: var(--cyan); }
+      .tz-buscador-item span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      /* Dropdown personalizado (Dropdown.jsx) — reemplaza <select>
+         nativos, misma estética que el input/dropdown del Buscador
+         Inteligente de arriba. */
+      .tz-dropdown { position: relative; width: 100%; }
+      .tz-dropdown-trigger {
+        width: 100%;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(43,232,255,0.35);
+        background: rgba(255,255,255,0.04);
+        color: var(--text);
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 15px;
+        text-align: left;
+        cursor: pointer;
+      }
+      .tz-dropdown-trigger:focus {
+        outline: none;
+        border-color: var(--cyan);
+        box-shadow: 0 0 0 1.5px var(--cyan), 0 0 20px rgba(43,232,255,0.3);
+      }
+      .tz-dropdown-trigger:disabled { opacity: 0.55; cursor: not-allowed; }
+      .tz-dropdown-valor { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .tz-dropdown-placeholder { color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .tz-dropdown-chevron { flex-shrink: 0; color: var(--text-dim); transition: transform 0.15s ease; }
+      .tz-dropdown-chevron-open { transform: rotate(180deg); }
+      .tz-dropdown-list {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+        z-index: 30;
+        max-height: 260px;
+        overflow-y: auto;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        border-radius: 14px;
+        background: var(--panel-solid);
+        border: 1px solid rgba(43,232,255,0.35);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      }
+      .tz-dropdown-item { border-bottom: 1px solid var(--border-soft); }
+      .tz-dropdown-item.tz-dropdown-item-activo { background: rgba(43,232,255,0.12); color: var(--cyan); }
+      .tz-buscador-empty {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        padding: 12px 14px;
+        color: var(--text-dim);
+        font-size: 13px;
+      }
+      /* Pin del destino elegido — mismo badge circular que los
+         vehículos (.tz-radar-marker), pero dorado y más grande, para
+         que se distinga de cualquier color de nivel_servicio. */
+      .tz-radar-marker-destino {
+        --tz-marker-color: #ffd700;
+        font-size: 16px;
+        background: rgba(20,13,40,0.9);
+      }
+
       /* ---------- TABS ---------- */
       .tz-tabs {
         display: flex;
@@ -1067,6 +1258,22 @@ export default function Styles() {
       }
       .tz-estado-toggle[data-estado="activo"] .tz-estado-toggle-label { color: var(--green); }
       .tz-estado-toggle[data-estado="ocupado"] .tz-estado-toggle-label { color: var(--orange); }
+      /* Paywall del Conductor — pisa el glow verde/naranja de arriba
+         sin importar data-estado: selectores combinados (misma
+         especificidad que esos, pero calzan los dos) + !important solo
+         en el color del label, que es lo único que de verdad lo
+         necesita para ganarle a las reglas por data-estado. */
+      .tz-estado-toggle.tz-estado-toggle-bloqueado,
+      .tz-estado-toggle.tz-estado-toggle-bloqueado[data-estado="activo"],
+      .tz-estado-toggle.tz-estado-toggle-bloqueado[data-estado="ocupado"] {
+        border-color: var(--danger);
+        background: rgba(255,84,112,0.12);
+        animation: none;
+        box-shadow: 0 0 16px rgba(255,84,112,0.5);
+        cursor: not-allowed;
+        opacity: 0.85;
+      }
+      .tz-estado-toggle-bloqueado .tz-estado-toggle-label { color: var(--danger) !important; }
       .tz-estado-toggle-hint {
         font-family: 'Rajdhani', sans-serif;
         font-weight: 600;
@@ -2047,6 +2254,27 @@ export default function Styles() {
         color: #240013;
         box-shadow: 0 0 20px rgba(255,47,158,0.4);
       }
+      .tz-footer-btn-localidades {
+        background: var(--green);
+        color: #04140b;
+        box-shadow: 0 0 20px rgba(57,255,176,0.4);
+      }
+      /* Solo el footer del Admin (AdminDashboardPage.jsx) — 2 filas de 3
+         columnas fijas en vez del flex-wrap que sigue usando
+         RecolectorPage.jsx/App.jsx con la misma clase base
+         .tz-page-footer. El 7º botón (Localidades) cae solo en la 3ra
+         fila; se lo centra a mano en la columna del medio. */
+      .tz-page-footer-admin-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        flex-wrap: nowrap;
+      }
+      .tz-page-footer-admin-grid .tz-footer-btn { max-width: none; }
+      .tz-page-footer-admin-grid .tz-footer-btn-localidades { grid-column: 2; }
+      @media (max-width: 640px) {
+        .tz-page-footer-admin-grid { grid-template-columns: repeat(2, 1fr); }
+        .tz-page-footer-admin-grid .tz-footer-btn-localidades { grid-column: 1 / -1; max-width: 220px; margin: 0 auto; }
+      }
 
       /* ---------- MODAL ---------- */
       .tz-modal-backdrop {
@@ -2083,6 +2311,251 @@ export default function Styles() {
         scrollbar-color: rgba(43,232,255,0.35) transparent;
       }
       .tz-modal-wide { max-width: 560px; }
+
+      /* ---------- Fase 3: Radar / Mapas (RadarGlobal.jsx, MapaViaje.jsx) ---------- */
+      .tz-radar-modal {
+        position: relative;
+        width: 100%;
+        max-width: 480px;
+        height: 82vh;
+        max-height: 640px;
+        border-radius: 18px;
+        overflow: hidden;
+        background: var(--panel-solid);
+        border: 1px solid rgba(43,232,255,0.25);
+        box-shadow: 0 0 50px rgba(43,232,255,0.15);
+      }
+      .tz-radar-map {
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+      }
+      .tz-radar-cambiar-btn {
+        position: absolute;
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 21;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 999px;
+        border: 1px solid var(--danger);
+        background: rgba(5,3,12,0.75);
+        backdrop-filter: blur(3px);
+        color: var(--danger);
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .tz-radar-cambiar-btn:hover { background: rgba(255,84,112,0.18); }
+      /* Buscador de direcciones movido acá adentro (RadarGlobal.jsx) —
+         antes vivía en la barra superior de HomePage.jsx, esta ronda lo
+         mudó para que viva exclusivamente dentro del Radar. */
+      .tz-radar-buscador-wrap {
+        position: absolute;
+        top: 16px;
+        left: 16px;
+        /* Bug real: .tz-buscador-wrap (clase base, ver arriba) trae
+           width:100% — en un elemento position:absolute eso fuerza el
+           100% del CONTENEDOR (el modal entero), pisando por completo el
+           ancho que left/right intentaban calcular solos. El buscador
+           terminaba desbordando bien por encima de donde empieza la "X"
+           de cerrar, superponiéndosele. El width explícito de acá abajo
+           anula ese 100% y sí respeta el margen de 60px para la X. */
+        width: calc(100% - 76px);
+        z-index: 22;
+      }
+      .tz-radar-loading {
+        position: absolute;
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 999px;
+        background: rgba(5,3,12,0.75);
+        backdrop-filter: blur(3px);
+        border: 1px solid rgba(43,232,255,0.4);
+        color: var(--cyan);
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+      }
+      .tz-radar-pin-manual {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -100%);
+        z-index: 15;
+        font-size: 34px;
+        pointer-events: none;
+        filter: drop-shadow(0 4px 6px rgba(0,0,0,0.6));
+        animation: tz-radar-pin-bob 1.6s ease-in-out infinite;
+      }
+      @keyframes tz-radar-pin-bob {
+        0%, 100% { transform: translate(-50%, -100%); }
+        50% { transform: translate(-50%, -110%); }
+      }
+      .tz-radar-confirmar-btn {
+        position: absolute;
+        bottom: 78px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 22px;
+        border: none;
+        border-radius: 999px;
+        background: var(--pink);
+        color: #0b0b12;
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 700;
+        font-size: 15px;
+        cursor: pointer;
+        box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+      }
+      .tz-radar-confirmar-btn:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+      }
+      .tz-radar-manual-error {
+        position: absolute;
+        bottom: 132px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 20;
+        max-width: 85%;
+        text-align: center;
+        color: var(--danger);
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 600;
+        font-size: 12.5px;
+      }
+      .tz-radar-empty {
+        position: absolute;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 20;
+        max-width: 90%;
+        padding: 10px 16px;
+        border-radius: 12px;
+        background: rgba(5,3,12,0.75);
+        backdrop-filter: blur(3px);
+        border: 1px solid var(--border-soft);
+        color: var(--text-dim);
+        font-size: 12.5px;
+        text-align: center;
+      }
+      /* Marcadores (divIcon) — compartidos por RadarGlobal.jsx y
+         MapaViaje.jsx. 'tz-radar-marker-wrap' reemplaza la clase
+         default de Leaflet ('leaflet-div-icon', fondo blanco + borde)
+         para que el punto se vea con el glow de neón de la app, no
+         como un pin genérico. */
+      .tz-radar-marker-wrap { background: transparent; border: none; }
+      .tz-radar-marker {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        background: rgba(5,3,12,0.85);
+        border: 2px solid var(--tz-marker-color, var(--cyan));
+        box-shadow: 0 0 12px var(--tz-marker-color, var(--cyan));
+        font-size: 13px;
+        line-height: 1;
+      }
+      /* Fase 3 "Colectivo" — badge flotante junto al carrito
+         (RadarGlobal.jsx: iconoVehiculo). El punto (.tz-radar-marker)
+         es lo que de verdad está anclado a la coordenada GPS; el badge
+         solo flota al lado, no es clickeable (pointer-events:none, el
+         click sigue siendo sobre el punto). */
+      .tz-vehiculo-marker-group {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        height: 100%;
+      }
+      /* Círculo perfecto (w-12 h-12 ~ 48px) — ancho/alto fijos y
+         flex-shrink:0, no el 'width/height:100%' genérico de
+         .tz-radar-marker (dentro de un flex row junto al badge, un
+         100% relativo se prestaba a achicarse/estirarse de forma rara). */
+      .tz-radar-marker-vehiculo {
+        width: 48px;
+        height: 48px;
+        flex-shrink: 0;
+      }
+      .tz-vehiculo-badge {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        pointer-events: none;
+      }
+      .tz-vehiculo-badge-estado {
+        padding: 2px 6px;
+        border-radius: 5px;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.4px;
+        text-align: center;
+        color: #05030c;
+      }
+      /* "LIBRE" fondo celeste / "EN CARRERA" fondo naranja — colores
+         sólidos a propósito (no el glow translúcido del resto de la
+         app), es un chip de estado tipo semáforo, tiene que leerse de
+         un vistazo arriba de un mapa con movimiento. */
+      .tz-vehiculo-badge-libre { background: var(--cyan); }
+      .tz-vehiculo-badge-carrera { background: var(--orange, #ff9d3d); }
+      .tz-vehiculo-badge-asientos {
+        padding: 2px 6px;
+        border-radius: 5px;
+        background: rgba(5,3,12,0.85);
+        border: 1px solid rgba(255,255,255,0.2);
+        color: var(--text);
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 10px;
+        font-weight: 700;
+        text-align: center;
+      }
+
+      /* Alerta intrusiva de "Hacer Señas" (ConductorPage.jsx) — a
+         propósito NO reutiliza .tz-modal (esa tiene padding/scroll
+         pensados para formularios largos); esto es una tarjeta chica,
+         centrada, que solo interrumpe y deja pasar a "Ver Chat". */
+      .tz-senas-alert {
+        position: relative;
+        width: 100%;
+        max-width: 320px;
+        text-align: center;
+        background: var(--panel-solid);
+        border: 1px solid rgba(57,255,176,0.5);
+        border-radius: 18px;
+        padding: 28px 22px 22px;
+        box-shadow: 0 0 60px rgba(57,255,176,0.25);
+      }
+      .tz-senas-alert-icon { font-size: 42px; display: block; margin-bottom: 10px; }
+      .tz-senas-alert h2 {
+        margin: 0 0 18px;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 17px;
+        color: var(--text);
+        line-height: 1.4;
+      }
+      /* Selector compuesto (no .tz-senas-alert-btn solo) a propósito:
+         .tz-scan-btn está definido MÁS ABAJO en esta hoja con la misma
+         especificidad (una clase) — sin el .tz-scan-btn acá adelante,
+         su cian ganaba por orden de aparición y pisaba este verde. */
+      .tz-scan-btn.tz-senas-alert-btn { background: var(--green-bg); border-color: rgba(57,255,176,0.5); color: var(--green); }
 
       /* ---- Chat Interno (ChatModal / ConductorChatInboxModal) ----
          Tema Rosado Neón a propósito (distinto del cyan del resto de
@@ -2121,9 +2594,18 @@ export default function Styles() {
            scroll aislado NO depende de que este contenedor recorte
            nada, lo logran 'max-height' + 'min-height:0' en la cadena
            flex + el 'overflow-y:auto' propio de .tz-chat-messages más
-           abajo, así que 'visible' acá es seguro. */
+           abajo, así que 'visible' acá es seguro.
+           Fix UI (Colapso del Modal): 'height' explícito, no solo
+           'max-height' — antes esto SOLO ponía un tope, sin piso: la
+           altura real quedaba en 'auto' (a medida del contenido), así
+           que ocultar el mapa (menos contenido) encogía el modal
+           ENTERO en vez de cederle ese espacio a .tz-chat-messages.
+           Con una altura fija de verdad, toda la cadena flex:1 de abajo
+           (.tz-chat-window/.tz-chat-messages) recién tiene un tamaño
+           real del cual repartirse el espacio libre. */
         display: flex;
         flex-direction: column;
+        height: 85vh;
         max-height: 85vh;
         overflow: visible;
       }
@@ -2209,6 +2691,7 @@ export default function Styles() {
         overflow-wrap: anywhere;
       }
       .tz-chat-window {
+        position: relative;
         display: flex;
         flex-direction: column;
         gap: 10px;
@@ -2217,16 +2700,29 @@ export default function Styles() {
            — 'min-height:0' es lo que permite que un hijo flex se
            angoste por debajo de su alto de contenido en vez de forzar
            al padre a desbordar (el motivo #1 por el que el scroll
-           aislado no funciona si se te olvida ponerlo). */
+           aislado no funciona si se te olvida ponerlo). 'overflow:
+           hidden' acá (no en .tz-chat-modal-shell, ese sigue 'visible'
+           por el glow de la tarjeta) blinda a que NADA de acá adentro
+           pueda derramarse sobre otro elemento del modal. */
         flex: 1 1 auto;
         min-height: 0;
+        overflow: hidden;
       }
       .tz-chat-messages {
         display: flex;
         flex-direction: column;
         gap: 8px;
+        /* flex:1 + min-height:0 es la arquitectura completa del scroll
+           aislado: crece para llenar el espacio libre, pero puede
+           angostarse todo lo que haga falta para cederle su tamaño
+           natural al footer (ver .tz-chat-footer) — antes tenía
+           'min-height:100px', un piso que competía por espacio con el
+           footer y lo aplastaba/recortaba en pantallas bajas (el bug
+           reportado). El propio scroll interno (overflow-y:auto) es lo
+           que garantiza que los mensajes siguen siendo alcanzables aun
+           con poca altura visible. */
         flex: 1 1 auto;
-        min-height: 100px;
+        min-height: 0;
         overflow-y: auto;
         overflow-x: hidden;
         padding: 4px 6px;
@@ -2239,6 +2735,276 @@ export default function Styles() {
            centrado". Estilo WhatsApp real: recibidos a la izquierda,
            enviados a la derecha — burbuja Y texto. */
         text-align: left;
+      }
+      /* Fase 2 "Contratos Inteligentes" — panel que aparece arriba de
+         los mensajes cuando el hilo tiene una oferta aceptada
+         (viajeIniciado, ver ChatWindow.jsx). 'flex-shrink:0' lo mete en
+         la misma arquitectura que el footer: nunca se achica, y
+         .tz-chat-messages (flex:1) le cede el lugar solo. */
+      /* Fase 3: el panel ahora es columna — el mapa (MapaViaje.jsx)
+         arriba, la fila de texto/acciones abajo (antes era todo una
+         sola fila de texto). */
+      /* Aviso de cancelación remota (ChatWindow.jsx) — flota arriba de
+         todo lo demás del chat un momento antes de que el modal se
+         cierre solo, para que no sea un cierre sorpresivo. */
+      .tz-chat-toast {
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 30;
+        max-width: 92%;
+        padding: 8px 16px;
+        border-radius: 999px;
+        background: rgba(255,84,112,0.15);
+        border: 1px solid var(--danger);
+        color: var(--danger);
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 700;
+        font-size: 12.5px;
+        text-align: center;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      }
+      /* Toast flotante de nivel página (HomePage.jsx) — "sin destino,
+         no se puede pedir taxi". 'position:fixed' + z-index alto
+         (encima de .tz-modal-backdrop, z-index:60) porque puede
+         disparar con el RadarGlobal todavía abierto (clic en un
+         vehículo sin haber buscado destino). */
+      .tz-toast-flotante {
+        position: fixed;
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 70;
+        max-width: 90%;
+        padding: 10px 18px;
+        border-radius: 999px;
+        background: rgba(255,84,112,0.18);
+        backdrop-filter: blur(4px);
+        border: 1px solid var(--danger);
+        color: var(--danger);
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+        text-align: center;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+      }
+      /* UX: colapsar el mapa — el botón vive arriba de todo el panel,
+         el mapa en sí se saca del flujo (display:none) sin desmontar
+         el componente (ver el comentario en ChatWindow.jsx sobre por
+         qué el lado Conductor no puede desmontarlo). */
+      .tz-chat-mapa-toggle-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        align-self: center;
+        padding: 4px 12px;
+        border: none;
+        border-radius: 999px;
+        background: rgba(43,232,255,0.15);
+        color: var(--cyan);
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 700;
+        font-size: 11px;
+        cursor: pointer;
+      }
+      .tz-chat-mapa-toggle-btn:hover { background: rgba(43,232,255,0.25); }
+      .tz-chat-mapa-oculto { display: none; }
+      .tz-chat-viaje-panel {
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 10px;
+        border-radius: 12px;
+        background: rgba(43,232,255,0.1);
+        border: 1px solid rgba(43,232,255,0.35);
+        color: var(--cyan);
+        overflow: hidden;
+      }
+      .tz-chat-viaje-panel-conductor {
+        background: var(--green-bg);
+        border-color: rgba(57,255,176,0.4);
+        color: var(--green);
+      }
+      .tz-chat-viaje-panel-info {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+        text-align: center;
+      }
+      /* Mapa chico del viaje en curso — MapaViaje.jsx. */
+      .tz-mapa-viaje {
+        width: 100%;
+        height: 140px;
+        border-radius: 8px;
+        z-index: 0;
+      }
+      .tz-mapa-viaje-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        height: 90px;
+        color: var(--text-dim);
+        font-size: 12.5px;
+      }
+      /* Overlay chico ENCIMA del mapa (no lo reemplaza) mientras
+         todavía no llegó ninguna posición — el mapa (tiles, controles)
+         se ve completo desde el primer render, ver MapaViaje.jsx. */
+      .tz-mapa-viaje-loading-overlay {
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10;
+        height: auto;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: rgba(5,3,12,0.8);
+        backdrop-filter: blur(3px);
+        border: 1px solid rgba(255,255,255,0.15);
+      }
+      /* Botón "Cancelar Viaje" — vive DENTRO del panel del Pasajero, no
+         suelto: 'flex-wrap' arriba deja que baje de línea en pantallas
+         angostas en vez de recortarse. */
+      .tz-chat-cancelar-btn {
+        flex-shrink: 0;
+        padding: 6px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--danger);
+        background: rgba(255,84,112,0.12);
+        color: var(--danger);
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 700;
+        font-size: 12px;
+        white-space: nowrap;
+        cursor: pointer;
+      }
+      .tz-chat-cancelar-btn:hover { background: rgba(255,84,112,0.22); }
+      /* "✅ Pasajero Recogido" (Conductor, Fase 3) — verde, al lado del
+         rojo de Cancelar en el mismo panel. */
+      /* Navegación Externa (Google Maps/Waze) — reemplaza al trazado
+         interno de OSRM, ver ChatWindow.jsx/MapaViaje.jsx. Fila propia
+         para que los dos "botones" (son <a>, no <button>) quepan uno al
+         lado del otro sin competir con Cancelar/Finalizar. */
+      .tz-chat-nav-externa-row {
+        display: flex;
+        gap: 8px;
+        width: 100%;
+        flex-wrap: wrap;
+      }
+      .tz-chat-nav-externa-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        flex: 1 1 auto;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 700;
+        font-size: 12px;
+        white-space: nowrap;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      .tz-chat-nav-maps-btn {
+        border: 1px solid rgba(43,232,255,0.5);
+        background: rgba(43,232,255,0.12);
+        color: var(--cyan);
+      }
+      .tz-chat-nav-maps-btn:hover { background: rgba(43,232,255,0.22); }
+      .tz-chat-nav-waze-btn {
+        border: 1px solid rgba(43,232,255,0.5);
+        background: rgba(43,232,255,0.12);
+        color: #7cf9ff;
+      }
+      .tz-chat-nav-waze-btn:hover { background: rgba(43,232,255,0.22); }
+      .tz-chat-recogido-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        flex-shrink: 0;
+        padding: 6px 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(57,255,176,0.5);
+        background: var(--green-bg);
+        color: var(--green);
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 700;
+        font-size: 12px;
+        white-space: nowrap;
+        cursor: pointer;
+      }
+      .tz-chat-recogido-btn:hover:not(:disabled) { background: rgba(57,255,176,0.22); }
+      /* Deshabilitado (Regla de Doble Proximidad, <100m del pasajero) —
+         gris explícito, no solo verde atenuado, para que se lea claro
+         que todavía no se puede tocar. */
+      .tz-chat-recogido-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background: rgba(255,255,255,0.05);
+        border-color: var(--border-soft);
+        color: var(--text-dim);
+      }
+      /* Modal de confirmación (Cancelar Viaje) — tarjeta chica, no el
+         .tz-modal genérico (ese trae scroll/padding pensado para
+         formularios largos). */
+      .tz-confirm-dialog {
+        position: relative;
+        width: 100%;
+        max-width: 300px;
+        text-align: center;
+        background: var(--panel-solid);
+        border: 1px solid rgba(255,84,112,0.4);
+        border-radius: 16px;
+        padding: 22px 20px;
+        box-shadow: 0 0 50px rgba(255,84,112,0.2);
+      }
+      .tz-confirm-dialog p {
+        margin: 0 0 16px;
+        color: var(--text);
+        font-size: 14px;
+        line-height: 1.4;
+      }
+      .tz-confirm-dialog-actions {
+        display: flex;
+        gap: 10px;
+      }
+      .tz-confirm-dialog-actions .tz-camera-cancel { flex: 1; }
+      .tz-confirm-dialog-danger {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 10px;
+        border-radius: 10px;
+        border: 1px solid var(--danger);
+        background: rgba(255,84,112,0.15);
+        color: var(--danger);
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .tz-confirm-dialog-danger:hover:not(:disabled) { background: rgba(255,84,112,0.25); }
+      .tz-confirm-dialog-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+      /* Pasajero, con viaje ya iniciado: el historial se "minimiza" a
+         una franja baja con su propio scroll — el panel de arriba pasa
+         a ser el protagonista visual. Va DESPUÉS de .tz-chat-messages
+         en la hoja para poder pisar su 'flex:1 1 auto'. */
+      .tz-chat-messages-mini {
+        flex: 0 0 90px;
+        max-height: 90px;
       }
       @keyframes tzChatBubbleIn {
         from { opacity: 0; transform: translateY(8px); }
@@ -2304,6 +3070,255 @@ export default function Styles() {
       }
       .tz-chat-typing-dot:nth-child(2) { animation-delay: 0.15s; }
       .tz-chat-typing-dot:nth-child(3) { animation-delay: 0.3s; }
+      /* Fase 1 "Contratos Inteligentes" — burbuja especial cuando el
+         Pasajero recibe una propuesta de tarifa del Conductor (mensaje
+         que arranca con "S/", ver MessageBubble en ChatWindow.jsx). */
+      .tz-chat-bubble-contrato {
+        align-self: center;
+        width: 92%;
+        max-width: 92%;
+        text-align: center;
+        background: rgba(215,255,59,0.08);
+        border-color: rgba(215,255,59,0.4);
+        border-radius: 14px;
+      }
+      .tz-chat-contrato-texto {
+        margin: 0 0 8px;
+        color: var(--text);
+        font-size: 14px;
+      }
+      .tz-chat-contrato-acciones {
+        display: flex;
+        gap: 8px;
+      }
+      .tz-chat-contrato-btn {
+        flex: 1;
+        padding: 8px 10px;
+        border-radius: 10px;
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+        border: 1px solid transparent;
+      }
+      .tz-chat-contrato-aceptar {
+        background: var(--green-bg);
+        border-color: rgba(57,255,176,0.5);
+        color: var(--green);
+      }
+      .tz-chat-contrato-aceptar:hover { background: rgba(57,255,176,0.22); }
+      .tz-chat-contrato-rechazar {
+        background: rgba(255,84,112,0.1);
+        border-color: rgba(255,84,112,0.45);
+        color: var(--danger);
+      }
+      .tz-chat-contrato-rechazar:hover { background: rgba(255,84,112,0.2); }
+      /* Oferta ya resuelta (aceptada/rechazada) — reemplaza a los
+         botones, ver MessageBubble en ChatWindow.jsx. */
+      .tz-chat-contrato-resultado {
+        margin: 0;
+        color: var(--text-dim);
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .tz-chat-contrato-resultado-ok { color: var(--green); }
+      /* Mensaje de sistema (ej. "El pasajero rechazó la tarifa") — no
+         es de nadie, burbuja centrada neutra sin acciones. */
+      .tz-chat-bubble-sistema {
+        align-self: center;
+        max-width: 90%;
+        background: rgba(255,255,255,0.04);
+        text-align: center;
+      }
+      .tz-chat-bubble-sistema p {
+        color: var(--text-dim);
+        font-size: 12.5px;
+        font-style: italic;
+      }
+      /* Footer del chat — TODO lo que no es el área scrolleable de
+         mensajes vive acá (aviso de teléfono, fila de acciones rápidas,
+         input), ver .tz-chat-footer en ChatWindow.jsx. 'flex-shrink:0'
+         es el blindaje real: nunca se achica ni se recorta, pase lo que
+         pase con el alto de los mensajes — es lo que faltaba antes y
+         causaba que los chips de tarifa se aplastaran/superpusieran. */
+      .tz-chat-footer {
+        flex-shrink: 0;
+        /* Refuerzo Fase 2: redundante con el 'flex:1' de .tz-chat-messages
+           (ese ya empuja al footer hasta el fondo en cualquier navegador
+           que calcule bien la cadena flex), pero 'margin-top:auto' es un
+           segundo ancla sin costo — si algo en el medio llegara a fallar,
+           esto solo igual pega el footer contra el borde inferior de
+           .tz-chat-window en vez de flotar a mitad de altura. */
+        margin-top: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      /* Anti-Spam General (Fase 2): reemplaza a .tz-chat-input-row
+         entero cuando el hilo ya cerró — mismo lugar, mismo ancho, para
+         que el footer no salte de tamaño al pasar de un estado al
+         otro. */
+      .tz-chat-cerrado-aviso {
+        margin: 4px 0 0;
+        padding: 10px 4px;
+        text-align: center;
+        color: var(--text-dim);
+        font-size: 13px;
+      }
+      /* Fila de acciones rápidas — un solo contenedor deslizable para
+         los dos roles: adentro va o el botón "Hacer Señas" (Pasajero) o
+         los chips de tarifa (Conductor), ver el renderizado condicional
+         en ChatWindow.jsx. */
+      .tz-chat-quickrow {
+        display: flex;
+        overflow-x: auto;
+        gap: 8px;
+        /* Padding en los 4 lados (no solo abajo): 'overflow-x:auto' acá
+           recorta cualquier cosa que se salga de esta caja, glow
+           incluido — sin aire alrededor, el box-shadow de
+           .tz-chat-senas-btn se veía cortado en vez de difuminarse. */
+        padding: 8px 4px;
+        width: 100%;
+        scrollbar-width: none;
+      }
+      .tz-chat-quickrow::-webkit-scrollbar { display: none; }
+      /* Los chips de adentro NUNCA se achican (flex-shrink:0) ni
+         parten su texto (white-space:nowrap) — así, si hay más de los
+         que entran, el usuario desliza en vez de que se compriman. */
+      .tz-chat-quickreply-btn {
+        flex-shrink: 0;
+        white-space: nowrap;
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.15s, box-shadow 0.15s;
+      }
+      .tz-chat-quickreply-btn {
+        padding: 8px 16px;
+        border-radius: 999px;
+        border: 1px solid rgba(43,232,255,0.4);
+        background: rgba(43,232,255,0.1);
+        color: var(--cyan);
+        font-size: 13px;
+      }
+      .tz-chat-quickreply-btn:hover:not(:disabled) { background: rgba(43,232,255,0.2); box-shadow: 0 0 12px rgba(43,232,255,0.3); }
+      .tz-chat-quickreply-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      /* "Tonazo" (Pasajero, ChatWindow.jsx) — solo el logo, circular;
+         el contador de restantes vive en el atributo title (tooltip),
+         acá abajo solo se muestra el cooldown mientras está activo. */
+      .tz-chat-tonazo-row {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 0 4px 8px;
+      }
+      .tz-chat-tonazo-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 42px;
+        height: 42px;
+        padding: 0;
+        flex-shrink: 0;
+        border-radius: 50%;
+        border: 1px solid rgba(255,47,158,0.4);
+        background: rgba(255,47,158,0.1);
+        color: var(--pink);
+        cursor: pointer;
+        transition: background 0.15s, box-shadow 0.15s;
+      }
+      .tz-chat-tonazo-btn:hover:not(:disabled) { background: rgba(255,47,158,0.2); box-shadow: 0 0 12px rgba(255,47,158,0.3); }
+      .tz-chat-tonazo-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      /* Sin destino (Lógica de Negocio) — a propósito NO usa el
+         atributo disabled nativo (ver el comentario en ChatWindow.jsx):
+         se ve apagado igual, pero sigue recibiendo el click para poder
+         mostrar el toast de aviso. */
+      .tz-chat-tonazo-btn-bloqueado { opacity: 0.5; cursor: pointer; }
+      .tz-chat-tonazo-logo { width: 20px; height: 20px; object-fit: contain; border-radius: 4px; }
+      .tz-chat-tonazo-cooldown {
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 11px;
+        color: var(--text-dim);
+      }
+      /* "+" (Negociación abierta, Conductor) — mismo chip que las
+         tarifas fijas pero circular, sin texto. */
+      .tz-chat-quickreply-plus {
+        width: 34px;
+        padding: 8px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .tz-chat-tarifa-custom-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: -4px;
+      }
+      .tz-chat-tarifa-custom-input {
+        flex: 1;
+        margin: 0;
+      }
+      /* "🏁 Finalizar Carrera" — recicla al botón rojo de Cancelar
+         cuando el Conductor está a <50m del destino (ver
+         DISTANCIA_PROXIMIDAD_M en ChatWindow.jsx). Mismo tamaño/forma
+         que .tz-chat-cancelar-btn, verde en vez de rojo. */
+      .tz-chat-finalizar-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        flex-shrink: 0;
+        padding: 6px 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(57,255,176,0.5);
+        background: var(--green-bg);
+        color: var(--green);
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 700;
+        font-size: 12px;
+        white-space: nowrap;
+        cursor: pointer;
+      }
+      .tz-chat-finalizar-btn:hover:not(:disabled) { background: rgba(57,255,176,0.22); }
+      .tz-chat-finalizar-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      /* UX de Mensajes de Sistema Celeste Neón (ChatWindow.jsx) —
+         reemplaza a la vieja "pantalla de cierre": "🚀 Viaje Iniciado"/
+         "🏁 Viaje Finalizado" son burbujas más del historial, no un
+         panel/modal aparte. Mismo layout centrado que .tz-chat-bubble-
+         sistema (el aviso neutro), pero con el resplandor celeste. */
+      .tz-chat-bubble-sistema-viaje {
+        align-self: center;
+        max-width: 85%;
+        text-align: center;
+        border: 1px solid #00ffff;
+        background: rgba(8, 32, 38, 0.55);
+        box-shadow: 0 0 10px #00ffff;
+      }
+      .tz-chat-bubble-sistema-viaje p {
+        margin: 0;
+        color: #7cf9ff;
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 700;
+        font-size: 14px;
+      }
+      .tz-chat-cronometro {
+        display: inline-block;
+        margin-top: 4px;
+        color: #7cf9ff;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 15px;
+        letter-spacing: 0.04em;
+      }
+      .tz-chat-viaje-cierre-detalle {
+        margin: 4px 0 0 !important;
+        color: rgba(124, 249, 255, 0.75) !important;
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 500 !important;
+        font-size: 11px !important;
+      }
       .tz-chat-input-row {
         display: flex;
         align-items: center;
@@ -2683,6 +3698,27 @@ export default function Styles() {
         min-width: 0;
         padding: 8px 10px;
       }
+      /* Fix de Layout (AdminLocalidadesModal.jsx): Guardar/Cancelar
+         llevan ícono+texto — flex-wrap + gap en vez de forzarlos dentro
+         de .tz-vis-edit-btn (30x30 fijo, pensado solo para íconos). */
+      .tz-vis-form-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 4px;
+      }
+      .tz-vis-form-actions > button { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+      /* Mini-mapa con pin arrastrable (AdminLocalidadesModal.jsx) — fijar
+         coordenadas de una localidad a mano, además de/en vez del
+         buscador. */
+      .tz-admin-minimapa-wrap {
+        width: 100%;
+        height: 220px;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--border-soft);
+      }
+      .tz-admin-minimapa { width: 100%; height: 100%; }
       .tz-vis-edit-btn {
         width: 30px;
         height: 30px;
@@ -4556,6 +5592,152 @@ export default function Styles() {
           text-align: center;
           padding: 24px;
         }
+      }
+
+      /* ---------- Pop-up de Anuncios (AnuncioPopupModal — Vista Cliente) ----------
+         Dos casos, elegidos por orientación/contenido (NO por ancho de
+         pantalla — antes 'con texto' pasaba a fila desde 768px y el
+         video de YouTube quedaba angosto y deformado):
+           - Con texto (16:9, YouTube o subida horizontal): SIEMPRE en
+             columna, media arriba a ancho completo (aspect-ratio 16:9,
+             object-fit cover), texto abajo. Ver .tz-anuncio-layout
+             (default, sin modificador).
+           - Solo multimedia / sin texto (típicamente 9:16 vertical): el
+             media llena el modal entero, sin recorte a 16:9, la 'X'
+             flota encima. Ver .tz-anuncio-layout-fill. */
+      .tz-anuncio-modal {
+        position: relative;
+        width: 100%;
+        max-width: 480px;
+        max-height: 90vh;
+        border-radius: 18px;
+        overflow: hidden;
+        background: var(--panel-solid);
+        border: 1px solid rgba(43,232,255,0.25);
+        box-shadow: 0 0 50px rgba(43,232,255,0.15);
+      }
+      /* Solo multimedia Y vertical (9:16, medido en el cliente — ver
+         AnuncioPopupModal.jsx): abandona el ancho genérico de arriba y
+         toma forma de teléfono, para que un video/imagen 9:16 no quede
+         deformado ni con márgenes. Mobile: ancho casi completo, alto
+         limitado a 90vh. Desktop: se fija por el alto (90vh) y el ancho
+         se ajusta solo, vía aspect-ratio. */
+      .tz-anuncio-modal-vertical {
+        max-width: 384px;
+        width: 100%;
+        max-height: 90vh;
+        aspect-ratio: 9 / 16;
+      }
+      @media (min-width: 768px) {
+        .tz-anuncio-modal-vertical {
+          width: auto;
+          height: 90vh;
+          max-height: 90vh;
+        }
+      }
+      .tz-anuncio-modal-vertical .tz-anuncio-layout {
+        height: 100%;
+        max-height: none;
+      }
+      .tz-anuncio-modal-vertical .tz-anuncio-media {
+        height: 100%;
+      }
+      .tz-anuncio-modal-vertical .tz-anuncio-media img,
+      .tz-anuncio-modal-vertical .tz-anuncio-media video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        max-height: none;
+        border-radius: 16px;
+      }
+      .tz-anuncio-close {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        z-index: 20;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: 1px solid rgba(255,255,255,0.25);
+        background: rgba(0,0,0,0.5);
+        backdrop-filter: blur(4px);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      }
+      .tz-anuncio-layout {
+        display: flex;
+        flex-direction: column;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      .tz-anuncio-media {
+        width: 100%;
+        flex-shrink: 0;
+        background: #000;
+        display: flex;
+      }
+      /* Caso "con texto" (default): fuerza el media a una caja 16:9
+         arriba, el texto va abajo — columna siempre, en cualquier ancho. */
+      .tz-anuncio-layout:not(.tz-anuncio-layout-fill) .tz-anuncio-media {
+        aspect-ratio: 16 / 9;
+      }
+      .tz-anuncio-layout:not(.tz-anuncio-layout-fill) .tz-anuncio-media img,
+      .tz-anuncio-layout:not(.tz-anuncio-layout-fill) .tz-anuncio-media video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .tz-anuncio-layout:not(.tz-anuncio-layout-fill) .tz-anuncio-video-wrap {
+        width: 100%;
+        height: 100%;
+      }
+      /* Caso "solo multimedia": llena el ancho, sin forzar 16:9 — así
+         un video/imagen vertical (9:16) se ve completo, no una franja
+         angosta recortada. */
+      .tz-anuncio-layout-fill .tz-anuncio-media img,
+      .tz-anuncio-layout-fill .tz-anuncio-media video {
+        width: 100%;
+        display: block;
+        object-fit: cover;
+        max-height: 90vh;
+      }
+      .tz-anuncio-layout-fill .tz-anuncio-video-wrap {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+      }
+      /* aspect-ratio (no padding-hack) — el iframe de YouTube queda
+         100% responsive sin deformarse en ningún ancho. */
+      .tz-anuncio-video-wrap {
+        position: relative;
+      }
+      .tz-anuncio-video-wrap iframe {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+      .tz-anuncio-text {
+        padding: 18px 20px 22px;
+      }
+      .tz-anuncio-text h3 {
+        margin: 0 0 6px;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 17px;
+        color: var(--text);
+      }
+      .tz-anuncio-text p {
+        margin: 0;
+        color: var(--text-dim);
+        font-size: 14px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+      }
+      @media (min-width: 768px) {
+        .tz-anuncio-modal { max-width: 720px; }
       }
     `}</style>
   );

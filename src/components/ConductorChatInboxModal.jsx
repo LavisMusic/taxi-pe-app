@@ -11,9 +11,20 @@ import ChatErrorBoundary from "./ChatErrorBoundary";
 // (un pasajero = un hilo) -> click abre la conversación con el mismo
 // ChatWindow que usa el pasajero, solo que acá el remitente propio es
 // "conductor".
-function HiloConversacion({ conductorId, pasajeroId }) {
-  const { mensajes, loading, otroEscribiendo, enviarMensaje, notificarEscribiendo, marcarLeidoPorConductor } =
-    useChatMensajes(conductorId, pasajeroId);
+function HiloConversacion({ conductorId, pasajeroId, nivelServicio, onCerrarPorCancelacion }) {
+  const {
+    mensajes,
+    loading,
+    otroEscribiendo,
+    enviarMensaje,
+    responderOferta,
+    marcarPasajeroRecogido,
+    cancelarViaje,
+    finalizarViaje,
+    marcarFinDeViaje,
+    notificarEscribiendo,
+    marcarLeidoPorConductor,
+  } = useChatMensajes(conductorId, pasajeroId);
 
   // Al abrir este hilo, todo lo que mandó el pasajero queda "leído" —
   // apaga el punto rojo del botón Mensajes (ver ConductorPage.jsx).
@@ -27,6 +38,15 @@ function HiloConversacion({ conductorId, pasajeroId }) {
       loading={loading}
       remitentePropio={REMITENTE_CONDUCTOR}
       onEnviar={enviarMensaje}
+      onResponderOferta={responderOferta}
+      onPasajeroRecogido={marcarPasajeroRecogido}
+      onCancelarViaje={cancelarViaje}
+      onFinalizarViaje={finalizarViaje}
+      onMarcarFinDeViaje={marcarFinDeViaje}
+      onCerrarPorCancelacion={onCerrarPorCancelacion}
+      conductorId={conductorId}
+      pasajeroId={pasajeroId}
+      nivelServicio={nivelServicio}
       otroEscribiendo={otroEscribiendo}
       onEscribiendo={notificarEscribiendo}
     />
@@ -43,10 +63,13 @@ function HiloConversacion({ conductorId, pasajeroId }) {
 // envoltura, ese fue justo el bug: el error real (colisión de canales
 // de Realtime, ver useChatMensajes.js) escapaba del boundary porque el
 // hook se llamaba un nivel más arriba.
-function BandejaContenido({ conductorId }) {
+function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio }) {
   const { hilos, loading } = useHilosChatConductor(conductorId);
   const [nombresPorId, setNombresPorId] = useState({});
-  const [pasajeroAbierto, setPasajeroAbierto] = useState(null);
+  // Si el modal se abrió desde la alerta de "Hacer Señas" (ver
+  // ConductorPage.jsx), entra directo a ese hilo en vez de mostrar la
+  // lista primero.
+  const [pasajeroAbierto, setPasajeroAbierto] = useState(pasajeroInicial ?? null);
   const listaHilos = hilos ?? [];
   const idsKey = listaHilos.map((h) => h?.pasajeroId).filter(Boolean).join(",");
 
@@ -95,7 +118,12 @@ function BandejaContenido({ conductorId }) {
           <p className="tz-chat-thread-name" style={{ margin: "0 0 8px" }}>
             {nombresPorId[pasajeroAbierto] ?? "Pasajero"}
           </p>
-          <HiloConversacion conductorId={conductorId} pasajeroId={pasajeroAbierto} />
+          <HiloConversacion
+            conductorId={conductorId}
+            pasajeroId={pasajeroAbierto}
+            nivelServicio={nivelServicio}
+            onCerrarPorCancelacion={() => setPasajeroAbierto(null)}
+          />
         </>
       ) : loading ? (
         <div className="tz-loading" style={{ minHeight: 120 }}>
@@ -123,7 +151,7 @@ function BandejaContenido({ conductorId }) {
   );
 }
 
-export default function ConductorChatInboxModal({ conductorId, onClose }) {
+export default function ConductorChatInboxModal({ conductorId, pasajeroInicial, nivelServicio, onClose }) {
   return (
     <div className="tz-modal-backdrop">
       <div className="tz-modal tz-chat-modal-shell" onClick={(e) => e.stopPropagation()}>
@@ -138,7 +166,7 @@ export default function ConductorChatInboxModal({ conductorId, onClose }) {
             </div>
           ) : (
             <ChatErrorBoundary>
-              <BandejaContenido conductorId={conductorId} />
+              <BandejaContenido conductorId={conductorId} pasajeroInicial={pasajeroInicial} nivelServicio={nivelServicio} />
             </ChatErrorBoundary>
           )}
         </div>

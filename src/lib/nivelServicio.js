@@ -19,6 +19,26 @@ export const NIVEL_COLOR = {
   [NIVEL_SERVICIO_ECONOMICO]: "var(--text-dim)",
 };
 
+// Paleta APARTE, solo para el mapa (RadarGlobal.jsx/MapaViaje.jsx/
+// ChatWindow.jsx) — hex fijos, no `var(--cyan)` etc. Un divIcon de
+// Leaflet es HTML crudo inyectado fuera del árbol de React; en teoría
+// las custom properties de :root le llegan igual (ya lo veníamos
+// haciendo), pero acá se pidió explícito código de color estable en
+// vez de depender de esa resolución — así que esta paleta es
+// deliberadamente independiente de NIVEL_COLOR de arriba (esa sigue
+// intacta, la siguen usando las tarjetas/acordeones ya aprobados).
+export const MAPA_NIVEL_COLOR = {
+  [NIVEL_SERVICIO_VIP]: "#fbbf24",
+  [NIVEL_SERVICIO_PREMIUM]: "#ff66cc",
+  [NIVEL_SERVICIO_EJECUTIVO]: "#00ffff",
+  [NIVEL_SERVICIO_ECONOMICO]: "#9ca3af",
+};
+
+// Pin del Pasajero en MapaViaje.jsx (antes de ser recogido) — verde
+// neón fijo, para que nunca se confunda con el color de categoría del
+// vehículo (esos son los de arriba).
+export const COLOR_PASAJERO_MAPA = "#39ffac";
+
 // Orden fijo de los grupos, del más exclusivo al más básico — no
 // alfabético ni por cantidad, para que VIP siempre encabece la lista.
 export const ORDEN_NIVELES = [

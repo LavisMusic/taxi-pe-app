@@ -35,7 +35,7 @@ export function useConductoresPublicos() {
       supabase
         .from("conductores")
         .select(
-          "id, nombre, placa, telefono, foto_url, foto_portada_url, descripcion, estado, categoria_id, localidad, nivel_servicio, subgrupo_id"
+          "id, nombre, placa, telefono, foto_url, foto_portada_url, descripcion, estado, categoria_id, localidad, nivel_servicio, subgrupo_id, asientos_totales, asientos_ocupados"
         )
         .eq("aprobado", true)
         .in("estado", [ESTADO_CONDUCTOR_ACTIVO, ESTADO_CONDUCTOR_OCUPADO]),
