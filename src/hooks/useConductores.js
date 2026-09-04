@@ -1,23 +1,29 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { subscribeTable } from "../lib/realtime";
-import {
-  ESTADO_CONDUCTOR_ACTIVO,
-  ESTADO_CONDUCTOR_RECHAZADO,
-  NIVEL_SERVICIO_ECONOMICO,
-} from "../lib/taxiEnums";
+import { ESTADO_CONDUCTOR_DESCONECTADO, ESTADO_CONDUCTOR_RECHAZADO } from "../lib/taxiEnums";
 
 // Directorio de conductores + categorías (Autos/Mototaxis/Minivans...,
 // vienen de la tabla `categorias`, ordenadas por `orden`).
 //
 // `conductores` NO tiene columna `usuario_id`, así que no hay FK
-// explícita hacia `usuarios` — y el Registro Rápido del Recolector
-// (crearConductor, más abajo) confirma que un conductor puede existir
-// SIN tener nunca una fila en `usuarios` (el recolector solo pide
-// nombre/placa/teléfono/categoría/foto, sin DNI ni PIN). El puente más
-// probable entre un futuro login (usuarios.rol='conductor') y esta
-// fila es `telefono` en ambas tablas, no un id compartido — a resolver
-// cuando se construya /conductor.
+// explícita hacia `usuarios` — el puente entre un login
+// (usuarios.rol='conductor') y esta fila es `telefono` en ambas tablas,
+// no un id compartido (ver useConductorSesion.js).
+//
+// Este hook YA NO trae un `crearConductor` propio — existió una versión
+// acá que insertaba SOLO en `conductores`, sin fila en `usuarios`
+// (pensado para "alta sin cuenta de login propia"). Eso causaba el bug
+// de sincronía "conductor recién registrado no puede loguearse, dice
+// Teléfono o PIN incorrectos": StaffLoginForm busca por teléfono en
+// `usuarios`, y esa fila simplemente no existía todavía. Cualquier alta
+// de conductor que deba poder loguearse (Registro Rápido del
+// Recolector, alta inline desde Recarga Rápida, alta desde Usuarios del
+// Admin, auto-registro en /login) usa useCrearConductorConUsuario.js,
+// que crea las DOS filas juntas (`pin: null`, se crea en el primer
+// login) — `aprobado` viaja como parámetro porque el mismo
+// RegistroConductorModal se reusa en los 4 contextos y solo el caller
+// sabe cuál es cuál.
 export function useConductores() {
   const [conductores, setConductores] = useState([]);
   const [categorias, setCategorias] = useState([]);
@@ -37,10 +43,10 @@ export function useConductores() {
       supabase
         .from("conductores")
         .select(
-          "id, nombre, placa, telefono, dni, localidad, foto_url, foto_portada_url, descripcion, estado, creditos, vencimiento_suscripcion, categoria_id, subgrupo_id, nivel_servicio, aprobado, foto_general_url, foto_interior_url, foto_conductor_dni_url, created_at"
+          "id, nombre, placa, telefono, dni, localidad, foto_url, foto_portada_url, descripcion, estado, creditos, vencimiento_suscripcion, categoria_id, subgrupo_id, nivel_servicio, aprobado, foto_general_url, foto_interior_url, foto_conductor_dni_url, asientos_totales, asientos_ocupados, membresia_paquete_id, created_at"
         )
         .order("created_at", { ascending: false }),
-      supabase.from("categorias").select("id, nombre, orden").order("orden", { ascending: true }),
+      supabase.from("categorias").select("id, nombre, orden, icono_url").order("orden", { ascending: true }),
       // Solo lectura acá — el CRUD completo de subgrupos vive en
       // useCategorias.js (usado por CategoriasModal). Esto es para
       // poblar los desplegables de Directorio/Registro de conductor.
@@ -95,70 +101,24 @@ export function useConductores() {
   // Aprobar deja al conductor operativo Y marca `aprobado: true` — las
   // dos cosas a la vez, porque el Centro de Peticiones filtra su lista
   // "Registro" por `aprobado`, no por `estado` (ver PeticionesModal).
+  //
+  // `estado: DESCONECTADO`, NO Activo (bug reportado: un conductor
+  // recién aprobado aparecía como "Libre" en el Directorio, como si ya
+  // estuviera listo para recibir carreras). Un alta recién aprobada
+  // todavía no tiene créditos ni membresía — no tiene sentido que
+  // arranque "disponible". Esto además iguala este camino con el que ya
+  // usaba el alta directa del Admin desde Usuarios
+  // (useCrearConductorConUsuario.js: `aprobado ? DESCONECTADO : null`),
+  // que nunca tuvo este problema.
   const aprobar = useCallback(
     (id, categoriaId) =>
-      updateConductor(id, { estado: ESTADO_CONDUCTOR_ACTIVO, categoria_id: categoriaId, aprobado: true }),
+      updateConductor(id, { estado: ESTADO_CONDUCTOR_DESCONECTADO, categoria_id: categoriaId, aprobado: true }),
     [updateConductor]
   );
 
   const rechazar = useCallback(
     (id) => updateConductor(id, { estado: ESTADO_CONDUCTOR_RECHAZADO, aprobado: false }),
     [updateConductor]
-  );
-
-  // Alta de un conductor SIN cuenta de login propia (perfil solo) — lo
-  // usa RegistroConductorModal en modo Recolector, siempre con
-  // `aprobado: false` (revisión en el Centro de Peticiones). El modo
-  // Admin/Auto-registro, que también crea la fila de `usuarios`, vive
-  // en useCrearConductorConUsuario.js — `aprobado` viaja como parámetro
-  // en vez de estar hardcodeado porque el MISMO RegistroConductorModal
-  // se reusa en los 3 contextos, y solo el caller sabe cuál es cuál.
-  // `fotoUrl` (perfil, opcional) es independiente de las 3 fotos de
-  // verificación — no hay fallback automático entre ellas.
-  const crearConductor = useCallback(
-    async ({
-      nombre,
-      placa,
-      telefono,
-      dni,
-      localidad,
-      categoriaId,
-      subgrupoId,
-      nivelServicio,
-      fotoUrl,
-      fotoGeneralUrl,
-      fotoInteriorUrl,
-      fotoConductorDniUrl,
-      aprobado = false,
-    }) => {
-      const { data, error: insertError } = await supabase
-        .from("conductores")
-        .insert({
-          nombre,
-          placa,
-          telefono: telefono || null,
-          dni: dni || null,
-          localidad: localidad || null,
-          categoria_id: categoriaId || null,
-          subgrupo_id: subgrupoId || null,
-          nivel_servicio: nivelServicio || NIVEL_SERVICIO_ECONOMICO,
-          foto_url: fotoUrl || null,
-          foto_general_url: fotoGeneralUrl || null,
-          foto_interior_url: fotoInteriorUrl || null,
-          foto_conductor_dni_url: fotoConductorDniUrl || null,
-          aprobado,
-          // Explícito (no lo omitimos): así no depende de qué DEFAULT
-          // tenga la columna en la base — era justo la causa del bug
-          // "conductor fantasma" (un default viejo de `estado` distinto
-          // de NULL hacía que esConductorPendiente() nunca lo detectara).
-          estado: null,
-        })
-        .select()
-        .single();
-      if (!insertError) await refresh();
-      return { error: insertError, conductor: data };
-    },
-    [refresh]
   );
 
   return {
@@ -172,6 +132,5 @@ export function useConductores() {
     setEstado,
     aprobar,
     rechazar,
-    crearConductor,
   };
 }

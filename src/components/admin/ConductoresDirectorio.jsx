@@ -9,6 +9,7 @@ import { formatDate, formatTelefono } from "../../utils/format";
 import {
   ESTADOS_CONDUCTOR_OPERATIVOS,
   ESTADO_CONDUCTOR_RECHAZADO,
+  ESTADO_CONDUCTOR_INHABILITADO,
   ESTADO_CUENTA_ACTIVO,
   NIVELES_SERVICIO,
 } from "../../lib/taxiEnums";
@@ -35,22 +36,43 @@ function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar
   const [nombre, setNombre] = useState(conductor.nombre);
   const [placa, setPlaca] = useState(conductor.placa);
   const [telefono, setTelefono] = useState(conductor.telefono || "");
+  const [dni, setDni] = useState(conductor.dni || "");
   const [subgrupoId, setSubgrupoId] = useState(conductor.subgrupo_id ?? "");
   const [nivelServicio, setNivelServicio] = useState(conductor.nivel_servicio ?? "economico");
+  // Fase 4 (Colectivo): capacidad editable directamente por el Admin —
+  // mismo patrón lápiz/inputs/guardar que el resto de la tarjeta.
+  const [asientosTotales, setAsientosTotales] = useState(conductor.asientos_totales ?? 4);
   const [gestionandoFoto, setGestionandoFoto] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [busyEstado, setBusyEstado] = useState(false);
 
   const rechazado = conductor.estado === ESTADO_CONDUCTOR_RECHAZADO;
+  // Bug reportado: el Admin veía "Libre" en el desplegable de un
+  // conductor que en realidad no puede operar (sin membresía vigente
+  // NI créditos — ver el mismo cálculo en ConductorPage.jsx,
+  // `tieneAcceso`). El desplegable sigue mostrando el `estado` real tal
+  // cual está guardado (no lo pisamos con un valor falso), pero este
+  // aviso aparte hace visible que, aunque diga "Libre", ese conductor
+  // está bloqueado por el Paywall hasta que recargue.
+  const diasRestantesCard = conductor.vencimiento_suscripcion
+    ? Math.ceil((new Date(conductor.vencimiento_suscripcion) - new Date()) / 86400000)
+    : null;
+  const tieneMembresiaVigenteCard = diasRestantesCard != null && diasRestantesCard >= 0;
+  const sinSaldo =
+    conductor.estado !== ESTADO_CONDUCTOR_INHABILITADO &&
+    !tieneMembresiaVigenteCard &&
+    (conductor.creditos ?? 0) <= 0;
   const subgruposDeSuCategoria = subgrupos.filter((s) => s.categoria_id === conductor.categoria_id);
 
   const startEdit = () => {
     setNombre(conductor.nombre);
     setPlaca(conductor.placa);
     setTelefono(conductor.telefono || "");
+    setDni(conductor.dni || "");
     setSubgrupoId(conductor.subgrupo_id ?? "");
     setNivelServicio(conductor.nivel_servicio ?? "economico");
+    setAsientosTotales(conductor.asientos_totales ?? 4);
     setError("");
     setEditing(true);
   };
@@ -60,14 +82,25 @@ function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar
       setError("Nombre y placa no pueden quedar vacíos.");
       return;
     }
+    if (dni.trim() && !/^\d{8}$/.test(dni.trim())) {
+      setError("El DNI debe tener 8 dígitos.");
+      return;
+    }
+    const asientos = Number(asientosTotales);
+    if (!Number.isInteger(asientos) || asientos < 1 || asientos > 65) {
+      setError("La capacidad de asientos debe ser un número entero entre 1 y 65.");
+      return;
+    }
     setSaving(true);
     setError("");
     const { error: saveError } = await onUpdate(conductor.id, {
       nombre: nombre.trim(),
       placa: placa.trim().toUpperCase(),
       telefono: telefono.trim() || null,
+      dni: dni.trim() || null,
       subgrupo_id: subgrupoId || null,
       nivel_servicio: nivelServicio,
+      asientos_totales: asientos,
     });
     setSaving(false);
     if (saveError) {
@@ -123,6 +156,15 @@ function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar
                     onChange={(e) => setTelefono(e.target.value)}
                     placeholder="Teléfono"
                   />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={8}
+                    className="tz-text-input"
+                    value={dni}
+                    onChange={(e) => setDni(e.target.value)}
+                    placeholder="DNI"
+                  />
                   <select
                     className="tz-text-input"
                     value={subgrupoId}
@@ -149,6 +191,17 @@ function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar
                       </option>
                     ))}
                   </select>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={65}
+                    step={1}
+                    className="tz-text-input"
+                    value={asientosTotales}
+                    onChange={(e) => setAsientosTotales(e.target.value)}
+                    placeholder="Capacidad (asientos)"
+                  />
                   {error && <p className="tz-error">{error}</p>}
                   <div className="tz-add-entry-actions">
                     <button className="tz-camera-cancel" onClick={() => setEditing(false)} disabled={saving}>
@@ -189,6 +242,16 @@ function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar
                     Placa <strong style={{ color: "var(--text)" }}>{conductor.placa}</strong>
                     {conductor.telefono ? ` · ${formatTelefono(conductor.telefono)}` : ""}
                   </p>
+                  {conductor.dni && (
+                    <p style={{ margin: "2px 0", color: "var(--text-dim)", fontSize: 13 }}>DNI {conductor.dni}</p>
+                  )}
+                  {/* Fase 4 (Colectivo): capacidad del vehículo — de acá
+                     sale `asientos_disponibles` en el Radar del pasajero
+                     (RadarGlobal.jsx) y en el motor de negociación del
+                     chat. */}
+                  <p style={{ margin: "2px 0", color: "var(--text-dim)", fontSize: 13 }}>
+                    Capacidad: {conductor.asientos_totales ?? 4} asientos
+                  </p>
                 </>
               )}
             </div>
@@ -205,6 +268,11 @@ function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar
                 </span>
               )}
               {rechazado && <span className="tz-tag tz-tag-danger">Rechazado</span>}
+              {sinSaldo && (
+                <span className="tz-tag tz-tag-danger" title="Sin membresía vigente ni créditos — el Paywall le bloquea el acceso aunque el estado diga otra cosa">
+                  ⚠️ Sin saldo
+                </span>
+              )}
             </div>
 
             <select

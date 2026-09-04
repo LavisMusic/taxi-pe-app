@@ -3,6 +3,7 @@ import { Calculator, X, Receipt, Download, MessageCircle, AlertTriangle, Loader2
 import { formatSoles, formatDate, formatTime } from "../../utils/format";
 import { METODOS_PAGO, TIPO_ITEM_CREDITOS, TIPO_ITEM_MEMBRESIA } from "../../lib/taxiEnums";
 import { downloadXLSX } from "../../lib/xlsxExport";
+import { buildWhatsappLink } from "../../lib/whatsapp";
 
 // Cierre de Caja: cruza lo recaudado hoy (ventas vigentes, sin
 // anuladas) contra los Gastos Operativos de hoy — Balance Neto = una
@@ -24,6 +25,17 @@ export default function CierreCajaModal({
   esAdmin = false,
   cajeroNombre = "Admin",
   onClose,
+  // Persistencia de Turno (RecolectorPage.jsx): opcional — Admin no lo
+  // pasa, así que su flujo queda exactamente igual que antes ("no
+  // reinicia ningún contador", ver comentario de arriba). El Recolector
+  // sí lo pasa, para marcar el arranque de un turno nuevo apenas este
+  // cierre se guardó de verdad.
+  onCerrado,
+  // Restricción de Recolector: RecolectorPage.jsx pasa el teléfono del
+  // PROPIO recolector (leído de su perfil, `usuario.telefono`) — el
+  // Admin no lo pasa, así que su botón sigue exactamente igual que
+  // antes (wa.me sin número fijo, elige el contacto/grupo a mano).
+  telefonoDestino,
 }) {
   const [confirmando, setConfirmando] = useState(false);
   const [cerrando, setCerrando] = useState(false);
@@ -56,6 +68,7 @@ export default function CierreCajaModal({
       return;
     }
     setConfirmando(false);
+    onCerrado?.();
   };
 
   const exportarHistorialCierresXLSX = () => {
@@ -85,9 +98,13 @@ export default function CierreCajaModal({
     downloadXLSX(`historial-cierres-${Date.now()}.xlsx`, [{ nombre: "Cierres", filas }]);
   };
 
-  // wa.me SIN número fijo — deja elegir el contacto/grupo destino desde
-  // el propio WhatsApp de quien cierra, en vez de forzar un número
-  // preconfigurado a mano en el código.
+  // Restricción de Recolector: si llega `telefonoDestino` (el propio
+  // número del Recolector, ver arriba), el resumen va DIRECTO a su
+  // WhatsApp — ya no depende de que elija bien el contacto a mano (el
+  // riesgo real que describía el pedido: podía terminar mandándolo a
+  // cualquier chat, incluido el del Admin, por error). Sin ese dato
+  // (caso Admin), se mantiene el comportamiento de antes: wa.me sin
+  // número fijo, elige el contacto/grupo destino a mano.
   const enviarResumenPorWhatsApp = () => {
     const lineas = [
       "RESUMEN DE CIERRE",
@@ -98,7 +115,9 @@ export default function CierreCajaModal({
       `Balance Neto: ${formatSoles(balanceNeto)}`,
       `Ventas registradas: ${ventasHoy.length}`,
     ];
-    window.open(`https://wa.me/?text=${encodeURIComponent(lineas.join("\n"))}`, "_blank", "noopener");
+    const mensaje = lineas.join("\n");
+    const link = telefonoDestino ? buildWhatsappLink(telefonoDestino, mensaje) : null;
+    window.open(link || `https://wa.me/?text=${encodeURIComponent(mensaje)}`, "_blank", "noopener");
   };
 
   return (

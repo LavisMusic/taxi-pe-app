@@ -66,6 +66,18 @@ export default function Styles() {
         color: var(--text);
         font-family: 'Rajdhani', sans-serif;
         box-sizing: border-box;
+        /* Corta de raíz cualquier "franja oscura al costado" (bug
+           reportado en el panel del Admin) — .tz-main ya tiene su
+           propio overflow-x:hidden, pero .tz-header y <footer> son
+           HERMANOS de .tz-main, no hijos, así que ese overflow-x no los
+           cubre: si cualquiera de los dos se pasa por 1px del ancho del
+           viewport (un grid/flex al límite justo), TODA la página se
+           volvía scrolleable horizontalmente, dejando ver el fondo de
+           index.css (#root, plantilla vieja de Vite sin limpiar) en vez
+           del degradado de acá. Esto lo previene sin importar cuál de
+           los hijos sea el que se pasa de ancho.
+        */
+        overflow-x: hidden;
       }
       .tz-root *, .tz-root *::before, .tz-root *::after { box-sizing: border-box; }
       /* touch-action:manipulation en TODO control interactivo — saca el
@@ -257,12 +269,18 @@ export default function Styles() {
            deja que 'white-space:nowrap' realmente funcione. */
         letter-spacing: 0.12em;
         text-transform: uppercase;
-        color: var(--text-dim);
+        /* Pedido: limón neón (con su glow, no solo el color plano) —
+           reusa --yellow (#d7ff3b), ya definido en :root/.tz-root, en
+           vez de inventar un tono nuevo. Cubre las 4 pantallas que
+           comparten esta MISMA clase: Conductor y Recolector (nombre
+           del usuario), Pasajero (Home, "Tu taxi, al toque") y el
+           Admin (AdminDashboardPage.jsx, "Panel de Administración"). */
+        color: var(--yellow);
         text-align: center;
         white-space: nowrap;
-        /* Aura blanca — se estira sola con el texto, sea cual sea su
+        /* Aura limón — se estira sola con el texto, sea cual sea su
            largo, porque text-shadow no tiene ancho propio. */
-        text-shadow: 0 0 8px rgba(255,255,255,0.8), 0 0 15px rgba(255,255,255,0.5);
+        text-shadow: 0 0 8px rgba(215,255,59,0.85), 0 0 18px rgba(215,255,59,0.55);
       }
 
       /* Botones del header (Fiados / Métodos de pago). En móvil (base,
@@ -2239,6 +2257,32 @@ export default function Styles() {
         color: #241200;
         box-shadow: 0 0 20px rgba(255,149,0,0.4);
       }
+      /* Limpieza manual de caché de chats — morado a propósito, ningún
+         otro botón del pie de página usa este color: es la acción más
+         destructiva de las 8 (borra TODOS los chats de TODOS los
+         usuarios), tiene que distinguirse de un vistazo del resto. */
+      .tz-footer-btn-limpiar-chats {
+        background: #a855f7;
+        color: #1c0630;
+        box-shadow: 0 0 20px rgba(168,85,247,0.45);
+      }
+      /* Barra de carga del modal de limpieza — mismo criterio fino que
+         ya usan el Cronómetro de cierre de anuncio y el mini-mapa de
+         Señas: track tenue + fill con transición suave, sin números. */
+      .tz-limpiar-chats-progreso-track {
+        width: 100%;
+        height: 6px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.12);
+        overflow: hidden;
+        margin: 10px 0;
+      }
+      .tz-limpiar-chats-progreso-fill {
+        height: 100%;
+        background: #a855f7;
+        box-shadow: 0 0 10px #a855f7;
+        transition: width 0.15s linear;
+      }
       .tz-footer-btn-stock {
         background: var(--yellow);
         color: #16190a;
@@ -2259,21 +2303,22 @@ export default function Styles() {
         color: #04140b;
         box-shadow: 0 0 20px rgba(57,255,176,0.4);
       }
-      /* Solo el footer del Admin (AdminDashboardPage.jsx) — 2 filas de 3
+      /* Solo el footer del Admin (AdminDashboardPage.jsx) — grid de 3
          columnas fijas en vez del flex-wrap que sigue usando
          RecolectorPage.jsx/App.jsx con la misma clase base
-         .tz-page-footer. El 7º botón (Localidades) cae solo en la 3ra
-         fila; se lo centra a mano en la columna del medio. */
+         .tz-page-footer. Con los 8 botones actuales (Localidades +
+         Limpiar Chats sumados después) ya no queda ningún botón solo
+         en la última fila para tener que centrarlo a mano — 3+3+2
+         arriba, 2+2+2+2 en mobile (grid de 2 columnas), las dos
+         reparticiones caen parejas solas. */
       .tz-page-footer-admin-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         flex-wrap: nowrap;
       }
       .tz-page-footer-admin-grid .tz-footer-btn { max-width: none; }
-      .tz-page-footer-admin-grid .tz-footer-btn-localidades { grid-column: 2; }
       @media (max-width: 640px) {
         .tz-page-footer-admin-grid { grid-template-columns: repeat(2, 1fr); }
-        .tz-page-footer-admin-grid .tz-footer-btn-localidades { grid-column: 1 / -1; max-width: 220px; margin: 0 auto; }
       }
 
       /* ---------- MODAL ---------- */
@@ -2474,6 +2519,18 @@ export default function Styles() {
         font-size: 13px;
         line-height: 1;
       }
+      /* Panel de Categorías e Íconos, versión chica — mismo círculo/glow
+         de .tz-radar-marker, pero para el mapa interno del chat
+         (MapaViaje.jsx, 26px) en vez del Radar (48px). */
+      .tz-radar-marker-mini-img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+        background: rgba(5,3,12,0.85);
+        border: 2px solid var(--tz-marker-color, var(--cyan));
+        box-shadow: 0 0 12px var(--tz-marker-color, var(--cyan));
+      }
       /* Fase 3 "Colectivo" — badge flotante junto al carrito
          (RadarGlobal.jsx: iconoVehiculo). El punto (.tz-radar-marker)
          es lo que de verdad está anclado a la coordenada GPS; el badge
@@ -2493,6 +2550,21 @@ export default function Styles() {
         width: 48px;
         height: 48px;
         flex-shrink: 0;
+      }
+      /* Panel de Categorías e Íconos: reemplaza al 🚖 genérico cuando el
+         Admin configuró un ícono propio para la categoría — mismo
+         círculo/glow neón exacto que .tz-radar-marker (borde +
+         box-shadow con el color de nivel_servicio), solo que con una
+         imagen real adentro en vez de un emoji. */
+      .tz-radar-marker-vehiculo-img {
+        width: 48px;
+        height: 48px;
+        flex-shrink: 0;
+        border-radius: 50%;
+        object-fit: cover;
+        background: rgba(5,3,12,0.85);
+        border: 2px solid var(--tz-marker-color, var(--cyan));
+        box-shadow: 0 0 12px var(--tz-marker-color, var(--cyan));
       }
       .tz-vehiculo-badge {
         display: flex;
@@ -3037,6 +3109,19 @@ export default function Styles() {
         text-transform: none;
         white-space: pre-wrap;
       }
+      /* Mini-Mapa en Mensaje de Señas — imagen estática de Mapbox
+         (RadarGlobal/MapaViaje siguen siendo los únicos mapas
+         interactivos, esto es solo una previsualización). Ancho
+         completo de la burbuja, esquinas redondeadas propias (la
+         burbuja ya tiene las suyas, pero la imagen pisa esa esquina si
+         no se redondea aparte), separada del texto por un margen chico. */
+      .tz-chat-minimapa {
+        display: block;
+        width: 100%;
+        max-width: 260px;
+        border-radius: 8px;
+        margin-bottom: 6px;
+      }
       .tz-chat-bubble-mine {
         align-self: flex-end;
         text-align: right;
@@ -3050,6 +3135,16 @@ export default function Styles() {
         margin-top: 3px;
         font-size: 10.5px;
         color: var(--text-dim);
+      }
+      /* Checks de Lectura (Fase 6) — mismo criterio visual de WhatsApp:
+         gris para "enviado" (✓), celeste/azul para "leído" (✓✓). Vive
+         pegado a la hora, mismo tamaño chico. */
+      .tz-chat-check {
+        margin-left: 4px;
+        color: var(--text-dim);
+      }
+      .tz-chat-check-leido {
+        color: var(--cyan);
       }
       .tz-chat-typing {
         display: flex;
@@ -3352,6 +3447,51 @@ export default function Styles() {
          para lo demás que la usa) para no forzar mayúsculas acá. */
       .tz-chat-thread-name { font-size: 13px; font-weight: 700; color: var(--pink); }
       .tz-chat-thread-preview { color: var(--text-dim); font-weight: 400; }
+      /* Fase 5 (Motor de Viajes Simultáneos) — Selector de Hilos: fila
+         deslizable de pestañas chicas arriba del chat abierto, para
+         cambiar de pasajero sin volver a la lista. Mismo criterio de
+         'overflow-x:auto' + 'scrollbar' oculta que ya usa
+         .tz-chat-quickrow, para que N pestañas nunca rompan el layout
+         del modal aunque no entren todas a la vez. */
+      .tz-chat-hilos-tabs {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        padding: 2px 2px 8px;
+        scrollbar-width: none;
+      }
+      .tz-chat-hilos-tabs::-webkit-scrollbar { display: none; }
+      .tz-chat-hilo-tab {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,47,158,0.3);
+        background: transparent;
+        color: var(--text-dim);
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .tz-chat-hilo-tab-activo {
+        background: rgba(255,47,158,0.18);
+        border-color: var(--pink);
+        color: var(--text);
+      }
+      /* Puntito verde: este hilo es un viaje YA en curso (aceptado/en
+         tránsito), no solo una negociación abierta — mismo verde que
+         .tz-vehiculo-badge-estado del Radar, para reusar el mismo
+         código de color en toda la app. */
+      .tz-chat-hilo-tab-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--green);
+        box-shadow: 0 0 6px var(--green);
+      }
       /* Punto rojo de "mensajes sin leer" sobre el botón Mensajes del
          Conductor — mismo patrón posicional que .tz-header-btn-badge. */
       .tz-chat-unread-dot {
@@ -3673,6 +3813,21 @@ export default function Styles() {
         font-size: 12.5px;
         font-weight: 700;
         color: var(--cyan);
+      }
+      /* Panel de Categorías e Íconos: miniatura chica pegada al nombre
+         de la categoría, mismo ícono que después usa RadarGlobal.jsx
+         para el vehículo en el mapa — un placeholder gris punteado
+         cuando todavía no se configuró ninguno, para que quede claro
+         que ese botón hace algo. */
+      .tz-vis-category-icono {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        object-fit: cover;
+        flex-shrink: 0;
+      }
+      .tz-vis-category-icono-vacio {
+        border: 1px dashed rgba(255,255,255,0.25);
       }
       /* Fila que envuelve el header clickable (categoría/subgrupo) +
          su botón de lápiz — el padding que antes vivía en el propio
@@ -5674,10 +5829,30 @@ export default function Styles() {
         overflow-y: auto;
       }
       .tz-anuncio-media {
+        position: relative;
         width: 100%;
         flex-shrink: 0;
         background: #000;
         display: flex;
+      }
+      /* Anuncio In-saltable: barra fina pegada al borde inferior del
+         bloque de media — el "contador de tiempo" visual pedido, sin
+         números, mismo criterio de barra de progreso que ya usa el
+         resto de la app (thin track + fill con transición). */
+      .tz-anuncio-progreso-track {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 4px;
+        background: rgba(255,255,255,0.15);
+        z-index: 5;
+      }
+      .tz-anuncio-progreso-fill {
+        height: 100%;
+        background: var(--cyan);
+        box-shadow: 0 0 8px var(--cyan);
+        transition: width 0.2s linear;
       }
       /* Caso "con texto" (default): fuerza el media a una caja 16:9
          arriba, el texto va abajo — columna siempre, en cualquier ancho. */
@@ -5738,6 +5913,101 @@ export default function Styles() {
       }
       @media (min-width: 768px) {
         .tz-anuncio-modal { max-width: 720px; }
+      }
+
+      /* ---- Fase Membresías: tabs de audiencia (Configurar Membresías,
+         Admin) — capa EXTRA sobre .tz-gasto-tipo-buttons/-btn, que ya
+         resuelve el tab interno de Membresía/Créditos. Un acento
+         distinto (rosa en vez de cian) para que a simple vista se note
+         que son dos filas de tabs distintas, no una sola fila rara. */
+      .tz-audiencia-tab-btn.tz-gasto-tipo-active {
+        background: var(--pink);
+        border-color: var(--pink);
+        color: #1a0714;
+        box-shadow: 0 0 16px rgba(255,47,158,0.4);
+      }
+
+      /* ---- Drag & Drop de paquetes (dnd-kit) ---- */
+      .tz-paquete-draggable-li {
+        display: flex;
+        align-items: stretch;
+        gap: 4px;
+      }
+      .tz-paquete-draggable-li.tz-paquete-dragging {
+        z-index: 5;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 0 1.5px var(--cyan);
+      }
+      .tz-drag-handle {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        border: none;
+        background: transparent;
+        color: var(--text-dim);
+        cursor: grab;
+        touch-action: none;
+        border-radius: 8px;
+      }
+      .tz-drag-handle:hover { color: var(--cyan); background: rgba(43,232,255,0.1); }
+      .tz-drag-handle:active { cursor: grabbing; }
+
+      /* ---- Glow Realtime: aviso no intrusivo en el <select> de
+         paquetes del Recolector cuando el Admin edita/reordena el
+         catálogo (Recarga Rápida y Autorecarga) — nada de alert(),
+         solo un parpadeo neón temporal que se apaga solo. */
+      .tz-select-glow-neon {
+        animation: tz-select-glow-neon-pulse 0.55s ease-in-out infinite;
+        border-radius: 10px;
+      }
+      @keyframes tz-select-glow-neon-pulse {
+        0%, 100% {
+          border-color: var(--border-soft);
+          box-shadow: none;
+        }
+        50% {
+          border-color: var(--pink);
+          box-shadow: 0 0 6px var(--pink), 0 0 22px rgba(255,47,158,0.55), 0 0 2px var(--cyan) inset;
+        }
+      }
+
+      /* ---- Aviso Top (bug reportado): resultado de un login, chico y
+         no intrusivo, arriba de la pantalla — se apaga solo (ver
+         useAvisoTop.js). z-index alto para quedar por encima del
+         propio tz-modal del login, que es lo único que comparte
+         pantalla con esto. */
+      .tz-aviso-top {
+        position: fixed;
+        top: max(14px, env(safe-area-inset-top));
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 18px;
+        border-radius: 999px;
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 700;
+        font-size: 13.5px;
+        white-space: nowrap;
+        box-shadow: 0 6px 24px rgba(0,0,0,0.35);
+        animation: tz-aviso-top-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+      .tz-aviso-top-exito {
+        background: var(--green-bg);
+        border: 1px solid rgba(57,255,176,0.5);
+        color: var(--green);
+      }
+      .tz-aviso-top-error {
+        background: rgba(255,84,112,0.14);
+        border: 1px solid rgba(255,84,112,0.5);
+        color: var(--danger);
+      }
+      @keyframes tz-aviso-top-in {
+        0% { opacity: 0; transform: translate(-50%, -14px); }
+        100% { opacity: 1; transform: translate(-50%, 0); }
       }
     `}</style>
   );

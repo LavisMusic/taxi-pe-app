@@ -32,10 +32,23 @@ export default function RecargaRapidaForm({
   subgrupos,
   recolectorId,
   registrarRecarga,
-  crearConductor,
+  // Renombrado de "crearConductor" (Bug de sincronía: un conductor
+  // creado desde este flujo quedaba SOLO en `conductores`, sin fila en
+  // `usuarios` — no podía loguearse nunca, "Teléfono o PIN incorrectos"
+  // aunque el teléfono fuera el correcto). Ahora usa el mismo hook que
+  // ya usaba el auto-registro y el alta del Admin desde Usuarios
+  // (useCrearConductorConUsuario.js), que crea las DOS filas juntas.
+  crearConductorConUsuario,
   saving,
   error,
   paquetes = [],
+  // Fase Neón — "Glow Realtime" (ver usePaquetes.js): true un ratito
+  // cada vez que el Admin edita/reordena el catálogo de paquetes,
+  // mientras este formulario ya está abierto. Solo la pantalla del
+  // Recolector lo pasa — en AdminDashboardPage.jsx, que reusa este
+  // mismo formulario, se deja sin pasar (el Admin no necesita que le
+  // avisen de sus propios cambios).
+  glowPaquetes = false,
   // Cuando se abre desde el botón de recarga directa de una tarjeta
   // del Directorio (admin), ya se sabe para quién es — se salta el
   // combobox por completo y no se puede cambiar de conductor desde acá.
@@ -56,9 +69,14 @@ export default function RecargaRapidaForm({
 
   const conductor = lockedConductor || conductores.find((c) => c.id === conductorId) || null;
 
+  // Búsqueda por DNI (Fase 6): el Recolector suele tener el DNI a mano
+  // (documento físico del conductor) antes que el nombre o la placa —
+  // se suma al mismo texto combinado en vez de armar un filtro aparte,
+  // así una sola caja de búsqueda sirve para las tres formas de ubicar
+  // al conductor.
   const resultados = search.trim()
     ? conductores
-        .filter((c) => `${c.nombre} ${c.placa}`.toLowerCase().includes(search.trim().toLowerCase()))
+        .filter((c) => `${c.nombre} ${c.placa} ${c.dni ?? ""}`.toLowerCase().includes(search.trim().toLowerCase()))
         .slice(0, 8)
     : [];
   const sinResultados = search.trim().length > 0 && resultados.length === 0;
@@ -107,10 +125,19 @@ export default function RecargaRapidaForm({
   // todavía: recién es "real" para la plata cuando el Admin lo aprueba
   // desde el Centro de Peticiones.
   const conductorNoAprobado = !!conductor && conductor.aprobado === false;
+  // Bug/pedido: no se puede vender una membresía nueva mientras la
+  // actual siga vigente — ver el mismo chequeo (fuente de la verdad)
+  // en useRecargas.js. Esto acá es solo para avisar temprano y
+  // deshabilitar el envío ANTES de hacer escanear un comprobante para
+  // nada; el hook igual lo vuelve a validar por su cuenta.
+  const membresiaActivaVigente =
+    !!conductor && !!conductor.vencimiento_suscripcion && new Date(conductor.vencimiento_suscripcion) > new Date();
+  const bloqueadoPorMembresiaVigente = tipoItem === TIPO_ITEM_MEMBRESIA && membresiaActivaVigente;
 
   const puedeEnviar =
     !!conductor &&
     !conductorNoAprobado &&
+    !bloqueadoPorMembresiaVigente &&
     !!paquete &&
     !!metodoPago &&
     (!requiereComprobante || !!comprobante);
@@ -127,6 +154,12 @@ export default function RecargaRapidaForm({
     if (conductorNoAprobado) {
       setLocalError(
         "Este conductor está pendiente de aprobación en el Centro de Peticiones. No se pueden procesar pagos aún."
+      );
+      return;
+    }
+    if (bloqueadoPorMembresiaVigente) {
+      setLocalError(
+        `Ya tiene una membresía activa hasta el ${new Date(conductor.vencimiento_suscripcion).toLocaleDateString("es-PE")} — no se puede recargar otra hasta que esta termine.`
       );
       return;
     }
@@ -150,6 +183,9 @@ export default function RecargaRapidaForm({
       monto: montoNum,
       cantidadCreditos: Number(paquete.creditos) || 0,
       diasMembresia: Number(paquete.dias_membresia) || undefined,
+      paqueteId: paquete.id,
+      paqueteNombre: paquete.nombre,
+      paqueteDescripcion: paquete.descripcion,
       metodoPago,
       comprobante,
     });
@@ -225,7 +261,7 @@ export default function RecargaRapidaForm({
             <input
               type="text"
               className="tz-text-input"
-              placeholder="Buscar por nombre o placa…"
+              placeholder="Buscar por nombre, placa o DNI…"
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -238,26 +274,35 @@ export default function RecargaRapidaForm({
             />
             {searchOpen && resultados.length > 0 && (
               <div className="tz-global-search-dropdown">
-                {resultados.map((c) => (
-                  <button
-                    type="button"
-                    key={c.id}
-                    className="tz-global-search-item"
-                    onClick={() => {
-                      setConductorId(c.id);
-                      setSearch("");
-                      setSearchOpen(false);
-                    }}
-                  >
-                    <span className="tz-global-search-item-name">{c.nombre}</span>
-                    <span className="tz-global-search-item-meta">
-                      {c.placa} · {c.estado ?? "pendiente"} ·{" "}
-                      <span style={{ color: NIVEL_COLOR[c.nivel_servicio || NIVEL_SERVICIO_ECONOMICO] ?? "inherit" }}>
-                        {nivelLabel(c.nivel_servicio)}
+                {resultados.map((c) => {
+                  // Formato estricto pedido: "[DNI] - [Placa] - [Categoría]"
+                  // — el nombre queda como subtítulo, no lo saco del todo
+                  // (el Recolector también reconoce conductores por
+                  // nombre), pero la línea principal es la que se pidió.
+                  const categoriaNombre = categorias.find((cat) => String(cat.id) === String(c.categoria_id))?.nombre;
+                  return (
+                    <button
+                      type="button"
+                      key={c.id}
+                      className="tz-global-search-item"
+                      onClick={() => {
+                        setConductorId(c.id);
+                        setSearch("");
+                        setSearchOpen(false);
+                      }}
+                    >
+                      <span className="tz-global-search-item-name">
+                        {c.dni ?? "sin DNI"} - {c.placa} - {categoriaNombre ?? "sin categoría"}
                       </span>
-                    </span>
-                  </button>
-                ))}
+                      <span className="tz-global-search-item-meta">
+                        {c.nombre} · {c.estado ?? "pendiente"} ·{" "}
+                        <span style={{ color: NIVEL_COLOR[c.nivel_servicio || NIVEL_SERVICIO_ECONOMICO] ?? "inherit" }}>
+                          {nivelLabel(c.nivel_servicio)}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             )}
             {searchOpen && sinResultados && (
@@ -296,10 +341,23 @@ export default function RecargaRapidaForm({
           </button>
         </div>
 
+        {bloqueadoPorMembresiaVigente && (
+          <p className="tz-error" style={{ marginTop: 8 }}>
+            ⚠️ {conductor.nombre} ya tiene una membresía activa hasta el{" "}
+            {new Date(conductor.vencimiento_suscripcion).toLocaleDateString("es-PE")} — no se le puede
+            vender otra hasta que esta termine.
+          </p>
+        )}
+
         <label className="tz-field-label" style={{ marginTop: 12 }}>
           {tipoItem === TIPO_ITEM_MEMBRESIA ? "Membresía" : "Paquete de créditos"}
         </label>
-        <select className="tz-text-input" value={paqueteId} onChange={(e) => setPaqueteId(e.target.value)}>
+        <select
+          className={`tz-text-input ${glowPaquetes ? "tz-select-glow-neon" : ""}`}
+          value={paqueteId}
+          onChange={(e) => setPaqueteId(e.target.value)}
+          disabled={bloqueadoPorMembresiaVigente}
+        >
           <option value="">
             {paquetesDelTipo.length === 0 ? "Ninguna por ahora" : "Elige una opción…"}
           </option>
@@ -310,6 +368,11 @@ export default function RecargaRapidaForm({
             </option>
           ))}
         </select>
+        {glowPaquetes && (
+          <p className="tz-camera-note" style={{ margin: "4px 0 0", color: "var(--pink)" }}>
+            ✨ El Admin actualizó el catálogo — revisa las opciones.
+          </p>
+        )}
         {usandoDemo && (
           <p className="tz-camera-note" style={{ margin: "4px 0 0" }}>
             Sin paquetes configurados todavía — mostrando opciones de prueba. Configúralos en "Configurar
@@ -343,7 +406,14 @@ export default function RecargaRapidaForm({
             <label className="tz-field-label">Método de pago</label>
           </div>
           <div className="tz-gasto-tipo-buttons">
-            {METODOS_PAGO.map((m) => (
+            {/* Restricción de Recolector: "Fiado" queda afuera de ESTE
+               formulario (el de cobro directo del Recolector) — sigue
+               existiendo como método en `METODOS_PAGO` porque otras
+               pantallas SÍ lo necesitan (PagoFiadoModal.jsx para saldar
+               una deuda ya existente, CierreCajaModal.jsx para el
+               resumen histórico) — filtrar acá nomás no rompe nada de
+               eso. */}
+            {METODOS_PAGO.filter((m) => m.key !== METODO_PAGO_FIADO).map((m) => (
               <button
                 key={m.key}
                 type="button"
@@ -457,7 +527,9 @@ export default function RecargaRapidaForm({
         <RegistroConductorModal
           categorias={categorias}
           subgrupos={subgrupos}
-          crearConductor={crearConductor}
+          crearConductorConUsuario={crearConductorConUsuario}
+          requiereLogin
+          aprobado={false}
           initialNombre={search.trim()}
           onClose={() => setRegistroOpen(false)}
           onCreated={(nombre, nuevoConductor) => {

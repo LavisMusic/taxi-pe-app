@@ -5500,10 +5500,7 @@ export default function App() {
 
         {/* ---------------- MODAL: ¿QUÉ VARIANTE? (Fase 2) ---------------- */}
         {variantModalGroup && (
-          <div
-            className="tz-modal-backdrop"
-            onClick={() => setVariantModalGroup(null)}
-          >
+          <div className="tz-modal-backdrop">
             <div
               className="tz-modal tz-variant-modal"
               onClick={(e) => e.stopPropagation()}
@@ -6215,7 +6212,7 @@ export default function App() {
 
       {/* ---------------- MODAL EDICIÓN DE STOCK ---------------- */}
       {editOpen && (
-        <div className="tz-modal-backdrop" onClick={closeEdit}>
+        <div className="tz-modal-backdrop">
           <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
             <button className="tz-modal-close" onClick={closeEdit} aria-label="Cerrar">
               <X size={18} />
@@ -6735,7 +6732,7 @@ export default function App() {
          ingredientes — no tiene stock propio, así que no pide unidades
          ni costo inicial (ver crearCombo en productLookup.js). */}
       {comboModalOpen && (
-        <div className="tz-modal-backdrop" onClick={() => setComboModalOpen(false)}>
+        <div className="tz-modal-backdrop">
           <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
             <button
               className="tz-modal-close"
@@ -6891,7 +6888,7 @@ export default function App() {
          BLANCO ("efecto estudio", ya que el resto de la app es oscura)
          antes de guardarlo — ver handleAiEnhance/confirmAiResult. */}
       {imageManagerProduct && (
-        <div className="tz-modal-backdrop" onClick={closeImageManager}>
+        <div className="tz-modal-backdrop">
           <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
             <button className="tz-modal-close" onClick={closeImageManager} aria-label="Cerrar">
               <X size={18} />
@@ -7027,7 +7024,7 @@ export default function App() {
 
       {/* ---------------- MODAL: EDITAR PRECIO (solo admin) ---------------- */}
       {editingPriceProduct && (
-        <div className="tz-modal-backdrop" onClick={closePriceEdit}>
+        <div className="tz-modal-backdrop">
           <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
             <button className="tz-modal-close" onClick={closePriceEdit} aria-label="Cerrar">
               <X size={18} />
@@ -7073,7 +7070,7 @@ export default function App() {
 
       {/* ---------------- MODAL: DESCUENTO (solo admin) ---------------- */}
       {discountModalProduct && (
-        <div className="tz-modal-backdrop" onClick={closeDiscountModal}>
+        <div className="tz-modal-backdrop">
           <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
             <button className="tz-modal-close" onClick={closeDiscountModal} aria-label="Cerrar">
               <X size={18} />
@@ -7170,7 +7167,7 @@ export default function App() {
 
       {/* ---------------- MODAL: MIS VENTAS (HOY) ---------------- */}
       {misVentasOpen && (
-        <div className="tz-modal-backdrop" onClick={() => setMisVentasOpen(false)}>
+        <div className="tz-modal-backdrop">
           <div className="tz-modal tz-modal-wide" onClick={(e) => e.stopPropagation()}>
             <button
               className="tz-modal-close"
@@ -7253,13 +7250,7 @@ export default function App() {
 
       {/* ---------------- MODAL: USUARIOS (Cajeros y Clientes, solo admin) ---------------- */}
       {cajerosOpen && (
-        <div
-          className="tz-modal-backdrop"
-          onClick={() => {
-            setCajerosOpen(false);
-            resetCajeroForm();
-          }}
-        >
+        <div className="tz-modal-backdrop">
           <div className="tz-modal tz-modal-wide" onClick={(e) => e.stopPropagation()}>
             <button
               className="tz-modal-close"
@@ -7392,7 +7383,7 @@ export default function App() {
 
       {/* ---------------- MODAL: CAMBIAR PIN (dentro de Usuarios) ---------------- */}
       {pinModalUser && (
-        <div className="tz-modal-backdrop" onClick={closePinModal}>
+        <div className="tz-modal-backdrop">
           <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
             <button className="tz-modal-close" onClick={closePinModal} aria-label="Cerrar">
               <X size={18} />
@@ -7439,7 +7430,7 @@ export default function App() {
 
       {/* ---------------- MODAL: MÉTODO DE PAGO (Yape / Plin / Otros) ---------------- */}
       {activeMethodModal && (
-        <div className="tz-modal-backdrop" onClick={closeMethodModal}>
+        <div className="tz-modal-backdrop">
           <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
             <button className="tz-modal-close" onClick={closeMethodModal} aria-label="Cerrar">
               <X size={18} />
@@ -7560,7 +7551,7 @@ export default function App() {
 
       {/* ---------------- MODAL: LIBRETA (Fiados) ---------------- */}
       {libretaOpen && (
-        <div className="tz-modal-backdrop" onClick={closeLibreta}>
+        <div className="tz-modal-backdrop">
           <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
             <button className="tz-modal-close" onClick={closeLibreta} aria-label="Cerrar">
               <X size={18} />
@@ -7999,13 +7990,7 @@ export default function App() {
 
       {/* ---------------- MODAL: TOP CLIENTES (ranking de fidelidad) ---------------- */}
       {topClientesOpen && (
-        <div
-          className="tz-modal-backdrop"
-          onClick={() => {
-            setTopClientesOpen(false);
-            setExpandedTopClienteId(null);
-          }}
-        >
+        <div className="tz-modal-backdrop">
           <div className="tz-modal tz-modal-wide" onClick={(e) => e.stopPropagation()}>
             <button
               className="tz-modal-close"
@@ -8119,7 +8104,7 @@ export default function App() {
 
       {/* ---------------- MODAL: FIADOS (historial de cobros, solo lectura) ---------------- */}
       {fiadosViewOpen && (
-        <div className="tz-modal-backdrop" onClick={() => setFiadosViewOpen(false)}>
+        <div className="tz-modal-backdrop">
           <div className="tz-modal tz-modal-wide" onClick={(e) => e.stopPropagation()}>
             <button
               className="tz-modal-close"
@@ -8210,7 +8195,7 @@ export default function App() {
 
       {/* ---------------- MODAL: GASTOS ---------------- */}
       {gastosOpen && (
-        <div className="tz-modal-backdrop" onClick={closeGastosModal}>
+        <div className="tz-modal-backdrop">
           <div className="tz-modal tz-modal-wide" onClick={(e) => e.stopPropagation()}>
             <button className="tz-modal-close" onClick={closeGastosModal} aria-label="Cerrar">
               <X size={18} />
@@ -8716,7 +8701,7 @@ export default function App() {
 
       {/* ---------------- MODAL: CIERRE DE CAJA ---------------- */}
       {cierreModalOpen && (
-        <div className="tz-modal-backdrop" onClick={() => setCierreModalOpen(false)}>
+        <div className="tz-modal-backdrop">
           <div className="tz-modal tz-modal-wide" onClick={(e) => e.stopPropagation()}>
             <button
               className="tz-modal-close"

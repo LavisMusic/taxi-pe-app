@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { hashPin, generarPinAleatorio } from "../lib/pinAuth";
 import { subscribeTable } from "../lib/realtime";
 import { ESTADO_PETICION_VERIFICADO, ESTADO_PETICION_RESUELTO } from "../lib/taxiEnums";
 
@@ -9,10 +8,16 @@ import { ESTADO_PETICION_VERIFICADO, ESTADO_PETICION_RESUELTO } from "../lib/tax
 // (RecuperarPinPage.jsx) solo pide Nombre+DNI+(Placa) — sin teléfono —
 // así que para poder abrir WhatsApp acá hace falta resolver el
 // teléfono por separado: se hace un segundo SELECT a `usuarios`
-// filtrando por los DNI de las peticiones cargadas y se pega
-// (usuarioId, telefono) a cada fila en memoria. Sin esto no habría
-// forma de contactar a nadie ni de saber a qué fila de `usuarios`
-// escribirle el PIN nuevo.
+// filtrando por los DNI de las peticiones cargadas y se le pega el
+// `telefono` a cada fila en memoria (`usuarioId` queda ahí también,
+// aunque ya nada de este archivo lo use — ver el bug de abajo).
+//
+// Bug reportado: acá ANTES también vivía `generarYEnviarPin` — el
+// Admin generaba el PIN nuevo y se lo mandaba él mismo por WhatsApp,
+// como si fuera su contraseña para repartir. Se eliminó: el Admin solo
+// "acepta" (verifica identidad por WhatsApp, `marcarVerificado`), y
+// quien elige el PIN nuevo de verdad es el propio dueño de la cuenta,
+// en /recuperar-pin — ver useCrearPeticionPin.js/fijarNuevoPin.
 export function usePeticionesPin() {
   const [peticiones, setPeticiones] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,10 +63,11 @@ export function usePeticionesPin() {
   // el Centro de Peticiones sin F5.
   useEffect(() => subscribeTable("peticiones_pin", () => refresh()), [refresh]);
 
-  // Paso 1 del 2FA manual: el Admin ya abrió WhatsApp y mandó "¿confirmas
-  // que fuiste tú?" — esto solo mueve el estado para desbloquear el
-  // botón "Generar y Enviar PIN" de esa fila, la confirmación real pasa
-  // por WhatsApp, no por acá.
+  // El Admin ya abrió WhatsApp y mandó "¿confirmas que fuiste tú?" —
+  // esto solo mueve el estado a 'verificado', que es lo que le permite
+  // al propio dueño de la cuenta volver a /recuperar-pin con su DNI y
+  // pasar al paso de elegir su PIN nuevo. La confirmación real de
+  // identidad pasa por WhatsApp, no por acá.
   const marcarVerificado = useCallback(
     async (id) => {
       const { error: updateError } = await supabase
@@ -70,41 +76,6 @@ export function usePeticionesPin() {
         .eq("id", id);
       if (!updateError) await refresh();
       return { error: updateError };
-    },
-    [refresh]
-  );
-
-  // Paso 2: genera un PIN de 6 dígitos, lo hashea, sobreescribe
-  // `usuarios.pin` y cierra la petición — devuelve el PIN EN CLARO
-  // (solo existe en memoria un instante) para armar el mensaje de
-  // WhatsApp, nunca se vuelve a poder leer después de esto.
-  const generarYEnviarPin = useCallback(
-    async (peticion) => {
-      if (!peticion.usuarioId) {
-        return { error: new Error("No se encontró la cuenta asociada a este DNI.") };
-      }
-      const nuevoPin = generarPinAleatorio();
-      let pinHash;
-      try {
-        pinHash = await hashPin(nuevoPin);
-      } catch (hashError) {
-        return { error: hashError };
-      }
-
-      const { error: updateUsuarioError } = await supabase
-        .from("usuarios")
-        .update({ pin: pinHash })
-        .eq("id", peticion.usuarioId);
-      if (updateUsuarioError) return { error: updateUsuarioError };
-
-      const { error: updatePeticionError } = await supabase
-        .from("peticiones_pin")
-        .update({ estado: ESTADO_PETICION_RESUELTO })
-        .eq("id", peticion.id);
-      if (updatePeticionError) return { error: updatePeticionError };
-
-      await refresh();
-      return { error: null, pin: nuevoPin };
     },
     [refresh]
   );
@@ -126,5 +97,5 @@ export function usePeticionesPin() {
     [refresh]
   );
 
-  return { peticiones, loading, error, refresh, marcarVerificado, generarYEnviarPin, descartar };
+  return { peticiones, loading, error, refresh, marcarVerificado, descartar };
 }

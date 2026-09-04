@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, ZoomControl, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { X, Loader2, MapPin } from "lucide-react";
@@ -16,19 +16,31 @@ import { MAPBOX_TILE_URL, MAPBOX_ATTRIBUTION } from "../lib/mapboxConfig";
 // ocupación de asientos (ej. "2/4") — se arma como HTML plano porque
 // L.divIcon no acepta JSX, no porque el resto de la app también use
 // este patrón (todo lo demás sigue siendo componentes React normales).
-function iconoVehiculo(conductor, color) {
+// Panel de Categorías e Íconos (Admin, ver CategoriasModal.jsx): si el
+// Admin configuró un ícono para la categoría de este conductor, se
+// renderiza esa imagen en vez del 🚖 genérico — `iconoCategoriaUrl`
+// llega ya resuelto desde afuera (buscado por `categoria_id`, ver el
+// `.map()` de más abajo) para no repetir el `.find()` por cada
+// vehículo en cada render del ícono.
+function iconoVehiculo(conductor, color, iconoCategoriaUrl) {
   const libre = conductor.estado === ESTADO_CONDUCTOR_ACTIVO;
   const estadoLabel = libre ? "LIBRE" : "EN CARRERA";
   const estadoClase = libre ? "tz-vehiculo-badge-libre" : "tz-vehiculo-badge-carrera";
-  const ocupados = conductor.asientos_ocupados ?? 0;
   const totales = conductor.asientos_totales ?? 4;
+  // Fase 4 (Colectivo): el badge ahora muestra DISPONIBLES, no ocupados
+  // — es el dato que de verdad le importa a un pasajero nuevo mirando
+  // el radar ("¿me puedo subir acá?"), no cuántos ya viajan.
+  const disponibles = Math.max(0, totales - (conductor.asientos_ocupados ?? 0));
+  const vehiculoHtml = iconoCategoriaUrl
+    ? `<img class="tz-radar-marker-vehiculo-img" src="${iconoCategoriaUrl}" alt="" style="--tz-marker-color:${color}" />`
+    : `<span class="tz-radar-marker tz-radar-marker-vehiculo" style="--tz-marker-color:${color}">🚖</span>`;
   return L.divIcon({
     className: "tz-radar-marker-wrap",
     html: `<div class="tz-vehiculo-marker-group">
-        <span class="tz-radar-marker tz-radar-marker-vehiculo" style="--tz-marker-color:${color}">🚖</span>
+        ${vehiculoHtml}
         <span class="tz-vehiculo-badge">
           <span class="tz-vehiculo-badge-estado ${estadoClase}">${estadoLabel}</span>
-          <span class="tz-vehiculo-badge-asientos">💺 ${ocupados}/${totales}</span>
+          <span class="tz-vehiculo-badge-asientos">💺 ${disponibles}/${totales}</span>
         </span>
       </div>`,
     // Círculo del vehículo a 48x48 (w-12 h-12) — más grande que el pin
@@ -97,6 +109,7 @@ function RastreadorCentroManual({ activo, onMover }) {
 //      todavía no eligió ninguna).
 export default function RadarGlobal({
   conductores,
+  categorias = [],
   localidadFiltro,
   localidades,
   destino,
@@ -216,10 +229,24 @@ export default function RadarGlobal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const vehiculosEnRadar = useMemo(() => (conductores ?? []).filter((c) => posiciones[c.id]), [conductores, posiciones]);
+  // Fase 4 (Colectivo): antes solo filtraba por "¿tenemos una posición
+  // sembrada/en vivo para este conductor?" — un auto que se llenaba
+  // DESPUÉS de que el pasajero ya tenía el Radar abierto simplemente
+  // dejaba de recibir ticks nuevos (useGpsBroadcaster.js corta el
+  // Broadcast público sin lugar), pero su ÚLTIMA posición conocida
+  // seguía en `posiciones` — quedaba un pin fantasma mostrando "LIBRE"/
+  // el badge viejo, sin actualizarse nunca más. `conductores` sí está
+  // suscrito a Realtime (useConductoresPublicos.js), así que basta con
+  // sumar el chequeo de asientos acá para que el auto desaparezca del
+  // radar EN VIVO apenas se llena, sin esperar a un refresco manual.
+  const vehiculosEnRadar = useMemo(
+    () =>
+      (conductores ?? []).filter((c) => posiciones[c.id] && (c.asientos_ocupados ?? 0) < (c.asientos_totales ?? 4)),
+    [conductores, posiciones]
+  );
 
   return (
-    <div className="tz-modal-backdrop" onClick={onClose}>
+    <div className="tz-modal-backdrop">
       <div className="tz-radar-modal" onClick={(e) => e.stopPropagation()}>
         <button className="tz-anuncio-close" onClick={onClose} aria-label="Cerrar radar">
           <X size={18} />
@@ -295,9 +322,16 @@ export default function RadarGlobal({
           </div>
         )}
 
-        <MapContainer center={centro} zoom={zoomInicial} className="tz-radar-map" scrollWheelZoom>
+        <MapContainer center={centro} zoom={zoomInicial} className="tz-radar-map" scrollWheelZoom zoomControl={false}>
           <Recentrador centro={centro} zoom={zoomInicial} />
           <RastreadorCentroManual activo={modoManual} onMover={setCentroManual} />
+          {/* Fix UI: el control de zoom por default de Leaflet vive
+             arriba a la izquierda — justo donde cae la barra de
+             búsqueda de direcciones (`tz-radar-buscador-wrap`),
+             tapándolo. Se desactiva el default (`zoomControl={false}`
+             arriba) y se reubica acá, abajo a la derecha, lejos de
+             cualquier otro control superpuesto. */}
+          <ZoomControl position="bottomright" />
           {/* Migración Mapbox (Fase 1): estilo 'dark-v11'. */}
           <TileLayer attribution={MAPBOX_ATTRIBUTION} url={MAPBOX_TILE_URL} />
           {destino && <Marker position={[destino.lat, destino.lon]} icon={ICONO_DESTINO} />}
@@ -305,7 +339,11 @@ export default function RadarGlobal({
             <Marker
               key={c.id}
               position={[posiciones[c.id].lat, posiciones[c.id].lng]}
-              icon={iconoVehiculo(c, MAPA_NIVEL_COLOR[c.nivel_servicio] || MAPA_NIVEL_COLOR.economico)}
+              icon={iconoVehiculo(
+                c,
+                MAPA_NIVEL_COLOR[c.nivel_servicio] || MAPA_NIVEL_COLOR.economico,
+                categorias.find((cat) => cat.id === c.categoria_id)?.icono_url
+              )}
               eventHandlers={{ click: () => onSeleccionarConductor?.(c) }}
             />
           ))}

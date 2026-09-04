@@ -53,6 +53,62 @@ export const ESTADO_OFERTA_CANCELADA = "cancelada";
 // "llegaste" para el Pasajero).
 export const ESTADO_OFERTA_FINALIZADO = "finalizado";
 
+// Fase 5 (Motor de Viajes Simultáneos) — Aislamiento de Estados: antes,
+// "Cancelar"/"Finalizar" pisaban `conductores.estado`/`asientos_ocupados`
+// a mano (`estado: 'activo', asientos_ocupados: 0`), asumiendo que ESE
+// era el único viaje del conductor — cancelar/finalizar al Pasajero A
+// dejaba libre TAMBIÉN al Pasajero B, que seguía a bordo. No existe una
+// tabla `viajes` en este esquema (ver notas de rondas anteriores), así
+// que "viajes activos" se recalcula desde la ÚNICA fuente de verdad real
+// (`chat_mensajes`) cada vez que algo cambia, en vez de mantener un
+// contador de mano que se puede desincronizar. Se llama DESPUÉS de
+// cualquier UPDATE a `estado_oferta` (aceptar, recoger, cancelar,
+// finalizar) — nunca asume el resultado, siempre relee.
+//
+// Por qué contar pasajeros DISTINTOS y no filas: mientras una oferta
+// sigue 'aceptada'/'en_transito', `puedeProponerTarifa` en ChatWindow.jsx
+// bloquea que se le proponga una tarifa NUEVA a ese mismo pasajero — así
+// que nunca puede haber dos ofertas no-terminales para el mismo par
+// (conductor_id, pasajero_id) a la vez, y contar sin deduplicar ya da el
+// número correcto de pasajeros a bordo/reservados.
+async function sincronizarAsientosYEstado(conductorId) {
+  if (!conductorId) return;
+  try {
+    const [{ data: ofertasActivas, error: ofertasError }, { data: filaConductor, error: conductorFetchError }] =
+      await Promise.all([
+        supabase
+          .from("chat_mensajes")
+          .select("pasajero_id")
+          .eq("conductor_id", conductorId)
+          .eq("tipo", TIPO_MENSAJE_OFERTA)
+          .in("estado_oferta", [ESTADO_OFERTA_ACEPTADA, ESTADO_OFERTA_EN_TRANSITO]),
+        supabase.from("conductores").select("asientos_totales, estado").eq("id", conductorId).single(),
+      ]);
+    if (ofertasError || conductorFetchError) {
+      console.error("No se pudo recalcular asientos/estado del conductor:", ofertasError || conductorFetchError);
+      return;
+    }
+
+    const totales = filaConductor?.asientos_totales ?? 4;
+    const ocupados = Math.min(new Set((ofertasActivas ?? []).map((o) => o.pasajero_id)).size, totales);
+    // Aislamiento real: el conductor solo vuelve a 'activo' (libre de
+    // verdad) cuando NINGÚN pasajero le queda a bordo/reservado — con
+    // uno solo que siga (`ocupados > 0`), se queda 'ocupado' aunque el
+    // que acaba de cancelar/finalizar haya sido otro. Si ya estaba
+    // 'desconectado'/'pendiente'/'rechazado' (estados que no son de
+    // radar), no lo tocamos — esto solo gestiona el switch activo/ocupado.
+    const estadoActual = filaConductor?.estado;
+    const patch = { asientos_ocupados: ocupados };
+    if (estadoActual === ESTADO_CONDUCTOR_ACTIVO || estadoActual === ESTADO_CONDUCTOR_OCUPADO) {
+      patch.estado = ocupados > 0 ? ESTADO_CONDUCTOR_OCUPADO : ESTADO_CONDUCTOR_ACTIVO;
+    }
+    const { error: updateError } = await supabase.from("conductores").update(patch).eq("id", conductorId);
+    if (updateError) console.error("No se pudo sincronizar asientos/estado del conductor:", updateError);
+  } catch (err) {
+    console.error("Error al sincronizar asientos/estado del conductor:", err);
+  }
+}
+
 // Cuánto dura visible el indicador de "escribiendo…" después del
 // último aviso recibido — si no llega uno nuevo en este lapso, se
 // asume que la otra persona paró (no hay evento explícito de "dejé de
@@ -131,6 +187,29 @@ export function useChatMensajes(conductorId, pasajeroId) {
 
   useEffect(() => {
     refresh();
+  }, [refresh]);
+
+  // Fix Realtime Pasajero (Safari iOS / pestañas en background): no
+  // existe una tabla `sistema_viaje` en este esquema — "el viaje" es
+  // esta MISMA fila de `chat_mensajes` (su `estado_oferta`), así que el
+  // re-fetch real es este mismo `refresh()`, no un SELECT a otra tabla.
+  // Safari en iOS (y en general cualquier navegador con la pestaña en
+  // background por un rato largo) puede cortar el WebSocket de Realtime
+  // en silencio, sin ningún evento de error — si el Conductor cancela o
+  // finaliza justo en esa ventana, el Pasajero queda con la última
+  // oferta ya vencida (chat abierto, botones activos, cronómetro
+  // corriendo) hasta que algo más fuerce un refresh. Mismo mecanismo que
+  // ya se usa del lado Conductor (useConductoresPublicos.js/
+  // useConductorSesion.js): un `refresh()` por REST, que no depende de
+  // que el socket siga vivo, corre solo apenas la pestaña vuelve a
+  // estar visible — sobrescribe el estado local con la verdad real de
+  // la base sin esperar a que el WebSocket se reconecte solo.
+  useEffect(() => {
+    const alVolverVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", alVolverVisible);
+    return () => document.removeEventListener("visibilitychange", alVolverVisible);
   }, [refresh]);
 
   useEffect(() => {
@@ -239,11 +318,13 @@ export function useChatMensajes(conductorId, pasajeroId) {
         }
 
         if (nuevoEstado === ESTADO_OFERTA_ACEPTADA) {
-          const { error: conductorError } = await supabase
-            .from("conductores")
-            .update({ estado: ESTADO_CONDUCTOR_OCUPADO })
-            .eq("id", conductorId);
-          if (conductorError) console.error("Oferta aceptada, pero no se pudo pasar al conductor a Ocupado:", conductorError);
+          // Fase 5: 'aceptada' YA reserva un asiento (fórmula acordada:
+          // asientos_disponibles = totales - (aceptada + en_transito)),
+          // no solo 'en_transito' como antes — se recalcula acá en vez
+          // de un `.update({estado: 'ocupado'})` a ciegas, para que
+          // conviva bien con otros viajes que este conductor ya tenga
+          // en curso.
+          await sincronizarAsientosYEstado(conductorId);
         } else if (nuevoEstado === ESTADO_OFERTA_RECHAZADA) {
           const { error: sistemaError } = await enviarMensaje(REMITENTE_SISTEMA, "❌ El pasajero rechazó la oferta", {
             tipo: TIPO_MENSAJE_SISTEMA,
@@ -260,10 +341,13 @@ export function useChatMensajes(conductorId, pasajeroId) {
   );
 
   // Botón "✅ Pasajero Recogido" (solo Conductor, ver ChatWindow.jsx) —
-  // Fase 3 "Colectivo": pasa la oferta de 'aceptada' a 'en_transito'
-  // (el mapa deja de mostrar el pin del pasajero, ya está a bordo) y le
-  // suma un asiento ocupado al conductor, visible en el badge de
-  // RadarGlobal.jsx para cualquiera que esté mirando el mapa.
+  // Fase 3 "Colectivo": pasa la oferta de 'aceptada' a 'en_transito' (el
+  // mapa deja de mostrar el pin del pasajero, ya está a bordo). Fase 5:
+  // ya NO suma un asiento acá — 'aceptada' y 'en_transito' cuentan IGUAL
+  // en `sincronizarAsientosYEstado` (ver la fórmula ahí arriba), así que
+  // este paso no cambia el TOTAL de ocupados, solo la fase del viaje. Se
+  // llama igual (barato, y blinda contra cualquier desincronización
+  // previa) en vez de asumir que el conteo ya estaba bien.
   const marcarPasajeroRecogido = useCallback(
     async (mensajeOfertaId) => {
       if (!mensajeOfertaId) return { error: new Error("Falta el id de la oferta.") };
@@ -283,27 +367,7 @@ export function useChatMensajes(conductorId, pasajeroId) {
           return { error: sinFila };
         }
 
-        // Suma un asiento — fetch+update (no hay una función de
-        // incremento atómico en este proyecto) alcanza acá: es un solo
-        // conductor tocando su propio botón, no una carrera de
-        // escrituras concurrentes real.
-        const { data: filaConductor, error: fetchError } = await supabase
-          .from("conductores")
-          .select("asientos_ocupados, asientos_totales")
-          .eq("id", conductorId)
-          .single();
-        if (fetchError) {
-          console.error("Pasajero marcado como recogido, pero no se pudo leer asientos_ocupados:", fetchError);
-        } else {
-          const totales = filaConductor?.asientos_totales ?? 4;
-          const nuevoOcupados = Math.min((filaConductor?.asientos_ocupados ?? 0) + 1, totales);
-          const { error: seatsError } = await supabase
-            .from("conductores")
-            .update({ asientos_ocupados: nuevoOcupados })
-            .eq("id", conductorId);
-          if (seatsError) console.error("No se pudo actualizar asientos_ocupados:", seatsError);
-        }
-
+        await sincronizarAsientosYEstado(conductorId);
         return { error: null };
       } catch (err) {
         console.error("Error al marcar pasajero recogido:", err);
@@ -315,13 +379,21 @@ export function useChatMensajes(conductorId, pasajeroId) {
 
   // Botón "Cancelar Viaje" — ahora de los DOS lados (Pasajero Y
   // Conductor, ver ChatWindow.jsx). A diferencia de Rechazar (nunca se
-  // aceptó la oferta), acá el viaje YA estaba en curso: hay que
-  // revertir lo que hizo el Match (el conductor vuelve a Activo/libre)
-  // y avisar en el chat, además de marcar la oferta como cancelada para
-  // que el panel superior de "viaje iniciado" desaparezca (ver
-  // viajeIniciado en ChatWindow.jsx, se deriva de estado_oferta ===
-  // 'aceptada'). `remitentePropio` decide el texto exacto del aviso —
-  // quien canceló, no siempre es el pasajero.
+  // aceptó la oferta), acá el viaje YA estaba en curso: hay que marcar
+  // la oferta como cancelada (para que el panel superior de "viaje
+  // iniciado" desaparezca) y avisar en el chat. `remitentePropio` decide
+  // el texto exacto del aviso — quien canceló, no siempre es el
+  // pasajero.
+  //
+  // Fase 5 (Motor de Viajes Simultáneos) — Aislamiento de Estados: antes
+  // esto pisaba `estado: 'activo', asientos_ocupados: 0` a ciegas,
+  // asumiendo que ESTE era el único viaje del conductor — cancelar al
+  // Pasajero A liberaba TAMBIÉN al Pasajero B, que seguía a bordo. Ahora
+  // se filtra estrictamente por `mensajeOfertaId` (el `id_viaje` real de
+  // este esquema — cada oferta es su propio ciclo) y, recién después,
+  // `sincronizarAsientosYEstado` RELEE cuántos pasajeros le quedan de
+  // verdad al conductor (no asume "ninguno") — con uno solo que siga a
+  // bordo, sigue en 'ocupado'.
   const cancelarViaje = useCallback(
     async (mensajeOfertaId, remitentePropio) => {
       try {
@@ -344,16 +416,7 @@ export function useChatMensajes(conductorId, pasajeroId) {
         const { error: sistemaError } = await enviarMensaje(REMITENTE_SISTEMA, texto, { tipo: TIPO_MENSAJE_SISTEMA });
         if (sistemaError) console.error("No se pudo avisar la cancelación:", sistemaError);
 
-        // asientos_ocupados vuelve a 0: este modelo asume como mucho UN
-        // viaje/oferta aceptada a la vez (ver pasajeroEnCarrera más
-        // abajo), así que cancelar el único viaje en curso es cancelar
-        // a TODOS los pasajeros a bordo — no hay forma hoy de cancelar
-        // solo a uno dentro de un colectivo con varios simultáneos.
-        const { error: conductorError } = await supabase
-          .from("conductores")
-          .update({ estado: ESTADO_CONDUCTOR_ACTIVO, asientos_ocupados: 0 })
-          .eq("id", conductorId);
-        if (conductorError) console.error("No se pudo devolver al conductor a Activo:", conductorError);
+        await sincronizarAsientosYEstado(conductorId);
 
         return { error: null };
       } catch (err) {
@@ -366,8 +429,14 @@ export function useChatMensajes(conductorId, pasajeroId) {
 
   // "🏁 Finalizar Carrera" (solo Conductor, a <50m del destino — ver
   // ChatWindow.jsx/MapaViaje.jsx). Estado terminal: la oferta pasa a
-  // 'finalizado' (dispara la pantalla de cierre para los dos lados) y
-  // el conductor vuelve a Activo/libre, igual que al cancelar.
+  // 'finalizado' (dispara la pantalla de cierre para los dos lados).
+  //
+  // Fase 5 — Aislamiento de Estados: mismo fix que `cancelarViaje` — el
+  // UPDATE de arriba ya está scopeado estrictamente a ESTA oferta
+  // (`mensajeOfertaId`); lo que se saca es el `.update({estado:'activo',
+  // asientos_ocupados:0})` incondicional de acá abajo, reemplazado por
+  // `sincronizarAsientosYEstado`, que relee cuántos pasajeros le quedan
+  // de verdad al conductor antes de decidir si vuelve a 'activo'.
   const finalizarViaje = useCallback(
     async (mensajeOfertaId) => {
       if (!mensajeOfertaId) return { error: new Error("Falta el id de la oferta.") };
@@ -387,11 +456,7 @@ export function useChatMensajes(conductorId, pasajeroId) {
           return { error: sinFila };
         }
 
-        const { error: conductorError } = await supabase
-          .from("conductores")
-          .update({ estado: ESTADO_CONDUCTOR_ACTIVO, asientos_ocupados: 0 })
-          .eq("id", conductorId);
-        if (conductorError) console.error("No se pudo devolver al conductor a Activo:", conductorError);
+        await sincronizarAsientosYEstado(conductorId);
 
         return { error: null };
       } catch (err) {
@@ -458,6 +523,27 @@ export function useChatMensajes(conductorId, pasajeroId) {
     }
   }, [conductorId, pasajeroId]);
 
+  // Checks de Lectura (Fase 6): mitad simétrica de arriba, para que los
+  // ✓✓ azules también funcionen sobre los mensajes que manda el
+  // CONDUCTOR — sin esto, `leido` solo se ponía en `true` del lado
+  // Pasajero->Conductor, y las burbujas del conductor nunca hubieran
+  // podido mostrar más que el ✓ gris de "enviado". Lo llama el lado
+  // Pasajero al abrir/tener el chat abierto (ver ChatWindow.jsx).
+  const marcarLeidoPorPasajero = useCallback(async () => {
+    if (!conductorId || !pasajeroId) return;
+    try {
+      await supabase
+        .from("chat_mensajes")
+        .update({ leido: true })
+        .eq("conductor_id", conductorId)
+        .eq("pasajero_id", pasajeroId)
+        .eq("remitente", REMITENTE_CONDUCTOR)
+        .eq("leido", false);
+    } catch {
+      // No crítico — los checks simplemente no avanzan a azul esta vez.
+    }
+  }, [conductorId, pasajeroId]);
+
   return {
     mensajes,
     loading,
@@ -471,6 +557,7 @@ export function useChatMensajes(conductorId, pasajeroId) {
     marcarFinDeViaje,
     notificarEscribiendo,
     marcarLeidoPorConductor,
+    marcarLeidoPorPasajero,
   };
 }
 
@@ -493,11 +580,14 @@ export function useHilosChatConductor(conductorId) {
   // suscrito a todo INSERT/UPDATE de chat_mensajes del conductor, ver
   // más abajo) en vez de abrir uno nuevo solo para esto.
   const [alertaSenas, setAlertaSenas] = useState(null);
-  // Con qué pasajero está "En Carrera" ahora mismo (si es que hay
-  // alguno) — lo necesita useGpsBroadcaster.js para saber a qué canal
-  // privado transmitir su GPS (ver ConductorPage.jsx). Se asume como
-  // mucho un viaje aceptado a la vez (un solo taxi, un solo pasajero).
-  const [pasajeroEnCarrera, setPasajeroEnCarrera] = useState(null);
+  // Fase 5 (Motor de Viajes Simultáneos): CON QUÉ PASAJEROS está "En
+  // Carrera" ahora mismo — antes era un solo id (`pasajeroEnCarrera`),
+  // asumiendo un único viaje a la vez; ahora es un array, uno por cada
+  // oferta 'aceptada'/'en_transito' que tenga este conductor en
+  // paralelo. `useGpsBroadcaster.js` lo usa para abrir/mantener UN canal
+  // privado por pasajero simultáneamente (ver ConductorPage.jsx), no
+  // solo uno.
+  const [pasajerosEnCarrera, setPasajerosEnCarrera] = useState([]);
   // Mismo motivo que en useChatMensajes de arriba: este hook se llama
   // dos veces en simultáneo para el mismo conductorId (ConductorPage
   // para el punto rojo + ConductorChatInboxModal para la bandeja) — sin
@@ -525,7 +615,7 @@ export function useHilosChatConductor(conductorId) {
         setError("No se pudo cargar la bandeja de mensajes.");
         setHilos([]);
         setUnreadCount(0);
-        setPasajeroEnCarrera(null);
+        setPasajerosEnCarrera([]);
       } else {
         const filas = data ?? [];
         const porPasajero = new Map();
@@ -534,24 +624,24 @@ export function useHilosChatConductor(conductorId) {
         }
         setHilos([...porPasajero.entries()].map(([pasajeroId, ultimo]) => ({ pasajeroId, ultimo })));
         setUnreadCount(filas.filter((m) => m?.remitente === REMITENTE_PASAJERO && !m?.leido).length);
-        // BUG real encontrado acá: solo matcheaba 'aceptada' — apenas el
-        // conductor tocaba "Pasajero Recogido" (estado_oferta pasa a
-        // 'en_transito'), esta búsqueda dejaba de encontrar el viaje,
-        // pasajeroEnCarrera caía a null, y useGpsBroadcaster.js
-        // apagaba el canal privado justo cuando más hacía falta —
-        // exactamente la desconexión de broadcast reportada (el
-        // pasajero dejaba de ver al conductor y la ruta OSRM).
-        const ofertaEnCurso = filas.find(
+        // Fase 5: TODAS las ofertas 'aceptada'/'en_transito', no solo la
+        // primera que se encuentre — un conductor puede tener varios
+        // pasajeros a bordo/reservados en paralelo. `Set` deduplica por
+        // las dudas (no debería hacer falta — a lo sumo una oferta no
+        // resuelta por pasajero, ver el comentario de
+        // `sincronizarAsientosYEstado` en useChatMensajes.js — pero es
+        // gratis blindarse acá también).
+        const ofertasEnCurso = filas.filter(
           (m) =>
             m?.tipo === TIPO_MENSAJE_OFERTA &&
             (m?.estado_oferta === ESTADO_OFERTA_ACEPTADA || m?.estado_oferta === ESTADO_OFERTA_EN_TRANSITO)
         );
-        setPasajeroEnCarrera(ofertaEnCurso?.pasajero_id ?? null);
+        setPasajerosEnCarrera([...new Set(ofertasEnCurso.map((m) => m.pasajero_id))]);
       }
     } catch {
       setError("No se pudo cargar la bandeja de mensajes.");
       setHilos([]);
-      setPasajeroEnCarrera(null);
+      setPasajerosEnCarrera([]);
       setUnreadCount(0);
     }
     setLoading(false);
@@ -584,5 +674,5 @@ export function useHilosChatConductor(conductorId) {
 
   const descartarAlertaSenas = useCallback(() => setAlertaSenas(null), []);
 
-  return { hilos, unreadCount, loading, error, refresh, alertaSenas, descartarAlertaSenas, pasajeroEnCarrera };
+  return { hilos, unreadCount, loading, error, refresh, alertaSenas, descartarAlertaSenas, pasajerosEnCarrera };
 }

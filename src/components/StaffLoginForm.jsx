@@ -3,9 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { LogIn, ShieldCheck, KeyRound } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
+import { useAvisoTop } from "../hooks/useAvisoTop";
+import AvisoTop from "./AvisoTop";
 import { hashPin, verifyPin } from "../lib/pinAuth";
 import { esTelefonoValido } from "../lib/taxiEnums";
 import { routeForRole } from "../lib/taxiAuth";
+
+// Bug reportado: mismo aviso chico arriba de la pantalla que
+// PasajeroAuthForm.jsx — ver ese comentario para el porqué del delay.
+const ENTRAR_DELAY_MS = 700;
 
 // Login de Conductor/Recolector — Teléfono+PIN nomás, sin DNI: se busca
 // la cuenta SOLO por teléfono (acotado a rol conductor/recolector, para
@@ -25,6 +31,7 @@ import { routeForRole } from "../lib/taxiAuth";
 export default function StaffLoginForm({ onSuccess }) {
   const { loginUsuario } = useTaxiAuth();
   const navigate = useNavigate();
+  const { aviso, mostrar } = useAvisoTop();
   const [telefono, setTelefono] = useState("");
   const [pin, setPin] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
@@ -37,9 +44,12 @@ export default function StaffLoginForm({ onSuccess }) {
   const [creandoPin, setCreandoPin] = useState(false);
 
   const entrar = (usuario) => {
-    loginUsuario(usuario, rememberMe);
-    onSuccess?.();
-    navigate(routeForRole(usuario.rol), { replace: true });
+    mostrar("✓ Sesión iniciada correctamente", "exito");
+    setTimeout(() => {
+      loginUsuario(usuario, rememberMe);
+      onSuccess?.();
+      navigate(routeForRole(usuario.rol), { replace: true });
+    }, ENTRAR_DELAY_MS);
   };
 
   const handleSubmit = async (e) => {
@@ -63,11 +73,13 @@ export default function StaffLoginForm({ onSuccess }) {
     if (queryError) {
       setSubmitting(false);
       setError("No se pudo verificar tus datos. Intenta de nuevo.");
+      mostrar("No se pudo verificar tus datos.", "error");
       return;
     }
     if (!data) {
       setSubmitting(false);
       setError("Teléfono o PIN incorrectos.");
+      mostrar("Teléfono o PIN incorrectos.", "error");
       return;
     }
 
@@ -94,6 +106,7 @@ export default function StaffLoginForm({ onSuccess }) {
     setSubmitting(false);
     if (!valido) {
       setError("Teléfono o PIN incorrectos.");
+      mostrar("Teléfono o PIN incorrectos.", "error");
       return;
     }
 
@@ -131,6 +144,7 @@ export default function StaffLoginForm({ onSuccess }) {
     setCreandoPin(false);
     if (updateError || !data) {
       setError("No se pudo guardar el PIN. Intenta de nuevo.");
+      mostrar("No se pudo guardar el PIN.", "error");
       return;
     }
 
@@ -140,6 +154,7 @@ export default function StaffLoginForm({ onSuccess }) {
   if (usuarioSinPin) {
     return (
       <form onSubmit={handleCrearPin}>
+        <AvisoTop aviso={aviso} />
         <p className="tz-stock-editor-sub">
           Es tu primer ingreso, {usuarioSinPin.nombre} — crea tu PIN de acceso para las próximas veces.
         </p>
@@ -185,6 +200,7 @@ export default function StaffLoginForm({ onSuccess }) {
 
   return (
     <form onSubmit={handleSubmit}>
+      <AvisoTop aviso={aviso} />
       <div className="tz-login-field">
         <label className="tz-field-label" htmlFor="staff-telefono">
           Teléfono

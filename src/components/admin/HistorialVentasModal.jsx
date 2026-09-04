@@ -10,7 +10,12 @@ import { TIPO_ITEM_MEMBRESIA } from "../../lib/taxiEnums";
 // la deuda vinculada automáticamente (vía fiados_conductores.venta_id)
 // — el aviso de acá solo aparece si no encontró ninguna (datos de
 // antes de que existiera esa columna).
-export default function HistorialVentasModal({ ventas, conductores, usuarios, anular, busyId, onClose }) {
+// Restricción de Recolector: `puedeAnular` (default true, no rompe el
+// llamado existente de AdminDashboardPage.jsx) — RecolectorPage.jsx lo
+// pasa en `false` explícitamente. El Admin mantiene la capacidad de
+// anular una venta para corregir errores; el propio Recolector que
+// registró la venta ya no puede borrarla de su propio historial.
+export default function HistorialVentasModal({ ventas, conductores, usuarios, anular, busyId, onClose, puedeAnular = true }) {
   const [confirmandoId, setConfirmandoId] = useState(null);
   const [aviso, setAviso] = useState("");
 
@@ -73,7 +78,7 @@ export default function HistorialVentasModal({ ventas, conductores, usuarios, an
                           <strong>{formatSoles(v.monto)}</strong>
                           {v.anulado ? (
                             <span className="tz-tag tz-tag-danger">Anulada</span>
-                          ) : confirmando ? (
+                          ) : !puedeAnular ? null : confirmando ? (
                             <>
                               <button
                                 type="button"

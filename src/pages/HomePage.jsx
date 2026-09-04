@@ -7,6 +7,7 @@ import { useCrearConductorConUsuario } from "../hooks/useCrearConductorConUsuari
 import { useCrearRecolectorPendiente } from "../hooks/useCrearRecolectorPendiente";
 import { useAnuncioActivo } from "../hooks/useAnuncioActivo";
 import { useLocalidades } from "../hooks/useLocalidades";
+import { useBienvenidaNeon } from "../hooks/useBienvenidaNeon";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import {
   TIPO_MENSAJE_OFERTA,
@@ -28,6 +29,7 @@ import AccesoRecolectorModal from "../components/AccesoRecolectorModal";
 import ChatModal from "../components/ChatModal";
 import AnuncioPopupModal from "../components/AnuncioPopupModal";
 import RadarGlobal from "../components/RadarGlobal";
+import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import logo from "../assets/logo.png";
 
 // Persistencia del filtro de localidad — sobrevive a un F5 (ver el
@@ -67,6 +69,15 @@ export default function HomePage() {
   // Pasajero — es publicidad, no contenido privado.
   const { anuncio, cerrar: cerrarAnuncio } = useAnuncioActivo();
   const { localidades } = useLocalidades();
+  // Bienvenida de cuenta nueva (Fase Neón) — misma idea que
+  // ConductorPage.jsx: una sola vez por usuario, al entrar por primera
+  // vez a SU cuenta (no a cualquier visita anónima de la Home, por eso
+  // `esPasajero` — exige sesión real, no solo estar mirando el
+  // Directorio sin loguearse).
+  const { mostrar: mostrarBienvenida, marcarVista: marcarBienvenidaVista } = useBienvenidaNeon(
+    usuario?.id,
+    esPasajero
+  );
   const [activeTab, setActiveTab] = useState("");
   // Persistencia (Punto 1): se lee de localStorage al montar y se
   // reescribe cada vez que cambia — así un F5 no pierde el filtro.
@@ -273,6 +284,14 @@ export default function HomePage() {
   return (
     <div className="tz-root">
       <Styles />
+      {mostrarBienvenida && (
+        <AnimacionNeonBienvenida
+          eyebrow="✦ Bienvenido a TaxiPE ✦"
+          titulo={usuario?.nombre}
+          descripcion="Sabemos que estás harto de esperar transporte — ¡Qué disfrutes! 😉"
+          onTerminar={marcarBienvenidaVista}
+        />
+      )}
       <header className="tz-header">
         <div className="tz-header-row">
           <div className="tz-header-side tz-header-side-left">
@@ -436,7 +455,7 @@ export default function HomePage() {
       </main>
 
       {loginOpen && (
-        <div className="tz-modal-backdrop" onClick={() => setLoginOpen(false)}>
+        <div className="tz-modal-backdrop">
           <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
             <button className="tz-modal-close" onClick={() => setLoginOpen(false)} aria-label="Cerrar">
               <X size={18} />
@@ -485,6 +504,7 @@ export default function HomePage() {
           key={chatConductorId}
           conductor={chatConductor}
           pasajeroId={usuario.id}
+          categorias={categorias}
           // `destino` puede llegar null en el flujo manual ("Contactar" de
           // la tarjeta, chatAuto=false) — ChatModal.jsx no lo necesita ahí,
           // solo lo usa cuando `autoContactar` es true (auto-mensaje
@@ -509,12 +529,27 @@ export default function HomePage() {
       {radarOpen && (
         <RadarGlobal
           conductores={conductores}
+          categorias={categorias}
           localidadFiltro={localidad}
           localidades={localidades}
           destino={destinoSeleccionado}
           onClose={() => setRadarOpen(false)}
           onSeleccionarConductor={(c) => {
             if (!esPasajero) return;
+            // Anti-Spam de Asientos: RadarGlobal.jsx ya saca del mapa a
+            // cualquier auto sin lugar (no se lo puede ni clickear), pero
+            // esto revalida en el punto exacto donde se manda la
+            // petición — mismo criterio que `puedeRecogerPasajero` en
+            // ChatWindow.jsx (el botón ya viene disabled, pero el click
+            // también se re-chequea) — por si el auto se llenó justo en
+            // el instante entre que se pintó el marcador y se tocó.
+            const totales = c.asientos_totales ?? 4;
+            const ocupados = c.asientos_ocupados ?? 0;
+            if (ocupados >= totales) {
+              setAvisoDestino("⚠️ Este vehículo ya no tiene asientos disponibles — elige otro en el Radar.");
+              setTimeout(() => setAvisoDestino(""), 3500);
+              return;
+            }
             setRadarOpen(false);
             abrirChat(c.id, { auto: true });
           }}
@@ -534,7 +569,7 @@ export default function HomePage() {
       {avisoDestino && <div className="tz-toast-flotante">{avisoDestino}</div>}
 
       {avisoPeticion && (
-        <div className="tz-modal-backdrop" onClick={() => setAvisoPeticion("")}>
+        <div className="tz-modal-backdrop">
           <div className="tz-modal" onClick={(e) => e.stopPropagation()} style={{ textAlign: "center" }}>
             <button className="tz-modal-close" onClick={() => setAvisoPeticion("")} aria-label="Cerrar">
               <X size={18} />

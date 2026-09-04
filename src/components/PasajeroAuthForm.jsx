@@ -3,7 +3,17 @@ import { useNavigate } from "react-router-dom";
 import { LogIn, UserPlus, ShieldCheck, KeyRound } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { usePasajeroAuth } from "../hooks/usePasajeroAuth";
+import { useAvisoTop } from "../hooks/useAvisoTop";
+import AvisoTop from "./AvisoTop";
 import { esTelefonoValido } from "../lib/taxiEnums";
+
+// Bug reportado: aviso chico y no-intrusivo arriba de la pantalla al
+// iniciar sesión (éxito o fallido), que se apaga solo — ver
+// useAvisoTop.js. En el caso de éxito, la navegación se retrasa un
+// toque (ENTRAR_DELAY_MS) para que de verdad se alcance a VER el aviso
+// antes de saltar a la pantalla siguiente; en el de error no hace falta
+// (no hay navegación, el aviso simplemente convive con el formulario).
+const ENTRAR_DELAY_MS = 700;
 
 // Pasajero: registro propio (DNI+Teléfono+PIN, el DNI se guarda pero ya
 // no hace falta para el día a día) y login liviano (solo Teléfono+PIN).
@@ -16,6 +26,7 @@ export default function PasajeroAuthForm({ onSuccess }) {
   const { loginUsuario } = useTaxiAuth();
   const { registrar, login, crearPin, loading } = usePasajeroAuth();
   const navigate = useNavigate();
+  const { aviso, mostrar } = useAvisoTop();
   const [modo, setModo] = useState("ingresar");
 
   const [nombre, setNombre] = useState("");
@@ -34,10 +45,17 @@ export default function PasajeroAuthForm({ onSuccess }) {
   const [confirmarNuevoPin, setConfirmarNuevoPin] = useState("");
   const [creandoPin, setCreandoPin] = useState(false);
 
-  const entrar = (usuario) => {
-    loginUsuario(usuario, rememberMe);
-    onSuccess?.();
-    navigate("/", { replace: true });
+  // `remember` explícito (no siempre el checkbox del login): el
+  // registro nunca mostró ese checkbox y siempre recordaba la sesión
+  // de una — se mantiene ese comportamiento pasando `true` a mano desde
+  // handleRegistro, en vez de depender del estado compartido `rememberMe`.
+  const entrar = (usuario, remember = rememberMe) => {
+    mostrar("✓ Sesión iniciada correctamente", "exito");
+    setTimeout(() => {
+      loginUsuario(usuario, remember);
+      onSuccess?.();
+      navigate("/", { replace: true });
+    }, ENTRAR_DELAY_MS);
   };
 
   const handleLogin = async (e) => {
@@ -58,6 +76,7 @@ export default function PasajeroAuthForm({ onSuccess }) {
     }
     if (!usuario) {
       setError(message);
+      mostrar(message || "No se pudo iniciar sesión.", "error");
       return;
     }
     entrar(usuario);
@@ -79,6 +98,7 @@ export default function PasajeroAuthForm({ onSuccess }) {
     setCreandoPin(false);
     if (!usuario) {
       setError(message);
+      mostrar(message || "No se pudo crear el PIN.", "error");
       return;
     }
     entrar(usuario);
@@ -87,6 +107,7 @@ export default function PasajeroAuthForm({ onSuccess }) {
   if (usuarioSinPin) {
     return (
       <form onSubmit={handleCrearPin}>
+        <AvisoTop aviso={aviso} />
         <p className="tz-stock-editor-sub">
           Es tu primer ingreso, {usuarioSinPin.nombre} — crea tu PIN de acceso para las próximas veces.
         </p>
@@ -162,15 +183,15 @@ export default function PasajeroAuthForm({ onSuccess }) {
     });
     if (!usuario) {
       setError(message);
+      mostrar(message || "No se pudo crear la cuenta.", "error");
       return;
     }
-    loginUsuario(usuario, true);
-    onSuccess?.();
-    navigate("/", { replace: true });
+    entrar(usuario, true);
   };
 
   return (
     <>
+      <AvisoTop aviso={aviso} />
       <div className="tz-gasto-tipo-buttons" style={{ marginBottom: 14 }}>
         <button
           type="button"

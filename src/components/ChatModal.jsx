@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, MessageCircle } from "lucide-react";
 import {
   useChatMensajes,
@@ -55,7 +55,13 @@ function obtenerPosicionActual() {
 // chat sin que el pasajero haya elegido un `destino` primero (Bloqueo
 // Estricto de Pasajeros Sin Destino) — así que acá `destino` siempre
 // llega con datos reales.
-function ChatModalContenido({ conductor, pasajeroId, destino, autoContactar, onClose, onLimpiarDestino }) {
+function ChatModalContenido({ conductor, pasajeroId, destino, autoContactar, categorias = [], onClose, onLimpiarDestino }) {
+  // Panel de Categorías e Íconos: se resuelve ACÁ (no en HomePage.jsx)
+  // por el mismo motivo que RadarGlobal.jsx lo hace en su propio
+  // `.map()` — mantiene la búsqueda pegada a donde se usa
+  // `conductor.categoria_id`, en vez de pasar un valor ya resuelto de
+  // más arriba.
+  const iconoCategoriaUrl = categorias.find((cat) => cat.id === conductor.categoria_id)?.icono_url || null;
   const {
     mensajes,
     loading,
@@ -67,11 +73,28 @@ function ChatModalContenido({ conductor, pasajeroId, destino, autoContactar, onC
     finalizarViaje,
     marcarFinDeViaje,
     notificarEscribiendo,
+    marcarLeidoPorPasajero,
   } = useChatMensajes(conductor.id, pasajeroId);
   // Sin esto, si React StrictMode vuelve a montar el efecto (o el
   // componente re-renderiza antes de que termine el insert), se
   // dispararía un segundo primer-mensaje solo.
   const autoEnviadoRef = useRef(false);
+
+  // Anti-Spam de Asientos: segunda capa, justo antes de mandar el
+  // auto-mensaje real. HomePage.jsx ya bloquea el click sobre un auto
+  // lleno y RadarGlobal.jsx ya lo saca del mapa, pero `conductor` acá es
+  // la foto que tenía el mapa EN EL MOMENTO del click — si el auto se
+  // llenó justo en el ratito que tardó `obtenerPosicionActual()` (más
+  // abajo) antes de este efecto, esto lo vuelve a chequear justo antes
+  // del envío real, que es el punto exacto que pidió bloquear.
+  const [cupoLleno, setCupoLleno] = useState(false);
+
+  // Checks de Lectura (Fase 6): al abrir este chat, todo lo que mandó
+  // el conductor queda "leído" — mismo momento exacto en que
+  // ConductorChatInboxModal.jsx hace lo simétrico del otro lado.
+  useEffect(() => {
+    marcarLeidoPorPasajero?.();
+  }, [marcarLeidoPorPasajero]);
 
   // Flujo de Contacto: "Contactar" desde la tarjeta general del
   // directorio (HomePage.jsx, `abrirChat(id, {auto:false})`) NO manda
@@ -108,16 +131,29 @@ function ChatModalContenido({ conductor, pasajeroId, destino, autoContactar, onC
       autoEnviadoRef.current = true;
       return;
     }
+
+    const totales = conductor.asientos_totales ?? 4;
+    const ocupados = conductor.asientos_ocupados ?? 0;
+    if (ocupados >= totales) {
+      autoEnviadoRef.current = true;
+      setCupoLleno(true);
+      return;
+    }
     autoEnviadoRef.current = true;
 
     // "Libre": primer contacto de verdad, pide precio hasta el destino.
     // "En Carrera" (colectivo, ver Fase 3): el auto ya lleva a alguien,
     // esto es un pedido de "súbeme también" — no tiene sentido
     // preguntar tarifa todavía, ese auto ya la negoció con el primero.
+    // UX Colectivos: acá SÍ hace falta el destino en el mensaje mismo —
+    // el conductor tiene que poder decidir si le conviene sumar a este
+    // pasajero a la ruta ANTES de aceptar, y antes esto no le daba
+    // ningún dato para decidir (solo "¿Puede pasar por mí?"). Formato
+    // estricto pedido: "{direccion} - ¿Puede pasar por mí?".
     const libre = conductor.estado === ESTADO_CONDUCTOR_ACTIVO;
     const texto = libre
       ? `Necesito una carrera, ¿cuánto me cobras hasta ${destino.nombre || "mi destino"}?`
-      : "¿Puede pasar por mí? 🤔";
+      : `${destino.nombre || "mi destino"} - ¿Puede pasar por mí?`;
 
     (async () => {
       // Punto de Recojo: se guarda pegado a este MISMO mensaje de
@@ -133,7 +169,16 @@ function ChatModalContenido({ conductor, pasajeroId, destino, autoContactar, onC
         ...(origen ? { origen_lat: origen.lat, origen_lng: origen.lng } : {}),
       });
     })();
-  }, [autoContactar, destino, conductor.estado, enviarMensaje, loading, mensajes]);
+  }, [
+    autoContactar,
+    destino,
+    conductor.estado,
+    conductor.asientos_totales,
+    conductor.asientos_ocupados,
+    enviarMensaje,
+    loading,
+    mensajes,
+  ]);
 
   return (
     <>
@@ -142,6 +187,13 @@ function ChatModalContenido({ conductor, pasajeroId, destino, autoContactar, onC
       <h2 style={{ marginTop: 12 }}>
         <MessageCircle size={17} /> Chat
       </h2>
+
+      {cupoLleno && (
+        <p className="tz-error" style={{ marginTop: 0 }}>
+          ⚠️ Este vehículo se llenó justo ahora — ya no tiene asientos disponibles. Cerrá este chat y elegí
+          otro en el Radar.
+        </p>
+      )}
 
       <ChatWindow
         mensajes={mensajes ?? []}
@@ -163,6 +215,7 @@ function ChatModalContenido({ conductor, pasajeroId, destino, autoContactar, onC
         conductorId={conductor.id}
         pasajeroId={pasajeroId}
         nivelServicio={conductor.nivel_servicio}
+        iconoCategoriaUrl={iconoCategoriaUrl}
         otroEscribiendo={otroEscribiendo}
         onEscribiendo={notificarEscribiendo}
       />
@@ -194,14 +247,22 @@ function ChatModalContenido({ conductor, pasajeroId, destino, autoContactar, onC
 // true, viene del Radar) — HomePage.jsx lo exige ahí (ver abrirChat).
 // El flujo manual ("Contactar" de la tarjeta general, autoContactar
 // false) puede llegar sin destino: no lo necesita, no manda nada solo.
-export default function ChatModal({ conductor, pasajeroId, destino = null, autoContactar = true, onClose, onLimpiarDestino }) {
+export default function ChatModal({
+  conductor,
+  pasajeroId,
+  destino = null,
+  autoContactar = true,
+  categorias = [],
+  onClose,
+  onLimpiarDestino,
+}) {
   // Sin conductor no hay nada que mostrar — evita romper el árbol de
   // React leyendo propiedades de undefined si este modal llegara a
   // montarse sin datos todavía listos.
   if (!conductor) return null;
 
   return (
-    <div className="tz-modal-backdrop" onClick={onClose}>
+    <div className="tz-modal-backdrop">
       <div className="tz-modal tz-chat-modal-shell" onClick={(e) => e.stopPropagation()}>
         <button className="tz-modal-close" onClick={onClose} aria-label="Cerrar">
           <X size={18} />
@@ -213,6 +274,7 @@ export default function ChatModal({ conductor, pasajeroId, destino = null, autoC
               pasajeroId={pasajeroId}
               destino={destino}
               autoContactar={autoContactar}
+              categorias={categorias}
               onClose={onClose}
               onLimpiarDestino={onLimpiarDestino}
             />

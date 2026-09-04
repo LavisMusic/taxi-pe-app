@@ -56,6 +56,12 @@ export default function RegistroConductorForm({
   const [categoriaId, setCategoriaId] = useState(categorias[0]?.id ?? "");
   const [subgrupoId, setSubgrupoId] = useState("");
   const [nivelServicio, setNivelServicio] = useState(NIVEL_SERVICIO_ECONOMICO);
+  // Fase 4 (Colectivo): capacidad real del vehículo — de esto depende
+  // cuántos pasajeros puede llevar a la vez (ver `asientos_disponibles`
+  // en RadarGlobal.jsx/ChatWindow.jsx). "4" como default cubre el caso
+  // más común (auto sedán) sin obligar a tocar nada si el conductor no
+  // sabe bien cuántos asientos declarar.
+  const [asientosTotales, setAsientosTotales] = useState(4);
 
   // Localidad ya no es un array estático — llega async de la tabla
   // `localidades` (useLocalidades.js). Se arranca vacío y se rellena
@@ -103,6 +109,11 @@ export default function RegistroConductorForm({
       setError("El DNI debe tener 8 dígitos.");
       return;
     }
+    const asientos = Number(asientosTotales);
+    if (!Number.isInteger(asientos) || asientos < 1 || asientos > 65) {
+      setError("La capacidad de asientos debe ser un número entero entre 1 y 65.");
+      return;
+    }
     if (!fotoPerfilUrl) {
       setError("La foto de perfil es obligatoria.");
       return;
@@ -121,6 +132,7 @@ export default function RegistroConductorForm({
       categoriaId: categoriaId || null,
       subgrupoId: subgrupoId || null,
       nivelServicio,
+      asientosTotales: asientos,
       fotoUrl: fotoPerfilUrl,
       ...fotos,
       aprobado,
@@ -208,6 +220,23 @@ export default function RegistroConductorForm({
           value={dni}
           onChange={(e) => setDni(e.target.value)}
         />
+
+        <label className="tz-field-label">Capacidad de pasajeros (asientos)</label>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={65}
+          step={1}
+          className="tz-text-input"
+          placeholder="4"
+          value={asientosTotales}
+          onChange={(e) => setAsientosTotales(e.target.value)}
+        />
+        <p className="tz-camera-note" style={{ margin: "2px 0 0" }}>
+          Cuántos pasajeros puede llevar a la vez tu vehículo (sin contarte a ti) — define cuántas personas
+          pueden compartir el mismo viaje.
+        </p>
 
         <label className="tz-field-label">Localidad</label>
         <Dropdown

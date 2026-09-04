@@ -15,7 +15,7 @@ export function useCategoriasPublicas() {
     let cancelado = false;
     (async () => {
       const [catRes, subRes] = await Promise.all([
-        supabase.from("categorias").select("id, nombre, orden").order("orden", { ascending: true }),
+        supabase.from("categorias").select("id, nombre, orden, icono_url").order("orden", { ascending: true }),
         supabase.from("subgrupos").select("id, categoria_id, nombre, orden").order("orden", { ascending: true }),
       ]);
       if (cancelado) return;

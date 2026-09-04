@@ -31,9 +31,53 @@ export function useRecargas({ onDone }) {
   const [error, setError] = useState("");
 
   const registrarRecarga = useCallback(
-    async ({ conductor, recolectorId, tipoItem, monto, cantidadCreditos, diasMembresia, metodoPago, comprobante }) => {
+    async ({
+      conductor,
+      recolectorId,
+      tipoItem,
+      monto,
+      cantidadCreditos,
+      diasMembresia,
+      // Bienvenida en varias partes — "Membresía Activada": antes esta
+      // venta solo sumaba días a `vencimiento_suscripcion`, sin dejar
+      // registrado CUÁL paquete fue. Con `paqueteId` guardado en
+      // `conductores.membresia_paquete_id`, ConductorPage.jsx puede
+      // detectar en tiempo real (ver useMembresiaActivadaNeon.js) que
+      // cambió de membresía y mostrar su nombre/descripción reales.
+      //
+      // "Compra Confirmada" (créditos): `paqueteNombre`/`paqueteDescripcion`
+      // se guardan tal cual — no una referencia al paquete — porque acá
+      // lo que hace falta es un "recibo" de lo que se compró en ESE
+      // momento (ver useCompraCreditosNeon.js), no un estado "activo"
+      // como el de membresía.
+      paqueteId,
+      paqueteNombre,
+      paqueteDescripcion,
+      metodoPago,
+      comprobante,
+    }) => {
       setSaving(true);
       setError("");
+
+      // Bug/pedido: no se puede vender una membresía nueva a un
+      // conductor que YA tiene una vigente — antes esto simplemente
+      // EXTENDÍA el vencimiento actual (sumaba días sobre lo que ya
+      // tenía), lo cual además pisaba `membresia_paquete_id` con el
+      // paquete nuevo aunque el viejo todavía no hubiera terminado.
+      // Ahora se bloquea de raíz hasta que la vigente termine. Esto NO
+      // aplica a créditos — los créditos se siguen pudiendo sumar en
+      // cualquier momento.
+      if (tipoItem === TIPO_ITEM_MEMBRESIA) {
+        const vencimientoActual = conductor.vencimiento_suscripcion
+          ? new Date(conductor.vencimiento_suscripcion)
+          : null;
+        if (vencimientoActual && vencimientoActual > new Date()) {
+          const message = `Ya tiene una membresía activa hasta el ${vencimientoActual.toLocaleDateString("es-PE")} — no se puede recargar otra hasta que esta termine.`;
+          setError(message);
+          setSaving(false);
+          return { error: new Error("membresia_activa"), message };
+        }
+      }
 
       const dias = diasMembresia || MEMBRESIA_DIAS_EXTENSION;
       const detalleBase = buildDetalleRecarga(tipoItem, cantidadCreditos, dias);
@@ -73,8 +117,31 @@ export function useRecargas({ onDone }) {
         const base = vencimientoActual && vencimientoActual > new Date() ? vencimientoActual : new Date();
         base.setDate(base.getDate() + dias);
         patch.vencimiento_suscripcion = base.toISOString();
+        // Explícito siempre (incluso `null` si por lo que sea no llegó
+        // paqueteId) — nunca dejamos que quede el valor viejo puesto:
+        // si esto es un downgrade a otro paquete, tiene que reflejar el
+        // NUEVO, no arrastrar el anterior.
+        patch.membresia_paquete_id = paqueteId ?? null;
       } else {
         patch.creditos = Number(conductor.creditos || 0) + Number(cantidadCreditos);
+        // Descuento de Créditos (24h): el reloj de "1 crédito cada 24h"
+        // arranca (o se REINICIA) exactamente cuando el conductor pasa
+        // de 0/sin créditos a tener saldo de nuevo — "activó su compra"
+        // literal. Si ya tenía créditos corriendo y solo suma más
+        // (recarga a mitad de camino), el reloj sigue igual: no se le
+        // regala un día extra de gracia por recargar antes de llegar a
+        // 0. Ver la lógica de catch-up en useConductorSesion.js.
+        if (Number(conductor.creditos || 0) <= 0) {
+          patch.ultimo_descuento_creditos = new Date().toISOString();
+        }
+        // "Compra Confirmada" (pedido nuevo): a diferencia de la
+        // membresía, acá SIEMPRE se pisa con la compra más reciente —
+        // no hay noción de "cambió de paquete", cualquier compra de
+        // créditos (repita el mismo paquete o no) es una novedad que
+        // vale la pena confirmarle al conductor.
+        patch.ultimo_paquete_creditos_nombre = paqueteNombre ?? null;
+        patch.ultimo_paquete_creditos_descripcion = paqueteDescripcion ?? null;
+        patch.ultima_compra_creditos_at = new Date().toISOString();
       }
 
       const { data: conductorActualizado, error: conductorError } = await supabase

@@ -20,7 +20,11 @@ export default function RecargaRapidaRecolectorForm({ recolector, paquetes, crea
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  const paquetesDelTipo = paquetes.filter((p) => p.tipo_item === tipoItem);
+  // `activo !== false`: usePaquetesRecolectores.js ahora trae también
+  // los inactivos (para que el Admin los pueda administrar en
+  // Configurar Membresías) — este cobro rápido solo debe ofrecer los
+  // activos, así que el filtro se hace acá, no en el hook.
+  const paquetesDelTipo = paquetes.filter((p) => p.tipo_item === tipoItem && p.activo !== false);
   const paquete = paquetesDelTipo.find((p) => String(p.id) === String(paqueteId)) || null;
 
   const handleSubmit = async (e) => {

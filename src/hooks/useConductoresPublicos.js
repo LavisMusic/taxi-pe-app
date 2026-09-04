@@ -39,7 +39,7 @@ export function useConductoresPublicos() {
         )
         .eq("aprobado", true)
         .in("estado", [ESTADO_CONDUCTOR_ACTIVO, ESTADO_CONDUCTOR_OCUPADO]),
-      supabase.from("categorias").select("id, nombre, orden").order("orden", { ascending: true }),
+      supabase.from("categorias").select("id, nombre, orden, icono_url").order("orden", { ascending: true }),
     ]);
 
     if (conductoresRes.error || categoriasRes.error) {
@@ -60,6 +60,28 @@ export function useConductoresPublicos() {
   // en vivo, sin F5 — mismo canal que useConductores.js, esta vez del
   // lado público.
   useEffect(() => subscribeTable("conductores", () => refresh()), [refresh]);
+
+  // Fix Contador Congelado (Fase 5): la publicación de Realtime de
+  // `conductores` ya está confirmada activa — el "stale" reportado
+  // específicamente en pestañas de escritorio dejadas abiertas mucho
+  // tiempo encaja con un patrón conocido de los WebSockets de Supabase
+  // Realtime: pueden desconectarse en silencio (suspensión del SO,
+  // cambio de red, laptop que durmió) SIN disparar ningún evento de
+  // error visible — el canal queda "suscrito" en apariencia, pero
+  // ningún evento nuevo vuelve a llegar nunca. Un celular tiende a
+  // recargar la pestaña solo con más frecuencia (background del
+  // navegador/app), lo que disimula el mismo bug — por eso se nota más
+  // en PC. Este listener es la red de seguridad: sin importar qué le
+  // pasó al WebSocket mientras la pestaña estuvo en segundo plano, un
+  // refresh manual (fetch normal, no depende de Realtime) corre apenas
+  // el pasajero vuelve a mirarla.
+  useEffect(() => {
+    const alVolverVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", alVolverVisible);
+    return () => document.removeEventListener("visibilitychange", alVolverVisible);
+  }, [refresh]);
 
   return { conductores, categorias, loading, error, refresh };
 }

@@ -3,9 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { Search, ShieldCheck, UserCheck } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useVincularConductor } from "../hooks/useVincularConductor";
+import { useAvisoTop } from "../hooks/useAvisoTop";
+import AvisoTop from "../components/AvisoTop";
 import { esTelefonoValido } from "../lib/taxiEnums";
 import Styles from "../components/Styles";
 import logo from "../assets/logo.png";
+
+// Bug reportado: mismo aviso chico arriba de la pantalla que los demás
+// logins — ver PasajeroAuthForm.jsx.
+const ENTRAR_DELAY_MS = 700;
 
 // Ruta /registro-conductor — el puente final del Paso 3: acá "aterriza"
 // un conductor que un Recolector ya pre-registró en la calle (tiene
@@ -16,6 +22,7 @@ export default function RegistroConductorPage() {
   const { loginUsuario } = useTaxiAuth();
   const { buscarPreRegistro, crearCuenta, loading } = useVincularConductor();
   const navigate = useNavigate();
+  const { aviso, mostrar } = useAvisoTop();
 
   const [paso, setPaso] = useState(1);
   const [telefono, setTelefono] = useState("");
@@ -73,11 +80,15 @@ export default function RegistroConductorPage() {
 
     if (crearError) {
       setFormError(message);
+      mostrar(message || "No se pudo crear tu cuenta.", "error");
       return;
     }
 
-    loginUsuario(usuario, true);
-    navigate("/conductor", { replace: true });
+    mostrar("✓ Sesión iniciada correctamente", "exito");
+    setTimeout(() => {
+      loginUsuario(usuario, true);
+      navigate("/conductor", { replace: true });
+    }, ENTRAR_DELAY_MS);
   };
 
   return (
@@ -86,6 +97,7 @@ export default function RegistroConductorPage() {
       style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
     >
       <Styles />
+      <AvisoTop aviso={aviso} />
       <div className="tz-modal" style={{ position: "static" }}>
         <img src={logo} alt="TaxiP" className="tz-modal-logo" />
         <p className="tz-brand-sub">

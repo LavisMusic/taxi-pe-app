@@ -3,13 +3,24 @@ import { LogOut, Pencil, Zap, Car, Ban, CreditCard, CalendarClock, MessageCircle
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useConductorSesion } from "../hooks/useConductorSesion";
 import { useHilosChatConductor } from "../hooks/useChatMensajes";
+import { useCategoriasPublicas } from "../hooks/useCategoriasPublicas";
 import { useGpsBroadcaster } from "../hooks/useGpsBroadcaster";
-import { ESTADO_CONDUCTOR_ACTIVO, ESTADO_CONDUCTOR_OCUPADO, ESTADO_CONDUCTOR_DESCONECTADO } from "../lib/taxiEnums";
+import { usePaquetes } from "../hooks/usePaquetes";
+import { useBienvenidaNeon } from "../hooks/useBienvenidaNeon";
+import { useMembresiaActivadaNeon } from "../hooks/useMembresiaActivadaNeon";
+import { useCompraCreditosNeon } from "../hooks/useCompraCreditosNeon";
+import {
+  ESTADO_CONDUCTOR_ACTIVO,
+  ESTADO_CONDUCTOR_OCUPADO,
+  ESTADO_CONDUCTOR_DESCONECTADO,
+  ESTADO_CONDUCTOR_INHABILITADO,
+} from "../lib/taxiEnums";
 import { formatDate } from "../utils/format";
 import Styles from "../components/Styles";
 import GestionImagenModal from "../components/admin/GestionImagenModal";
 import ConductorPublicCard from "../components/ConductorPublicCard";
 import ConductorChatInboxModal from "../components/ConductorChatInboxModal";
+import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import logo from "../assets/logo.png";
 
 // Ruta /conductor — entra por RequireUsuarioRol rol="conductor".
@@ -19,7 +30,59 @@ import logo from "../assets/logo.png";
 export default function ConductorPage() {
   const { usuario, logout } = useTaxiAuth();
   const { conductor, loading, error, setEstado, actualizar } = useConductorSesion(usuario);
-  const { unreadCount, alertaSenas, descartarAlertaSenas, pasajeroEnCarrera } = useHilosChatConductor(conductor?.id);
+  const { unreadCount, alertaSenas, descartarAlertaSenas, pasajerosEnCarrera } = useHilosChatConductor(conductor?.id);
+  // Panel de Categorías e Íconos: la propia categoría del conductor —
+  // el mismo ícono que ya se ve en RadarGlobal.jsx ahora también en el
+  // mapa interno de SU bandeja de chats (ConductorChatInboxModal.jsx).
+  const { categorias: categoriasPublicas } = useCategoriasPublicas();
+  const iconoCategoriaUrl = categoriasPublicas.find((cat) => cat.id === conductor?.categoria_id)?.icono_url || null;
+
+  // Animación Épica de Bienvenida — Fase Neón, en 3 partes (bug/pedido:
+  // antes era una sola cosa, "muestra el paquete destacado al primer
+  // login", y se pidió separarlo):
+  //
+  //   A) Bienvenida de cuenta nueva — una sola vez por usuario, al
+  //      entrar por primera vez. Ya NO depende de que haya un paquete
+  //      de membresía configurado; el mensaje es genérico ("Consigue
+  //      clientes fácil y rápido"), no habla de ninguna membresía en
+  //      particular.
+  //   B) Membresía Activada — cada vez que `conductor.membresia_paquete_id`
+  //      CAMBIA de verdad (primera activación o upgrade/downgrade a
+  //      otro paquete) — ver useMembresiaActivadaNeon.js. Comparación
+  //      por ESTADO (¿es un paquete distinto al de la última vez?),
+  //      porque la membresía es "una a la vez".
+  //   C) Compra Confirmada (créditos) — cada vez que se compra un
+  //      paquete de créditos, incluso repitiendo el mismo de siempre —
+  //      ver useCompraCreditosNeon.js. Comparación por EVENTO (¿hay una
+  //      compra más nueva que la última que vimos?), porque los
+  //      créditos se acumulan, no hay un "paquete activo" único que
+  //      comparar como en B.
+  //
+  // Si dos quieren mostrarse a la vez, A > B > C en prioridad — la que
+  // pierde el turno no se pierde, sigue "pendiente" en su propio hook
+  // hasta que le toque.
+  const { mostrar: mostrarBienvenida, marcarVista: marcarBienvenidaVista } = useBienvenidaNeon(
+    usuario?.id,
+    !!conductor
+  );
+  const { paquetes: paquetesMembresia } = usePaquetes();
+  const { paqueteIdActivado, marcarVista: marcarMembresiaVista } = useMembresiaActivadaNeon(
+    conductor?.id,
+    conductor?.membresia_paquete_id ?? null
+  );
+  // String(p.id) porque useMembresiaActivadaNeon.js normaliza el id a
+  // string a propósito (ver el comentario largo ahí — comparar number
+  // contra string, sin esto, nunca matchea nada).
+  const paqueteActivado = paquetesMembresia.find((p) => String(p.id) === paqueteIdActivado) ?? null;
+  const mostrarMembresiaActivada = !mostrarBienvenida && !!paqueteActivado;
+
+  const { compra: compraCreditos, marcarVista: marcarCompraCreditosVista } = useCompraCreditosNeon(
+    conductor?.id,
+    conductor?.ultima_compra_creditos_at ?? null,
+    conductor?.ultimo_paquete_creditos_nombre,
+    conductor?.ultimo_paquete_creditos_descripcion
+  );
+  const mostrarCompraCreditos = !mostrarBienvenida && !mostrarMembresiaActivada && !!compraCreditos;
 
   // Paywall del Conductor: acceso si tiene membresía vigente O créditos
   // (OR, no AND) — un conductor puede operar bajo cualquiera de los dos
@@ -42,7 +105,13 @@ export default function ConductorPage() {
     : null;
   const vencida = diasRestantes != null && diasRestantes < 0;
   const tieneMembresiaVigente = diasRestantes != null && diasRestantes >= 0;
-  const tieneAcceso = tieneMembresiaVigente || (conductor?.creditos ?? 0) > 0;
+  // Bug reportado — Inhabilitado por Admin: un baneo manual (ver
+  // ESTADO_CONDUCTOR_INHABILITADO en taxiEnums.js) corta el acceso de
+  // raíz, sin importar cuánta membresía/créditos tenga — a diferencia
+  // del "sin saldo" de abajo, esto NO se levanta solo al recargar, hace
+  // falta que el Admin lo vuelva a cambiar de estado a mano.
+  const inhabilitadoPorAdmin = conductor?.estado === ESTADO_CONDUCTOR_INHABILITADO;
+  const tieneAcceso = !inhabilitadoPorAdmin && (tieneMembresiaVigente || (conductor?.creditos ?? 0) > 0);
 
   // Fase 3 — transmite el GPS del conductor mientras tenga sesión, sin
   // depender de que tenga algún chat abierto (ver useGpsBroadcaster.js:
@@ -55,7 +124,7 @@ export default function ConductorPage() {
   useGpsBroadcaster({
     conductorId: conductor?.id,
     estado: conductor?.estado,
-    pasajeroEnCarrera,
+    pasajerosEnCarrera,
     asientosOcupados: conductor?.asientos_ocupados,
     asientosTotales: conductor?.asientos_totales,
     tieneAcceso,
@@ -110,6 +179,28 @@ export default function ConductorPage() {
   return (
     <div className="tz-root">
       <Styles />
+      {mostrarBienvenida ? (
+        <AnimacionNeonBienvenida
+          eyebrow="✦ Bienvenido a TaxiPE ✦"
+          titulo={conductor?.nombre}
+          descripcion="Consigue clientes fácil y rápido — ¡Qué disfrutes! 😉"
+          onTerminar={marcarBienvenidaVista}
+        />
+      ) : mostrarMembresiaActivada ? (
+        <AnimacionNeonBienvenida
+          eyebrow="✦ Membresía Activada ✦"
+          titulo={paqueteActivado.nombre}
+          descripcion={paqueteActivado.descripcion}
+          onTerminar={marcarMembresiaVista}
+        />
+      ) : mostrarCompraCreditos ? (
+        <AnimacionNeonBienvenida
+          eyebrow="✦ Compra Confirmada ✦"
+          titulo={compraCreditos.nombre}
+          descripcion={compraCreditos.descripcion}
+          onTerminar={marcarCompraCreditosVista}
+        />
+      ) : null}
       <header className="tz-header">
         <div className="tz-header-row">
           {conductor ? (
@@ -208,8 +299,26 @@ export default function ConductorPage() {
               data-estado={conductor.estado}
               onClick={handleToggle}
               disabled={toggling || !tieneAcceso}
-              aria-label={!tieneAcceso ? "Inhabilitado — sin membresía activa ni créditos" : estadoActivo ? "Pasar a Ocupado" : "Pasar a Activo"}
-              title={!tieneAcceso ? "Recarga tu membresía o tus créditos para poder ponerte Activo" : undefined}
+              aria-label={
+                inhabilitadoPorAdmin
+                  ? "Inhabilitado por el administrador"
+                  : !tieneAcceso
+                    ? "Inhabilitado — sin membresía activa ni créditos"
+                    : estadoActivo
+                      ? "Pasar a Ocupado"
+                      : "Pasar a Activo"
+              }
+              // Mensajes distintos a propósito: a un conductor baneado
+              // por el Admin decirle "recarga tu membresía" es
+              // directamente falso — recargar NO lo reactiva, solo el
+              // Admin puede hacerlo desde el Directorio.
+              title={
+                inhabilitadoPorAdmin
+                  ? "Tu cuenta fue inhabilitada por el administrador. Contáctalo para más información."
+                  : !tieneAcceso
+                    ? "Recarga tu membresía o tus créditos para poder ponerte Activo"
+                    : undefined
+              }
             >
               {toggling ? (
                 <Loader2 size={40} className="tz-spin" />
@@ -224,7 +333,11 @@ export default function ConductorPage() {
                 {!tieneAcceso ? "🚫 Inhabilitado" : estadoActivo ? "ACTIVO" : "OCUPADO"}
               </span>
               <span className="tz-estado-toggle-hint">
-                {!tieneAcceso ? "Recarga tu membresía o tus créditos" : `Toca para pasar a ${estadoActivo ? "Ocupado" : "Activo"}`}
+                {inhabilitadoPorAdmin
+                  ? "Tu cuenta fue inhabilitada por el administrador"
+                  : !tieneAcceso
+                    ? "Recarga tu membresía o tus créditos"
+                    : `Toca para pasar a ${estadoActivo ? "Ocupado" : "Activo"}`}
               </span>
             </button>
 
@@ -321,6 +434,7 @@ export default function ConductorPage() {
           conductorId={conductor.id}
           pasajeroInicial={pasajeroDesdeAlerta}
           nivelServicio={conductor.nivel_servicio}
+          iconoCategoriaUrl={iconoCategoriaUrl}
           onClose={() => {
             setMensajesOpen(false);
             setPasajeroDesdeAlerta(null);
@@ -331,13 +445,14 @@ export default function ConductorPage() {
       {/* Alerta intrusiva de contacto — vive a nivel de página (no
          adentro del chat) a propósito: tiene que aparecer aunque el
          conductor no tenga la bandeja de Mensajes abierta en ese
-         momento, ver alertaSenas en useHilosChatConductor.js. Texto
-         contextual: "Libre" es un primer contacto de verdad (pide
+         momento, ver alertaSenas en useHilosChatConductor.js (Realtime).
+         Texto contextual: "Libre" es un primer contacto de verdad (pide
          precio); "En Carrera" es alguien pidiendo sumarse al colectivo
          que ya está en curso — son situaciones distintas, el aviso lo
-         dice claro de entrada. */}
+         dice claro de entrada. "Ver Chat" cierra el modal Y redirige la
+         pestaña activa de la bandeja al pasajero nuevo. */}
       {alertaSenas && (
-        <div className="tz-modal-backdrop" onClick={descartarAlertaSenas}>
+        <div className="tz-modal-backdrop">
           <div className="tz-senas-alert" onClick={(e) => e.stopPropagation()}>
             <span className="tz-senas-alert-icon" aria-hidden="true">
               🙋‍♂️

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, Check, AlertTriangle, X, Loader2, Paperclip } from "lucide-react";
 import { createWorker } from "tesseract.js";
-import { supabase } from "../../supabaseClient";
 import { formatSoles } from "../../utils/format";
 
 // Mismos patrones de la caja vieja (detectPaymentInfo en App.jsx) para
@@ -30,15 +29,21 @@ const nowTimeInput = () => new Date().toTimeString().slice(0, 5);
 
 // Escáner de comprobante para Yape/Plin/Otros: cámara + OCR
 // (Tesseract.js, mismo motor que ya usaba la caja registradora vieja)
-// para adivinar el ID de operación — el recolector siempre revisa y
-// puede corregirlo antes de confirmar. Fecha/Hora se prellenan con el
-// momento actual pero son editables. El monto NUNCA se lee de la foto
-// (por seguridad) — pero si se pasa `precioEsperado` (el precio del
-// paquete elegido en Recarga Rápida), se pide re-ingresarlo a mano acá
-// y se valida que coincida exacto, mismo patrón "Debe ser exacto" que
-// ya usaba la caja vieja para verificar el monto recibido antes de
-// cerrar la venta. Requiere el bucket 'comprobantes-fotos' en Storage
-// (ver SQL entregado).
+// para adivinar el ID de operación — el recolector SIEMPRE revisa y
+// tiene que confirmar/corregir a mano antes de continuar, nunca se
+// guarda el dato del OCR tal cual sin pasar por ese campo editable.
+// Fecha/Hora se prellenan con el momento actual pero son editables. El
+// monto NUNCA se lee de la foto (por seguridad) — pero si se pasa
+// `precioEsperado` (el precio del paquete elegido en Recarga Rápida),
+// se pide re-ingresarlo a mano acá y se valida que coincida exacto,
+// mismo patrón "Debe ser exacto" que ya usaba la caja vieja.
+//
+// Restricción de Recolector: la foto/frame capturada para el OCR es
+// puramente EN MEMORIA — se usa una vez para leer el texto y se
+// descarta, nunca se sube a Storage ni se guarda ningún ID de imagen
+// junto con la venta. Lo único que persiste es lo que el recolector
+// confirmó a mano en los campos de abajo (ID de operación, fecha, hora)
+// más el método de pago elegido en Recarga Rápida.
 export default function ComprobanteScannerModal({ precioEsperado, onConfirm, onClose }) {
   const [view, setView] = useState("camera"); // camera | processing | result
   const [cameraSupported, setCameraSupported] = useState(true);
@@ -46,8 +51,7 @@ export default function ComprobanteScannerModal({ precioEsperado, onConfirm, onC
   const [fecha, setFecha] = useState(nowDateInput());
   const [hora, setHora] = useState(nowTimeInput());
   const [montoVerificado, setMontoVerificado] = useState("");
-  const [photoUrl, setPhotoUrl] = useState("");
-  const [uploadError, setUploadError] = useState("");
+  const [ocrError, setOcrError] = useState("");
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -93,36 +97,21 @@ export default function ComprobanteScannerModal({ precioEsperado, onConfirm, onC
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const uploadComprobante = async (blob) => {
-    const fileName = `comprobante-${Date.now()}-${Math.round(Math.random() * 1e6)}.jpg`;
-    const { error } = await supabase.storage
-      .from("comprobantes-fotos")
-      .upload(fileName, blob, { contentType: "image/jpeg", upsert: false });
-    if (error) return { url: null, error: error.message || String(error) };
-    const { data } = supabase.storage.from("comprobantes-fotos").getPublicUrl(fileName);
-    return { url: data?.publicUrl || null, error: null };
-  };
-
+  // Restricción de Recolector: el `blob` capturado vive solo acá adentro
+  // — se le pasa al OCR y se descarta apenas termina, nunca se sube a
+  // ningún lado. Sin `Promise.all` con un upload (ya no hay ninguno).
   const processImage = async (blob) => {
     setView("processing");
-    setUploadError("");
+    setOcrError("");
     try {
-      const [ocrText, uploadResult] = await Promise.all([
-        (async () => {
-          const worker = await createWorker("spa");
-          const {
-            data: { text },
-          } = await worker.recognize(blob);
-          await worker.terminate();
-          return text;
-        })(),
-        uploadComprobante(blob),
-      ]);
-      setOpId(detectOpId(ocrText));
-      if (uploadResult.url) setPhotoUrl(uploadResult.url);
-      if (uploadResult.error) setUploadError(uploadResult.error);
+      const worker = await createWorker("spa");
+      const {
+        data: { text },
+      } = await worker.recognize(blob);
+      await worker.terminate();
+      setOpId(detectOpId(text));
     } catch (err) {
-      setUploadError(err.message || "No se pudo leer el comprobante. Escribe el ID a mano.");
+      setOcrError(err.message || "No se pudo leer el comprobante. Escribe el ID a mano.");
     } finally {
       setView("result");
     }
@@ -215,16 +204,12 @@ export default function ComprobanteScannerModal({ precioEsperado, onConfirm, onC
             <>
               <div className="tz-scan-result">
                 <p className="tz-scan-result-title">
-                  <Check size={14} /> Comprobante procesado
+                  <Check size={14} /> Comprobante leído — confirma los datos a mano
                 </p>
-                <div className="tz-scan-result-row">
-                  <span>Foto:</span>
-                  <strong>{photoUrl ? "Guardada ✓" : "No se pudo subir"}</strong>
-                </div>
               </div>
-              {uploadError && (
+              {ocrError && (
                 <p className="tz-error">
-                  <AlertTriangle size={14} /> {uploadError}
+                  <AlertTriangle size={14} /> {ocrError}
                 </p>
               )}
 
@@ -289,7 +274,7 @@ export default function ComprobanteScannerModal({ precioEsperado, onConfirm, onC
                 <button
                   type="button"
                   className="tz-btn-solido-verde tz-image-manager-btn"
-                  onClick={() => onConfirm({ opId: opId.trim(), fecha, hora, voucherUrl: photoUrl })}
+                  onClick={() => onConfirm({ opId: opId.trim(), fecha, hora })}
                   disabled={
                     !opId.trim() || (precioEsperado > 0 && Number(montoVerificado) !== Number(precioEsperado))
                   }

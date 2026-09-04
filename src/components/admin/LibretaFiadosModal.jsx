@@ -26,6 +26,7 @@ function DeudorRow({ conductor, info, registrarPago, eliminarCuentaConductor }) 
   const [pagoModo, setPagoModo] = useState(null); // 'restar' | 'cancelar' | null
   const [confirmandoBorrado, setConfirmandoBorrado] = useState(false);
   const [borrando, setBorrando] = useState(false);
+  const [errorBorrado, setErrorBorrado] = useState("");
 
   const handleRecordar = () => {
     const link = buildWhatsappLink(
@@ -39,8 +40,14 @@ function DeudorRow({ conductor, info, registrarPago, eliminarCuentaConductor }) 
 
   const handleEliminar = async () => {
     setBorrando(true);
-    await eliminarCuentaConductor(conductor.id);
+    setErrorBorrado("");
+    const { error } = await eliminarCuentaConductor(conductor.id);
     setBorrando(false);
+    if (error) {
+      setErrorBorrado(error.message || "No se pudo eliminar la cuenta.");
+      return;
+    }
+    setConfirmandoBorrado(false);
   };
 
   return (
@@ -101,6 +108,7 @@ function DeudorRow({ conductor, info, registrarPago, eliminarCuentaConductor }) 
                 ¿Eliminar toda la cuenta de <strong>{conductor?.nombre}</strong>? Se borran sus cargos y
                 pagos — no se puede deshacer.
               </p>
+              {errorBorrado && <p className="tz-error">{errorBorrado}</p>}
               <div className="tz-vis-confirm-actions">
                 <button
                   type="button"
@@ -150,7 +158,12 @@ function DeudorRow({ conductor, info, registrarPago, eliminarCuentaConductor }) 
               <button
                 type="button"
                 className="tz-cliente-action-btn tz-cliente-action-delete"
-                onClick={() => setConfirmandoBorrado(true)}
+                disabled={info.saldo > 0}
+                title={info.saldo > 0 ? "No se puede eliminar mientras tenga deuda pendiente — salda la cuenta primero." : undefined}
+                onClick={() => {
+                  setErrorBorrado("");
+                  setConfirmandoBorrado(true);
+                }}
               >
                 <Trash2 size={13} /> Eliminar
               </button>

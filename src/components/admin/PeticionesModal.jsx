@@ -6,7 +6,6 @@ import {
   XCircle,
   Loader2,
   MessageCircle,
-  ShieldCheck,
   KeyRound,
   Image as ImageIcon,
   Trash2,
@@ -33,7 +32,7 @@ const FOTOS = [
 // filtra por `aprobado`, NO por `estado` — `estado` puede traer
 // cualquier valor por default de columna que no controlamos del todo,
 // mientras que `aprobado` lo insertamos siempre a mano en el create
-// (ver useConductores.js/crearConductor). Filtrar por estado era la
+// (ver useCrearConductorConUsuario.js). Filtrar por estado era la
 // causa del bug "conductor fantasma": un alta desde Recolector podía
 // quedar con un `estado` que esConductorPendiente() no reconocía como
 // pendiente, y la fila nunca aparecía acá aunque sí en la base.
@@ -96,8 +95,20 @@ function ConductorPendienteRow({ conductor, categorias, onAprobar, onRechazar })
             disabled={busy || !categoriaId}
             onClick={async () => {
               setBusy(true);
-              await onAprobar(conductor.id, categoriaId);
+              const { error } = await onAprobar(conductor.id, categoriaId);
               setBusy(false);
+              // Pedido: avisarle al conductor por WhatsApp apenas se
+              // aprueba su registro, con el mismo número que ÉL puso en
+              // su formulario — solo si la aprobación salió bien de
+              // verdad (si `onAprobar` devolvió error, no tiene sentido
+              // avisarle que "ya puede usar la app").
+              if (!error) {
+                const link = buildWhatsappLink(
+                  conductor.telefono,
+                  `Hola ${conductor.nombre}, tu solicitud de registro en TaxiP fue aprobada. Ya puedes ingresar y empezar a usar la app.`
+                );
+                if (link) window.open(link, "_blank", "noopener");
+              }
             }}
             aria-label="Aprobar conductor"
             title="Aprobar"
@@ -245,41 +256,26 @@ function RegistroTab({
 
 const TIPO_LABEL = Object.fromEntries(TIPOS_USUARIO.map((t) => [t.value, t.label]));
 
-// Fila de una petición de PIN: el flujo 2FA manual es secuencial —
+// Fila de una petición de PIN: el flujo 2FA manual del Admin termina en
 // "Verificar Identidad" (abre WhatsApp con el mensaje de confirmación Y
-// mueve la petición a 'verificado') tiene que pasar ANTES de que
-// aparezca "Generar y Enviar PIN" (cambia el PIN de verdad y abre
-// WhatsApp con el PIN nuevo). Mientras no se generó el PIN nuevo no hay
-// nada que perder si el admin repite "Verificar Identidad".
-function PeticionPinRow({ peticion, onVerificar, onGenerarYEnviar, onDescartar }) {
-  const [busy, setBusy] = useState(false);
-  const [pinGenerado, setPinGenerado] = useState(null);
-  const [error, setError] = useState("");
-
+// mueve la petición a 'verificado') — el PIN nuevo en sí YA NO lo
+// genera ni lo manda el Admin (bug reportado: el dueño de la cuenta
+// debe poder elegir su propio PIN, el Admin solo "acepta"). Una vez
+// verificado, el propio interesado vuelve a /recuperar-pin con su DNI y
+// ahí elige su PIN nuevo (ver RecuperarPinPage.jsx/useCrearPeticionPin.js)
+// — la petición se cierra sola en ese momento, no hace falta ningún
+// botón más acá.
+function PeticionPinRow({ peticion, onVerificar, onDescartar }) {
   const verificado = peticion.estado === ESTADO_PETICION_VERIFICADO;
   const sinTelefono = !peticion.telefono;
 
   const handleVerificar = () => {
     const link = buildWhatsappLink(
       peticion.telefono,
-      "Hola, recibimos una solicitud de cambio de PIN. ¿Confirmas que fuiste tú?"
+      "Hola, recibimos una solicitud de cambio de PIN. ¿Confirmas que fuiste tú? Una vez confirmado, puedes elegir tu PIN nuevo entrando de nuevo a Olvidé mi PIN con tu DNI."
     );
     if (link) window.open(link, "_blank", "noopener");
     onVerificar(peticion.id);
-  };
-
-  const handleGenerar = async () => {
-    setBusy(true);
-    setError("");
-    const { error: genError, pin } = await onGenerarYEnviar(peticion);
-    setBusy(false);
-    if (genError) {
-      setError("No se pudo generar el PIN.");
-      return;
-    }
-    setPinGenerado(pin);
-    const link = buildWhatsappLink(peticion.telefono, `Hola ${peticion.nombre}, tu nuevo PIN es: ${pin}`);
-    if (link) window.open(link, "_blank", "noopener");
   };
 
   return (
@@ -308,33 +304,23 @@ function PeticionPinRow({ peticion, onVerificar, onGenerarYEnviar, onDescartar }
           </button>
         </div>
 
-        {pinGenerado && (
+        {verificado ? (
           <p className="tz-success" style={{ margin: "6px 0 0" }}>
-            PIN nuevo: <strong>{pinGenerado}</strong> — se abrió WhatsApp para enviarlo.
+            Identidad verificada — a la espera de que {peticion.nombre.split(" ")[0]} elija su PIN nuevo en
+            "Olvidé mi PIN".
           </p>
+        ) : (
+          <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="tz-camera-cancel tz-scanner-upload-btn"
+              disabled={sinTelefono}
+              onClick={handleVerificar}
+            >
+              <MessageCircle size={14} /> Verificar Identidad
+            </button>
+          </div>
         )}
-        {error && <p className="tz-error">{error}</p>}
-
-        <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-          <button
-            type="button"
-            className="tz-camera-cancel tz-scanner-upload-btn"
-            disabled={sinTelefono}
-            onClick={handleVerificar}
-          >
-            <MessageCircle size={14} /> Verificar Identidad
-          </button>
-          <button
-            type="button"
-            className="tz-scan-btn tz-payment-save"
-            disabled={!verificado || busy || sinTelefono || !!pinGenerado}
-            onClick={handleGenerar}
-            style={{ flex: "0 0 auto" }}
-          >
-            {busy ? <Loader2 size={14} className="tz-spin" /> : <ShieldCheck size={14} />}
-            Generar y Enviar PIN
-          </button>
-        </div>
       </div>
     </li>
   );
@@ -441,20 +427,14 @@ function RecargasRecolectorTab({ peticiones, usuarios, onAprobar, onRechazar }) 
   );
 }
 
-function RecuperacionPinTab({ peticiones, onVerificar, onGenerarYEnviar, onDescartar }) {
+function RecuperacionPinTab({ peticiones, onVerificar, onDescartar }) {
   if (peticiones.length === 0) {
     return <p className="tz-method-history-empty">No hay solicitudes de recuperación de PIN.</p>;
   }
   return (
     <ul className="tz-history-rows">
       {peticiones.map((p) => (
-        <PeticionPinRow
-          key={p.id}
-          peticion={p}
-          onVerificar={onVerificar}
-          onGenerarYEnviar={onGenerarYEnviar}
-          onDescartar={onDescartar}
-        />
+        <PeticionPinRow key={p.id} peticion={p} onVerificar={onVerificar} onDescartar={onDescartar} />
       ))}
     </ul>
   );
@@ -475,7 +455,6 @@ export default function PeticionesModal({
   onRechazarRecolector,
   peticionesPin,
   onVerificarPin,
-  onGenerarYEnviarPin,
   onDescartarPin,
   recargasRecolector,
   onAprobarRecargaRecolector,
@@ -536,12 +515,7 @@ export default function PeticionesModal({
               onRechazarRecolector={onRechazarRecolector}
             />
           ) : tab === "pin" ? (
-            <RecuperacionPinTab
-              peticiones={peticionesPin}
-              onVerificar={onVerificarPin}
-              onGenerarYEnviar={onGenerarYEnviarPin}
-              onDescartar={onDescartarPin}
-            />
+            <RecuperacionPinTab peticiones={peticionesPin} onVerificar={onVerificarPin} onDescartar={onDescartarPin} />
           ) : (
             <RecargasRecolectorTab
               peticiones={recargasRecolector}

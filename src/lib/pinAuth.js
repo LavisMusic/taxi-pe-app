@@ -20,8 +20,8 @@ export async function verifyPin(pin, hash) {
   return data === true;
 }
 
-// Genera un PIN nuevo de 6 dígitos para el flujo "Generar y Enviar PIN"
-// del Centro de Peticiones — con ceros a la izquierda si hace falta.
-export function generarPinAleatorio() {
-  return String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0");
-}
+// `generarPinAleatorio` existió acá para el viejo "Generar y Enviar
+// PIN" del Centro de Peticiones — el Admin generaba el PIN nuevo y se
+// lo mandaba él mismo. Se eliminó (bug reportado: el dueño de la
+// cuenta debe elegir su propio PIN, no el Admin) junto con esa función
+// — ver useCrearPeticionPin.js/fijarNuevoPin.js para el reemplazo.

@@ -20,6 +20,20 @@ function iconoPunto(color, emoji) {
   });
 }
 
+// Panel de Categorías e Íconos: mismo criterio que iconoVehiculo() en
+// RadarGlobal.jsx — si el Admin configuró un ícono para la categoría de
+// este conductor, se usa esa imagen en vez del 🚖 genérico. Tamaño
+// acorde a este mapa (mucho más chico que el del Radar — 26px, no
+// 48px, ver el comentario de iconSize más abajo).
+function iconoPuntoImagen(color, url) {
+  return L.divIcon({
+    className: "tz-radar-marker-wrap",
+    html: `<img class="tz-radar-marker-mini-img" src="${url}" alt="" style="--tz-marker-color:${color}" />`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  });
+}
+
 // Verde neón fijo — a propósito nunca se confunde con MAPA_NIVEL_COLOR
 // (esos son colores de CATEGORÍA del vehículo; este es "esto es una
 // persona, no un auto"). Desaparece del todo al ser recogido
@@ -98,6 +112,7 @@ export default function MapaViaje({
   destino = null,
   origenPasajero = null,
   colorCategoria = "#00ffff",
+  iconoCategoriaUrl = null,
   onCercaDeDestino,
   onDistanciaPasajero,
   onConductorLocalizado,
@@ -109,8 +124,12 @@ export default function MapaViaje({
   // Ejecutivo/Económico) — antes quedaba fijo en cian sin importar la
   // categoría real, acá se arma en cada render con el color que llega
   // por prop (no puede ser una constante de módulo, depende del
-  // conductor de este hilo puntual).
-  const iconoConductor = iconoPunto(colorCategoria, "🚖");
+  // conductor de este hilo puntual). Panel de Categorías e Íconos: si
+  // el Admin configuró un ícono propio para la categoría del VEHÍCULO
+  // (Mototaxi/Minivan/etc. — no confundir con nivel_servicio, que es lo
+  // que da `colorCategoria`), reemplaza al 🚖 acá también, igual que ya
+  // pasa en el Radar — antes solo estaba conectado ahí.
+  const iconoConductor = iconoCategoriaUrl ? iconoPuntoImagen(colorCategoria, iconoCategoriaUrl) : iconoPunto(colorCategoria, "🚖");
 
   // Canal privado de la carrera — UN SOLO efecto para escuchar Y
   // transmitir, de los DOS lados, desde el segundo uno en que este

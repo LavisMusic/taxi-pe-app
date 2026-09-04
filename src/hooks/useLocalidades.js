@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import { subscribeTable } from "../lib/realtime";
 
 // Reemplaza al array hardcodeado LOCALIDADES (lib/taxiEnums.js) y a los
 // pares fijos de LOCALIDADES_COORDS (lib/localidadesCoords.js) — ahora
@@ -10,6 +11,13 @@ import { supabase } from "../supabaseClient";
 // HomePage.jsx (filtro + viewbox del buscador de direcciones en
 // RadarGlobal.jsx) — RLS permisiva (`using(true)`), mismo criterio que
 // el resto del proyecto.
+//
+// Pedido: orden a mano (Drag & Drop) en vez de alfabético fijo, y que
+// el cambio se vea "al instante" en el filtro del Pasajero — mismo
+// patrón ya usado en usePaquetes.js: columna `orden` + suscripción de
+// Realtime, así CUALQUIER pestaña con esta lista abierta (la del
+// propio Admin reordenando, y la Home de cualquier Pasajero) se
+// refresca sola en cuanto cambia algo, sin F5.
 export function useLocalidades() {
   const [localidades, setLocalidades] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,8 +28,8 @@ export function useLocalidades() {
     setError("");
     const { data, error: fetchError } = await supabase
       .from("localidades")
-      .select("id, nombre, lat, lon")
-      .order("nombre", { ascending: true });
+      .select("id, nombre, lat, lon, orden")
+      .order("orden", { ascending: true });
     if (fetchError) {
       setError("No se pudieron cargar las localidades.");
       setLocalidades([]);
@@ -35,13 +43,22 @@ export function useLocalidades() {
     refresh();
   }, [refresh]);
 
+  useEffect(() => subscribeTable("localidades", () => refresh()), [refresh]);
+
   const crearLocalidad = useCallback(
     async ({ nombre, lat, lon }) => {
-      const { error: insertError } = await supabase.from("localidades").insert({ nombre, lat, lon });
+      // Nueva localidad entra al FINAL de la lista actual — mismo
+      // criterio que ya usa ConfigurarMembresiasModal.jsx: no depender
+      // de un default de columna que la haga "saltar" al principio y
+      // desordenar lo que el Admin ya armó a mano.
+      const maxOrden = localidades.reduce((max, l) => Math.max(max, Number(l.orden) || 0), -1);
+      const { error: insertError } = await supabase
+        .from("localidades")
+        .insert({ nombre, lat, lon, orden: maxOrden + 1 });
       if (!insertError) await refresh();
       return { error: insertError };
     },
-    [refresh]
+    [refresh, localidades]
   );
 
   const actualizarLocalidad = useCallback(
@@ -64,7 +81,33 @@ export function useLocalidades() {
     [refresh]
   );
 
-  return { localidades, loading, error, refresh, crearLocalidad, actualizarLocalidad, eliminarLocalidad };
+  // Drag & Drop (Admin) — misma lógica que reordenarPaquetes en
+  // usePaquetes.js: recibe la lista ya en el orden visual final y
+  // persiste 0..N. Van en paralelo porque cada fila recibe un `orden`
+  // DISTINTO, no hay forma de mandarlo en un solo .update().
+  const reordenarLocalidades = useCallback(
+    async (localidadesEnNuevoOrden) => {
+      const resultados = await Promise.all(
+        localidadesEnNuevoOrden.map((l, index) => supabase.from("localidades").update({ orden: index }).eq("id", l.id))
+      );
+      const primerError = resultados.find((r) => r.error)?.error;
+      if (primerError) return { error: primerError };
+      await refresh();
+      return { error: null };
+    },
+    [refresh]
+  );
+
+  return {
+    localidades,
+    loading,
+    error,
+    refresh,
+    crearLocalidad,
+    actualizarLocalidad,
+    eliminarLocalidad,
+    reordenarLocalidades,
+  };
 }
 
 // Fallback fijo — mismo rol que tenía COORD_DEFAULT en

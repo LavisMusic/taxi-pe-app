@@ -15,7 +15,7 @@ const METODOS_AUTORECARGA = METODOS_PAGO.filter((m) => m.key !== METODO_PAGO_EFE
 // obligatorio, sea cual sea el método elegido entre los 4 permitidos
 // (Yape/Plin/Otros/Fiado) — a diferencia de Recarga Rápida, donde solo
 // Yape/Plin/Otros lo piden.
-export default function AutorecargaRecolectorModal({ recolector, paquetes, crearPeticion, onClose }) {
+export default function AutorecargaRecolectorModal({ recolector, paquetes, glowPaquetes = false, crearPeticion, onClose }) {
   const [tipoItem, setTipoItem] = useState(TIPO_ITEM_MEMBRESIA);
   const [paqueteId, setPaqueteId] = useState("");
   const [metodoPago, setMetodoPago] = useState("");
@@ -25,7 +25,12 @@ export default function AutorecargaRecolectorModal({ recolector, paquetes, crear
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  const paquetesDelTipo = paquetes.filter((p) => p.tipo_item === tipoItem);
+  // `activo !== false` acá porque usePaquetesRecolectores.js ahora
+  // trae TODO (activos e inactivos, ver su comentario) para que el
+  // Admin los pueda administrar — este desplegable de compra, en
+  // cambio, solo debe ofrecer los activos, igual que ya hace
+  // RecargaRapidaForm.jsx del lado de paquetes de conductor.
+  const paquetesDelTipo = paquetes.filter((p) => p.tipo_item === tipoItem && p.activo !== false);
   const paquete = paquetesDelTipo.find((p) => String(p.id) === String(paqueteId)) || null;
 
   const elegirMetodo = (key) => {
@@ -106,7 +111,11 @@ export default function AutorecargaRecolectorModal({ recolector, paquetes, crear
           <label className="tz-field-label" style={{ marginTop: 12 }}>
             {tipoItem === TIPO_ITEM_MEMBRESIA ? "Membresía" : "Paquete de créditos"}
           </label>
-          <select className="tz-text-input" value={paqueteId} onChange={(e) => setPaqueteId(e.target.value)}>
+          <select
+            className={`tz-text-input ${glowPaquetes ? "tz-select-glow-neon" : ""}`}
+            value={paqueteId}
+            onChange={(e) => setPaqueteId(e.target.value)}
+          >
             <option value="">{paquetesDelTipo.length === 0 ? "Ninguna configurada" : "Elige una opción…"}</option>
             {paquetesDelTipo.map((p) => (
               <option key={p.id} value={p.id}>
@@ -115,6 +124,11 @@ export default function AutorecargaRecolectorModal({ recolector, paquetes, crear
               </option>
             ))}
           </select>
+          {glowPaquetes && (
+            <p className="tz-camera-note" style={{ margin: "4px 0 0", color: "var(--pink)" }}>
+              ✨ El Admin actualizó el catálogo — revisa las opciones.
+            </p>
+          )}
 
           <label className="tz-field-label" style={{ marginTop: 12 }}>
             ¿Cómo vas a pagar?

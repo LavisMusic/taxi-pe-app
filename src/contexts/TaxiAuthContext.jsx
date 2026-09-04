@@ -21,8 +21,20 @@ function readStoredUsuario() {
   }
 }
 
+// Bug reportado: la sesión de Admin se cerraba sola al reiniciar o
+// salir un momento de la pestaña. Antes SIEMPRE quedaba en
+// sessionStorage nomás (deliberado en su momento, para no dejar el
+// panel abierto indefinidamente en un dispositivo compartido) —
+// sessionStorage en teoría sobrevive un F5 y un cambio de pestaña,
+// pero en el celular el sistema operativo puede descartar la pestaña
+// en segundo plano y perderlo igual. Mismo checkbox "Mantener sesión"
+// que ya tiene el login normal (ver loginUsuario/readStoredUsuario más
+// arriba): ahora es el propio Admin quien elige, en /login-admin, si
+// quiere que persista o no.
 function readStoredAdminMaster() {
-  return window.sessionStorage.getItem(TAXI_ADMIN_KEY) === "1";
+  return (
+    window.localStorage.getItem(TAXI_ADMIN_KEY) === "1" || window.sessionStorage.getItem(TAXI_ADMIN_KEY) === "1"
+  );
 }
 
 export function TaxiAuthProvider({ children }) {
@@ -38,12 +50,16 @@ export function TaxiAuthProvider({ children }) {
     other.removeItem(TAXI_SESSION_KEY);
   }, []);
 
-  // Login por código maestro (/login-admin). Deliberadamente solo en
-  // sessionStorage: es una puerta administrativa, no debería quedar
-  // abierta indefinidamente en un dispositivo compartido.
-  const loginAdminMaster = useCallback(() => {
+  // Login por código maestro (/login-admin) — `remember` default false
+  // (más restrictivo que loginUsuario, sigue siendo una puerta
+  // administrativa): sessionStorage salvo que el propio Admin marque
+  // "Mantener sesión iniciada" en el checkbox de /login-admin.
+  const loginAdminMaster = useCallback((remember = false) => {
     setIsAdminMaster(true);
-    window.sessionStorage.setItem(TAXI_ADMIN_KEY, "1");
+    const target = remember ? window.localStorage : window.sessionStorage;
+    const other = remember ? window.sessionStorage : window.localStorage;
+    target.setItem(TAXI_ADMIN_KEY, "1");
+    other.removeItem(TAXI_ADMIN_KEY);
   }, []);
 
   const updateUsuario = useCallback((patch) => {
@@ -63,6 +79,7 @@ export function TaxiAuthProvider({ children }) {
     setIsAdminMaster(false);
     window.localStorage.removeItem(TAXI_SESSION_KEY);
     window.sessionStorage.removeItem(TAXI_SESSION_KEY);
+    window.localStorage.removeItem(TAXI_ADMIN_KEY);
     window.sessionStorage.removeItem(TAXI_ADMIN_KEY);
   }, []);
 

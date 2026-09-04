@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, ChevronDown, Megaphone, MapPin, X, Loader2 } from "lucide-react";
+import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, ChevronDown, Megaphone, MapPin, X, Loader2, Trash2 } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useLocalidades } from "../hooks/useLocalidades";
 import { useVentas } from "../hooks/useVentas";
@@ -40,6 +40,7 @@ import UsuariosModal from "../components/admin/UsuariosModal";
 import CategoriasModal from "../components/admin/CategoriasModal";
 import PeticionesModal from "../components/admin/PeticionesModal";
 import PagosMetodoModal from "../components/admin/PagosMetodoModal";
+import LimpiarChatsModal from "../components/admin/LimpiarChatsModal";
 import RecargaRapidaForm from "../components/recolector/RecargaRapidaForm";
 import RecargaRapidaRecolectorForm from "../components/admin/RecargaRapidaRecolectorForm";
 import logo from "../assets/logo.png";
@@ -84,7 +85,6 @@ export default function AdminDashboardPage() {
     setEstado,
     aprobar,
     rechazar,
-    crearConductor,
     refresh: refreshConductores,
   } = useConductores();
   // Hook aparte con el CRUD completo de categorías/subgrupos (el de
@@ -114,6 +114,12 @@ export default function AdminDashboardPage() {
     if (!result.error) await refreshConductores();
     return result;
   };
+  // Usado por Usuarios (Admin, aprobado=true) Y por el alta inline
+  // "crear nuevo conductor" de Recarga Rápida (aprobado=false, ver más
+  // abajo) — antes esta última pasaba por useConductores().crearConductor,
+  // que solo insertaba en `conductores` y nunca dejaba loguearse al
+  // conductor recién creado (bug de sincronía: "Teléfono o PIN
+  // incorrectos" aunque el teléfono fuera el correcto).
   const { crear: crearConductorConUsuario } = useCrearConductorConUsuario({
     onDone: () => {
       refreshUsuarios();
@@ -125,7 +131,6 @@ export default function AdminDashboardPage() {
   const {
     peticiones: peticionesPin,
     marcarVerificado: marcarPinVerificado,
-    generarYEnviarPin,
     descartar: descartarPeticionPin,
   } = usePeticionesPin();
   const { gastos, gastosHoy, totalGastosHoy, agregarGasto, eliminarGasto } = useGastosOperativos();
@@ -136,6 +141,7 @@ export default function AdminDashboardPage() {
     crearPaquete,
     actualizarPaquete,
     eliminarPaquete,
+    reordenarPaquetes,
   } = usePaquetes();
   const {
     anuncios,
@@ -151,7 +157,15 @@ export default function AdminDashboardPage() {
       refreshConductores();
     },
   });
-  const { paquetes: paquetesRecolectores } = usePaquetesRecolectores();
+  const {
+    paquetes: paquetesRecolectores,
+    loading: paquetesRecolectoresLoading,
+    error: paquetesRecolectoresError,
+    crearPaquete: crearPaqueteRecolector,
+    actualizarPaquete: actualizarPaqueteRecolector,
+    eliminarPaquete: eliminarPaqueteRecolector,
+    reordenarPaquetes: reordenarPaquetesRecolector,
+  } = usePaquetesRecolectores();
   const {
     pendientes: recargasRecolectorPendientes,
     crearPeticion: crearRecargaRecolector,
@@ -184,12 +198,14 @@ export default function AdminDashboardPage() {
   const [categoriasOpen, setCategoriasOpen] = useState(false);
   const [anunciosOpen, setAnunciosOpen] = useState(false);
   const [localidadesOpen, setLocalidadesOpen] = useState(false);
+  const [limpiarChatsOpen, setLimpiarChatsOpen] = useState(false);
   const {
     localidades,
     loading: localidadesLoading,
     crearLocalidad,
     actualizarLocalidad,
     eliminarLocalidad,
+    reordenarLocalidades,
   } = useLocalidades();
   const [peticionesOpen, setPeticionesOpen] = useState(false);
   const [pagosMenuOpen, setPagosMenuOpen] = useState(false);
@@ -383,7 +399,13 @@ export default function AdminDashboardPage() {
           <MapPin size={18} />
           Localidades
         </button>
+        <button className="tz-footer-btn tz-footer-btn-limpiar-chats" onClick={() => setLimpiarChatsOpen(true)}>
+          <Trash2 size={18} />
+          Limpiar Chats
+        </button>
       </footer>
+
+      {limpiarChatsOpen && <LimpiarChatsModal onClose={() => setLimpiarChatsOpen(false)} />}
 
       {recargaOpen && (
         <div className="tz-modal-backdrop">
@@ -404,7 +426,7 @@ export default function AdminDashboardPage() {
               subgrupos={subgrupos}
               recolectorId={null}
               registrarRecarga={registrarRecargaAdmin}
-              crearConductor={crearConductor}
+              crearConductorConUsuario={crearConductorConUsuario}
               saving={savingRecargaAdmin}
               error={errorRecargaAdmin}
               paquetes={paquetes}
@@ -504,12 +526,30 @@ export default function AdminDashboardPage() {
       )}
       {membresiasOpen && (
         <ConfigurarMembresiasModal
-          paquetes={paquetes}
-          loading={paquetesLoading}
-          error={paquetesError}
-          crearPaquete={crearPaquete}
-          actualizarPaquete={actualizarPaquete}
-          eliminarPaquete={eliminarPaquete}
+          catalogos={[
+            {
+              key: "conductores",
+              label: "Conductores",
+              paquetes,
+              loading: paquetesLoading,
+              error: paquetesError,
+              crearPaquete,
+              actualizarPaquete,
+              eliminarPaquete,
+              reordenarPaquetes,
+            },
+            {
+              key: "recolectores",
+              label: "Recolectores",
+              paquetes: paquetesRecolectores,
+              loading: paquetesRecolectoresLoading,
+              error: paquetesRecolectoresError,
+              crearPaquete: crearPaqueteRecolector,
+              actualizarPaquete: actualizarPaqueteRecolector,
+              eliminarPaquete: eliminarPaqueteRecolector,
+              reordenarPaquetes: reordenarPaquetesRecolector,
+            },
+          ]}
           onClose={() => setMembresiasOpen(false)}
         />
       )}
@@ -532,6 +572,7 @@ export default function AdminDashboardPage() {
           crearLocalidad={crearLocalidad}
           actualizarLocalidad={actualizarLocalidad}
           eliminarLocalidad={eliminarLocalidad}
+          reordenarLocalidades={reordenarLocalidades}
           onClose={() => setLocalidadesOpen(false)}
         />
       )}
@@ -565,7 +606,6 @@ export default function AdminDashboardPage() {
           onRechazarRecolector={rechazarUsuario}
           peticionesPin={peticionesPin}
           onVerificarPin={marcarPinVerificado}
-          onGenerarYEnviarPin={generarYEnviarPin}
           onDescartarPin={descartarPeticionPin}
           recargasRecolector={recargasRecolectorPendientes}
           onAprobarRecargaRecolector={(peticion) => {

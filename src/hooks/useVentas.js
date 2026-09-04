@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
+import { subscribeTable } from "../lib/realtime";
 import {
   COSTO_OPERATIVO_DIARIO,
   startOfTodayISO,
@@ -16,9 +17,17 @@ export function useVentas() {
   const [ventas, setVentas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // Fix Realtime Saldos: antes esta tabla NUNCA se resuscribía a
+  // cambios — el Admin viendo el turno/recaudado de un Recolector (o el
+  // Recolector viendo su propio total) solo se enteraba de una venta
+  // nueva de OTRO dispositivo/pestaña con un F5 manual. Mismo patrón ya
+  // usado en useConductoresPublicos.js: `yaCargoUnaVez` evita que cada
+  // evento de Realtime vuelva a tapar la pantalla con el spinner de
+  // carga completo — solo la primerísima carga lo muestra.
+  const yaCargoUnaVez = useRef(false);
 
   const refresh = useCallback(async () => {
-    setLoading(true);
+    if (!yaCargoUnaVez.current) setLoading(true);
     setError("");
     const { data, error: fetchError } = await supabase
       .from("ventas")
@@ -33,12 +42,20 @@ export function useVentas() {
     } else {
       setVentas(data ?? []);
     }
+    yaCargoUnaVez.current = true;
     setLoading(false);
   }, []);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // Sincronización Realtime de Saldos: cualquier venta/recarga nueva (la
+  // dispare el propio Recolector, otro Recolector desde otro celular, o
+  // el Admin desde RecargaRapidaRecolectorForm.jsx) refresca esta lista
+  // sola — el Admin ve el saldo/turno acumulado de CADA Recolector en
+  // vivo, sin F5.
+  useEffect(() => subscribeTable("ventas", () => refresh()), [refresh]);
 
   // `ventas` trae TODO (incluidas las anuladas) — el Historial necesita
   // mostrarlas con su badge. Todo lo demás (métricas, turno del

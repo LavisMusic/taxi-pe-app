@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { MapContainer, TileLayer, Marker } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, ZoomControl } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { MapPin, X, Plus, Pencil, Trash2, Check, Loader2, Crosshair } from "lucide-react";
 import { useBuscadorDireccion } from "../../hooks/useBuscadorDireccion";
 import { COORD_DEFAULT } from "../../hooks/useLocalidades";
 import { MAPBOX_TILE_URL, MAPBOX_ATTRIBUTION } from "../../lib/mapboxConfig";
+import ListaArrastrable from "./ListaArrastrable";
 
 const ICONO_LOCALIDAD = L.divIcon({
   className: "tz-radar-marker-wrap",
@@ -72,7 +73,19 @@ function BuscadorCoordenadas({ coords, onSeleccionar, onMoverPin, onListo }) {
       )}
 
       <div className="tz-admin-minimapa-wrap">
-        <MapContainer center={[centro.lat, centro.lon]} zoom={13} className="tz-admin-minimapa" scrollWheelZoom ref={setMapa}>
+        <MapContainer
+          center={[centro.lat, centro.lon]}
+          zoom={13}
+          className="tz-admin-minimapa"
+          scrollWheelZoom
+          ref={setMapa}
+          zoomControl={false}
+        >
+          {/* Consistencia con RadarGlobal.jsx: mismo control de zoom
+             reubicado explícitamente, aunque acá el buscador vive en
+             flujo normal (arriba del mapa, no superpuesto) y nunca
+             chocó con nada — se aplica igual por prolijidad. */}
+          <ZoomControl position="bottomright" />
           {/* Migración Mapbox (Fase 1): estilo 'dark-v11'. */}
           <TileLayer attribution={MAPBOX_ATTRIBUTION} url={MAPBOX_TILE_URL} />
           <Marker
@@ -205,8 +218,15 @@ function LocalidadRow({ localidad, onActualizar, onEliminar }) {
     );
   }
 
+  // Antes esto era la propia <div className="tz-stock-row"> (el
+  // ".tz-stock-row" real de Styles.jsx ya trae "display:flex;
+  // justify-content:space-between" para separar info/acciones). Ahora
+  // ESE wrapper lo pone ListaArrastrable.jsx (con el handle de arrastre
+  // como primer hijo) — acá adentro solo queda el contenido, replicando
+  // a mano ese mismo flex localmente para no perder el acomodo
+  // izquierda/derecha.
   return (
-    <div className="tz-stock-row">
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, width: "100%" }}>
       <div className="tz-stock-row-info">
         <span className="tz-stock-row-name">{localidad.nombre}</span>
         <span className="tz-history-row-amount tz-chat-thread-preview">
@@ -237,7 +257,15 @@ function LocalidadRow({ localidad, onActualizar, onEliminar }) {
 // useLocalidades.js) — el dropdown de localidad de
 // RegistroConductorForm.jsx y el filtro de HomePage.jsx leen esta misma
 // lista en vivo.
-export default function AdminLocalidadesModal({ localidades, loading, crearLocalidad, actualizarLocalidad, eliminarLocalidad, onClose }) {
+export default function AdminLocalidadesModal({
+  localidades,
+  loading,
+  crearLocalidad,
+  actualizarLocalidad,
+  eliminarLocalidad,
+  reordenarLocalidades,
+  onClose,
+}) {
   const [creando, setCreando] = useState(false);
 
   return (
@@ -253,6 +281,7 @@ export default function AdminLocalidadesModal({ localidades, loading, crearLocal
           <p className="tz-stock-editor-sub">
             Zonas de cobertura de la app — alimentan el dropdown de localidad del registro de conductores y el filtro/
             buscador de la Home. Las coordenadas se fijan buscando la ciudad/distrito o arrastrando el pin, nunca a mano.
+            Arrastra del ícono ⠿ para cambiar el orden — el filtro del Pasajero se actualiza al instante.
           </p>
 
           <div className="tz-vis-accordion">
@@ -277,14 +306,19 @@ export default function AdminLocalidadesModal({ localidades, loading, crearLocal
               <div className="tz-loading" style={{ minHeight: 100 }}>
                 <Loader2 className="tz-spin" size={22} />
               </div>
-            ) : (localidades ?? []).length === 0 ? (
-              <p className="tz-method-history-empty">No hay localidades creadas todavía.</p>
             ) : (
-              <div className="tz-stock-list">
-                {localidades.map((loc) => (
-                  <LocalidadRow key={loc.id} localidad={loc} onActualizar={actualizarLocalidad} onEliminar={eliminarLocalidad} />
-                ))}
-              </div>
+              <ListaArrastrable
+                items={localidades ?? []}
+                onReordenar={reordenarLocalidades}
+                wrapperTag="div"
+                wrapperClassName="tz-stock-list"
+                itemTag="div"
+                itemClassName="tz-stock-row"
+                vacio={<p className="tz-method-history-empty">No hay localidades creadas todavía.</p>}
+                renderItem={(loc) => (
+                  <LocalidadRow localidad={loc} onActualizar={actualizarLocalidad} onEliminar={eliminarLocalidad} />
+                )}
+              />
             )}
           </div>
         </div>

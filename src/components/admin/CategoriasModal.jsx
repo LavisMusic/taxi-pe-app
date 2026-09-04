@@ -11,7 +11,9 @@ import {
   ChevronUp,
   ChevronDown,
   GripVertical,
+  ImagePlus,
 } from "lucide-react";
+import GestionImagenModal from "./GestionImagenModal";
 
 // Fila de un subgrupo (empresa/flota) dentro de una categoría expandida
 // — arrastrable por el handle para reordenar entre sus hermanos.
@@ -151,6 +153,11 @@ function CategoriaAccordionRow({
   const [nombre, setNombre] = useState(categoria.nombre);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // Panel de Categorías e Íconos: mismo patrón que ProductImage/foto_url
+  // en el resto de la app — GestionImagenModal ya soporta subir un
+  // archivo O pegar una URL directa ("subir o enlazar"), no hace falta
+  // reinventar ese flujo acá.
+  const [gestionandoIcono, setGestionandoIcono] = useState(false);
 
   const [addingSubgrupo, setAddingSubgrupo] = useState(false);
   const [nuevoSubgrupo, setNuevoSubgrupo] = useState("");
@@ -263,12 +270,29 @@ function CategoriaAccordionRow({
           >
             <GripVertical size={15} />
           </span>
+          {categoria.icono_url ? (
+            <img src={categoria.icono_url} alt="" className="tz-vis-category-icono" />
+          ) : (
+            <span className="tz-vis-category-icono tz-vis-category-icono-vacio" aria-hidden="true" />
+          )}
           <button type="button" className="tz-vis-category-header" onClick={() => setOpen((prev) => !prev)}>
             <span>{categoria.nombre}</span>
             <span className="tz-vis-category-meta">
               {misSubgrupos.length} subgrupo{misSubgrupos.length === 1 ? "" : "s"}{" "}
               {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </span>
+          </button>
+          <button
+            type="button"
+            className="tz-vis-edit-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              setGestionandoIcono(true);
+            }}
+            aria-label="Gestionar ícono de la categoría"
+            title="Gestionar ícono (mapa/tarjeta)"
+          >
+            <ImagePlus size={14} />
           </button>
           <button
             type="button"
@@ -375,6 +399,16 @@ function CategoriaAccordionRow({
           )}
           {subgrupoError && <p className="tz-error">{subgrupoError}</p>}
         </div>
+      )}
+
+      {gestionandoIcono && (
+        <GestionImagenModal
+          nombre={`Ícono — ${categoria.nombre}`}
+          fotoUrl={categoria.icono_url}
+          storageKey={`categoria-icono-${categoria.id}`}
+          onFotoUrlChange={(url) => onActualizar(categoria.id, { icono_url: url })}
+          onClose={() => setGestionandoIcono(false)}
+        />
       )}
     </div>
   );

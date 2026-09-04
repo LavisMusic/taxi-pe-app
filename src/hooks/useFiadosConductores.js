@@ -87,11 +87,38 @@ export function useFiadosConductores() {
     [refresh]
   );
 
-  // "Eliminar": borra la cuenta entera de ese conductor — todos sus
-  // cargos Y todos sus pagos — no un cargo suelto. Pide confirmación
-  // desde el modal antes de llamar a esto.
+  // Blindaje de Cuentas Fiadas (guard clause): "Eliminar" borra la
+  // cuenta entera de un conductor — no tiene sentido dejar borrar el
+  // rastro de una deuda que TODAVÍA no se cobró, sería la forma más
+  // fácil de "perdonar" una deuda sin que quede registro. Antes de
+  // tocar nada, relee el saldo REAL desde la base (no confía en un
+  // número que le pase el caller, que podría estar desactualizado) —
+  // mismo cálculo exacto que `porConductor` de más abajo (cargos
+  // pendientes − pagos), pero acotado a este conductor puntual. El
+  // Admin sigue pudiendo "Restar Crédito"/"Cancelar Cuenta"
+  // (registrarPago, sin cambios) para bajar el saldo a 0 — recién ahí
+  // esto deja borrar.
   const eliminarCuentaConductor = useCallback(
     async (conductorId) => {
+      const [cargosRes, pagosRes] = await Promise.all([
+        supabase.from("fiados_conductores").select("monto, estado").eq("conductor_id", conductorId),
+        supabase.from("pagos_fiados_conductores").select("monto").eq("conductor_id", conductorId),
+      ]);
+      if (cargosRes.error || pagosRes.error) return { error: cargosRes.error || pagosRes.error };
+
+      const totalPendiente = (cargosRes.data ?? [])
+        .filter(fiadoEstaPendiente)
+        .reduce((sum, c) => sum + Number(c.monto || 0), 0);
+      const totalPagado = (pagosRes.data ?? []).reduce((sum, p) => sum + Number(p.monto || 0), 0);
+      const saldoReal = totalPendiente - totalPagado;
+      if (saldoReal > 0) {
+        return {
+          error: new Error(
+            `Esta cuenta todavía debe ${saldoReal.toFixed(2)} — salda la deuda (Restar Crédito/Cancelar Cuenta) antes de poder eliminarla.`
+          ),
+        };
+      }
+
       const [r1, r2] = await Promise.all([
         supabase.from("fiados_conductores").delete().eq("conductor_id", conductorId),
         supabase.from("pagos_fiados_conductores").delete().eq("conductor_id", conductorId),

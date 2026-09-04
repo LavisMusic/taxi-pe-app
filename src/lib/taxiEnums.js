@@ -37,11 +37,21 @@ export const ESTADO_CONDUCTOR_OCUPADO = "ocupado";
 export const ESTADO_CONDUCTOR_DESCONECTADO = "desconectado";
 export const ESTADO_CONDUCTOR_PENDIENTE = "pendiente";
 export const ESTADO_CONDUCTOR_RECHAZADO = "rechazado";
+// Baneo manual del Admin (bug reportado: hacía falta una forma de
+// bloquear a un conductor puntual, ej. después de una mala experiencia
+// con un pasajero) — a diferencia de "sin saldo" (que YA bloqueaba el
+// acceso antes de esto, ver `tieneAcceso` en ConductorPage.jsx, pero
+// era un cálculo, no un estado guardado), este SÍ es un valor real de
+// `conductores.estado` que solo el Admin puede poner/sacar a mano
+// desde el desplegable del Directorio — recargar créditos/membresía NO
+// lo levanta solo, tiene que ser el Admin quien lo reincorpore.
+export const ESTADO_CONDUCTOR_INHABILITADO = "inhabilitado";
 
 export const ESTADOS_CONDUCTOR_OPERATIVOS = [
   { value: ESTADO_CONDUCTOR_ACTIVO, label: "Activo" },
   { value: ESTADO_CONDUCTOR_OCUPADO, label: "Ocupado" },
   { value: ESTADO_CONDUCTOR_DESCONECTADO, label: "Desconectado" },
+  { value: ESTADO_CONDUCTOR_INHABILITADO, label: "Inhabilitado" },
 ];
 
 export function esConductorPendiente(estado) {

@@ -54,12 +54,14 @@ body {
   margin: 0;
 }
 
+/* Antes traía ancho fijo (1126px + max-width:100%), texto centrado y
+   border-inline — leftover de la plantilla default de Vite, nunca
+   adaptado al layout real de TaxiP (.tz-root en Styles.jsx). No rompía
+   nada por sí solo, pero sumaba una franja de más de ancho/borde
+   "de sobra" en el panel del Admin — ver overflow-x:hidden en
+   .tz-root, Styles.jsx, para la causa real y la explicación completa. */
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
+  width: 100%;
   min-height: 100svh;
   display: flex;
   flex-direction: column;

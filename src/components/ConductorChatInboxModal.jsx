@@ -11,7 +11,7 @@ import ChatErrorBoundary from "./ChatErrorBoundary";
 // (un pasajero = un hilo) -> click abre la conversación con el mismo
 // ChatWindow que usa el pasajero, solo que acá el remitente propio es
 // "conductor".
-function HiloConversacion({ conductorId, pasajeroId, nivelServicio, onCerrarPorCancelacion }) {
+function HiloConversacion({ conductorId, pasajeroId, nivelServicio, iconoCategoriaUrl, onCerrarPorCancelacion }) {
   const {
     mensajes,
     loading,
@@ -47,6 +47,7 @@ function HiloConversacion({ conductorId, pasajeroId, nivelServicio, onCerrarPorC
       conductorId={conductorId}
       pasajeroId={pasajeroId}
       nivelServicio={nivelServicio}
+      iconoCategoriaUrl={iconoCategoriaUrl}
       otroEscribiendo={otroEscribiendo}
       onEscribiendo={notificarEscribiendo}
     />
@@ -63,8 +64,8 @@ function HiloConversacion({ conductorId, pasajeroId, nivelServicio, onCerrarPorC
 // envoltura, ese fue justo el bug: el error real (colisión de canales
 // de Realtime, ver useChatMensajes.js) escapaba del boundary porque el
 // hook se llamaba un nivel más arriba.
-function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio }) {
-  const { hilos, loading } = useHilosChatConductor(conductorId);
+function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCategoriaUrl }) {
+  const { hilos, loading, pasajerosEnCarrera } = useHilosChatConductor(conductorId);
   const [nombresPorId, setNombresPorId] = useState({});
   // Si el modal se abrió desde la alerta de "Hacer Señas" (ver
   // ConductorPage.jsx), entra directo a ese hilo en vez de mostrar la
@@ -115,13 +116,54 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio }) {
 
       {pasajeroAbierto ? (
         <>
+          {/* Fase 5 (Motor de Viajes Simultáneos) — Selector de Hilos:
+             solo aparece si hay MÁS de un hilo — un conductor con una
+             sola conversación no necesita pestañas para elegir entre
+             una opción. Deja cambiar de pasajero SIN pasar por "Volver
+             a la lista" primero. El puntito verde marca los hilos que
+             son un viaje de verdad en curso ahora mismo (`pasajerosEnCarrera`
+             — 'aceptada'/'en_transito'), no solo una negociación
+             abierta, para que el conductor distinga de un vistazo a
+             quién tiene esperando vs a quién ya lleva a bordo. */}
+          {listaHilos.length > 1 && (
+            <div className="tz-chat-hilos-tabs">
+              {listaHilos.map((h) => {
+                const pid = h?.pasajeroId;
+                if (!pid) return null;
+                const enCurso = pasajerosEnCarrera?.includes(pid);
+                return (
+                  <button
+                    key={pid}
+                    type="button"
+                    className={`tz-chat-hilo-tab ${pid === pasajeroAbierto ? "tz-chat-hilo-tab-activo" : ""}`}
+                    onClick={() => setPasajeroAbierto(pid)}
+                    title={enCurso ? "Viaje en curso" : "Negociando"}
+                  >
+                    {enCurso && <span className="tz-chat-hilo-tab-dot" aria-hidden="true" />}
+                    {nombresPorId[pid] ?? "Pasajero"}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <p className="tz-chat-thread-name" style={{ margin: "0 0 8px" }}>
             {nombresPorId[pasajeroAbierto] ?? "Pasajero"}
           </p>
+          {/* `key={pasajeroAbierto}` fuerza un remount COMPLETO de
+             HiloConversacion (y del ChatWindow que tiene adentro) al
+             cambiar de pestaña — sin esto, React reutilizaría la MISMA
+             instancia entre Pasajero A y B (mismo tipo de elemento,
+             misma posición en el árbol) y todo el estado interno de
+             ChatWindow (estadoViaje, ofertasLocales, el mapa, el
+             cronómetro) se quedaría pegado del hilo viejo, mezclando un
+             viaje con el otro — exactamente el aislamiento que pide
+             esta ronda. */}
           <HiloConversacion
+            key={pasajeroAbierto}
             conductorId={conductorId}
             pasajeroId={pasajeroAbierto}
             nivelServicio={nivelServicio}
+            iconoCategoriaUrl={iconoCategoriaUrl}
             onCerrarPorCancelacion={() => setPasajeroAbierto(null)}
           />
         </>
@@ -151,7 +193,7 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio }) {
   );
 }
 
-export default function ConductorChatInboxModal({ conductorId, pasajeroInicial, nivelServicio, onClose }) {
+export default function ConductorChatInboxModal({ conductorId, pasajeroInicial, nivelServicio, iconoCategoriaUrl, onClose }) {
   return (
     <div className="tz-modal-backdrop">
       <div className="tz-modal tz-chat-modal-shell" onClick={(e) => e.stopPropagation()}>
@@ -166,7 +208,12 @@ export default function ConductorChatInboxModal({ conductorId, pasajeroInicial, 
             </div>
           ) : (
             <ChatErrorBoundary>
-              <BandejaContenido conductorId={conductorId} pasajeroInicial={pasajeroInicial} nivelServicio={nivelServicio} />
+              <BandejaContenido
+                conductorId={conductorId}
+                pasajeroInicial={pasajeroInicial}
+                nivelServicio={nivelServicio}
+                iconoCategoriaUrl={iconoCategoriaUrl}
+              />
             </ChatErrorBoundary>
           )}
         </div>

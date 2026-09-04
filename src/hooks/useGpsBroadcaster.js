@@ -46,29 +46,61 @@ export function canalViaje(conductorId, pasajeroId) {
 // compartir su GPS con ESE pasajero puntual (canalPrivado); cortarle la
 // comunicación en plena carrera sería un problema de seguridad/servicio
 // mucho peor que dejarlo cobrar esa última carrera ya comprometida.
+//
+// Fase 5 (Motor de Viajes Simultáneos) — GPS Compartido: `pasajeroEnCarrera`
+// (un solo id) pasó a `pasajerosEnCarrera` (array, ver
+// useHilosChatConductor.js) — antes, con dos pasajeros a bordo, el
+// broadcaster solo abría UN canal privado, dejando al segundo sin señal
+// de GPS en vivo. Ahora abre/mantiene un canal privado POR CADA pasajero
+// del array, y cada tick de GPS se manda a TODOS a la vez — nunca se
+// "apaga" mientras el array no quede vacío, sin importar cuántos otros
+// viajes hayan terminado. Cada canal usa el mismo topic de siempre
+// (`viaje-{conductorId}-{pasajeroId}`, único por par) — Supabase
+// Realtime reparte broadcasts por topic en el servidor, así que dos
+// pasajeros distintos escuchando SUS PROPIOS topics nunca compiten ni
+// se pisan entre sí, cada uno solo recibe lo suyo.
 export function useGpsBroadcaster({
   conductorId,
   estado,
-  pasajeroEnCarrera,
+  pasajerosEnCarrera,
   asientosOcupados = 0,
   asientosTotales = 4,
   tieneAcceso = true,
 }) {
   const ultimaEscrituraDbRef = useRef(0);
+  // Clave estable (ids ordenados y unidos) en vez del array crudo como
+  // dependencia — `pasajerosEnCarrera` es un array NUEVO en cada
+  // `refresh()` de useHilosChatConductor.js aunque el contenido sea
+  // idéntico; sin esto, el efecto de abajo cerraría y reabriría los
+  // canales privados (y el watchPosition) en cada refresh de la bandeja,
+  // no solo cuando de verdad cambia quién está a bordo.
+  const idsPrivados = [...new Set((pasajerosEnCarrera ?? []).filter(Boolean))];
+  const pasajerosKey = [...idsPrivados].sort().join(",");
 
   useEffect(() => {
     if (!conductorId || !navigator.geolocation) return undefined;
 
+    const idsActuales = pasajerosKey ? pasajerosKey.split(",") : [];
     const hayLugar = asientosOcupados < asientosTotales;
     const vaAlPublico = tieneAcceso && hayLugar && (estado === ESTADO_CONDUCTOR_ACTIVO || estado === ESTADO_CONDUCTOR_OCUPADO);
-    const vaAlPrivado = estado === ESTADO_CONDUCTOR_OCUPADO && !!pasajeroEnCarrera;
+    const vaAlPrivado = estado === ESTADO_CONDUCTOR_OCUPADO && idsActuales.length > 0;
 
     if (!vaAlPublico && !vaAlPrivado) return undefined;
 
     const canalPublico = vaAlPublico ? supabase.channel(CANAL_RADAR_PUBLICO) : null;
     canalPublico?.subscribe();
-    const canalPrivado = vaAlPrivado ? supabase.channel(canalViaje(conductorId, pasajeroEnCarrera)) : null;
-    canalPrivado?.subscribe();
+    // Un canal privado por pasajero a bordo/reservado — Map en vez de
+    // un único `canalPrivado` suelto, así el broadcast de cada tick
+    // puede iterarlos a todos.
+    const canalesPrivados = vaAlPrivado
+      ? new Map(
+          idsActuales.map((pasajeroId) => {
+            const canal = supabase.channel(canalViaje(conductorId, pasajeroId));
+            canal.subscribe();
+            return [pasajeroId, canal];
+          })
+        )
+      : new Map();
 
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
@@ -77,9 +109,11 @@ export function useGpsBroadcaster({
         // Público: hace falta identificar DE QUIÉN es cada punto (muchos
         // conductores comparten el canal). Privado: sobra, son los
         // únicos dos ahí — mismo formato exacto que pide la Fase 3
-        // original ({lat,lng}).
+        // original ({lat,lng}). Se manda el MISMO punto a cada canal
+        // privado — es la posición real del único vehículo, cada
+        // pasajero a bordo/reservado la necesita igual.
         canalPublico?.send({ type: "broadcast", event: "gps_update", payload: { conductorId, lat, lng } });
-        canalPrivado?.send({ type: "broadcast", event: "gps_update", payload: { lat, lng } });
+        canalesPrivados.forEach((canal) => canal.send({ type: "broadcast", event: "gps_update", payload: { lat, lng } }));
 
         // Bug del Radar Ciego: además del Broadcast (en vivo mientras el
         // Radar sigue abierto), se guarda la última posición en la
@@ -115,13 +149,18 @@ export function useGpsBroadcaster({
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
 
-    // Limpieza estricta de LOS DOS canales — se ejecuta ANTES de que el
-    // efecto vuelva a correr (cambió el estado, los asientos, o el
-    // pasajero en carrera) y también al desmontar del todo.
+    // Limpieza estricta de TODOS los canales (público + cada privado) —
+    // se ejecuta ANTES de que el efecto vuelva a correr (cambió el
+    // estado, los asientos, o la lista de pasajeros a bordo) y también
+    // al desmontar del todo.
     return () => {
       navigator.geolocation.clearWatch(watchId);
       if (canalPublico) supabase.removeChannel(canalPublico);
-      if (canalPrivado) supabase.removeChannel(canalPrivado);
+      canalesPrivados.forEach((canal) => supabase.removeChannel(canal));
     };
-  }, [conductorId, estado, pasajeroEnCarrera, asientosOcupados, asientosTotales, tieneAcceso]);
+    // `pasajerosKey` (no el array `pasajerosEnCarrera`) a propósito, ver
+    // el comentario de arriba — es la identidad real que debe reiniciar
+    // este efecto, no una referencia nueva con el mismo contenido.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conductorId, estado, pasajerosKey, asientosOcupados, asientosTotales, tieneAcceso]);
 }

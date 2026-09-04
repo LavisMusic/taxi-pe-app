@@ -21,6 +21,13 @@ import { toYoutubeEmbedUrl } from "../lib/youtube";
 // Ver los .tz-anuncio-* en Styles.jsx.
 export default function AnuncioPopupModal({ anuncio, onClose }) {
   const [esVertical, setEsVertical] = useState(false);
+  // `terminado` ya NO controla si la "X" existe (ver el bug reportado:
+  // el usuario debe poder cerrar el anuncio cuando quiera) — solo
+  // decide si ya se puede dejar de proteger el video contra pausa/
+  // adelantado (ver onPause/onSeeking más abajo). `progreso` alimenta
+  // la barra fina de abajo, como contador de tiempo visual sin números.
+  const [terminado, setTerminado] = useState(false);
+  const [progreso, setProgreso] = useState(0);
 
   const soloMultimedia = !!anuncio && !anuncio.titulo && !anuncio.descripcion;
   const embedUrl = anuncio ? toYoutubeEmbedUrl(anuncio.video_url) : null;
@@ -28,6 +35,14 @@ export default function AnuncioPopupModal({ anuncio, onClose }) {
   // video subido directo (Subir Video en el Gestor) — se renderiza con
   // <video>, no con el iframe de YouTube.
   const esVideoArchivo = !!anuncio?.video_url && !embedUrl;
+
+  // Reinicia el candado cada vez que cambia el anuncio mostrado — sin
+  // esto, un segundo anuncio en la misma sesión heredaría `terminado`
+  // del anterior y la "X" aparecería de entrada.
+  useEffect(() => {
+    setTerminado(false);
+    setProgreso(0);
+  }, [anuncio]);
 
   // YouTube siempre se trata como 16:9 (nunca toma la forma de
   // teléfono) — solo mide imagen/video propio, y solo cuando además va
@@ -62,11 +77,17 @@ export default function AnuncioPopupModal({ anuncio, onClose }) {
   const modalVertical = soloMultimedia && esVertical;
 
   return (
-    <div className="tz-modal-backdrop" onClick={onClose}>
+    <div className="tz-modal-backdrop">
       <div
         className={`tz-anuncio-modal ${soloMultimedia ? "tz-anuncio-modal-media-only" : ""} ${modalVertical ? "tz-anuncio-modal-vertical" : ""}`}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Bug reportado: el usuario debe poder cerrar el anuncio en
+           cualquier momento — antes la "X" no existía en el DOM
+           mientras un video de archivo corría sin terminar ("in-
+           saltable"). Ahora se monta siempre; lo que sí se conserva es
+           la protección de pausa/adelantado del propio <video> mientras
+           no terminó (ver onPause/onSeeking más abajo). */}
         <button className="tz-anuncio-close" onClick={onClose} aria-label="Cerrar anuncio">
           <X size={18} />
         </button>
@@ -84,9 +105,63 @@ export default function AnuncioPopupModal({ anuncio, onClose }) {
                   />
                 </div>
               ) : esVideoArchivo ? (
-                <video src={anuncio.video_url} controls playsInline />
+                <video
+                  src={anuncio.video_url}
+                  playsInline
+                  autoPlay
+                  // Bug reportado ("se queda estancado, sin
+                  // reproducirse"): todos los navegadores (Chrome,
+                  // Safari, Firefox) BLOQUEAN el autoplay de un <video>
+                  // con sonido — el video quedaba congelado en el
+                  // primer frame porque el navegador nunca dejaba
+                  // arrancar el play() de `autoPlay`, sin ningún error
+                  // visible. `muted` es lo que de verdad habilita el
+                  // autoplay real; sin esto no hay forma de que
+                  // reproduzca solo, sin importar qué más se configure.
+                  muted
+                  disablePictureInPicture
+                  controlsList="nodownload noplaybackrate nofullscreen"
+                  onContextMenu={(e) => e.preventDefault()}
+                  onTimeUpdate={(e) => {
+                    const v = e.currentTarget;
+                    if (v.duration) setProgreso((v.currentTime / v.duration) * 100);
+                  }}
+                  onEnded={() => {
+                    setProgreso(100);
+                    setTerminado(true);
+                  }}
+                  // Bloqueo real de "pausar/adelantar": sin `controls`
+                  // nativos no hay botones de por medio, pero un gesto
+                  // del sistema (barra de medios del SO, atajo de
+                  // teclado si el elemento tiene foco) todavía puede
+                  // pausarlo — si eso pasa y el video NO terminó
+                  // todavía, se reanuda solo al toque.
+                  onPause={(e) => {
+                    if (!e.currentTarget.ended) e.currentTarget.play().catch(() => {});
+                  }}
+                  onSeeking={(e) => {
+                    // Cinturón extra contra "adelantar": si algo mueve
+                    // currentTime hacia adelante del punto ya
+                    // reproducido, lo devuelve — normalmente esto ni se
+                    // dispara (no hay controles para arrastrar), pero
+                    // cubre atajos de teclado tipo flecha derecha.
+                    const v = e.currentTarget;
+                    if (v.currentTime > progreso && v.duration) {
+                      const maxSeguro = (progreso / 100) * v.duration;
+                      if (v.currentTime > maxSeguro + 0.5) v.currentTime = maxSeguro;
+                    }
+                  }}
+                />
               ) : (
                 <img src={anuncio.imagen_url} alt={anuncio.titulo || "Anuncio"} />
+              )}
+              {/* Barra de progreso — el "contador de tiempo" visual
+                 pedido, sin números, pegada al borde inferior del
+                 propio bloque de media. */}
+              {esVideoArchivo && (
+                <div className="tz-anuncio-progreso-track">
+                  <div className="tz-anuncio-progreso-fill" style={{ width: `${progreso}%` }} />
+                </div>
               )}
             </div>
           )}

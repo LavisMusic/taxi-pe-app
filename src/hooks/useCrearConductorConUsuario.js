@@ -2,24 +2,32 @@ import { useCallback, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { ESTADO_CONDUCTOR_DESCONECTADO, ESTADO_CUENTA_ACTIVO, NIVEL_SERVICIO_ECONOMICO } from "../lib/taxiEnums";
 
-// Alta completa (login + perfil) — segundo de los DOS caminos que
-// crean una fila en `conductores` con `usuarios` incluido (el otro es
-// el self-registro de LoginPage.jsx, que llama a este mismo hook). Las
-// DOS filas quedan unidas por `telefono`, el único vínculo que existe
-// entre ambas tablas (ver useConductorSesion.js).
+// Alta completa (login + perfil) — el ÚNICO camino que crea una fila en
+// `conductores` CON `usuarios` incluido, usado por los 4 contextos que
+// dan de alta un conductor que después necesita poder loguearse: alta
+// desde Usuarios (Admin), auto-registro (LoginPage.jsx), Registro
+// Rápido del Recolector y el alta inline ("crear nuevo conductor") de
+// RecargaRapidaForm.jsx. Las DOS filas quedan unidas por `telefono`, el
+// único vínculo que existe entre ambas tablas (ver
+// useConductorSesion.js). Antes existía un segundo camino en
+// useConductores.js (`crearConductor`) que insertaba SOLO en
+// `conductores` para las altas de Recolector — eso causaba que ese
+// conductor nunca pudiera loguearse (StaffLoginForm busca por teléfono
+// en `usuarios`, fila que jamás llegaba a existir). Se eliminó: ahora
+// todos pasan por acá.
 //
 // `aprobado` decide todo el resto sin ningún "switch" visible en el
 // formulario — lo fija el CALLER según quién esté creando la cuenta:
 //   - Admin (UsuariosModal): aprobado=true, estado=desconectado — entra
 //     operativo de una, no pasa por el Centro de Peticiones.
-//   - Auto-registro (LoginPage.jsx): aprobado=false, estado=null — cae
-//     en la cola de "Registro" del Centro de Peticiones, igual que el
-//     alta del Recolector (useConductores.crearConductor).
+//   - Todos los demás (auto-registro, Recolector, alta inline):
+//     aprobado=false, estado=null — cae en la cola de "Registro" del
+//     Centro de Peticiones.
 //
 // `usuarios.pin` se crea en NULL a propósito — ya no se pide/inventa un
 // PIN acá. El conductor lo elige solo en su primer login (ver
-// LoginPage.jsx: detecta pin=null, exige Teléfono+DNI, y recién ahí
-// deja crear+guardar el PIN con bcrypt).
+// StaffLoginForm.jsx: detecta pin=null y deja crear+guardar el PIN con
+// bcrypt ahí mismo, sin pedir DNI de nuevo).
 //
 // No hay transacciones multi-tabla desde el cliente anon — si el
 // segundo insert falla, se borra el primero a mano para no dejar un
@@ -38,6 +46,7 @@ export function useCrearConductorConUsuario({ onDone } = {}) {
       categoriaId,
       subgrupoId,
       nivelServicio,
+      asientosTotales,
       fotoUrl,
       fotoGeneralUrl,
       fotoInteriorUrl,
@@ -88,6 +97,9 @@ export function useCrearConductorConUsuario({ onDone } = {}) {
           categoria_id: categoriaId || null,
           subgrupo_id: subgrupoId || null,
           nivel_servicio: nivelServicio || NIVEL_SERVICIO_ECONOMICO,
+          // Fase 4 (Colectivo): 4 como fallback si por lo que sea llega
+          // sin este campo (ej. un caller viejo que no lo manda todavía).
+          asientos_totales: Number.isInteger(Number(asientosTotales)) && Number(asientosTotales) > 0 ? Number(asientosTotales) : 4,
           foto_url: fotoUrl || null,
           foto_general_url: fotoGeneralUrl || null,
           foto_interior_url: fotoInteriorUrl || null,

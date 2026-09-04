@@ -3,6 +3,7 @@ import { LogOut, UserPlus, Wallet, Receipt, CreditCard, CalendarClock, Loader2 }
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useVentas } from "../hooks/useVentas";
 import { useConductores } from "../hooks/useConductores";
+import { useCrearConductorConUsuario } from "../hooks/useCrearConductorConUsuario";
 import { useUsuarios } from "../hooks/useUsuarios";
 import { useRecargas } from "../hooks/useRecargas";
 import { usePaquetes } from "../hooks/usePaquetes";
@@ -11,6 +12,8 @@ import { useRecargasRecolector } from "../hooks/useRecargasRecolector";
 import { useGastosOperativos } from "../hooks/useGastosOperativos";
 import { useAnularVenta } from "../hooks/useAnularVenta";
 import { useCierresCaja } from "../hooks/useCierresCaja";
+import { useBienvenidaNeon } from "../hooks/useBienvenidaNeon";
+import { startOfTodayISO, TIPO_ITEM_MEMBRESIA } from "../lib/taxiEnums";
 import { formatSoles, formatDate } from "../utils/format";
 import Styles from "../components/Styles";
 import RecargaRapidaForm from "../components/recolector/RecargaRapidaForm";
@@ -18,6 +21,7 @@ import RegistroConductorModal from "../components/recolector/RegistroConductorMo
 import AutorecargaRecolectorModal from "../components/recolector/AutorecargaRecolectorModal";
 import CierreCajaModal from "../components/admin/CierreCajaModal";
 import HistorialVentasModal from "../components/admin/HistorialVentasModal";
+import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import logo from "../assets/logo.png";
 
 // Ruta /recolector — entra por RequireUsuarioRol rol="recolector".
@@ -30,19 +34,39 @@ import logo from "../assets/logo.png";
 // calle, tiene sentido que vea lo mismo que el Admin ve de sus ventas.
 export default function RecolectorPage() {
   const { usuario, logout } = useTaxiAuth();
-  const { ventas, ventasHoy, loading: ventasLoading, refresh: refreshVentas } = useVentas();
+  const { ventas, ventasVigentes, ventasHoy, loading: ventasLoading, refresh: refreshVentas } = useVentas();
   const {
     conductores,
     categorias,
     subgrupos,
     loading: conductoresLoading,
-    crearConductor,
     refresh: refreshConductores,
   } = useConductores();
+  // Bug de sincronía (registrar conductor -> no puede loguearse):
+  // useConductores().crearConductor solo insertaba en `conductores`,
+  // nunca en `usuarios` — así que un conductor dado de alta desde acá
+  // no tenía NINGUNA fila para que StaffLoginForm lo encontrara por
+  // teléfono, y siempre caía en "Teléfono o PIN incorrectos" aunque el
+  // teléfono fuera el correcto. Este hook (el mismo que ya usaba el
+  // auto-registro de /login y el alta desde Usuarios del Admin) crea
+  // las DOS filas juntas, con `pin: null` — así el conductor puede
+  // entrar de una con su teléfono y crear su PIN en el primer login,
+  // igual que ya le funciona a un Recolector auto-registrado.
+  const { crear: crearConductorConUsuario } = useCrearConductorConUsuario({ onDone: refreshConductores });
   const { usuarios, refresh: refreshUsuarios } = useUsuarios();
 
-  const { paquetes } = usePaquetes();
-  const { paquetes: paquetesRecolectores } = usePaquetesRecolectores();
+  const { paquetes, glow: glowPaquetes } = usePaquetes();
+  const { paquetes: paquetesRecolectores, glow: glowPaquetesRecolectores } = usePaquetesRecolectores();
+
+  // Animación Épica de Bienvenida (Fase Neón) — ver el mismo bloque en
+  // ConductorPage.jsx: acá el catálogo destacado es el DEL RECOLECTOR
+  // (paquetes_recolectores), no el de conductor.
+  const paqueteDestacadoRecolector =
+    paquetesRecolectores.find((p) => p.tipo_item === TIPO_ITEM_MEMBRESIA && p.activo !== false) ?? null;
+  const { mostrar: mostrarBienvenida, marcarVista: marcarBienvenidaVista } = useBienvenidaNeon(
+    usuario?.id,
+    !!paqueteDestacadoRecolector
+  );
   const { crearPeticion: crearAutorecarga } = useRecargasRecolector();
   const { gastosHoy, totalGastosHoy } = useGastosOperativos();
   const { cierres, crearCierre } = useCierresCaja();
@@ -66,7 +90,47 @@ export default function RecolectorPage() {
   const [historialOpen, setHistorialOpen] = useState(false);
   const [autorecargaOpen, setAutorecargaOpen] = useState(false);
 
-  const ventasDelTurno = ventasHoy.filter((v) => v.recolector_id === usuario?.id);
+  // Persistencia de Turno: antes el widget usaba `ventasHoy` (todo lo
+  // vendido en el día calendario) — nunca se reiniciaba con "Cerrar
+  // Turno" (esa acción solo guarda una instantánea para exportar, ver
+  // CierreCajaModal.jsx, "no reinicia ningún contador" está documentado
+  // ahí mismo), así que un recolector que cerraba turno y seguía
+  // trabajando el mismo día veía el contador viejo seguir sumando. Acá
+  // se guarda el INICIO real del turno actual en localStorage (por
+  // usuario, para no pisarse si comparten el mismo dispositivo/celular)
+  // — sobrevive a un F5 porque no es un simple useState, y solo se
+  // adelanta a "ahora" cuando de verdad se presiona Cerrar Turno (ver
+  // handleTurnoCerrado más abajo). Si todavía no hay nada guardado
+  // (primera vez que este usuario abre la pantalla), arranca en el
+  // inicio del día calendario — mismo comportamiento de antes por
+  // default, no un cambio brusco el primer uso.
+  const turnoStorageKey = `tz-turno-inicio-${usuario?.id ?? "anon"}`;
+  const [turnoInicio, setTurnoInicio] = useState(() => {
+    try {
+      return localStorage.getItem(turnoStorageKey) || startOfTodayISO();
+    } catch {
+      return startOfTodayISO();
+    }
+  });
+
+  const handleTurnoCerrado = () => {
+    const ahora = new Date().toISOString();
+    try {
+      localStorage.setItem(turnoStorageKey, ahora);
+    } catch {
+      // localStorage puede fallar (modo privado, cuota llena) — el
+      // turno igual se resetea en memoria para esta sesión, solo no
+      // sobrevive un F5 en ese caso puntual.
+    }
+    setTurnoInicio(ahora);
+  };
+
+  // Base `ventasVigentes` (todo lo no-anulado, sin importar el día) en
+  // vez de `ventasHoy` — un turno puede haber arrancado ayer (turno
+  // nocturno) y el corte real es `turnoInicio`, no la medianoche.
+  const ventasDelTurno = ventasVigentes.filter(
+    (v) => v.recolector_id === usuario?.id && v.created_at && v.created_at >= turnoInicio
+  );
   const totalTurno = ventasDelTurno.reduce((sum, v) => sum + Number(v.monto || 0), 0);
   // Copia FRESCA de la sesión (usuario del contexto puede haber
   // quedado desactualizado desde el login) — mismo criterio que
@@ -81,6 +145,18 @@ export default function RecolectorPage() {
   return (
     <div className="tz-root">
       <Styles />
+      {mostrarBienvenida && (
+        // Nota: el Recolector todavía usa el diseño viejo (paquete
+        // destacado al primer login) — el pedido de separar "bienvenida
+        // de cuenta nueva" vs. "membresía activada" en 2 partes fue
+        // explícitamente solo para Conductor (ver ConductorPage.jsx).
+        // Si en algún momento se quiere el mismo criterio acá, avisar.
+        <AnimacionNeonBienvenida
+          titulo={paqueteDestacadoRecolector.nombre}
+          descripcion={paqueteDestacadoRecolector.descripcion}
+          onTerminar={marcarBienvenidaVista}
+        />
+      )}
       <header className="tz-header">
         <div className="tz-header-row">
           <div className="tz-header-side tz-header-side-left">
@@ -153,10 +229,11 @@ export default function RecolectorPage() {
               subgrupos={subgrupos}
               recolectorId={usuario?.id}
               registrarRecarga={registrarRecarga}
-              crearConductor={crearConductor}
+              crearConductorConUsuario={crearConductorConUsuario}
               saving={saving}
               error={error}
               paquetes={paquetes}
+              glowPaquetes={glowPaquetes}
             />
           </>
         )}
@@ -181,6 +258,7 @@ export default function RecolectorPage() {
         <AutorecargaRecolectorModal
           recolector={miPerfil}
           paquetes={paquetesRecolectores}
+          glowPaquetes={glowPaquetesRecolectores}
           crearPeticion={crearAutorecarga}
           onClose={() => {
             setAutorecargaOpen(false);
@@ -193,7 +271,9 @@ export default function RecolectorPage() {
         <RegistroConductorModal
           categorias={categorias}
           subgrupos={subgrupos}
-          crearConductor={crearConductor}
+          crearConductorConUsuario={crearConductorConUsuario}
+          requiereLogin
+          aprobado={false}
           onClose={() => setRegistroOpen(false)}
           onCreated={(nombre) => {
             setRegistroMsg(`${nombre} fue registrado y ya aparece en el buscador.`);
@@ -212,6 +292,8 @@ export default function RecolectorPage() {
           esAdmin={false}
           cajeroNombre={usuario?.nombre || "Recolector"}
           onClose={() => setCierreOpen(false)}
+          onCerrado={handleTurnoCerrado}
+          telefonoDestino={usuario?.telefono}
         />
       )}
       {historialOpen && (
@@ -222,6 +304,7 @@ export default function RecolectorPage() {
           anular={anular}
           busyId={anulandoId}
           onClose={() => setHistorialOpen(false)}
+          puedeAnular={false}
         />
       )}
     </div>

@@ -19,8 +19,33 @@ import {
   ESTADO_OFERTA_FINALIZADO,
 } from "../hooks/useChatMensajes";
 import { MAPA_NIVEL_COLOR } from "../lib/nivelServicio";
+import { MAPBOX_TOKEN } from "../lib/mapboxConfig";
 import MapaViaje from "./MapaViaje";
 import logo from "../assets/logo.png";
+
+// Mini-Mapa en Mensaje de Señas: Mapbox Static Images API — a
+// diferencia del mapa interactivo (MapaViaje.jsx/RadarGlobal.jsx), acá
+// alcanza con una imagen fija (nada que arrastrar/zoomear dentro de una
+// burbuja de chat). "a" (celeste) = pin del pasajero, "b" (rosa) =
+// destino — mismos dos colores que ya usa el resto de la UI para
+// distinguir "yo"/"ahí voy" en el chat. `auto` en vez de un centro/zoom
+// fijo: Mapbox calcula solo el encuadre que hace entrar los dos pines
+// (o el único que haya, si el otro nunca llegó — ver el filtro de
+// abajo).
+function construirUrlMiniMapa({ origenLat, origenLng, destinoLat, destinoLng }) {
+  if (!MAPBOX_TOKEN) return null;
+  const marcadores = [];
+  if (typeof origenLat === "number" && typeof origenLng === "number") {
+    marcadores.push(`pin-s-a+2be8ff(${origenLng},${origenLat})`);
+  }
+  if (typeof destinoLat === "number" && typeof destinoLng === "number") {
+    marcadores.push(`pin-s-b+ff2f9e(${destinoLng},${destinoLat})`);
+  }
+  if (marcadores.length === 0) return null;
+  return `https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/${marcadores.join(
+    ","
+  )}/auto/400x180@2x?padding=30&access_token=${MAPBOX_TOKEN}`;
+}
 
 const TARIFAS_RAPIDAS = ["S/ 1.50", "S/ 3.00", "S/ 4.50"];
 // Monto mínimo aceptado en la tarifa personalizada — "0" o negativo
@@ -197,6 +222,22 @@ function TarjetaEstadoViaje({ mensaje, finOverrideISO, enCursoPermitido }) {
 // con el valor OPTIMISTA que fija ChatWindow apenas se toca el botón,
 // para que Aceptar/Rechazar desaparezcan al toque en vez de esperar la
 // vuelta de Supabase (ver ofertasLocales más abajo).
+
+// Checks de Lectura (Fase 6, tipo WhatsApp): ✓ gris = enviado, ✓✓ azul =
+// leído del otro lado (columna `leido` de `chat_mensajes`, marcada por
+// `marcarLeidoPorConductor`/`marcarLeidoPorPasajero` en useChatMensajes.js
+// apenas el destinatario abre/tiene el chat abierto). Solo tiene sentido
+// en burbujas PROPIAS (`mine`) — no se le muestra a nadie el estado de
+// lectura de un mensaje ajeno.
+function ChecksLectura({ mine, leido }) {
+  if (!mine) return null;
+  return (
+    <span className={`tz-chat-check ${leido ? "tz-chat-check-leido" : ""}`} aria-label={leido ? "Leído" : "Enviado"}>
+      {leido ? "✓✓" : "✓"}
+    </span>
+  );
+}
+
 function MessageBubble({ mensaje, mine, esOfertaParaPasajero, estadoOferta, onResponder, respondiendo, finOverrideISO, enCursoPermitido }) {
   const texto = mensaje?.mensaje ?? "";
   const hora = mensaje?.created_at ? formatTime(mensaje.created_at) : "";
@@ -271,7 +312,36 @@ function MessageBubble({ mensaje, mine, esOfertaParaPasajero, estadoOferta, onRe
             </button>
           </div>
         )}
-        <span className="tz-chat-bubble-time">{hora}</span>
+        <span className="tz-chat-bubble-time">
+          {hora}
+          <ChecksLectura mine={mine} leido={!!mensaje?.leido} />
+        </span>
+      </div>
+    );
+  }
+
+  // Mini-Mapa en Mensaje de Señas: usa las mismas columnas que YA
+  // existen en la fila (`origen_lat/lng`/`destino_lat/lng`, ver
+  // ChatModal.jsx/handleTonazo) — no hace falta guardar ninguna URL
+  // armada, se construye al vuelo en cada render con las coordenadas
+  // reales de ESTE mensaje puntual.
+  if (mensaje?.tipo === TIPO_MENSAJE_SENAS) {
+    const urlMiniMapa = construirUrlMiniMapa({
+      origenLat: mensaje?.origen_lat,
+      origenLng: mensaje?.origen_lng,
+      destinoLat: mensaje?.destino_lat,
+      destinoLng: mensaje?.destino_lng,
+    });
+    return (
+      <div className={`tz-chat-bubble ${mine ? "tz-chat-bubble-mine" : ""}`}>
+        {urlMiniMapa && (
+          <img src={urlMiniMapa} alt="Ubicación aproximada" className="tz-chat-minimapa" loading="lazy" />
+        )}
+        <p>{texto}</p>
+        <span className="tz-chat-bubble-time">
+          {hora}
+          <ChecksLectura mine={mine} leido={!!mensaje?.leido} />
+        </span>
       </div>
     );
   }
@@ -279,7 +349,10 @@ function MessageBubble({ mensaje, mine, esOfertaParaPasajero, estadoOferta, onRe
   return (
     <div className={`tz-chat-bubble ${mine ? "tz-chat-bubble-mine" : ""}`}>
       <p>{texto}</p>
-      <span className="tz-chat-bubble-time">{hora}</span>
+      <span className="tz-chat-bubble-time">
+        {hora}
+        <ChecksLectura mine={mine} leido={!!mensaje?.leido} />
+      </span>
     </div>
   );
 }
@@ -319,6 +392,7 @@ export default function ChatWindow({
   conductorId,
   pasajeroId,
   nivelServicio,
+  iconoCategoriaUrl = null,
   otroEscribiendo = false,
   onEscribiendo,
 }) {
@@ -1193,6 +1267,7 @@ export default function ChatWindow({
               destino={destinoViaje}
               origenPasajero={origenConocido}
               colorCategoria={colorCategoria}
+              iconoCategoriaUrl={iconoCategoriaUrl}
               onConductorLocalizado={setConductorLocalizado}
             />
           )}
@@ -1245,6 +1320,7 @@ export default function ChatWindow({
               destino={destinoViaje}
               origenPasajero={origenConocido}
               colorCategoria={colorCategoria}
+              iconoCategoriaUrl={iconoCategoriaUrl}
               onCercaDeDestino={setDistanciaDestino}
               onDistanciaPasajero={setDistanciaAlPasajero}
             />
@@ -1613,7 +1689,7 @@ export default function ChatWindow({
          siempre flota por encima de TODO (chat incluido). No cancela
          directo al primer click, a propósito. */}
       {confirmarCancelarOpen && (
-        <div className="tz-modal-backdrop" onClick={() => !cancelando && setConfirmarCancelarOpen(false)}>
+        <div className="tz-modal-backdrop">
           <div className="tz-confirm-dialog" onClick={(e) => e.stopPropagation()}>
             <p>¿Estás seguro de cancelar la búsqueda/viaje?</p>
             <div className="tz-confirm-dialog-actions">
