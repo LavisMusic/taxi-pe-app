@@ -95,6 +95,53 @@ export function esNombreCompletoValido(nombre) {
   return /^\S+(\s+\S+)+$/.test(nombre.trim());
 }
 
+// `usuarios.estado_verificacion` — máquina de estados del registro
+// exprés (Pasajero y Conductor): 'temporal' nace con solo
+// nombre/usuario+teléfono y tiene DIAS_EXPIRACION_CUENTA_TEMPORAL días
+// para completar su verificación antes de que el cron la borre (ver
+// migración supabase/migrations/20260905120000_cuentas_temporales.sql).
+// 'en_revision' es exclusivo de Conductor (mandó DNI+fotos+placa+PIN,
+// espera al Admin en el Centro de Peticiones de siempre) — Pasajero
+// salta directo de 'temporal' a 'permanente' al completar su
+// verificación, no tiene gate de Admin. Cuentas de ANTES de esta
+// migración nacen 'permanente' por el DEFAULT de la columna (no son
+// altas a medio llenar, no correspondía re-tipearlas).
+export const ESTADO_VERIFICACION_TEMPORAL = "temporal";
+export const ESTADO_VERIFICACION_EN_REVISION = "en_revision";
+export const ESTADO_VERIFICACION_PERMANENTE = "permanente";
+
+// Plazo del registro exprés antes de que el cron borre la cuenta si
+// nadie completó su verificación.
+export const DIAS_EXPIRACION_CUENTA_TEMPORAL = 7;
+
+export function fechaExpiracionCuentaTemporal() {
+  const ms = DIAS_EXPIRACION_CUENTA_TEMPORAL * 24 * 60 * 60 * 1000;
+  return new Date(Date.now() + ms).toISOString();
+}
+
+// Nombre de usuario del registro exprés de Pasajero (en vez de su
+// nombre completo, con tildes/mayúsculas/espacios — más rápido de
+// tipear en el celular): letras, números y guion bajo, 3 a 20
+// caracteres, sin espacios.
+export const NOMBRE_USUARIO_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
+
+export function esNombreUsuarioValido(nombreUsuario) {
+  return NOMBRE_USUARIO_REGEX.test(String(nombreUsuario || "").trim());
+}
+
+export const SEXOS = [
+  { value: "M", label: "Masculino" },
+  { value: "F", label: "Femenino" },
+];
+
+// Edad real (no un DNI recién nacido ni un dato absurdo) — 18 como piso
+// porque tanto Conductor como Pasajero necesitan ser mayores de edad
+// para operar/contratar el servicio.
+export function esEdadValida(edad) {
+  const n = Number(edad);
+  return Number.isInteger(n) && n >= 18 && n <= 90;
+}
+
 // Teléfono Perú: celular de 9 dígitos, siempre empieza en 9 (no hay
 // operador que emita números móviles con otro prefijo). Reemplaza al
 // regex laxo /^\d{6,15}$/ que se usaba antes en cada formulario por

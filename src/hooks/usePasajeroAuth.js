@@ -1,22 +1,32 @@
 import { useCallback, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { hashPin, verifyPin } from "../lib/pinAuth";
+import {
+  ESTADO_VERIFICACION_PERMANENTE,
+  ESTADO_VERIFICACION_TEMPORAL,
+  fechaExpiracionCuentaTemporal,
+} from "../lib/taxiEnums";
 
-// Registro/Login específico de Pasajero — a diferencia de LoginPage.jsx
-// (DNI+Teléfono+PIN, pensado para Conductor/Recolector que YA tienen
-// una cuenta creada por el Recolector o el Admin), acá cualquiera se da
-// de alta solo: el Registro pide DNI+Teléfono+PIN, pero una vez creada
-// la cuenta el Login diario solo pide Teléfono+PIN — un pasajero no
-// necesita cargar con su DNI encima para pedir un taxi.
+// Registro/Login específico de Pasajero. Registro exprés (bug/pedido:
+// nadie quiere llenar un formulario completo solo para pedir un taxi):
+// `registrarTemporal` pide SOLO nombre de usuario + teléfono, deja
+// entrar de una (estado_verificacion='temporal', sin PIN todavía) y da
+// 7 días para completar los datos reales antes de que el cron la borre
+// (ver migración cuentas_temporales.sql). `verificarCuenta` es ese
+// segundo paso — lo dispara PasajeroAuthForm cuando el login encuentra
+// una cuenta con `pin: null` Y `estado_verificacion: 'temporal'` (ver
+// `login` más abajo): ahí sí se piden nombre/apellido reales, edad,
+// sexo y el PIN, y la cuenta pasa directo a 'permanente' (Pasajero no
+// tiene gate de Admin, a diferencia de Conductor).
 export function usePasajeroAuth() {
   const [loading, setLoading] = useState(false);
 
-  const registrar = useCallback(async ({ nombre, dni, telefono, pin }) => {
+  const registrarTemporal = useCallback(async ({ nombreUsuario, telefono }) => {
     setLoading(true);
     const { data: existente, error: checkError } = await supabase
       .from("usuarios")
       .select("id")
-      .or(`dni.eq.${dni},telefono.eq.${telefono}`)
+      .or(`nombre_usuario.eq.${nombreUsuario},telefono.eq.${telefono}`)
       .maybeSingle();
 
     if (checkError) {
@@ -25,9 +35,34 @@ export function usePasajeroAuth() {
     }
     if (existente) {
       setLoading(false);
-      return { error: new Error("duplicado"), message: "Ya existe una cuenta con ese DNI o teléfono." };
+      return { error: new Error("duplicado"), message: "Ya existe una cuenta con ese usuario o teléfono." };
     }
 
+    const { data, error: insertError } = await supabase
+      .from("usuarios")
+      .insert({
+        nombre_usuario: nombreUsuario,
+        telefono,
+        pin: null,
+        dni: null,
+        rol: "pasajero",
+        estado_verificacion: ESTADO_VERIFICACION_TEMPORAL,
+        expira_en: fechaExpiracionCuentaTemporal(),
+      })
+      .select()
+      .single();
+
+    setLoading(false);
+    if (insertError) {
+      return { error: insertError, message: "No se pudo crear tu cuenta. Intenta de nuevo." };
+    }
+    return { usuario: data, error: null };
+  }, []);
+
+  // Segundo paso del registro exprés: completa los datos reales y crea
+  // el PIN — de acá en más la cuenta ya no vence a los 7 días.
+  const verificarCuenta = useCallback(async ({ usuarioId, nombre, apellido, edad, sexo, pin }) => {
+    setLoading(true);
     let pinHash;
     try {
       pinHash = await hashPin(pin);
@@ -36,15 +71,24 @@ export function usePasajeroAuth() {
       return { error: hashError, message: "No se pudo proteger tu PIN. Intenta de nuevo." };
     }
 
-    const { data, error: insertError } = await supabase
+    const { data, error: updateError } = await supabase
       .from("usuarios")
-      .insert({ dni, telefono, pin: pinHash, nombre, rol: "pasajero" })
+      .update({
+        nombre,
+        apellido,
+        edad,
+        sexo,
+        pin: pinHash,
+        estado_verificacion: ESTADO_VERIFICACION_PERMANENTE,
+        expira_en: null,
+      })
+      .eq("id", usuarioId)
       .select()
       .single();
 
     setLoading(false);
-    if (insertError) {
-      return { error: insertError, message: "No se pudo crear tu cuenta. Intenta de nuevo." };
+    if (updateError || !data) {
+      return { error: updateError, message: "No se pudo guardar tu verificación. Intenta de nuevo." };
     }
     return { usuario: data, error: null };
   }, []);
@@ -124,5 +168,5 @@ export function usePasajeroAuth() {
     return { usuario: data, error: null };
   }, []);
 
-  return { registrar, login, crearPin, loading };
+  return { registrarTemporal, verificarCuenta, login, crearPin, loading };
 }

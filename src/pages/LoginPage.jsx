@@ -1,11 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useCategoriasPublicas } from "../hooks/useCategoriasPublicas";
-import { useCrearConductorConUsuario } from "../hooks/useCrearConductorConUsuario";
 import Styles from "../components/Styles";
 import PasajeroAuthForm from "../components/PasajeroAuthForm";
 import StaffLoginForm from "../components/StaffLoginForm";
-import RegistroConductorForm from "../components/recolector/RegistroConductorForm";
+import RegistroConductorTemporalForm from "../components/recolector/RegistroConductorTemporalForm";
 import logo from "../assets/logo.png";
 
 // Conductor/Recolector: mismo toggle Ingresar/Registrarse que ya usan
@@ -13,11 +11,10 @@ import logo from "../assets/logo.png";
 // vive el equivalente para quien entra directo por /login en vez de
 // pasar por el header público. "Ingresar" es el StaffLoginForm
 // compartido (Teléfono+PIN, rutea sola según el rol real de la
-// cuenta); "Registrarse" reusa RegistroConductorForm en modo self-
-// registro (aprobado:false, cae en el Centro de Peticiones).
+// cuenta); "Registrarse" es el registro exprés (nombre+teléfono nomás,
+// ver RegistroConductorTemporalForm.jsx) — el resto (DNI/placa/fotos/
+// PIN) se completa después, desde StaffLoginForm.
 function AccesoStaff() {
-  const { categorias, subgrupos } = useCategoriasPublicas();
-  const { crear: crearConductorConUsuario } = useCrearConductorConUsuario();
   const [modo, setModo] = useState("ingresar");
 
   return (
@@ -39,19 +36,7 @@ function AccesoStaff() {
         </button>
       </div>
 
-      {modo === "ingresar" ? (
-        <StaffLoginForm />
-      ) : (
-        <RegistroConductorForm
-          categorias={categorias}
-          subgrupos={subgrupos}
-          crearConductorConUsuario={crearConductorConUsuario}
-          requiereLogin
-          aprobado={false}
-          onClose={() => {}}
-          onCreatedUsuario={() => {}}
-        />
-      )}
+      {modo === "ingresar" ? <StaffLoginForm /> : <RegistroConductorTemporalForm />}
     </>
   );
 }
