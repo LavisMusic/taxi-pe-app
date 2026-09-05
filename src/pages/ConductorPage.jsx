@@ -14,6 +14,8 @@ import {
   ESTADO_CONDUCTOR_OCUPADO,
   ESTADO_CONDUCTOR_DESCONECTADO,
   ESTADO_CONDUCTOR_INHABILITADO,
+  ESTADO_VERIFICACION_TEMPORAL,
+  ESTADO_VERIFICACION_EN_REVISION,
 } from "../lib/taxiEnums";
 import { formatDate } from "../utils/format";
 import Styles from "../components/Styles";
@@ -21,6 +23,7 @@ import GestionImagenModal from "../components/admin/GestionImagenModal";
 import ConductorPublicCard from "../components/ConductorPublicCard";
 import ConductorChatInboxModal from "../components/ConductorChatInboxModal";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
+import VerificarConductorForm from "../components/VerificarConductorForm";
 import logo from "../assets/logo.png";
 
 // Ruta /conductor — entra por RequireUsuarioRol rol="conductor".
@@ -28,8 +31,9 @@ import logo from "../assets/logo.png";
 // centrada), textos y botón grandes — es la pantalla que el chofer
 // tiene abierta mientras maneja, no un dashboard para leer con calma.
 export default function ConductorPage() {
-  const { usuario, logout } = useTaxiAuth();
-  const { conductor, loading, error, setEstado, actualizar } = useConductorSesion(usuario);
+  const { usuario, logout, updateUsuario } = useTaxiAuth();
+  const { conductor, loading, error, setEstado, actualizar, refresh: refrescarConductor } = useConductorSesion(usuario);
+  const [mostrandoVerificacion, setMostrandoVerificacion] = useState(false);
   const { unreadCount, alertaSenas, descartarAlertaSenas, pasajerosEnCarrera } = useHilosChatConductor(conductor?.id);
   // Panel de Categorías e Íconos: la propia categoría del conductor —
   // el mismo ícono que ya se ve en RadarGlobal.jsx ahora también en el
@@ -252,6 +256,28 @@ export default function ConductorPage() {
           </div>
         ) : error ? (
           <p className="tz-error">{error}</p>
+        ) : !conductor && usuario?.estado_verificacion === ESTADO_VERIFICACION_TEMPORAL ? (
+          <div className="tz-empty">
+            <p>
+              Tu cuenta es temporal — completa tus datos (DNI, placa, fotos y PIN) para que quede en
+              revisión del Admin. Tienes 7 días desde tu registro antes de que se elimine sola.
+            </p>
+            <button
+              type="button"
+              className="tz-scan-btn tz-payment-save"
+              style={{ marginTop: 12 }}
+              onClick={() => setMostrandoVerificacion(true)}
+            >
+              Completar mi registro
+            </button>
+          </div>
+        ) : !conductor && usuario?.estado_verificacion === ESTADO_VERIFICACION_EN_REVISION ? (
+          <div className="tz-empty">
+            <p>
+              Ya mandaste tu verificación — el Admin la va a revisar en el Centro de Peticiones. Puedes
+              seguir usando la app mientras tanto.
+            </p>
+          </div>
         ) : !conductor ? (
           <div className="tz-empty">
             <p>
@@ -469,6 +495,22 @@ export default function ConductorPage() {
             >
               Ver Chat
             </button>
+          </div>
+        </div>
+      )}
+
+      {mostrandoVerificacion && (
+        <div className="tz-modal-backdrop">
+          <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
+            <VerificarConductorForm
+              usuario={usuario}
+              submitLabel="Enviar verificación"
+              onVerificado={(usuarioActualizado) => {
+                updateUsuario(usuarioActualizado);
+                setMostrandoVerificacion(false);
+                refrescarConductor();
+              }}
+            />
           </div>
         </div>
       )}

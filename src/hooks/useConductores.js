@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { subscribeTable } from "../lib/realtime";
-import { ESTADO_CONDUCTOR_DESCONECTADO, ESTADO_CONDUCTOR_RECHAZADO } from "../lib/taxiEnums";
+import {
+  ESTADO_CONDUCTOR_DESCONECTADO,
+  ESTADO_CONDUCTOR_RECHAZADO,
+  ESTADO_VERIFICACION_PERMANENTE,
+  ESTADO_VERIFICACION_TEMPORAL,
+  fechaExpiracionCuentaTemporal,
+} from "../lib/taxiEnums";
 
 // Directorio de conductores + categorías (Autos/Mototaxis/Minivans...,
 // vienen de la tabla `categorias`, ordenadas por `orden`).
@@ -110,15 +116,48 @@ export function useConductores() {
   // usaba el alta directa del Admin desde Usuarios
   // (useCrearConductorConUsuario.js: `aprobado ? DESCONECTADO : null`),
   // que nunca tuvo este problema.
+  // Además de operar `conductores`, sincroniza `usuarios.estado_verificacion`
+  // de esa misma persona (vínculo por teléfono, igual que
+  // useConductorSesion.js) — es la cuenta de LOGIN la que decide si el
+  // registro exprés vence a los 7 días o no, y solo el Admin (acá) puede
+  // sacarla de 'en_revision'. Best-effort: si esto falla no se revierte
+  // la aprobación/rechazo del conductor, que ya quedó guardada.
   const aprobar = useCallback(
-    (id, categoriaId) =>
-      updateConductor(id, { estado: ESTADO_CONDUCTOR_DESCONECTADO, categoria_id: categoriaId, aprobado: true }),
-    [updateConductor]
+    async (id, categoriaId) => {
+      const conductor = conductores.find((c) => c.id === id);
+      const resultado = await updateConductor(id, {
+        estado: ESTADO_CONDUCTOR_DESCONECTADO,
+        categoria_id: categoriaId,
+        aprobado: true,
+      });
+      if (!resultado.error && conductor?.telefono) {
+        await supabase
+          .from("usuarios")
+          .update({ estado_verificacion: ESTADO_VERIFICACION_PERMANENTE, expira_en: null })
+          .eq("telefono", conductor.telefono)
+          .eq("rol", "conductor");
+      }
+      return resultado;
+    },
+    [conductores, updateConductor]
   );
 
   const rechazar = useCallback(
-    (id) => updateConductor(id, { estado: ESTADO_CONDUCTOR_RECHAZADO, aprobado: false }),
-    [updateConductor]
+    async (id) => {
+      const conductor = conductores.find((c) => c.id === id);
+      const resultado = await updateConductor(id, { estado: ESTADO_CONDUCTOR_RECHAZADO, aprobado: false });
+      if (!resultado.error && conductor?.telefono) {
+        // Vuelve a 'temporal' con un plazo nuevo de 7 días para que
+        // pueda corregir y volver a mandar su verificación.
+        await supabase
+          .from("usuarios")
+          .update({ estado_verificacion: ESTADO_VERIFICACION_TEMPORAL, expira_en: fechaExpiracionCuentaTemporal() })
+          .eq("telefono", conductor.telefono)
+          .eq("rol", "conductor");
+      }
+      return resultado;
+    },
+    [conductores, updateConductor]
   );
 
   return {

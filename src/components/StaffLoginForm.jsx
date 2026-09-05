@@ -5,8 +5,9 @@ import { supabase } from "../supabaseClient";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useAvisoTop } from "../hooks/useAvisoTop";
 import AvisoTop from "./AvisoTop";
+import VerificarConductorForm from "./VerificarConductorForm";
 import { hashPin, verifyPin } from "../lib/pinAuth";
-import { esTelefonoValido } from "../lib/taxiEnums";
+import { esTelefonoValido, ESTADO_VERIFICACION_TEMPORAL } from "../lib/taxiEnums";
 import { routeForRole } from "../lib/taxiAuth";
 
 // Bug reportado: mismo aviso chico arriba de la pantalla que
@@ -22,12 +23,15 @@ const ENTRAR_DELAY_MS = 700;
 // el mismo: entra a donde le corresponde de verdad. Reusado en
 // AccesoConductorModal.jsx, AccesoRecolectorModal.jsx y en /login.
 //
-// Primer login sin PIN: `usuarios.pin` puede nacer NULL (el Admin/el
-// propio conductor ya no inventan una contraseña al registrarse, ver
-// useCrearConductorConUsuario.js). Achá se detecta apenas se encuentra
-// la fila por teléfono — si `pin` es null, ese hallazgo YA es la prueba
-// de identidad (nadie más tiene ese teléfono registrado) y se pasa
-// directo al paso de "Crea tu PIN".
+// Primer login sin PIN: `usuarios.pin` puede nacer NULL por dos
+// caminos distintos, que se distinguen por `estado_verificacion`:
+//   - 'temporal' (solo Conductor, ver RegistroConductorTemporalForm.jsx
+//     y useConductorTemporal.js): registro exprés, todavía sin DNI/
+//     placa/fotos — acá se pide el formulario de verificación completo
+//     (VerificarConductorForm.jsx) en vez de solo el PIN.
+//   - 'permanente' (alta manual del Admin/Recolector, ver
+//     useCrearConductorConUsuario.js/useCrearRecolectorPendiente.js):
+//     ya tiene todos sus datos, solo falta el PIN — flujo de siempre.
 export default function StaffLoginForm({ onSuccess }) {
   const { loginUsuario } = useTaxiAuth();
   const navigate = useNavigate();
@@ -43,8 +47,8 @@ export default function StaffLoginForm({ onSuccess }) {
   const [confirmarNuevoPin, setConfirmarNuevoPin] = useState("");
   const [creandoPin, setCreandoPin] = useState(false);
 
-  const entrar = (usuario) => {
-    mostrar("✓ Sesión iniciada correctamente", "exito");
+  const entrar = (usuario, mensaje = "✓ Sesión iniciada correctamente") => {
+    mostrar(mensaje, "exito");
     setTimeout(() => {
       loginUsuario(usuario, rememberMe);
       onSuccess?.();
@@ -150,6 +154,19 @@ export default function StaffLoginForm({ onSuccess }) {
 
     entrar(data);
   };
+
+  if (usuarioSinPin?.rol === "conductor" && usuarioSinPin.estado_verificacion === ESTADO_VERIFICACION_TEMPORAL) {
+    return (
+      <>
+        <AvisoTop aviso={aviso} />
+        <VerificarConductorForm
+          usuario={usuarioSinPin}
+          submitLabel="Enviar verificación e ingresar"
+          onVerificado={(usuario) => entrar(usuario, "✓ Verificación enviada — queda pendiente de revisión del Admin")}
+        />
+      </>
+    );
+  }
 
   if (usuarioSinPin) {
     return (

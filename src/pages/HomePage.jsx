@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { LogIn, LogOut, Car, Users, MessageCircle, X, Loader2, MapPin } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { useConductoresPublicos } from "../hooks/useConductoresPublicos";
-import { useCategoriasPublicas } from "../hooks/useCategoriasPublicas";
-import { useCrearConductorConUsuario } from "../hooks/useCrearConductorConUsuario";
 import { useCrearRecolectorPendiente } from "../hooks/useCrearRecolectorPendiente";
 import { useAnuncioActivo } from "../hooks/useAnuncioActivo";
 import { useLocalidades } from "../hooks/useLocalidades";
@@ -60,8 +58,6 @@ export default function HomePage() {
   // no la mera existencia de sesión.
   const esPasajero = usuario?.rol === TIPO_USUARIO_PASAJERO;
   const { conductores, categorias, loading, error } = useConductoresPublicos();
-  const { categorias: categoriasRegistro, subgrupos: subgruposRegistro } = useCategoriasPublicas();
-  const { crear: crearConductorConUsuario } = useCrearConductorConUsuario();
   const { crear: crearRecolectorPendiente } = useCrearRecolectorPendiente();
   // Pop-up de marketing — ver useAnuncioActivo.js para la lógica de
   // vigencia (fecha_inicio/fecha_fin) + frecuencia (localStorage). Se
@@ -467,19 +463,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {accesoConductorOpen && (
-        <AccesoConductorModal
-          categorias={categoriasRegistro}
-          subgrupos={subgruposRegistro}
-          crearConductorConUsuario={crearConductorConUsuario}
-          onClose={() => setAccesoConductorOpen(false)}
-          onCreatedUsuario={() =>
-            avisarPeticionEnviada(
-              "Tu solicitud de conductor fue enviada. El Admin la va a revisar en el Centro de Peticiones."
-            )
-          }
-        />
-      )}
+      {accesoConductorOpen && <AccesoConductorModal onClose={() => setAccesoConductorOpen(false)} />}
 
       {accesoRecolectorOpen && (
         <AccesoRecolectorModal
