@@ -1,8 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Colocamos la URL y la Key directamente como texto (asegúrate de mantener las comillas)
-const supabaseUrl = 'https://silfhbdmfdryjdzpwzvh.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpbGZoYmRtZmRyeWpkenB3enZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4MDc5OTMsImV4cCI6MjEwMjM4Mzk5M30.4oceDaRyxMSPq6171TcHqcdssAxzrakkaNQdh0JiTyg';
+// La URL/key se leen de las variables de entorno de Vite (.env, ver
+// .env.example) — el valor hardcodeado es solo un FALLBACK por si el
+// build no las tuviera disponibles. Este es también el proyecto
+// unificado que ahora usa caja-registradora-tonazo (ver
+// supabase/migrations/20260907220000_import_caja_schema.sql).
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://silfhbdmfdryjdzpwzvh.supabase.co';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpbGZoYmRtZmRyeWpkenB3enZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4MDc5OTMsImV4cCI6MjEwMjM4Mzk5M30.4oceDaRyxMSPq6171TcHqcdssAxzrakkaNQdh0JiTyg';
 
 // "Mantener sesión iniciada": el cliente de Supabase solo permite fijar
 // UN storage al crearlo, así que este adapter decide en cada operación
