@@ -2,9 +2,10 @@ import { createClient } from '@supabase/supabase-js';
 
 // La URL/key se leen de las variables de entorno de Vite (.env, ver
 // .env.example) — el valor hardcodeado es solo un FALLBACK por si el
-// build no las tuviera disponibles. Este es también el proyecto
-// unificado que ahora usa caja-registradora-tonazo (ver
-// supabase/migrations/20260907220000_import_caja_schema.sql).
+// build no las tuviera disponibles. Backend propio de taxi-pe-app
+// (proyecto Supabase silfhbdmfdryjdzpwzvh); NO se comparte con
+// caja-registradora-tonazo, que tiene su propio proyecto. La
+// comunicación entre ambas apps va por webhooks/Edge Functions.
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://silfhbdmfdryjdzpwzvh.supabase.co';
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpbGZoYmRtZmRyeWpkenB3enZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4MDc5OTMsImV4cCI6MjEwMjM4Mzk5M30.4oceDaRyxMSPq6171TcHqcdssAxzrakkaNQdh0JiTyg';
 
