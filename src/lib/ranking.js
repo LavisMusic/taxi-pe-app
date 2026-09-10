@@ -3,7 +3,7 @@
 // venta a un pasajero (ventas solo tiene conductor_id/recolector_id) —
 // el ranking de Pasajeros queda vacío a propósito hasta que exista esa
 // pieza (decisión tomada con el usuario: placeholder por ahora).
-export function buildTopRanking({ ventas, conductores, usuarios }) {
+export function buildTopRanking({ ventas, conductores, usuarios, repartidores = [] }) {
   const conductoresById = new Map(conductores.map((c) => [c.id, c]));
   const usuariosById = new Map(usuarios.map((u) => [u.id, u]));
 
@@ -49,5 +49,9 @@ export function buildTopRanking({ ventas, conductores, usuarios }) {
     conductores: conductoresRanking,
     recolectores: recolectoresRanking,
     pasajeros: [],
+    // Ya viene ordenado y mapeado desde useRankingRepartidores
+    // ({ id, nombre, entregas }) — es de otra fuente ('entregas'), no de
+    // 'ventas', así que solo se pasa a través.
+    repartidores,
   };
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, MessageCircle, ChevronLeft, Loader2 } from "lucide-react";
+import { X, MessageCircle, ChevronLeft, Loader2, Trash2 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { useHilosChatConductor, useChatMensajes, REMITENTE_CONDUCTOR } from "../hooks/useChatMensajes";
 import ChatWindow from "./ChatWindow";
@@ -65,8 +65,23 @@ function HiloConversacion({ conductorId, pasajeroId, nivelServicio, iconoCategor
 // de Realtime, ver useChatMensajes.js) escapaba del boundary porque el
 // hook se llamaba un nivel más arriba.
 function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCategoriaUrl }) {
-  const { hilos, loading, pasajerosEnCarrera } = useHilosChatConductor(conductorId);
+  const { hilos, loading, pasajerosEnCarrera, refresh } = useHilosChatConductor(conductorId);
   const [nombresPorId, setNombresPorId] = useState({});
+  const [borrandoId, setBorrandoId] = useState(null);
+
+  // Borra el historial de un hilo cuyo viaje ya terminó (el botón solo
+  // aparece si NO está en `pasajerosEnCarrera`).
+  const borrarHilo = async (pasajeroId) => {
+    if (!pasajeroId || !conductorId) return;
+    if (!window.confirm("¿Borrar el historial de este chat? No se puede deshacer.")) return;
+    setBorrandoId(pasajeroId);
+    await supabase.rpc("rpc_borrar_hilo_chat", {
+      p_conductor_id: conductorId,
+      p_pasajero_id: pasajeroId,
+    });
+    setBorrandoId(null);
+    refresh?.();
+  };
   // Si el modal se abrió desde la alerta de "Hacer Señas" (ver
   // ConductorPage.jsx), entra directo a ese hilo en vez de mostrar la
   // lista primero.
@@ -176,17 +191,33 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
         <p className="tz-method-history-empty">Todavía no tienes mensajes de pasajeros.</p>
       ) : (
         <ul className="tz-history-rows">
-          {listaHilos.map((h) => (
-            <li key={h?.pasajeroId ?? Math.random()} className="tz-history-row">
-              <button type="button" className="tz-history-row-head" onClick={() => setPasajeroAbierto(h?.pasajeroId ?? null)}>
-                <span className="tz-chat-thread-name">{nombresPorId[h?.pasajeroId] ?? "Pasajero"}</span>
-                <span className="tz-history-row-amount tz-chat-thread-preview">
-                  {(h?.ultimo?.mensaje ?? "").slice(0, 30)}
-                  {(h?.ultimo?.mensaje?.length ?? 0) > 30 ? "…" : ""}
-                </span>
-              </button>
-            </li>
-          ))}
+          {listaHilos.map((h) => {
+            const pid = h?.pasajeroId ?? null;
+            const enCurso = pid && pasajerosEnCarrera?.includes(pid);
+            return (
+              <li key={pid ?? Math.random()} className="tz-history-row tz-chat-inbox-row">
+                <button type="button" className="tz-history-row-head" onClick={() => setPasajeroAbierto(pid)}>
+                  <span className="tz-chat-thread-name">{nombresPorId[pid] ?? "Pasajero"}</span>
+                  <span className="tz-history-row-amount tz-chat-thread-preview">
+                    {(h?.ultimo?.mensaje ?? "").slice(0, 30)}
+                    {(h?.ultimo?.mensaje?.length ?? 0) > 30 ? "…" : ""}
+                  </span>
+                </button>
+                {pid && !enCurso && (
+                  <button
+                    type="button"
+                    className="tz-chat-inbox-del"
+                    onClick={() => borrarHilo(pid)}
+                    disabled={borrandoId === pid}
+                    aria-label="Borrar historial de este chat"
+                    title="Borrar historial de este chat"
+                  >
+                    {borrandoId === pid ? <Loader2 size={14} className="tz-spin" /> : <Trash2 size={14} />}
+                  </button>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </>

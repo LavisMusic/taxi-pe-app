@@ -24,6 +24,7 @@ import {
   METODOS_CON_COMPROBANTE,
 } from "../lib/taxiEnums";
 import { buildTopRanking } from "../lib/ranking";
+import { useRankingRepartidores } from "../hooks/useRankingRepartidores";
 import Styles from "../components/Styles";
 import StatsSection from "../components/admin/StatsSection";
 import UsuarioEstrellaChip from "../components/admin/UsuarioEstrellaChip";
@@ -222,9 +223,10 @@ export default function AdminDashboardPage() {
 
   // El ranking/Estrella usan ventas VIGENTES: una venta anulada nunca
   // se cobró de verdad, no debería empujar a nadie al primer puesto.
+  const { repartidores: repartidoresRanking } = useRankingRepartidores();
   const ranking = useMemo(
-    () => buildTopRanking({ ventas: ventasVigentes, conductores, usuarios }),
-    [ventasVigentes, conductores, usuarios]
+    () => buildTopRanking({ ventas: ventasVigentes, conductores, usuarios, repartidores: repartidoresRanking }),
+    [ventasVigentes, conductores, usuarios, repartidoresRanking]
   );
 
   const loading = ventasLoading || usuariosLoading || conductoresLoading;

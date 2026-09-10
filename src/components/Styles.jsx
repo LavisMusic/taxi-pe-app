@@ -6009,6 +6009,203 @@ export default function Styles() {
         0% { opacity: 0; transform: translate(-50%, -14px); }
         100% { opacity: 1; transform: translate(-50%, 0); }
       }
+
+      /* ---- Reparto / delivery (EntregasRepartidorPanel, EntregaActivaModal) ---- */
+      .tz-entrega-badge {
+        display: inline-block;
+        padding: 2px 9px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        border: 1px solid rgba(255,255,255,0.18);
+        color: var(--text-dim, #9aa);
+      }
+      .tz-entrega-badge-aceptado   { color: var(--orange); border-color: rgba(255,170,64,0.5); background: rgba(255,170,64,0.12); }
+      .tz-entrega-badge-retirado   { color: var(--cyan);   border-color: rgba(0,224,255,0.5);  background: rgba(0,224,255,0.12); }
+      .tz-entrega-badge-en_ruta    { color: var(--cyan);   border-color: rgba(0,224,255,0.5);  background: rgba(0,224,255,0.12); }
+      .tz-entrega-badge-entregado  { color: var(--green);  border-color: rgba(57,255,176,0.5); background: var(--green-bg); }
+      .tz-entrega-badge-cancelado,
+      .tz-entrega-badge-no_entregado { color: var(--danger); border-color: rgba(255,84,112,0.5); background: rgba(255,84,112,0.12); }
+
+      .tz-entrega-chat {
+        margin-top: 8px;
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 12px;
+        overflow: hidden;
+        background: rgba(0,0,0,0.18);
+      }
+      .tz-entrega-chat-scroll {
+        max-height: 220px;
+        overflow-y: auto;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .tz-entrega-msg {
+        align-self: flex-start;
+        max-width: 82%;
+        padding: 7px 10px;
+        border-radius: 12px;
+        background: rgba(255,255,255,0.07);
+        font-size: 13.5px;
+        line-height: 1.35;
+        word-break: break-word;
+      }
+      .tz-entrega-msg-propio {
+        align-self: flex-end;
+        background: var(--green-bg);
+        border: 1px solid rgba(57,255,176,0.4);
+      }
+      .tz-entrega-msg-sistema {
+        align-self: center;
+        background: transparent;
+        color: var(--text-dim, #9aa);
+        font-size: 12px;
+        font-style: italic;
+      }
+      .tz-entrega-msg-quien {
+        display: block;
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        opacity: 0.6;
+        margin-bottom: 2px;
+      }
+      .tz-entrega-msg-check {
+        display: inline-flex;
+        vertical-align: -2px;
+        margin-left: 4px;
+        color: var(--green, #39ffb0);
+        opacity: 0.7;
+      }
+      .tz-entrega-chat-input {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px;
+        border-top: 1px solid rgba(255,255,255,0.1);
+      }
+      .tz-entrega-chat-input .tz-text-input {
+        flex: 1 1 auto;
+        min-width: 0;   /* sin esto el input no cede ancho y el botón lo aplasta */
+      }
+      .tz-entrega-chat-input .tz-scan-btn {
+        flex: 0 0 42px;
+        width: 42px;
+        height: 42px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+      }
+
+      /* Fila de la bandeja de chat del conductor con botón de borrar. */
+      .tz-chat-inbox-row { display: flex; align-items: stretch; gap: 6px; }
+      .tz-chat-inbox-row .tz-history-row-head { flex: 1 1 auto; min-width: 0; }
+      .tz-chat-inbox-del {
+        flex: 0 0 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        border: 1px solid rgba(255,84,112,0.4);
+        background: rgba(255,84,112,0.1);
+        color: var(--danger);
+        cursor: pointer;
+      }
+      .tz-chat-inbox-del:disabled { opacity: 0.5; cursor: default; }
+
+      /* ---- Escáner QR (EscanerQrModal) ---- */
+      .tz-qr-viewport {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        max-height: 320px;
+        margin: 10px auto 0;
+        border-radius: 14px;
+        overflow: hidden;
+        background: #000;
+      }
+      .tz-qr-viewport video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .tz-qr-frame {
+        position: absolute;
+        inset: 16%;
+        border: 3px solid var(--green, #39ffb0);
+        border-radius: 12px;
+        box-shadow: 0 0 0 9999px rgba(0,0,0,0.35);
+      }
+      .tz-qr-loading {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+      }
+
+      /* ---- Mapa de entrega (MapaEntrega) — reusa .tz-mapa-viaje ---- */
+      .tz-entrega-mapa-wrap { margin-top: 10px; }
+      .tz-entrega-mapa-bar {
+        display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 6px;
+      }
+      .tz-fresh {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 2px 9px; border-radius: 999px;
+        font-size: 11px; font-weight: 700;
+      }
+      .tz-fresh::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+      .tz-fresh-live  { color: var(--green, #39ffb0); background: rgba(57,255,176,0.12); }
+      .tz-fresh-stale { color: var(--orange, #ff9d3d); background: rgba(255,157,61,0.12); }
+      .tz-fresh-none  { color: #8a8a98; background: rgba(255,255,255,0.06); }
+      .tz-entrega-mapa-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        margin: 0 auto 6px;
+        padding: 4px 12px;
+        border-radius: 999px;
+        background: rgba(0,224,255,0.12);
+        border: 1px solid rgba(0,224,255,0.4);
+        color: var(--cyan);
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .tz-entrega-mapa-wrap { display: flex; flex-direction: column; align-items: center; }
+      .tz-entrega-mapa-wrap > div { width: 100%; }
+      /* Grupo del pin del repartidor: vehículo chico (26px, igual que
+         MapaViaje) + etiqueta LIBRE / EN CARRERA, sin contador de asientos. */
+      .tz-entrega-marker-group {
+        position: relative;
+        width: 26px;
+        height: 26px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .tz-entrega-marker-estado {
+        position: absolute;
+        top: -16px;
+        left: 50%;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        padding: 1px 6px;
+        border-radius: 999px;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        color: #05030c;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+      }
     `}</style>
   );
 }

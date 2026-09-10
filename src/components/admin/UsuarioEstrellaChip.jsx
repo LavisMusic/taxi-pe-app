@@ -6,6 +6,7 @@ const ROLES = [
   { key: "conductores", label: "Conductor" },
   { key: "pasajeros", label: "Pasajero" },
   { key: "recolectores", label: "Recolector" },
+  { key: "repartidores", label: "Repartidor" },
 ];
 
 // Tarjeta "Usuario Estrella" — el doble de ancha que un .tz-stat-chip
@@ -19,6 +20,7 @@ export default function UsuarioEstrellaChip({ ranking }) {
   const [rol, setRol] = useState("conductores");
   const top5 = (ranking[rol] ?? []).slice(0, 5);
   const sinDatosPasajeros = rol === "pasajeros";
+  const esRepartidor = rol === "repartidores";
 
   return (
     <div className="tz-stat-chip tz-stat-chip-star">
@@ -42,7 +44,7 @@ export default function UsuarioEstrellaChip({ ranking }) {
       {sinDatosPasajeros ? (
         <span className="tz-stat-sub">Sin datos suficientes aún</span>
       ) : top5.length === 0 ? (
-        <span className="tz-stat-sub">Aún sin ventas</span>
+        <span className="tz-stat-sub">{esRepartidor ? "Aún sin entregas (últimos 7 días)" : "Aún sin ventas"}</span>
       ) : (
         <div className="tz-star-carousel">
           {top5.map((u, i) => (
@@ -53,7 +55,9 @@ export default function UsuarioEstrellaChip({ ranking }) {
               <span className="tz-star-carousel-info">
                 <span className="tz-star-text tz-star-carousel-name">{u.nombre}</span>
                 <span className="tz-stat-sub">
-                  {formatSoles(u.total)} en {u.ventas} venta{u.ventas === 1 ? "" : "s"}
+                  {esRepartidor
+                    ? `${u.entregas} entrega${u.entregas === 1 ? "" : "s"} · últimos 7 días`
+                    : `${formatSoles(u.total)} en ${u.ventas} venta${u.ventas === 1 ? "" : "s"}`}
                 </span>
               </span>
             </div>

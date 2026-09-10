@@ -7,6 +7,7 @@ import { supabase } from "../supabaseClient";
 import { REMITENTE_PASAJERO } from "../hooks/useChatMensajes";
 import { canalViaje } from "../hooks/useGpsBroadcaster";
 import { distanciaMetros } from "../lib/haversine";
+import { useWakeLock } from "../hooks/useWakeLock";
 import { COORD_DEFAULT } from "../hooks/useLocalidades";
 import { MAPBOX_TILE_URL, MAPBOX_ATTRIBUTION } from "../lib/mapboxConfig";
 import { COLOR_PASAJERO_MAPA } from "../lib/nivelServicio";
@@ -120,6 +121,11 @@ export default function MapaViaje({
   const [posicionPasajero, setPosicionPasajero] = useState(null);
   const [posicionConductor, setPosicionConductor] = useState(null);
   const soyPasajero = remitentePropio === REMITENTE_PASAJERO;
+
+  // Mientras este mapa está montado (chat/viaje abierto) mantiene la
+  // pantalla encendida — así el watchPosition de más abajo no se
+  // suspende al bloquearse el celular. Ver useWakeLock.js.
+  useWakeLock(true);
   // El vehículo se pinta con el color de SU categoría (VIP/Premium/
   // Ejecutivo/Económico) — antes quedaba fijo en cian sin importar la
   // categoría real, acá se arma en cada render con el color que llega

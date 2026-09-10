@@ -5,6 +5,7 @@ import { useConductorSesion } from "../hooks/useConductorSesion";
 import { useHilosChatConductor } from "../hooks/useChatMensajes";
 import { useCategoriasPublicas } from "../hooks/useCategoriasPublicas";
 import { useGpsBroadcaster } from "../hooks/useGpsBroadcaster";
+import { useWakeLock } from "../hooks/useWakeLock";
 import { usePaquetes } from "../hooks/usePaquetes";
 import { useBienvenidaNeon } from "../hooks/useBienvenidaNeon";
 import { useMembresiaActivadaNeon } from "../hooks/useMembresiaActivadaNeon";
@@ -24,6 +25,7 @@ import ConductorPublicCard from "../components/ConductorPublicCard";
 import ConductorChatInboxModal from "../components/ConductorChatInboxModal";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import VerificarConductorForm from "../components/VerificarConductorForm";
+import EntregasRepartidorPanel from "../components/repartidor/EntregasRepartidorPanel";
 import logo from "../assets/logo.png";
 
 // Ruta /conductor — entra por RequireUsuarioRol rol="conductor".
@@ -162,6 +164,13 @@ export default function ConductorPage() {
   const [savingDescripcion, setSavingDescripcion] = useState(false);
 
   const estadoActivo = conductor?.estado === ESTADO_CONDUCTOR_ACTIVO;
+
+  // Mantiene la pantalla encendida mientras el conductor está operativo
+  // (Activo/Ocupado) — cubre viajes y repartos, para que el GPS no se
+  // suspenda al apagarse la pantalla. Ver useWakeLock.js.
+  useWakeLock(
+    conductor?.estado === ESTADO_CONDUCTOR_ACTIVO || conductor?.estado === ESTADO_CONDUCTOR_OCUPADO
+  );
 
   const handleToggle = async () => {
     if (!conductor || toggling) return;
@@ -368,6 +377,8 @@ export default function ConductorPage() {
             </button>
 
             {toggleError && <p className="tz-error" style={{ textAlign: "center" }}>{toggleError}</p>}
+
+            {conductor.aprobado && <EntregasRepartidorPanel conductorId={conductor.id} />}
 
             <div className="tz-method-history" style={{ marginTop: 18 }}>
               <span className="tz-method-history-label">Mi perfil de chat</span>

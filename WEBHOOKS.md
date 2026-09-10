@@ -130,35 +130,16 @@ estado, origen, origen_ref) values (…, 'pendiente', 'webhook:caja', caja_ref)`
 con dedupe por `(origen, origen_ref)`. Sin match → `sin_match`, queda en
 `webhook_inbox` para conciliar.
 
-### 3.2 `caja.pedido_delivery` — Caja → Taxi-PE
+### 3.2 `caja.pedido_delivery` — ❌ REEMPLAZADO
 
-**Dispara:** `AFTER INSERT ON pedidos` (Caja) con la marca de delivery.
+El delivery dejó de ser un webhook fire-and-forget: es una sesión en vivo
+(mapa + chat + GPS + QR/PIN) compartida entre cajero, cliente y repartidor.
+Ver **[DELIVERY.md](DELIVERY.md)**. El handshake ahora es la Edge Function
+`entrega-crear` (misma firma HMAC, evento `caja.entrega_crear`).
 
-**Payload `data`:**
-
-```json
-{
-  "pedido": {
-    "caja_ref": "<pedidos.id>",
-    "sucursal": "Tonazo Centro",
-    "origen_texto": "Av. Siempre Viva 123",
-    "origen_lat": -12.05, "origen_lng": -77.04,
-    "cliente_nombre": "Juan Pérez",
-    "cliente_telefono": "912345678",
-    "items": [{ "nombre": "Combo 1", "cantidad": 2 }],
-    "total": 38.00,
-    "metodo_pago": "YAPE"
-  }
-}
-```
-
-**Aplica (Taxi-PE, `rpc_webhook_caja_pedido_delivery`):** `insert into
-pedidos_delivery_entrantes (…, estado='nuevo', origen_ref=caja_ref)` con dedupe.
-La tabla está en `supabase_realtime` → el panel de despacho la ve en vivo. La
-**asignación de vehículo es acción del lado Taxi-PE** (no la hace el webhook).
-
-> Fase 2 opcional — `taxi.pedido_delivery_estado` de vuelta a la Caja
-> (asignado / en_ruta / entregado) para que la Caja muestre el estado.
+La migración `20260908150000_delivery_core.sql` da de baja las piezas 3.2 que
+se habían creado (`pedidos_delivery_entrantes`, `rpc_webhook_caja_pedido_delivery`,
+la función `webhook-caja-pedido-delivery`).
 
 ### 3.3 `taxi.pago_fiado_conductor` — Taxi-PE → Caja
 
@@ -199,10 +180,11 @@ descripcion, foto_url, metodo_pago, fecha, origen, origen_ref)` con
 ### En este repo (Taxi-PE, proyecto `silfhbdmfdryjdzpwzvh`)
 
 ```
-supabase/migrations/20260908120000_webhooks_infra.sql   infra + emisor 3.3 + RPC 3.1/3.2
+supabase/migrations/20260908120000_webhooks_infra.sql   infra + emisor 3.3 + RPC 3.1 (y 3.2, dado de baja luego)
+supabase/migrations/20260908150000_delivery_core.sql    baja de 3.2 + núcleo de la sesión de delivery (DELIVERY.md)
 supabase/functions/_shared/webhook.ts                   verificación HMAC (Deno)
 supabase/functions/webhook-caja-fiado-conductor/index.ts   receptor 3.1
-supabase/functions/webhook-caja-pedido-delivery/index.ts    receptor 3.2
+supabase/functions/entrega-crear/index.ts               handshake de delivery (reemplaza 3.2)
 ```
 
 ### En el repo de la Caja (`caja-registradora-tonazo/caja-app`, proyecto `xaerfywydzwifohjsvwa`)
@@ -226,10 +208,11 @@ supabase/functions/webhook-taxi-pago-fiado/index.ts     receptor 3.3
 > (o `caja_id is null`) para que un pago hecho en Taxi-PE baje la deuda del
 > cliente sin inflar el efectivo/digital del turno (§6.1).
 
-> ⚠️ El emisor 3.2 se dispara cuando `pedidos.requiere_delivery` pasa a `true`.
-> Si el checkout de `caja-app` inserta los `pedido_items` **después** de marcar
-> el pedido como delivery, llamar al final del checkout a
-> `select public.fn_emitir_pedido_delivery_por_id('<pedido_uuid>')` en su lugar.
+> ⚠️ El evento 3.2 (`caja.pedido_delivery`) fue **reemplazado** por la sesión de
+> delivery en vivo — ver [DELIVERY.md](DELIVERY.md). En `caja-app`, las piezas
+> 3.2 de `0055_webhooks_infra.sql` (`fn_emitir_pedido_delivery*`,
+> `trg_emitir_pedido_delivery`, columnas `pedidos.requiere_delivery`/…) se dan
+> de baja en la migración de la Fase 3 del delivery.
 
 El bloque de infra (`webhook_outbox`, `webhook_inbox`, `fn_webhook_*`,
 `pg_cron`) es **el mismo** en ambos proyectos — cambia solo qué triggers emisores
