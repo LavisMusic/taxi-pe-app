@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PackageCheck, Bike, MapPin, Store, Check, X, Loader2 } from "lucide-react";
 import { useEntregasRepartidor } from "../../hooks/useEntregasRepartidor";
 import { useEntregaGpsBroadcaster } from "../../hooks/useEntregaGpsBroadcaster";
@@ -18,6 +18,30 @@ export default function EntregasRepartidorPanel({ conductorId }) {
 
   // Transmite el GPS del repartidor mientras haya entrega activa.
   useEntregaGpsBroadcaster(entregaActiva?.id, entregaActiva?.conductor_id);
+
+  // Cuando llega una oferta de reparto NUEVA, mostrar el mismo pantallazo
+  // intrusivo de "¡Alguien necesita tu servicio!" que ya se usa para las
+  // señas de un pasajero (ver alertaSenas en ConductorPage.jsx).
+  const [alertaOferta, setAlertaOferta] = useState(false);
+  const ofertasVistasRef = useRef(new Set());
+  const hidratadoRef = useRef(false);
+  useEffect(() => {
+    const ids = ofertas.map((o) => o.oferta_id);
+    if (!hidratadoRef.current) {
+      // Primera pasada: sembrar lo que ya había sin avisar (ej. el
+      // conductor recargó la página con una oferta pendiente).
+      hidratadoRef.current = true;
+      ids.forEach((id) => ofertasVistasRef.current.add(id));
+      return;
+    }
+    if (entregaActiva) {
+      ids.forEach((id) => ofertasVistasRef.current.add(id));
+      return;
+    }
+    const hayNueva = ids.some((id) => !ofertasVistasRef.current.has(id));
+    ids.forEach((id) => ofertasVistasRef.current.add(id));
+    if (hayNueva) setAlertaOferta(true);
+  }, [ofertas, entregaActiva]);
 
   if (loading && !entregaActiva && ofertas.length === 0) return null;
   if (error) return null;
@@ -106,6 +130,24 @@ export default function EntregasRepartidorPanel({ conductorId }) {
           finalizar={finalizar}
           onClose={() => setAbierta(false)}
         />
+      )}
+
+      {alertaOferta && !entregaActiva && (
+        <div className="tz-modal-backdrop">
+          <div className="tz-senas-alert" onClick={(e) => e.stopPropagation()}>
+            <span className="tz-senas-alert-icon" aria-hidden="true">
+              🙋‍♂️
+            </span>
+            <h2>¡Alguien necesita tu servicio!</h2>
+            <button
+              type="button"
+              className="tz-scan-btn tz-senas-alert-btn"
+              onClick={() => setAlertaOferta(false)}
+            >
+              Ver pedido
+            </button>
+          </div>
+        </div>
       )}
     </section>
   );
