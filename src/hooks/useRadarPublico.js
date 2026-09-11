@@ -31,14 +31,27 @@ export function useRadarPublico() {
     (async () => {
       const { data, error } = await supabase
         .from("conductores")
-        .select("id, ultima_lat, ultima_lng, asientos_ocupados, asientos_totales, creditos, vencimiento_suscripcion")
+        .select(
+          "id, ultima_lat, ultima_lng, ultima_actualizacion, asientos_ocupados, asientos_totales, creditos, vencimiento_suscripcion"
+        )
         .in("estado", [ESTADO_CONDUCTOR_ACTIVO, ESTADO_CONDUCTOR_OCUPADO])
         .not("ultima_lat", "is", null)
         .not("ultima_lng", "is", null);
       if (cancelado || error || !data) return;
 
+      // Conductores Fantasma: un conductor cuyo 'estado' quedó en
+      // activo/ocupado en la base (cerró la app de golpe, se le fue la
+      // señal, etc. sin pasar por el apagado limpio) seguía sembrando
+      // acá su ÚLTIMA posición conocida, aunque sea de horas atrás —
+      // mismo bug que ya se arregló para el radar de reparto
+      // (rpc_conductores_para_reparto, ver migración
+      // 20260909160000_conductores_reparto_recientes.sql). Mismo
+      // umbral: si no actualizó su posición en los últimos 2 minutos,
+      // no está realmente transmitiendo.
+      const dosMinAtras = Date.now() - 2 * 60 * 1000;
       const iniciales = {};
       for (const c of data) {
+        if (!c.ultima_actualizacion || new Date(c.ultima_actualizacion).getTime() < dosMinAtras) continue;
         const ocupados = c.asientos_ocupados ?? 0;
         const totales = c.asientos_totales ?? 4;
         // Mismo criterio de useGpsBroadcaster.js: sin lugar, ese

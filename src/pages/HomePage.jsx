@@ -519,7 +519,15 @@ export default function HomePage() {
           destino={destinoSeleccionado}
           onClose={() => setRadarOpen(false)}
           onSeleccionarConductor={(c) => {
-            if (!esPasajero) return;
+            // Antes esto no hacía NADA visible si la sesión activa no
+            // era de pasajero (ni toast ni consola) — quien probaba el
+            // Radar sin sesión de pasajero tocaba el vehículo y no
+            // pasaba nada, sin ninguna pista de por qué.
+            if (!esPasajero) {
+              setAvisoDestino("⚠️ Inicia sesión como pasajero para contactar a un conductor.");
+              setTimeout(() => setAvisoDestino(""), 3500);
+              return;
+            }
             // Anti-Spam de Asientos: RadarGlobal.jsx ya saca del mapa a
             // cualquier auto sin lugar (no se lo puede ni clickear), pero
             // esto revalida en el punto exacto donde se manda la
