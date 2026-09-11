@@ -7,15 +7,19 @@ import { supabase } from "../../supabaseClient";
 import { canalEntrega } from "../../hooks/useEntregasRepartidor";
 import { MAPBOX_TILE_URL, MAPBOX_ATTRIBUTION } from "../../lib/mapboxConfig";
 import { MAPA_NIVEL_COLOR } from "../../lib/nivelServicio";
-import { ESTADO_CONDUCTOR_ACTIVO } from "../../lib/taxiEnums";
 
 // Mapa en vivo de la entrega — MISMO estilo que el mapa del chat de un
 // viaje en curso (MapaViaje.jsx): contenedor `tz-mapa-viaje`, pines
 // chicos (26px), encuadre automático a los puntos visibles, toggle
 // "Ocultar mapa". El pin del repartidor usa el ícono de categoría que
-// asignó el Admin (coloreado por nivel_servicio) con la etiqueta
-// LIBRE / EN CARRERA — pero SIN el contador de asientos (esto es
-// recolección de productos, no pasajeros).
+// asignó el Admin (coloreado por nivel_servicio) — sin el contador de
+// asientos (esto es recolección de productos, no pasajeros) NI el
+// badge LIBRE/EN CARRERA que tenía antes: ese badge mostraba
+// `conductores.estado`, el switch de disponibilidad para VIAJES —
+// ajeno a esta entrega, y cambia solo (el conductor lo toca a mano
+// para pasajeros) sin que tenga nada que ver con aceptar/entregar el
+// pedido. Mostrarlo acá confundía, como si "aceptar la entrega" fuera
+// lo que lo ponía "en carrera".
 
 const ICONO_DESTINO = L.divIcon({
   className: "tz-radar-marker-wrap",
@@ -30,18 +34,15 @@ const ICONO_ORIGEN = L.divIcon({
   iconAnchor: [13, 13],
 });
 
-function iconoRepartidor(color, iconoUrl, libre) {
+function iconoRepartidor(color, iconoUrl) {
   const vehiculo = iconoUrl
     ? `<img class="tz-radar-marker-mini-img" src="${iconoUrl}" alt="" style="--tz-marker-color:${color}" />`
     : `<span class="tz-radar-marker" style="--tz-marker-color:${color}">🚖</span>`;
-  const badge = `<span class="tz-entrega-marker-estado ${
-    libre ? "tz-vehiculo-badge-libre" : "tz-vehiculo-badge-carrera"
-  }">${libre ? "LIBRE" : "EN CARRERA"}</span>`;
   return L.divIcon({
     className: "tz-radar-marker-wrap",
-    html: `<div class="tz-entrega-marker-group">${vehiculo}${badge}</div>`,
-    iconSize: [120, 26],
-    iconAnchor: [13, 13], // centrado en el vehículo, no en el grupo
+    html: `<div class="tz-entrega-marker-group">${vehiculo}</div>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
   });
 }
 
@@ -121,7 +122,6 @@ export default function MapaEntrega({ entregaId, conductorId = null, destino = n
   }, [entregaId, client]);
 
   const color = MAPA_NIVEL_COLOR[marcador.nivel] || MAPA_NIVEL_COLOR.economico;
-  const libre = marcador.estado === ESTADO_CONDUCTOR_ACTIVO;
   const puntos = [repartidor, destino, origen];
   const centro = repartidor || destino || origen || { lat: -12.0464, lng: -77.0428 };
   const ubicando = !repartidor;
@@ -157,7 +157,7 @@ export default function MapaEntrega({ entregaId, conductorId = null, destino = n
             {origen && <Marker position={[origen.lat, origen.lng]} icon={ICONO_ORIGEN} />}
             {destino && <Marker position={[destino.lat, destino.lng]} icon={ICONO_DESTINO} />}
             {repartidor && (
-              <Marker position={[repartidor.lat, repartidor.lng]} icon={iconoRepartidor(color, marcador.iconoUrl, libre)} />
+              <Marker position={[repartidor.lat, repartidor.lng]} icon={iconoRepartidor(color, marcador.iconoUrl)} />
             )}
           </MapContainer>
         </div>

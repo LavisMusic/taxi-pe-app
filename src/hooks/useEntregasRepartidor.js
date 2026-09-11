@@ -8,12 +8,17 @@ import { supabase } from "../supabaseClient";
 //
 // - `ofertas`: entregas en estado 'buscando' que el cajero le ofreció a
 //   ESTE conductor (varias a la vez; gana el primero que acepta).
-// - `entregaActiva`: su entrega en curso ('aceptado' | 'retirado' | 'en_ruta').
+// - `entregasActivas`: TODAS sus entregas en curso ('aceptado' o
+//   'en_ruta') — un conductor puede tener varias 'aceptado' sin recoger
+//   todavía, pero apenas una llega a 'en_ruta' (recogió y pagó esa) dejó
+//   de recibir ofertas nuevas (bloqueado del lado del RPC
+//   rpc_conductores_para_reparto/rpc_entrega_aceptar, ver DELIVERY.md §9)
+//   — `tieneEnRuta` es ese chequeo ya resuelto para la UI.
 //
 // Polling cada 8 s + al volver el foco a la pestaña (mismo criterio que
-// el resto de la app — ver useConductorSesion.js). Cuando hay entrega
-// activa, además se suscribe al canal Broadcast `entrega-<id>` para
-// refrescar al toque ante cambios de estado / mensajes.
+// el resto de la app — ver useConductorSesion.js). Mientras haya
+// entregas activas, además se suscribe al canal Broadcast `entrega-<id>`
+// DE CADA UNA para refrescar al toque ante cambios de estado / mensajes.
 
 const POLL_MS = 8000;
 
@@ -23,7 +28,7 @@ export function canalEntrega(entregaId) {
 
 export function useEntregasRepartidor(conductorId) {
   const [ofertas, setOfertas] = useState([]);
-  const [entregaActiva, setEntregaActiva] = useState(null);
+  const [entregasActivas, setEntregasActivas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const yaCargo = useRef(false);
@@ -31,7 +36,7 @@ export function useEntregasRepartidor(conductorId) {
   const refresh = useCallback(async () => {
     if (!conductorId) {
       setOfertas([]);
-      setEntregaActiva(null);
+      setEntregasActivas([]);
       setLoading(false);
       return;
     }
@@ -47,7 +52,7 @@ export function useEntregasRepartidor(conductorId) {
     } else {
       setError("");
       setOfertas(ofertasRes.data ?? []);
-      setEntregaActiva((activaRes.data && activaRes.data[0]) || null);
+      setEntregasActivas(activaRes.data ?? []);
     }
     yaCargo.current = true;
     setLoading(false);
@@ -66,18 +71,26 @@ export function useEntregasRepartidor(conductorId) {
     };
   }, [refresh]);
 
-  // Refresco instantáneo por Broadcast mientras hay entrega activa.
+  // Refresco instantáneo por Broadcast — un canal por cada entrega
+  // activa (misma clave estable por ids que useEntregaGpsBroadcaster.js,
+  // para no reabrir canales en cada poll si el conjunto no cambió).
+  const idsActivasKey = [...new Set(entregasActivas.map((e) => e.id))].sort().join(",");
   useEffect(() => {
-    if (!entregaActiva?.id) return;
-    const ch = supabase
-      .channel(canalEntrega(entregaActiva.id))
-      .on("broadcast", { event: "estado" }, refresh)
-      .on("broadcast", { event: "mensaje" }, refresh)
-      .subscribe();
+    const ids = idsActivasKey ? idsActivasKey.split(",") : [];
+    if (ids.length === 0) return undefined;
+    const canales = ids.map((id) =>
+      supabase
+        .channel(canalEntrega(id))
+        .on("broadcast", { event: "estado" }, refresh)
+        .on("broadcast", { event: "mensaje" }, refresh)
+        .subscribe()
+    );
     return () => {
-      supabase.removeChannel(ch);
+      canales.forEach((ch) => supabase.removeChannel(ch));
     };
-  }, [entregaActiva?.id, refresh]);
+  }, [idsActivasKey, refresh]);
+
+  const tieneEnRuta = entregasActivas.some((e) => e.estado === "en_ruta");
 
   const aceptar = useCallback(
     async (ofertaId) => {
@@ -150,5 +163,16 @@ export function useEntregasRepartidor(conductorId) {
     [conductorId, refresh]
   );
 
-  return { ofertas, entregaActiva, loading, error, refresh, aceptar, rechazar, avanzar, finalizar };
+  return {
+    ofertas,
+    entregasActivas,
+    tieneEnRuta,
+    loading,
+    error,
+    refresh,
+    aceptar,
+    rechazar,
+    avanzar,
+    finalizar,
+  };
 }

@@ -6,18 +6,27 @@ import EntregaActivaModal from "./EntregaActivaModal";
 import { formatSoles } from "../../utils/format";
 
 // Bandeja de reparto en la pantalla del conductor (ver DELIVERY.md §7).
-// Solo se muestra si hay algo que atender: una entrega en curso o
-// pedidos ofrecidos por la Caja. No mete ruido si no hay nada.
+// Solo se muestra si hay algo que atender: entregas en curso o pedidos
+// ofrecidos por la Caja. No mete ruido si no hay nada.
+//
+// Multi-oferta (DELIVERY.md §9): el conductor puede tener VARIAS
+// entregas 'aceptado' a la vez (todavía sin recoger ninguna) — recién
+// deja de recibir ofertas nuevas cuando alguna llega a 'en_ruta' (ya
+// recogió y pagó esa). Por eso la lista de ofertas se sigue mostrando
+// mientras `!tieneEnRuta`, sin importar cuántas 'aceptado' ya tenga.
 
 export default function EntregasRepartidorPanel({ conductorId }) {
-  const { ofertas, entregaActiva, loading, error, aceptar, rechazar, avanzar, finalizar } =
+  const { ofertas, entregasActivas, tieneEnRuta, loading, error, aceptar, rechazar, avanzar, finalizar } =
     useEntregasRepartidor(conductorId);
-  const [abierta, setAbierta] = useState(false);
+  const [abiertaId, setAbiertaId] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [aviso, setAviso] = useState("");
 
-  // Transmite el GPS del repartidor mientras haya entrega activa.
-  useEntregaGpsBroadcaster(entregaActiva?.id, entregaActiva?.conductor_id);
+  // Transmite el GPS del repartidor a TODAS sus entregas activas a la vez.
+  useEntregaGpsBroadcaster(
+    entregasActivas.map((e) => e.id),
+    conductorId
+  );
 
   // Cuando llega una oferta de reparto NUEVA, mostrar el mismo pantallazo
   // intrusivo de "¡Alguien necesita tu servicio!" que ya se usa para las
@@ -34,18 +43,18 @@ export default function EntregasRepartidorPanel({ conductorId }) {
       ids.forEach((id) => ofertasVistasRef.current.add(id));
       return;
     }
-    if (entregaActiva) {
+    if (tieneEnRuta) {
       ids.forEach((id) => ofertasVistasRef.current.add(id));
       return;
     }
     const hayNueva = ids.some((id) => !ofertasVistasRef.current.has(id));
     ids.forEach((id) => ofertasVistasRef.current.add(id));
     if (hayNueva) setAlertaOferta(true);
-  }, [ofertas, entregaActiva]);
+  }, [ofertas, tieneEnRuta]);
 
-  if (loading && !entregaActiva && ofertas.length === 0) return null;
+  if (loading && entregasActivas.length === 0 && ofertas.length === 0) return null;
   if (error) return null;
-  if (!entregaActiva && ofertas.length === 0) return null;
+  if (entregasActivas.length === 0 && ofertas.length === 0) return null;
 
   const onAceptar = async (id) => {
     setBusyId(id);
@@ -53,8 +62,9 @@ export default function EntregasRepartidorPanel({ conductorId }) {
     const r = await aceptar(id);
     setBusyId(null);
     if (r.status === "ya_tomada") setAviso("Otro repartidor tomó ese pedido primero.");
-    else if (r.status === "ok") setAbierta(true);
-    else if (r.status && r.status !== "ok") setAviso(`No se pudo aceptar (${r.status}).`);
+    else if (r.status === "conductor_en_ruta") {
+      setAviso("Ya recogiste un pedido — no podés aceptar otro hasta entregarlo.");
+    } else if (r.status && r.status !== "ok") setAviso(`No se pudo aceptar (${r.status}).`);
   };
 
   const onRechazar = async (oferta) => {
@@ -64,29 +74,32 @@ export default function EntregasRepartidorPanel({ conductorId }) {
     setBusyId(null);
   };
 
+  const entregaAbierta = entregasActivas.find((e) => e.id === abiertaId) || null;
+
   return (
     <section className="tz-method-history" style={{ marginTop: 18 }}>
       <span className="tz-method-history-label">
         <Bike size={14} style={{ verticalAlign: "-2px", marginRight: 4 }} /> Reparto
       </span>
 
-      {entregaActiva && (
+      {entregasActivas.map((entrega) => (
         <button
+          key={entrega.id}
           type="button"
           className="tz-scan-btn tz-payment-save"
           style={{ width: "100%", marginTop: 8, justifyContent: "space-between" }}
-          onClick={() => setAbierta(true)}
+          onClick={() => setAbiertaId(entrega.id)}
         >
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <PackageCheck size={16} /> Entrega en curso · {entregaActiva.cliente_nombre || "Cliente"}
+            <PackageCheck size={16} /> Entrega en curso · {entrega.cliente_nombre || "Cliente"}
           </span>
-          <span className={`tz-entrega-badge tz-entrega-badge-${entregaActiva.estado}`}>
-            {entregaActiva.estado.replace("_", " ")}
+          <span className={`tz-entrega-badge tz-entrega-badge-${entrega.estado}`}>
+            {entrega.estado.replace("_", " ")}
           </span>
         </button>
-      )}
+      ))}
 
-      {!entregaActiva &&
+      {!tieneEnRuta &&
         ofertas.map((o) => (
           <div key={o.oferta_id} className="tz-add-entry" style={{ marginTop: 8 }}>
             <p style={{ margin: "0 0 4px", fontWeight: 600 }}>{o.cliente_nombre || "Cliente"}</p>
@@ -122,17 +135,17 @@ export default function EntregasRepartidorPanel({ conductorId }) {
 
       {aviso && <p className="tz-error" style={{ marginTop: 6 }}>{aviso}</p>}
 
-      {abierta && entregaActiva && (
+      {entregaAbierta && (
         <EntregaActivaModal
-          entrega={entregaActiva}
+          entrega={entregaAbierta}
           conductorId={conductorId}
           avanzar={avanzar}
           finalizar={finalizar}
-          onClose={() => setAbierta(false)}
+          onClose={() => setAbiertaId(null)}
         />
       )}
 
-      {alertaOferta && !entregaActiva && (
+      {alertaOferta && !tieneEnRuta && (
         <div className="tz-modal-backdrop">
           <div className="tz-senas-alert" onClick={(e) => e.stopPropagation()}>
             <span className="tz-senas-alert-icon" aria-hidden="true">

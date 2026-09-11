@@ -321,3 +321,10 @@ copia al portapapeles. (Es la app real, no un artifact — sin restricción de C
    "Anular venta"), marca `pedidos.venta_revertida` y avisa por el chat.
    El cliente puede cancelar en `nuevo`/`en_atencion`; si ya había venta,
    el stock se repone la próxima vez que un admin/cajero abre el Gestor.
+9. **Multi-oferta**: un repartidor puede tener **varias entregas
+   `aceptado`** a la vez (sin recogerlas todavía). Apenas UNA llega a
+   `en_ruta` (recogió y pagó esa), deja de recibir ofertas nuevas —
+   `rpc_conductores_para_reparto()` lo excluye y `rpc_entrega_aceptar`
+   rechaza cualquier intento (`status: 'conductor_en_ruta'`) — hasta que
+   la cierre (entregado/no_entregado). `rpc_entrega_activa_conductor`
+   devuelve TODAS sus entregas activas, no solo la última.
