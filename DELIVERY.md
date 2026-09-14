@@ -328,3 +328,10 @@ copia al portapapeles. (Es la app real, no un artifact — sin restricción de C
    rechaza cualquier intento (`status: 'conductor_en_ruta'`) — hasta que
    la cierre (entregado/no_entregado). `rpc_entrega_activa_conductor`
    devuelve TODAS sus entregas activas, no solo la última.
+10. **Tarifa de envío** (`entregas.tarifa`): lo que la Caja le paga al
+    repartidor por el reparto en sí, aparte del monto del pedido (que el
+    repartidor cobra en el mostrador). El cajero la carga en el modal de
+    "Asignar repartidor" (bloquea "Ofertar" hasta que sea > 0) —
+    `rpc_entrega_ofertar` la graba y avisa por el chat `cajero_conductor`.
+    El repartidor la ve en la oferta (`rpc_entrega_ofertas_conductor`)
+    antes de aceptar/rechazar, y queda en la boleta del cliente.

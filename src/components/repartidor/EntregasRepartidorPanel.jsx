@@ -110,8 +110,16 @@ export default function EntregasRepartidorPanel({ conductorId }) {
               <Store size={13} /> {o.caja_sucursal || "Sucursal"}
             </p>
             {o.total != null && (
-              <p className="tz-camera-note" style={{ margin: "0 0 6px" }}>
+              <p className="tz-camera-note" style={{ margin: "0 0 3px" }}>
                 Valor del pedido: {formatSoles(o.total)}
+              </p>
+            )}
+            {o.tarifa != null && (
+              <p
+                className="tz-camera-note"
+                style={{ margin: "0 0 6px", color: "var(--green)", fontWeight: 700 }}
+              >
+                💰 Tarifa de envío: {formatSoles(o.tarifa)}
               </p>
             )}
             <div className="tz-add-entry-actions">
