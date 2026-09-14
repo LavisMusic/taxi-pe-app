@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { PackageCheck, Bike, MapPin, Store, Check, X, Loader2, Map as MapIcon } from "lucide-react";
+import { PackageCheck, Bike, MapPin, Store, Check, X, Loader2, Map as MapIcon, AlertTriangle } from "lucide-react";
 import { useEntregasRepartidor } from "../../hooks/useEntregasRepartidor";
 import { useEntregaGpsBroadcaster } from "../../hooks/useEntregaGpsBroadcaster";
 import { MAPBOX_TILE_URL, MAPBOX_ATTRIBUTION } from "../../lib/mapboxConfig";
@@ -41,26 +41,24 @@ const ICONO_YO = L.divIcon({
   iconAnchor: [15, 15],
 });
 
-// Vista previa del trayecto — se abre MANTENIENDO PRESIONADO el botón
-// junto al nombre del cliente en la tarjeta de oferta (no es un modal
-// que haya que cerrar: es "echar un vistazo" antes de decidir si
-// aceptar, se cierra solo al soltar). Portal a <body> para superponer
-// TODA la interfaz sin pelearse con el z-index/overflow de la tarjeta.
-function RutaPreviewPopover({ origen, destino, miPos }) {
+// Vista previa del trayecto — modal tradicional (botón "Ver ruta" junto
+// al nombre del cliente lo abre, se cierra con la X o tocando afuera).
+// Portal a <body> para superponer TODA la interfaz sin pelearse con el
+// z-index/overflow de la tarjeta.
+function RutaPreviewModal({ origen, destino, miPos, onClose }) {
   const puntos = [origen, destino, miPos].filter(Boolean);
   const centro = miPos || destino || origen || { lat: -12.0464, lng: -77.0428 };
   return createPortal(
-    <div className="tz-ruta-preview-backdrop">
+    <div className="tz-ruta-preview-backdrop" onClick={onClose}>
       <div className="tz-ruta-preview-card" onClick={(e) => e.stopPropagation()}>
+        <button className="tz-modal-close" onClick={onClose} aria-label="Cerrar">
+          <X size={18} />
+        </button>
         <MapContainer
           center={[centro.lat, centro.lng]}
           zoom={14}
           className="tz-ruta-preview-map"
           zoomControl={false}
-          dragging={false}
-          scrollWheelZoom={false}
-          doubleClickZoom={false}
-          touchZoom={false}
           attributionControl={false}
         >
           <AjustarVistaPreview puntos={puntos} />
@@ -70,7 +68,11 @@ function RutaPreviewPopover({ origen, destino, miPos }) {
           {miPos && <Marker position={[miPos.lat, miPos.lng]} icon={ICONO_YO} />}
         </MapContainer>
         <div className="tz-ruta-preview-caption">
-          🏪 Sucursal · 🚩 Entrega{miPos ? " · 🚖 Tu posición" : ""}
+          <span className={origen ? "" : "tz-ruta-preview-faltante"}>🏪 Sucursal{!origen && " (sin coordenadas)"}</span>
+          {" · "}
+          <span className={destino ? "" : "tz-ruta-preview-faltante"}>🚩 Entrega{!destino && " (sin coordenadas)"}</span>
+          {" · "}
+          <span className={miPos ? "" : "tz-ruta-preview-faltante"}>🚖 Tu posición{!miPos && " (ubicando…)"}</span>
         </div>
       </div>
     </div>,
@@ -96,12 +98,11 @@ export default function EntregasRepartidorPanel({ conductorId }) {
   const [busyId, setBusyId] = useState(null);
   const [aviso, setAviso] = useState("");
 
-  // Vista previa de ruta (mantener presionado) — oferta_id visible o null.
+  // Vista previa de ruta — modal tradicional, oferta_id visible o null.
   const [verRutaId, setVerRutaId] = useState(null);
   const [miPos, setMiPos] = useState(null);
-  const pressTimerRef = useRef(null);
 
-  const iniciarVistaRuta = (ofertaId) => {
+  const abrirVistaRuta = (ofertaId) => {
     setVerRutaId(ofertaId);
     if (!miPos && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -157,10 +158,17 @@ export default function EntregasRepartidorPanel({ conductorId }) {
   }, [ofertas.length]);
   useEffect(() => {
     ofertas.forEach((o) => {
-      if (!o.oferta_creada_at || expirandoRef.current.has(o.oferta_id)) return;
+      if (!o.oferta_creada_at) return;
+      // Clave por oferta_id + su propio 'created_at': al reofertar a
+      // alguien que ya había rechazado/expirado, la fila es la MISMA
+      // (mismo oferta_id, upsert) pero con un created_at NUEVO — sin
+      // esto, una vez expirada una vez, este cliente nunca la volvía a
+      // chequear (quedaba "marcada" para siempre por su id solo).
+      const clave = `${o.oferta_id}:${o.oferta_creada_at}`;
+      if (expirandoRef.current.has(clave)) return;
       const transcurrido = ahora - new Date(o.oferta_creada_at).getTime();
       if (transcurrido >= TIMEOUT_OFERTA_MS) {
-        expirandoRef.current.add(o.oferta_id);
+        expirandoRef.current.add(clave);
         expirarOferta(o.oferta_id, o.entrega_id);
       }
     });
@@ -227,14 +235,9 @@ export default function EntregasRepartidorPanel({ conductorId }) {
                   <button
                     type="button"
                     className="tz-oferta-ruta-btn"
-                    aria-label="Mantené presionado para ver la ruta"
-                    title="Mantené presionado para ver la ruta"
-                    onMouseDown={() => iniciarVistaRuta(o.oferta_id)}
-                    onMouseUp={cerrarVistaRuta}
-                    onMouseLeave={cerrarVistaRuta}
-                    onTouchStart={(e) => { e.preventDefault(); iniciarVistaRuta(o.oferta_id); }}
-                    onTouchEnd={cerrarVistaRuta}
-                    onContextMenu={(e) => e.preventDefault()}
+                    aria-label="Ver ruta"
+                    title="Ver ruta"
+                    onClick={() => abrirVistaRuta(o.oferta_id)}
                   >
                     <MapIcon size={13} /> Ver ruta
                   </button>
@@ -314,7 +317,7 @@ export default function EntregasRepartidorPanel({ conductorId }) {
       )}
 
       {ofertaConRuta && (
-        <RutaPreviewPopover
+        <RutaPreviewModal
           origen={ofertaConRuta.origen_lat != null ? { lat: Number(ofertaConRuta.origen_lat), lng: Number(ofertaConRuta.origen_lng) } : null}
           destino={
             ofertaConRuta.entrega_lat && ofertaConRuta.entrega_lng
@@ -322,6 +325,7 @@ export default function EntregasRepartidorPanel({ conductorId }) {
               : null
           }
           miPos={miPos}
+          onClose={cerrarVistaRuta}
         />
       )}
     </section>

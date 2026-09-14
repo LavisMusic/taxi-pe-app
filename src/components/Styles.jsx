@@ -1868,8 +1868,9 @@ export default function Styles() {
         transition: width 0.25s linear;
       }
 
-      /* Vista previa de ruta (mantener presionado "Ver ruta") — overlay
-         a pantalla completa con blur de fondo, tarjeta 4:5 centrada. */
+      /* Vista previa de ruta ("Ver ruta") — modal tradicional: overlay a
+         pantalla completa con blur de fondo, tarjeta 4:5 centrada con
+         su propia X de cerrar. */
       .tz-ruta-preview-backdrop {
         position: fixed;
         inset: 0;
@@ -1883,6 +1884,7 @@ export default function Styles() {
         -webkit-backdrop-filter: blur(6px);
       }
       .tz-ruta-preview-card {
+        position: relative;
         width: min(340px, 82vw);
         aspect-ratio: 4 / 5;
         border-radius: 16px;
@@ -1904,6 +1906,7 @@ export default function Styles() {
         color: var(--text-dim);
         background: rgba(255,255,255,0.04);
       }
+      .tz-ruta-preview-faltante { color: var(--danger, #ff5470); }
 
       .tz-method-history {
         display: flex;
