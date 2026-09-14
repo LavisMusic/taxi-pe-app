@@ -335,3 +335,13 @@ copia al portapapeles. (Es la app real, no un artifact — sin restricción de C
     `rpc_entrega_ofertar` la graba y avisa por el chat `cajero_conductor`.
     El repartidor la ve en la oferta (`rpc_entrega_ofertas_conductor`)
     antes de aceptar/rechazar, y queda en la boleta del cliente.
+11. **Timeout de oferta = 30s**: si el conductor no responde, la oferta
+    se "expira" sola (`rpc_entrega_oferta_expirar`, idempotente — la
+    llama quien la vea vencida primero, conductor o cajero) y se avisa
+    por el chat `cajero_conductor`. Se representa como una barra verde
+    regresiva en el borde inferior de la tarjeta de oferta (repartidor)
+    y de la fila del conductor ofertado (radar del cajero).
+12. **Vista previa de ruta antes de aceptar**: el repartidor mantiene
+    presionado "Ver ruta" en la tarjeta de oferta para ver, en un
+    popover 4:5 con blur de fondo, la sucursal + el punto de entrega +
+    su propia posición — solo para mirar, se cierra al soltar.

@@ -104,6 +104,26 @@ export function useEntregasRepartidor(conductorId) {
     [conductorId, refresh]
   );
 
+  // Timeout de 30s de una oferta sin responder (ver DELIVERY.md §9) — lo
+  // llama el propio conductor cuando su cuenta regresiva local llega a
+  // 0. Mismo patrón que rechazar(): RPC (idempotente, ignora si ya no
+  // está pendiente) + broadcast para que el radar del cajero se entere
+  // al toque.
+  const expirarOferta = useCallback(
+    async (ofertaId, entregaId) => {
+      const { data, error: e } = await supabase.rpc("rpc_entrega_oferta_expirar", { p_oferta_id: ofertaId });
+      if (!e && data?.status === "ok" && entregaId) {
+        await supabase
+          .channel(canalEntrega(entregaId))
+          .send({ type: "broadcast", event: "oferta", payload: { estado: "expirada", conductor_id: conductorId } })
+          .catch(() => {});
+      }
+      await refresh();
+      return { status: e ? "error" : data?.status, error: e };
+    },
+    [conductorId, refresh]
+  );
+
   const rechazar = useCallback(
     async (ofertaId, entregaId) => {
       const { data, error: e } = await supabase.rpc("rpc_entrega_rechazar", {
@@ -172,6 +192,7 @@ export function useEntregasRepartidor(conductorId) {
     refresh,
     aceptar,
     rechazar,
+    expirarOferta,
     avanzar,
     finalizar,
   };

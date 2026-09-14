@@ -1827,6 +1827,84 @@ export default function Styles() {
       .tz-add-entry-actions .tz-camera-cancel { flex: 1; }
       .tz-add-entry-actions .tz-payment-save { flex: 2; margin-top: 0; }
 
+      /* Tarjeta de oferta de reparto: relative para que la barra de
+         los 30s (abajo, absolute) se apoye en su propio borde. */
+      .tz-oferta-card { position: relative; overflow: hidden; padding-bottom: 16px; }
+      .tz-oferta-ruta-btn {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 5px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(43,232,255,0.4);
+        background: rgba(43,232,255,0.1);
+        color: var(--cyan);
+        font-size: 11.5px;
+        font-weight: 700;
+        cursor: pointer;
+        -webkit-user-select: none;
+        user-select: none;
+        touch-action: none;
+      }
+      .tz-oferta-ruta-btn:active { background: rgba(43,232,255,0.25); box-shadow: 0 0 10px rgba(43,232,255,0.35); }
+
+      /* Barra regresiva de 30s — pegada al borde inferior de la
+         tarjeta, se achica de a poco (actualizada cada 250ms desde JS,
+         no es una animation CSS: así arranca desde el % real aunque el
+         componente se remonte a mitad de camino). */
+      .tz-oferta-timeout-track {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 3px;
+        background: rgba(255,255,255,0.06);
+      }
+      .tz-oferta-timeout-fill {
+        height: 100%;
+        background: var(--green);
+        box-shadow: 0 0 8px rgba(57,255,176,0.7);
+        transition: width 0.25s linear;
+      }
+
+      /* Vista previa de ruta (mantener presionado "Ver ruta") — overlay
+         a pantalla completa con blur de fondo, tarjeta 4:5 centrada. */
+      .tz-ruta-preview-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 3500;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: rgba(5,3,12,0.55);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+      }
+      .tz-ruta-preview-card {
+        width: min(340px, 82vw);
+        aspect-ratio: 4 / 5;
+        border-radius: 16px;
+        overflow: hidden;
+        background: #10141c;
+        border: 1px solid rgba(43,232,255,0.35);
+        box-shadow: 0 12px 40px rgba(0,0,0,0.55), 0 0 30px rgba(43,232,255,0.15);
+        display: flex;
+        flex-direction: column;
+      }
+      .tz-ruta-preview-map { flex: 1 1 auto; width: 100%; }
+      .tz-ruta-preview-map .leaflet-container { background: #10141c; }
+      .tz-ruta-preview-caption {
+        flex-shrink: 0;
+        padding: 8px 10px;
+        text-align: center;
+        font-size: 11.5px;
+        font-weight: 700;
+        color: var(--text-dim);
+        background: rgba(255,255,255,0.04);
+      }
+
       .tz-method-history {
         display: flex;
         flex-direction: column;
@@ -6150,6 +6228,62 @@ export default function Styles() {
         align-items: center;
         justify-content: center;
         color: #fff;
+      }
+      /* Pantalla de "entrega confirmada" dentro del propio modal del QR
+         — reemplaza la vista de cámara mientras se lo mantiene abierto
+         unos segundos antes de cerrar todo (ver EntregaActivaModal). */
+      .tz-qr-confirmado {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 30px 10px;
+        text-align: center;
+      }
+      .tz-qr-confirmado-icono {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--green-bg);
+        color: var(--green);
+        box-shadow: 0 0 24px rgba(57,255,176,0.5);
+      }
+      .tz-qr-confirmado h3 { margin: 0; color: var(--green); font-family: 'Orbitron', sans-serif; font-size: 16px; }
+
+      /* Serpentinas (Confetti.jsx) — overlay a pantalla completa,
+         fixed, por encima de todo (incluso del modal del QR, que ya usa
+         z-index:90). Cada tira cae con 'fall' y gira con
+         'var(--tz-confetti-rotate)'/'var(--tz-confetti-drift)' puestos
+         inline por pieza — 'forwards' la deja invisible al terminar sin
+         que haga falta desmontar el componente en el momento exacto. */
+      .tz-confetti-wrap {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 4000;
+        overflow: hidden;
+      }
+      .tz-confetti-piece {
+        position: absolute;
+        top: -12px;
+        width: 9px;
+        height: 14px;
+        border-radius: 2px;
+        opacity: 0;
+        animation-name: tz-confetti-fall;
+        animation-timing-function: ease-in;
+        animation-fill-mode: forwards;
+      }
+      @keyframes tz-confetti-fall {
+        0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+        100% {
+          opacity: 0.9;
+          transform: translate(var(--tz-confetti-drift, 0px), 100vh) rotate(var(--tz-confetti-rotate, 180deg));
+        }
       }
 
       /* ---- Mapa de entrega (MapaEntrega) — reusa .tz-mapa-viaje ---- */
