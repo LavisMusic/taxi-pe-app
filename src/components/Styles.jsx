@@ -3024,6 +3024,29 @@ export default function Styles() {
         backdrop-filter: blur(3px);
         border: 1px solid rgba(255,255,255,0.15);
       }
+      /* Botón "volver a vista amplia" — el mapa ahora se puede mover y
+         hacer zoom libremente (el auto-encuadre solo corre una vez), así
+         que hace falta una forma explícita de recentrar. */
+      .tz-mapa-viaje-recentrar {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 30px;
+        border-radius: 999px;
+        background: rgba(5,3,12,0.8);
+        backdrop-filter: blur(3px);
+        border: 1px solid rgba(255,255,255,0.15);
+        color: var(--cyan);
+        cursor: pointer;
+      }
+      .tz-mapa-viaje-recentrar:active {
+        transform: scale(0.92);
+      }
       /* Botón "Cancelar Viaje" — vive DENTRO del panel del Pasajero, no
          suelto: 'flex-wrap' arriba deja que baje de línea en pantallas
          angostas en vez de recortarse. */

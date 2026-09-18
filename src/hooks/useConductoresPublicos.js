@@ -35,7 +35,7 @@ export function useConductoresPublicos() {
       supabase
         .from("conductores")
         .select(
-          "id, nombre, placa, telefono, foto_url, foto_portada_url, descripcion, estado, categoria_id, localidad, nivel_servicio, subgrupo_id, asientos_totales, asientos_ocupados"
+          "id, nombre, placa, telefono, foto_url, foto_portada_url, descripcion, estado, categoria_id, localidad, nivel_servicio, subgrupo_id, asientos_totales, asientos_ocupados, ultima_actualizacion"
         )
         .eq("aprobado", true)
         .in("estado", [ESTADO_CONDUCTOR_ACTIVO, ESTADO_CONDUCTOR_OCUPADO]),
@@ -45,7 +45,18 @@ export function useConductoresPublicos() {
     if (conductoresRes.error || categoriasRes.error) {
       setError("No se pudo cargar el directorio de conductores.");
     } else {
-      setConductores(conductoresRes.data ?? []);
+      // Conductores Fantasma: mismo bug ya resuelto en useRadarPublico.js
+      // y en rpc_conductores_para_reparto — un conductor que cerró la
+      // app de golpe (se quedó sin señal, mató el proceso, etc.) sin
+      // pasar por el apagado limpio queda con 'estado' activo/ocupado en
+      // la base indefinidamente. Si no actualizó `ultima_actualizacion`
+      // en los últimos 2 minutos, no está realmente conectado — no debe
+      // aparecer en el catálogo del pasajero.
+      const dosMinAtras = Date.now() - 2 * 60 * 1000;
+      const vivos = (conductoresRes.data ?? []).filter(
+        (c) => c.ultima_actualizacion && new Date(c.ultima_actualizacion).getTime() >= dosMinAtras
+      );
+      setConductores(vivos);
       setCategorias(categoriasRes.data ?? []);
     }
     yaCargoUnaVez.current = true;

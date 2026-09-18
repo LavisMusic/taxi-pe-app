@@ -98,6 +98,17 @@ export function useEntregasRepartidor(conductorId) {
         p_oferta_id: ofertaId,
         p_conductor_id: conductorId,
       });
+      // Bug: era la ÚNICA acción del conductor que no avisaba por
+      // Broadcast — rechazar/avanzar/finalizar sí lo hacen. El radar del
+      // cajero (useEntregaCaja.js) escucha el evento 'estado' en
+      // `entrega-<id>`, así que sin esto se enteraba recién en su
+      // siguiente poll (hasta 8s de demora en vez de al toque).
+      if (!e && data?.status === "ok" && data?.entrega_id) {
+        await supabase
+          .channel(canalEntrega(data.entrega_id))
+          .send({ type: "broadcast", event: "estado", payload: { estado: "aceptado" } })
+          .catch(() => {});
+      }
       await refresh();
       return { status: e ? "error" : data?.status, error: e };
     },

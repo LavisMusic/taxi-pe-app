@@ -188,7 +188,7 @@ export default function EntregaActivaModal({ entrega, conductorId, onClose, avan
           {entrega.total != null && (
             <p className="tz-camera-note" style={{ margin: 0 }}>Total del pedido: {formatSoles(entrega.total)}</p>
           )}
-          <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap", justifyContent: "center" }}>
             <a
               href={mapsUrl}
               target="_blank"

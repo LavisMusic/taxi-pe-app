@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, Maximize2 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { canalEntrega } from "../../hooks/useEntregasRepartidor";
 import { MAPBOX_TILE_URL, MAPBOX_ATTRIBUTION } from "../../lib/mapboxConfig";
@@ -46,21 +46,40 @@ function iconoRepartidor(color, iconoUrl) {
   });
 }
 
-// Encuadra a los puntos visibles (repartidor + destino). MapContainer
-// solo usa center/zoom al montar.
-function AjustarVista({ puntos }) {
+function encuadrar(map, puntos) {
+  const validos = puntos.filter(Boolean);
+  if (validos.length >= 2) {
+    map.fitBounds(
+      validos.map((p) => [p.lat, p.lng]),
+      { padding: [40, 40], maxZoom: 16 }
+    );
+  } else if (validos.length === 1) {
+    map.setView([validos[0].lat, validos[0].lng], 15, { animate: true });
+  }
+}
+
+// Encuadra a los puntos visibles (repartidor + destino) SOLO la primera
+// vez que hay suficientes — después de eso el repartidor puede mover y
+// hacer zoom en el mapa a su gusto sin que cada tick de GPS nuevo se lo
+// pise. El botón "Centrar" (recentrarTick) es la única forma de volver
+// a encuadrar después de esa primera vez.
+function AjustarVista({ puntos, recentrarTick }) {
   const map = useMap();
+  const yaAjustado = useRef(false);
+
   useEffect(() => {
-    const validos = puntos.filter(Boolean);
-    if (validos.length >= 2) {
-      map.fitBounds(
-        validos.map((p) => [p.lat, p.lng]),
-        { padding: [40, 40], maxZoom: 16 }
-      );
-    } else if (validos.length === 1) {
-      map.setView([validos[0].lat, validos[0].lng], 15, { animate: true });
-    }
+    if (yaAjustado.current) return;
+    if (puntos.filter(Boolean).length === 0) return;
+    encuadrar(map, puntos);
+    yaAjustado.current = true;
   }, [puntos, map]);
+
+  useEffect(() => {
+    if (recentrarTick === 0) return;
+    encuadrar(map, puntos);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recentrarTick]);
+
   return null;
 }
 
@@ -79,6 +98,7 @@ export default function MapaEntrega({ entregaId, conductorId = null, destino = n
   const [marcador, setMarcador] = useState({ iconoUrl: null, nivel: "economico", estado: null });
   const [oculto, setOculto] = useState(false);
   const [posAt, setPosAt] = useState(posInicial?.at ? new Date(posInicial.at).getTime() : 0);
+  const [recentrarTick, setRecentrarTick] = useState(0);
   const ultimo = useRef(0);
 
   // Re-render del chip de frescura cada 20 s.
@@ -145,14 +165,23 @@ export default function MapaEntrega({ entregaId, conductorId = null, destino = n
               <span>Ubicando al repartidor…</span>
             </div>
           )}
+          <button
+            type="button"
+            className="tz-mapa-viaje-recentrar"
+            onClick={() => setRecentrarTick((n) => n + 1)}
+            aria-label="Volver a vista amplia"
+            title="Volver a vista amplia"
+          >
+            <Maximize2 size={15} />
+          </button>
           <MapContainer
             center={[centro.lat, centro.lng]}
             zoom={15}
             className="tz-mapa-viaje"
             zoomControl={false}
-            scrollWheelZoom={false}
+            scrollWheelZoom
           >
-            <AjustarVista puntos={puntos} />
+            <AjustarVista puntos={puntos} recentrarTick={recentrarTick} />
             <TileLayer attribution={MAPBOX_ATTRIBUTION} url={MAPBOX_TILE_URL} />
             {origen && <Marker position={[origen.lat, origen.lng]} icon={ICONO_ORIGEN} />}
             {destino && <Marker position={[destino.lat, destino.lng]} icon={ICONO_DESTINO} />}
