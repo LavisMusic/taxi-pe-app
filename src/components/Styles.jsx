@@ -6315,7 +6315,7 @@ export default function Styles() {
       /* ---- Mapa de entrega (MapaEntrega) — reusa .tz-mapa-viaje ---- */
       .tz-entrega-mapa-wrap { margin-top: 10px; }
       .tz-entrega-mapa-bar {
-        display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 6px;
+        display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;
       }
       .tz-fresh {
         display: inline-flex; align-items: center; gap: 5px;
