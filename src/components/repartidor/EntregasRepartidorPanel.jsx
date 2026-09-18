@@ -216,8 +216,13 @@ export default function EntregasRepartidorPanel({ conductorId }) {
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <PackageCheck size={16} /> Entrega en curso · {entrega.cliente_nombre || "Cliente"}
           </span>
-          <span className={`tz-entrega-badge tz-entrega-badge-${entrega.estado}`}>
-            {entrega.estado.replace("_", " ")}
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {entrega.caja_sucursal && (
+              <span className="tz-entrega-badge tz-entrega-badge-sucursal">{entrega.caja_sucursal}</span>
+            )}
+            <span className={`tz-entrega-badge tz-entrega-badge-${entrega.estado}`}>
+              {entrega.estado.replace("_", " ")}
+            </span>
           </span>
         </button>
       ))}

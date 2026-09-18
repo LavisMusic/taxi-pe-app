@@ -6132,6 +6132,15 @@ export default function Styles() {
       .tz-entrega-badge-entregado  { color: var(--green);  border-color: rgba(57,255,176,0.5); background: var(--green-bg); }
       .tz-entrega-badge-cancelado,
       .tz-entrega-badge-no_entregado { color: var(--danger); border-color: rgba(255,84,112,0.5); background: rgba(255,84,112,0.12); }
+      /* Etiqueta de sucursal junto al badge de estado — mismo tamaño
+         (.tz-entrega-badge de base), color rosado neón para distinguirla
+         del estado. */
+      .tz-entrega-badge-sucursal {
+        color: var(--pink);
+        border-color: rgba(255,47,158,0.5);
+        background: rgba(255,47,158,0.12);
+        text-transform: none;
+      }
 
       .tz-entrega-chat {
         margin-top: 8px;
