@@ -173,6 +173,57 @@ descripcion, foto_url, metodo_pago, fecha, origen, origen_ref)` con
 > deuda? Por defecto el RPC lo marca **digital/externo** y NO lo suma al efectivo
 > físico del turno.
 
+### 3.4 `caja.mirror_cliente` — Caja → Taxi-PE
+
+**Unificación de cuentas pasajero/cliente** (paso 1: "cuentas espejo" — cada
+app sigue con su propio login, pero el mismo celular+PIN funciona en ambas).
+A diferencia de 3.1/3.3, **no** pasa por el outbox/`pg_cron`: el emisor llama
+por `fetch()` directo y sincrónico (mismo patrón que `entrega-iniciar` /
+`entrega-crear`), porque es un espejo best-effort — si Caja no responde, no
+hay nada que reintentar automáticamente, el próximo cambio de PIN lo vuelve a
+intentar.
+
+**Dispara:** justo cuando un CLIENTE (nunca un cajero) de Caja tiene por
+primera vez un PIN real, o lo cambia — `create-cliente` (si el admin puso el
+PIN de una), `set-initial-pin` (el cliente crea su PIN en su primer login) y
+`manage-usuario` acción `reset-pin` (solo si el usuario reseteado es
+`role='cliente'`).
+
+**Payload `data`:**
+
+```json
+{ "telefono": "987654321", "pin": "1234", "nombre": "Juana Pérez" }
+```
+
+El PIN viaja en **texto plano** — es el único momento en que Caja lo tiene
+(su propio `auth.users` solo guarda el hash de GoTrue). El HMAC + HTTPS es la
+misma protección que ya usa cualquier login normal.
+
+**Aplica (Taxi-PE, `rpc_webhook_caja_mirror_cliente`):** hashea el PIN con
+`hash_pin` (pgcrypto/bcrypt, la misma función que usa el login de pasajero) y
+hace upsert en `usuarios` por `telefono` (`rol='pasajero'`,
+`estado_verificacion='permanente'`) — `nombre_usuario` se rellena con el
+propio teléfono (el login de pasajero busca por teléfono, no por usuario).
+
+### 3.5 `taxi.mirror_pasajero` — Taxi-PE → Caja
+
+La otra mitad del espejo. También síncrono vía `fetch()`, sin outbox.
+
+**Dispara:** el frontend (`usePasajeroAuth.js`) llama a la Edge Function
+`mirror-a-caja` justo después de que `verificarCuenta`/`crearPin` guardan un
+PIN real — esa función RE-VERIFICA el PIN en texto plano contra el hash que
+recién se guardó (`verify_pin`) antes de reenviar nada, para que nadie pueda
+llamarla con un teléfono ajeno y forzar un alta/reset de cuenta en Caja.
+
+**Payload `data`:** igual forma que 3.4 (`telefono`, `pin`, `nombre`).
+
+**Aplica (Caja, vía `webhook-taxi-mirror-cuenta`, en JS — no hay forma de
+crear una cuenta de Supabase Auth desde un RPC de SQL puro):** crea o
+actualiza el `auth.users` de Caja (`${telefono}@tonazo.app`) + `profiles`
+(`role='cliente'`) + `clientes_fiado` — si ya existía una fila
+`clientes_fiado` sin login (alta manual del admin, sin `auth_user_id`), se
+vincula esa misma fila en vez de duplicar.
+
 ---
 
 ## 4. Archivos
@@ -182,9 +233,12 @@ descripcion, foto_url, metodo_pago, fecha, origen, origen_ref)` con
 ```
 supabase/migrations/20260908120000_webhooks_infra.sql   infra + emisor 3.3 + RPC 3.1 (y 3.2, dado de baja luego)
 supabase/migrations/20260908150000_delivery_core.sql    baja de 3.2 + núcleo de la sesión de delivery (DELIVERY.md)
+supabase/migrations/20260918140000_mirror_cuenta_caja.sql  RPC receptor 3.4
 supabase/functions/_shared/webhook.ts                   verificación HMAC (Deno)
 supabase/functions/webhook-caja-fiado-conductor/index.ts   receptor 3.1
 supabase/functions/entrega-crear/index.ts               handshake de delivery (reemplaza 3.2)
+supabase/functions/webhook-caja-mirror-cuenta/index.ts  receptor 3.4
+supabase/functions/mirror-a-caja/index.ts               emisor síncrono 3.5 (llamado por el frontend, no por trigger)
 ```
 
 ### En el repo de la Caja (`caja-registradora-tonazo/caja-app`, proyecto `xaerfywydzwifohjsvwa`)
@@ -197,6 +251,8 @@ supabase/migrations/0055_webhooks_infra.sql             infra + emisores 3.1/3.2
                                                           .entrega_lat / .entrega_lng / .contacto_nombre / .contacto_telefono
 supabase/functions/_shared/webhook.ts                   idéntico al de Taxi-PE
 supabase/functions/webhook-taxi-pago-fiado/index.ts     receptor 3.3
+supabase/functions/_shared/mirrorTaxi.ts                firma+POST síncrono del emisor 3.4 (mismo patrón que entrega-iniciar)
+supabase/functions/webhook-taxi-mirror-cuenta/index.ts  receptor 3.5
 ```
 
 > ⚠️ El header de `0055_webhooks_infra.sql` trae una query para verificar los
@@ -284,10 +340,13 @@ supabase secrets set WEBHOOK_SECRET_TAXI_TO_CAJA=<hex-64> --project-ref xaerfywy
 supabase db push --project-ref silfhbdmfdryjdzpwzvh
 supabase functions deploy webhook-caja-fiado-conductor --no-verify-jwt --project-ref silfhbdmfdryjdzpwzvh
 supabase functions deploy webhook-caja-pedido-delivery  --no-verify-jwt --project-ref silfhbdmfdryjdzpwzvh
+supabase functions deploy webhook-caja-mirror-cuenta    --no-verify-jwt --project-ref silfhbdmfdryjdzpwzvh
+supabase functions deploy mirror-a-caja                 --no-verify-jwt --project-ref silfhbdmfdryjdzpwzvh
 
 # Caja (cuando estén los archivos)
 supabase db push --project-ref xaerfywydzwifohjsvwa
-supabase functions deploy webhook-taxi-pago-fiado --no-verify-jwt --project-ref xaerfywydzwifohjsvwa
+supabase functions deploy webhook-taxi-pago-fiado     --no-verify-jwt --project-ref xaerfywydzwifohjsvwa
+supabase functions deploy webhook-taxi-mirror-cuenta  --no-verify-jwt --project-ref xaerfywydzwifohjsvwa
 ```
 
 Prueba de humo (desde el proyecto emisor, SQL Editor):
