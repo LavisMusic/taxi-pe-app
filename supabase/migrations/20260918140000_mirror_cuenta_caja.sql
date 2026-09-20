@@ -22,7 +22,14 @@ create or replace function public.rpc_webhook_caja_mirror_cliente(p_event_id uui
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+-- 'extensions' hace falta acá: hash_pin() usa gen_salt()/crypt() de
+-- pgcrypto, que en Supabase vive en el schema 'extensions' (ver
+-- fn_webhook_firmar más arriba en este mismo repo) — sin incluirlo acá,
+-- el search_path de ESTA función pisa el que hash_pin() necesita
+-- (Postgres solo aplica el SET search_path del nivel más externo de la
+-- cadena de llamadas) y revienta con "function gen_salt(unknown) does
+-- not exist".
+set search_path = public, extensions
 as $$
 declare
   v_nuevo    integer;
