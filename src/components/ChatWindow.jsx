@@ -21,6 +21,7 @@ import {
 import { MAPA_NIVEL_COLOR } from "../lib/nivelServicio";
 import { MAPBOX_TOKEN } from "../lib/mapboxConfig";
 import MapaViaje from "./MapaViaje";
+import Confetti from "./Confetti";
 import logo from "../assets/logo.png";
 
 // Mini-Mapa en Mensaje de Señas: Mapbox Static Images API — a
@@ -461,6 +462,20 @@ export default function ChatWindow({
   // perdiera y solo llegara por postgres_changes. Nunca se pisa a un
   // valor "para atrás" — ver ese efecto.
   const [estadoViaje, setEstadoViaje] = useState(null);
+  // Confeti al confirmar que el pasajero llegó a destino — dispara para
+  // AMBOS lados (conductor que toca "Finalizar Carrera" Y pasajero que
+  // lo ve llegar por Broadcast/postgres_changes), watcheando la
+  // TRANSICIÓN real de estadoViaje, no un solo lado a mano.
+  const [mostrarConfetiViaje, setMostrarConfetiViaje] = useState(false);
+  const estadoViajeAnteriorRef = useRef(null);
+  useEffect(() => {
+    const anterior = estadoViajeAnteriorRef.current;
+    estadoViajeAnteriorRef.current = estadoViaje;
+    if (anterior !== ESTADO_OFERTA_FINALIZADO && estadoViaje === ESTADO_OFERTA_FINALIZADO) {
+      setMostrarConfetiViaje(true);
+      setTimeout(() => setMostrarConfetiViaje(false), 2000);
+    }
+  }, [estadoViaje]);
   // Fix Cronómetro Infinito: override optimista de `viaje_fin_at`,
   // seteado en DOS lugares — (a) el propio Conductor, apenas confirma
   // el fin en la base (handleFinalizarViaje, no espera a que le vuelva
@@ -1235,6 +1250,7 @@ export default function ChatWindow({
 
   return (
     <>
+      {mostrarConfetiViaje && <Confetti />}
       <div className="tz-chat-window">
       {toastCancelacion && (
         <div className="tz-chat-toast" role="status">
