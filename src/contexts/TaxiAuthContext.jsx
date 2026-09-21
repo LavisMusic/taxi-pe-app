@@ -1,5 +1,38 @@
-import { createContext, useCallback, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { ShieldAlert } from "lucide-react";
+import { supabase } from "../supabaseClient";
 import { TAXI_ADMIN_KEY, TAXI_SESSION_KEY } from "../lib/taxiAuth";
+
+// Aviso a pantalla completa cuando el Admin elimina la cuenta MIENTRAS
+// la persona la sigue teniendo abierta en su dispositivo — sin esto,
+// la sesión local seguía "viva" (usuario en localStorage) mostrando
+// datos de una cuenta que ya no existe en la base, hasta que alguien
+// recargara a mano. Mismas clases tz-modal-backdrop/tz-modal que
+// cualquier otro modal de la app.
+function CuentaEliminadaOverlay({ onCerrar }) {
+  return (
+    <div className="tz-modal-backdrop" style={{ zIndex: 999999 }}>
+      <div className="tz-modal" style={{ textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+        <ShieldAlert size={40} color="var(--danger, #ff5470)" style={{ margin: "0 auto" }} />
+        <h2 style={{ marginTop: 12 }}>Tu cuenta ha sido eliminada</h2>
+        <p className="tz-brand-sub" style={{ marginTop: 8 }}>
+          Un administrador eliminó esta cuenta. Si crees que es un error, comunícate con soporte.
+        </p>
+        <button
+          type="button"
+          className="tz-scan-btn tz-payment-save"
+          style={{ marginTop: 16, width: "100%" }}
+          onClick={() => {
+            onCerrar();
+            window.location.href = "/";
+          }}
+        >
+          Entendido
+        </button>
+      </div>
+    </div>
+  );
+}
 
 const TaxiAuthContext = createContext(null);
 
@@ -40,6 +73,7 @@ function readStoredAdminMaster() {
 export function TaxiAuthProvider({ children }) {
   const [usuario, setUsuario] = useState(readStoredUsuario);
   const [isAdminMaster, setIsAdminMaster] = useState(readStoredAdminMaster);
+  const [cuentaEliminada, setCuentaEliminada] = useState(false);
 
   // Login por DNI + Teléfono + PIN (recolector/conductor/pasajero).
   const loginUsuario = useCallback((row, remember = true) => {
@@ -83,6 +117,33 @@ export function TaxiAuthProvider({ children }) {
     window.sessionStorage.removeItem(TAXI_ADMIN_KEY);
   }, []);
 
+  // Cuenta eliminada por el Admin (cualquier rol: pasajero, conductor,
+  // recolector) MIENTRAS esta sesión sigue abierta en este
+  // dispositivo — eliminarUsuario() (useUsuarios.js) siempre borra la
+  // fila de 'usuarios' primero (para conductor, también la de
+  // 'conductores' después), así que basta con escuchar el DELETE de
+  // 'usuarios' acá, una sola vez, para cubrir los 3 roles por igual.
+  useEffect(() => {
+    if (!usuario?.id) return undefined;
+    const channel = supabase
+      .channel(`usuario-eliminado-${usuario.id}`)
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "usuarios", filter: `id=eq.${usuario.id}` },
+        () => {
+          setUsuario(null);
+          setIsAdminMaster(false);
+          window.localStorage.removeItem(TAXI_SESSION_KEY);
+          window.sessionStorage.removeItem(TAXI_SESSION_KEY);
+          setCuentaEliminada(true);
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [usuario?.id]);
+
   const value = {
     usuario,
     rol: usuario?.rol ?? null,
@@ -93,7 +154,12 @@ export function TaxiAuthProvider({ children }) {
     logout,
   };
 
-  return <TaxiAuthContext.Provider value={value}>{children}</TaxiAuthContext.Provider>;
+  return (
+    <TaxiAuthContext.Provider value={value}>
+      {cuentaEliminada && <CuentaEliminadaOverlay onCerrar={() => setCuentaEliminada(false)} />}
+      {children}
+    </TaxiAuthContext.Provider>
+  );
 }
 
 export function useTaxiAuth() {
