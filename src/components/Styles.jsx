@@ -4668,7 +4668,11 @@ export default function Styles() {
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
-        filter: drop-shadow(0 0 18px rgba(43,232,255,0.35));
+        /* text-shadow en vez de filter:drop-shadow — con
+           background-clip:text, drop-shadow recorta el glow al
+           bounding-box del texto en varios navegadores (bug de diseño
+           reportado: "cortes en los bordes"). text-shadow no lo sufre. */
+        text-shadow: 0 0 18px rgba(43,232,255,0.35);
       }
       .tz-brand-sub {
         text-align: center;

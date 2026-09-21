@@ -239,10 +239,21 @@ export default function RadarGlobal({
   // suscrito a Realtime (useConductoresPublicos.js), así que basta con
   // sumar el chequeo de asientos acá para que el auto desaparezca del
   // radar EN VIVO apenas se llena, sin esperar a un refresco manual.
+  // Filtro por Localidad: 'localidadFiltro' ya llegaba como prop (se
+  // usaba para el viewbox del buscador de direcciones) pero nunca se
+  // aplicaba acá — el radar mostraba conductores de CUALQUIER
+  // localidad, no solo la que el pasajero ya había elegido en la Home.
+  // Mismo criterio que esa misma lista (!localidadFiltro muestra todos,
+  // sin filtro elegido).
   const vehiculosEnRadar = useMemo(
     () =>
-      (conductores ?? []).filter((c) => posiciones[c.id] && (c.asientos_ocupados ?? 0) < (c.asientos_totales ?? 4)),
-    [conductores, posiciones]
+      (conductores ?? []).filter(
+        (c) =>
+          posiciones[c.id] &&
+          (c.asientos_ocupados ?? 0) < (c.asientos_totales ?? 4) &&
+          (!localidadFiltro || c.localidad === localidadFiltro)
+      ),
+    [conductores, posiciones, localidadFiltro]
   );
 
   return (

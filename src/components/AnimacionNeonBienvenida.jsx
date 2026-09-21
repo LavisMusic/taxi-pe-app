@@ -888,7 +888,15 @@ export default function AnimacionNeonBienvenida({
               -webkit-background-clip: text;
               background-clip: text;
               color: transparent;
-              filter: drop-shadow(0 0 18px rgba(43,232,255,0.55)) drop-shadow(0 0 34px rgba(255,47,158,0.35));
+              /* Bug de diseño reportado: "glow central... cortes en los
+                 bordes" — filter:drop-shadow() sobre un elemento con
+                 background-clip:text hace que varios navegadores
+                 recorten el glow al bounding-box del texto (rectángulo
+                 duro) en vez de dejarlo irradiar libre. text-shadow no
+                 sufre ese recorte (actúa sobre los glifos, no sobre un
+                 filtro de bitmap) y sigue funcionando con color:
+                 transparent + el relleno en gradiente. */
+              text-shadow: 0 0 18px rgba(43,232,255,0.55), 0 0 34px rgba(255,47,158,0.35);
               opacity: 0;
               animation: tz-neon-text-in 0.9s ease-out 0.55s both, tz-neon-title-pulse 2.6s ease-in-out 1.5s infinite;
             }
@@ -907,8 +915,8 @@ export default function AnimacionNeonBienvenida({
               100% { opacity: 1; transform: translateY(0); }
             }
             @keyframes tz-neon-title-pulse {
-              0%, 100% { filter: drop-shadow(0 0 18px rgba(43,232,255,0.55)) drop-shadow(0 0 34px rgba(255,47,158,0.35)); }
-              50% { filter: drop-shadow(0 0 30px rgba(43,232,255,0.8)) drop-shadow(0 0 54px rgba(255,47,158,0.55)); }
+              0%, 100% { text-shadow: 0 0 18px rgba(43,232,255,0.55), 0 0 34px rgba(255,47,158,0.35); }
+              50% { text-shadow: 0 0 30px rgba(43,232,255,0.8), 0 0 54px rgba(255,47,158,0.55); }
             }
 
             .tz-neon-skip-btn {
