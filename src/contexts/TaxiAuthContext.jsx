@@ -168,23 +168,43 @@ export function TaxiAuthProvider({ children }) {
   useEffect(() => {
     if (!usuario?.id) return undefined;
     let active = true;
-    supabase
-      .from("usuarios")
-      .select("id")
-      .eq("id", usuario.id)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (!active || error) return;
-        if (!data) marcarCuentaEliminada();
-      });
+
+    const validarCuentaExiste = () => {
+      supabase
+        .from("usuarios")
+        .select("id")
+        .eq("id", usuario.id)
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (!active || error) return;
+          if (!data) marcarCuentaEliminada();
+        });
+    };
+
+    validarCuentaExiste();
+
+    // Con dos pestañas abiertas a la vez, probado en vivo: el navegador
+    // suspende/cierra el WebSocket de Realtime de la pestaña que queda
+    // en segundo plano (o entra al back-forward cache), así que esa
+    // pestaña se pierde el DELETE en vivo. Sin este re-chequeo al
+    // volver a mirarla, se quedaba mostrando la cuenta borrada como si
+    // nada — visibilitychange cubre volver a la pestaña, pageshow
+    // cubre el caso de bfcache (Safari/Firefox no siempre disparan
+    // visibilitychange al restaurar desde bfcache).
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") validarCuentaExiste();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pageshow", validarCuentaExiste);
+    window.addEventListener("focus", validarCuentaExiste);
+
     return () => {
       active = false;
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pageshow", validarCuentaExiste);
+      window.removeEventListener("focus", validarCuentaExiste);
     };
-    // Solo al montar / cuando cambia el id de usuario (login nuevo) —
-    // no en cada render, el listener de Realtime ya cubre lo que pasa
-    // mientras la pestaña sigue abierta.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [usuario?.id]);
+  }, [usuario?.id, marcarCuentaEliminada]);
 
   const value = {
     usuario,
