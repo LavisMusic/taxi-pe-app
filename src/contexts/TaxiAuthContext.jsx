@@ -123,6 +123,22 @@ export function TaxiAuthProvider({ children }) {
     window.sessionStorage.removeItem(TAXI_ADMIN_KEY);
   }, []);
 
+  // Único punto de entrada para "esta cuenta ya no existe" — lo usan
+  // TANTO el listener de Realtime (se borra MIENTRAS esta pestaña
+  // sigue abierta) COMO la validación al montar (la cuenta YA estaba
+  // borrada de antes: alguien reabre la app días después con el
+  // usuario todavía guardado en localStorage — un DELETE que ya pasó
+  // es invisible para un canal de Realtime que recién se suscribe
+  // ahora, así que antes esto quedaba con la sesión local "viva" para
+  // siempre, sin avisar nada).
+  const marcarCuentaEliminada = useCallback(() => {
+    setUsuario(null);
+    setIsAdminMaster(false);
+    window.localStorage.removeItem(TAXI_SESSION_KEY);
+    window.sessionStorage.removeItem(TAXI_SESSION_KEY);
+    setCuentaEliminada(true);
+  }, []);
+
   // Cuenta eliminada por el Admin (cualquier rol: pasajero, conductor,
   // recolector) MIENTRAS esta sesión sigue abierta en este
   // dispositivo — eliminarUsuario() (useUsuarios.js) siempre borra la
@@ -136,18 +152,38 @@ export function TaxiAuthProvider({ children }) {
       .on(
         "postgres_changes",
         { event: "DELETE", schema: "public", table: "usuarios", filter: `id=eq.${usuario.id}` },
-        () => {
-          setUsuario(null);
-          setIsAdminMaster(false);
-          window.localStorage.removeItem(TAXI_SESSION_KEY);
-          window.sessionStorage.removeItem(TAXI_SESSION_KEY);
-          setCuentaEliminada(true);
-        }
+        marcarCuentaEliminada
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
+  }, [usuario?.id, marcarCuentaEliminada]);
+
+  // Validación al montar/reabrir: acá NO hay sesión de Supabase Auth
+  // ni fetch de servidor de por medio (readStoredUsuario es 100%
+  // local), así que sin este chequeo una cuenta borrada mientras la
+  // pestaña estaba cerrada quedaba "logueada" indefinidamente en este
+  // dispositivo, mostrando datos de una cuenta que ya no existe.
+  useEffect(() => {
+    if (!usuario?.id) return undefined;
+    let active = true;
+    supabase
+      .from("usuarios")
+      .select("id")
+      .eq("id", usuario.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!active || error) return;
+        if (!data) marcarCuentaEliminada();
+      });
+    return () => {
+      active = false;
+    };
+    // Solo al montar / cuando cambia el id de usuario (login nuevo) —
+    // no en cada render, el listener de Realtime ya cubre lo que pasa
+    // mientras la pestaña sigue abierta.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario?.id]);
 
   const value = {
