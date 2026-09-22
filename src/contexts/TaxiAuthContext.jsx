@@ -12,22 +12,28 @@ import { TAXI_ADMIN_KEY, TAXI_SESSION_KEY } from "../lib/taxiAuth";
 function CuentaEliminadaOverlay({ onCerrar }) {
   return (
     <div className="tz-modal-backdrop" style={{ zIndex: 999999 }}>
-      <div className="tz-modal" style={{ textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
-        <ShieldAlert size={40} color="var(--danger, #ff5470)" style={{ margin: "0 auto" }} />
-        <h2 style={{ marginTop: 12 }}>Tu cuenta ha sido eliminada</h2>
+      <div
+        className="tz-modal tz-cuenta-eliminada-modal"
+        style={{ textAlign: "center" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="tz-cuenta-eliminada-icono">
+          <ShieldAlert size={36} />
+        </div>
+        <h2 style={{ marginTop: 14, color: "var(--danger, #ff5470)" }}>Tu cuenta ha sido eliminada</h2>
         <p className="tz-brand-sub" style={{ marginTop: 8 }}>
           Un administrador eliminó esta cuenta. Si crees que es un error, comunícate con soporte.
         </p>
         <button
           type="button"
-          className="tz-scan-btn tz-payment-save"
+          className="tz-scan-btn tz-cuenta-eliminada-salir-btn"
           style={{ marginTop: 16, width: "100%" }}
           onClick={() => {
             onCerrar();
             window.location.href = "/";
           }}
         >
-          Entendido
+          Salir
         </button>
       </div>
     </div>

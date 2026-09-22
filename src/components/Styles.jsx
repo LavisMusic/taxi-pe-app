@@ -6293,6 +6293,36 @@ export default function Styles() {
       }
       .tz-qr-confirmado h3 { margin: 0; color: var(--green); font-family: 'Orbitron', sans-serif; font-size: 16px; }
 
+      /* Aviso de cuenta eliminada — marco rojo con glow pulsante,
+         mismo lenguaje visual "neón" del resto de la app pero en rojo
+         de alerta en vez de cyan/verde/rosa. */
+      .tz-cuenta-eliminada-modal {
+        border: 2px solid var(--danger);
+        animation: tz-cuenta-eliminada-glow 2s ease-in-out infinite;
+      }
+      @keyframes tz-cuenta-eliminada-glow {
+        0%, 100% { box-shadow: 0 0 18px rgba(255,84,112,0.5), 0 0 36px rgba(255,84,112,0.25); }
+        50% { box-shadow: 0 0 30px rgba(255,84,112,0.75), 0 0 56px rgba(255,84,112,0.4); }
+      }
+      .tz-cuenta-eliminada-icono {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255,84,112,0.12);
+        border: 1px solid var(--danger);
+        color: var(--danger);
+        box-shadow: 0 0 20px rgba(255,84,112,0.6);
+      }
+      .tz-cuenta-eliminada-salir-btn {
+        background: var(--danger);
+        border-color: var(--danger);
+        color: #05030c;
+      }
+
       /* Serpentinas (Confetti.jsx) — overlay a pantalla completa,
          fixed, por encima de todo (incluso del modal del QR, que ya usa
          z-index:90). Cada tira cae con 'fall' y gira con
