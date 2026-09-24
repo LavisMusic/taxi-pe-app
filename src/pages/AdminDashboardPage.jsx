@@ -14,6 +14,7 @@ import { useCrearConductorConUsuario } from "../hooks/useCrearConductorConUsuari
 import { useRecargas } from "../hooks/useRecargas";
 import { usePeticionesPin } from "../hooks/usePeticionesPin";
 import { usePaquetesRecolectores } from "../hooks/usePaquetesRecolectores";
+import { usePaquetesClientes } from "../hooks/usePaquetesClientes";
 import { useRecargasRecolector } from "../hooks/useRecargasRecolector";
 import { useCierresCaja } from "../hooks/useCierresCaja";
 import { useAnuncios } from "../hooks/useAnuncios";
@@ -76,6 +77,10 @@ export default function AdminDashboardPage() {
     rechazarUsuario,
     refresh: refreshUsuarios,
   } = useUsuarios();
+  // Recarga a clientes (unificación pasajero/cliente) desde el Admin —
+  // mismo `usuarios` ya cargado para el Directorio/ranking, filtrado a
+  // rol pasajero.
+  const usuariosClientes = usuarios.filter((u) => u.rol === "pasajero");
   const {
     conductores,
     categorias,
@@ -167,6 +172,15 @@ export default function AdminDashboardPage() {
     eliminarPaquete: eliminarPaqueteRecolector,
     reordenarPaquetes: reordenarPaquetesRecolector,
   } = usePaquetesRecolectores();
+  const {
+    paquetes: paquetesClientes,
+    loading: paquetesClientesLoading,
+    error: paquetesClientesError,
+    crearPaquete: crearPaqueteCliente,
+    actualizarPaquete: actualizarPaqueteCliente,
+    eliminarPaquete: eliminarPaqueteCliente,
+    reordenarPaquetes: reordenarPaquetesCliente,
+  } = usePaquetesClientes();
   const {
     pendientes: recargasRecolectorPendientes,
     crearPeticion: crearRecargaRecolector,
@@ -424,6 +438,7 @@ export default function AdminDashboardPage() {
             </button>
             <RecargaRapidaForm
               conductores={conductores}
+              usuariosClientes={usuariosClientes}
               categorias={categorias}
               subgrupos={subgrupos}
               recolectorId={null}
@@ -432,6 +447,7 @@ export default function AdminDashboardPage() {
               saving={savingRecargaAdmin}
               error={errorRecargaAdmin}
               paquetes={paquetes}
+              paquetesClientes={paquetesClientes}
               lockedConductor={recargaConductor}
             />
           </div>
@@ -550,6 +566,17 @@ export default function AdminDashboardPage() {
               actualizarPaquete: actualizarPaqueteRecolector,
               eliminarPaquete: eliminarPaqueteRecolector,
               reordenarPaquetes: reordenarPaquetesRecolector,
+            },
+            {
+              key: "clientes",
+              label: "Clientes",
+              paquetes: paquetesClientes,
+              loading: paquetesClientesLoading,
+              error: paquetesClientesError,
+              crearPaquete: crearPaqueteCliente,
+              actualizarPaquete: actualizarPaqueteCliente,
+              eliminarPaquete: eliminarPaqueteCliente,
+              reordenarPaquetes: reordenarPaquetesCliente,
             },
           ]}
           onClose={() => setMembresiasOpen(false)}

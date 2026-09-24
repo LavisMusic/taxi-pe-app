@@ -9,3 +9,6 @@ verify_jwt = false
 
 [functions.mirror-a-caja]
 verify_jwt = false
+
+[functions.saldo-pasajero]
+verify_jwt = false

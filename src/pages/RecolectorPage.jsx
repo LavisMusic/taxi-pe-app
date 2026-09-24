@@ -8,6 +8,7 @@ import { useUsuarios } from "../hooks/useUsuarios";
 import { useRecargas } from "../hooks/useRecargas";
 import { usePaquetes } from "../hooks/usePaquetes";
 import { usePaquetesRecolectores } from "../hooks/usePaquetesRecolectores";
+import { usePaquetesClientes } from "../hooks/usePaquetesClientes";
 import { useRecargasRecolector } from "../hooks/useRecargasRecolector";
 import { useGastosOperativos } from "../hooks/useGastosOperativos";
 import { useAnularVenta } from "../hooks/useAnularVenta";
@@ -57,6 +58,11 @@ export default function RecolectorPage() {
 
   const { paquetes, glow: glowPaquetes } = usePaquetes();
   const { paquetes: paquetesRecolectores, glow: glowPaquetesRecolectores } = usePaquetesRecolectores();
+  const { paquetes: paquetesClientes, glow: glowPaquetesClientes } = usePaquetesClientes();
+  // Recarga a clientes (unificación pasajero/cliente): mismo `usuarios`
+  // ya cargado para el Historial, filtrado a rol pasajero — no hace
+  // falta una consulta aparte.
+  const usuariosClientes = usuarios.filter((u) => u.rol === "pasajero");
 
   // Animación Épica de Bienvenida (Fase Neón) — ver el mismo bloque en
   // ConductorPage.jsx: acá el catálogo destacado es el DEL RECOLECTOR
@@ -225,6 +231,7 @@ export default function RecolectorPage() {
 
             <RecargaRapidaForm
               conductores={conductores}
+              usuariosClientes={usuariosClientes}
               categorias={categorias}
               subgrupos={subgrupos}
               recolectorId={usuario?.id}
@@ -233,7 +240,9 @@ export default function RecolectorPage() {
               saving={saving}
               error={error}
               paquetes={paquetes}
+              paquetesClientes={paquetesClientes}
               glowPaquetes={glowPaquetes}
+              glowPaquetesClientes={glowPaquetesClientes}
             />
           </>
         )}
