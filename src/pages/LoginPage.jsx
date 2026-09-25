@@ -4,7 +4,7 @@ import Styles from "../components/Styles";
 import PasajeroAuthForm from "../components/PasajeroAuthForm";
 import StaffLoginForm from "../components/StaffLoginForm";
 import RegistroConductorTemporalForm from "../components/recolector/RegistroConductorTemporalForm";
-import logo from "../assets/logo.png";
+import logo from "../assets/logo.webp";
 
 // Conductor/Recolector: mismo toggle Ingresar/Registrarse que ya usan
 // los modales de acceso de la Home (AccesoConductorModal.jsx) — acá

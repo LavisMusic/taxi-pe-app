@@ -23,7 +23,7 @@ import AutorecargaRecolectorModal from "../components/recolector/AutorecargaReco
 import CierreCajaModal from "../components/admin/CierreCajaModal";
 import HistorialVentasModal from "../components/admin/HistorialVentasModal";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
-import logo from "../assets/logo.png";
+import logo from "../assets/logo.webp";
 
 // Ruta /recolector — entra por RequireUsuarioRol rol="recolector".
 // Pantalla operativa de calle: widget de turno bien visible arriba,

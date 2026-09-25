@@ -22,7 +22,7 @@ import { MAPA_NIVEL_COLOR } from "../lib/nivelServicio";
 import { MAPBOX_TOKEN } from "../lib/mapboxConfig";
 import MapaViaje from "./MapaViaje";
 import Confetti from "./Confetti";
-import logo from "../assets/logo.png";
+import logo from "../assets/logo.webp";
 
 // Mini-Mapa en Mensaje de Señas: Mapbox Static Images API — a
 // diferencia del mapa interactivo (MapaViaje.jsx/RadarGlobal.jsx), acá

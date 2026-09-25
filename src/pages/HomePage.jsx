@@ -29,7 +29,7 @@ import ChatModal from "../components/ChatModal";
 import AnuncioPopupModal from "../components/AnuncioPopupModal";
 import RadarGlobal from "../components/RadarGlobal";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
-import logo from "../assets/logo.png";
+import logo from "../assets/logo.webp";
 
 // Persistencia del filtro de localidad — sobrevive a un F5 (ver el
 // useState/useEffect de `localidad` más abajo). Es la única pieza de

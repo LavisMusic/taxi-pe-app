@@ -62,7 +62,7 @@ import ColorPicker from "./components/ColorPicker";
 import LogoEasterEgg from "./components/LogoEasterEgg";
 import TicketBoleta from "./components/TicketBoleta";
 
-import logo from "./assets/logo.png";
+import logo from "./assets/logo.webp";
 
 /* ------------------------------------------------------------------ */
 /* CATALOGO DINAMICO: la carga (categorias/productos/stock desde       */

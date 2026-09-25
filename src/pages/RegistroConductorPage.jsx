@@ -7,7 +7,7 @@ import { useAvisoTop } from "../hooks/useAvisoTop";
 import AvisoTop from "../components/AvisoTop";
 import { esTelefonoValido } from "../lib/taxiEnums";
 import Styles from "../components/Styles";
-import logo from "../assets/logo.png";
+import logo from "../assets/logo.webp";
 
 // Bug reportado: mismo aviso chico arriba de la pantalla que los demás
 // logins — ver PasajeroAuthForm.jsx.

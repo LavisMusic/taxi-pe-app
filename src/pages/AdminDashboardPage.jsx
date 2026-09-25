@@ -45,7 +45,7 @@ import PagosMetodoModal from "../components/admin/PagosMetodoModal";
 import LimpiarChatsModal from "../components/admin/LimpiarChatsModal";
 import RecargaRapidaForm from "../components/recolector/RecargaRapidaForm";
 import RecargaRapidaRecolectorForm from "../components/admin/RecargaRapidaRecolectorForm";
-import logo from "../assets/logo.png";
+import logo from "../assets/logo.webp";
 
 // Opciones del dropdown "Pagos" del header: Yape/Plin/Otros abren
 // PagosMetodoModal (gauges Hoy/Histórico), Fiados reusa la Libreta ya

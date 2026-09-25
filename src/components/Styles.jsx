@@ -205,7 +205,8 @@ export default function Styles() {
         margin: 0 auto;
         box-sizing: border-box;
         /* Calculado con margen de sobra sobre el tamaño real del logo
-           (src/assets/logo.png es 640x460, ratio ~1.39:1) + subtítulo +
+           (src/assets/logo.webp, ratio ~1.5:1 — más ancho que alto que
+           el logo viejo, así que sobra todavía más margen) + subtítulo +
            gap, para esta base ('.tz-logo{max-width:130px}' acá abajo).
            Se pisa en los @media de tablet/desktop porque el logo
            también crece ahí (170px/190px) — un 'min-height' único para

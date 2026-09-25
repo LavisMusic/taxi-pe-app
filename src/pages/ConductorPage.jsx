@@ -26,7 +26,7 @@ import ConductorChatInboxModal from "../components/ConductorChatInboxModal";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import VerificarConductorForm from "../components/VerificarConductorForm";
 import EntregasRepartidorPanel from "../components/repartidor/EntregasRepartidorPanel";
-import logo from "../assets/logo.png";
+import logo from "../assets/logo.webp";
 
 // Ruta /conductor — entra por RequireUsuarioRol rol="conductor".
 // Mobile-first a propósito: una sola columna angosta (max 420px,
