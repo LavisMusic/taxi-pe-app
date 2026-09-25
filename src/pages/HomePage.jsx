@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { LogIn, LogOut, Car, Users, MessageCircle, X, Loader2, MapPin } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { useConductoresPublicos } from "../hooks/useConductoresPublicos";
@@ -16,6 +16,7 @@ import {
 import { TIPO_USUARIO_PASAJERO } from "../lib/taxiEnums";
 import { agruparPorNivel } from "../lib/nivelServicio";
 import { reverseGeocode } from "../lib/reverseGeocode";
+import { distanciaMetros } from "../lib/haversine";
 import Styles from "../components/Styles";
 import Dropdown from "../components/Dropdown";
 import ConductorPublicCard from "../components/ConductorPublicCard";
@@ -93,6 +94,40 @@ export default function HomePage() {
       // crítico, el filtro simplemente no sobrevive un F5 esta vez.
     }
   }, [localidad]);
+
+  // Localidad automática por geolocalización — se recalcula CADA VEZ
+  // que se abre la Home (nunca se guarda "la última detectada", a
+  // propósito: si el pasajero viaja, tiene que reflejar dónde está
+  // ahora, no dónde estaba la última vez). Mismo patrón de
+  // getCurrentPosition que ya usa RadarGlobal.jsx — denegado/sin
+  // soporte simplemente no toca nada y se queda con el filtro
+  // restaurado de localStorage (o "Todas las localidades" si no había
+  // ninguno). `yaIntentado` evita repetir el pedido de permiso si
+  // `localidades` se recarga por Realtime mientras la pantalla sigue
+  // abierta.
+  const geolocalizacionIntentada = useRef(false);
+  useEffect(() => {
+    if (geolocalizacionIntentada.current) return;
+    if (localidades.length === 0) return;
+    if (!navigator.geolocation) return;
+    geolocalizacionIntentada.current = true;
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const masCercana = localidades.reduce((mejor, l) => {
+          const d = distanciaMetros(latitude, longitude, l.lat, l.lon);
+          return d < mejor.distancia ? { fila: l, distancia: d } : mejor;
+        }, { fila: localidades[0], distancia: distanciaMetros(latitude, longitude, localidades[0].lat, localidades[0].lon) }).fila;
+        setLocalidad(masCercana.nombre);
+      },
+      () => {
+        // Denegado o falló — se queda con el filtro restaurado de
+        // localStorage, tal como ya funcionaba antes de esto.
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  }, [localidades]);
   // El Buscador Inteligente (Nominatim) ya NO vive acá — se mudó
   // enteramente dentro de <RadarGlobal/> (Filtro Geográfico y Buscador
   // en el Radar). Acá solo queda el destino YA elegido, sea cual sea su
