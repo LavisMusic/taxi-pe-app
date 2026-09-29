@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
   // reenvía nada.
   const { data: match, error: findErr } = await admin
     .from("usuarios")
-    .select("nombre, pin")
+    .select("nombre, pin, creditos_disponibles, membresia_vencimiento")
     .eq("telefono", telefono)
     .eq("rol", "pasajero")
     .maybeSingle();
@@ -95,7 +95,17 @@ Deno.serve(async (req) => {
     event_type: "taxi.mirror_pasajero",
     occurred_at: new Date().toISOString(),
     source: "taxi",
-    data: { telefono, pin, nombre: body.nombre || match.nombre || null },
+    // Saldo viaja con el alta: la membresía gratis de registro nace en
+    // el INSERT del pasajero (antes de que exista su fila en Caja), así
+    // que el evento de saldo suelto llegaba antes y no tenía dónde
+    // guardarse — ver aplicarSaldo en webhook-taxi-mirror-cuenta.
+    data: {
+      telefono,
+      pin,
+      nombre: body.nombre || match.nombre || null,
+      creditos_disponibles: match.creditos_disponibles ?? 0,
+      membresia_vencimiento: match.membresia_vencimiento ?? null,
+    },
   });
   const ts = Math.floor(Date.now() / 1000);
   const sig = await hmacB64(WEBHOOK_SECRET, `${ts}.${sobre}`);
