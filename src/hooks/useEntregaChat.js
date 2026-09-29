@@ -15,6 +15,14 @@ export function useEntregaChat({ entregaId, conductorId = null, sessionToken = n
   const [mensajes, setMensajes] = useState([]);
   const [enviando, setEnviando] = useState(false);
   const ultimaCarga = useRef("-infinity");
+  // Canal persistente para reusar al emitir (ver 'enviar' más abajo) —
+  // antes cada mensaje abría un canal NUEVO y emitía sin haberlo
+  // suscrito nunca, así que pagaba el handshake de "join" de Realtime
+  // completo en cada envío. Eso explicaba el retraso real reportado
+  // del lado del cliente (Caja): el mensaje llegaba recién en el
+  // siguiente poll de 8s en vez de instantáneo. Mismo patrón que
+  // useChatMensajes.js (channelRef) para el chat de viajes.
+  const channelRef = useRef(null);
 
   const cargar = useCallback(async () => {
     if (!entregaId) return;
@@ -40,7 +48,9 @@ export function useEntregaChat({ entregaId, conductorId = null, sessionToken = n
       .channel(canalEntrega(entregaId))
       .on("broadcast", { event: "mensaje" }, cargar)
       .subscribe();
+    channelRef.current = ch;
     return () => {
+      channelRef.current = null;
       supabase.removeChannel(ch);
     };
   }, [entregaId, cargar]);
@@ -74,9 +84,8 @@ export function useEntregaChat({ entregaId, conductorId = null, sessionToken = n
       });
       setEnviando(false);
       if (!error && data?.status === "ok") {
-        await supabase
-          .channel(canalEntrega(entregaId))
-          .send({ type: "broadcast", event: "mensaje", payload: { hilo } })
+        channelRef.current
+          ?.send({ type: "broadcast", event: "mensaje", payload: { hilo } })
           .catch(() => {});
         await cargar();
         return { error: null };
