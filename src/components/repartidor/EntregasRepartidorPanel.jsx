@@ -91,7 +91,7 @@ function AjustarVistaPreview({ puntos }) {
   return null;
 }
 
-export default function EntregasRepartidorPanel({ conductorId }) {
+export default function EntregasRepartidorPanel({ conductorId, onEntregado }) {
   const { ofertas, entregasActivas, tieneEnRuta, loading, error, aceptar, rechazar, expirarOferta, avanzar, finalizar } =
     useEntregasRepartidor(conductorId);
   const [abiertaId, setAbiertaId] = useState(null);
@@ -299,6 +299,7 @@ export default function EntregasRepartidorPanel({ conductorId }) {
           conductorId={conductorId}
           avanzar={avanzar}
           finalizar={finalizar}
+          onEntregado={onEntregado}
           onClose={() => setAbiertaId(null)}
         />
       )}

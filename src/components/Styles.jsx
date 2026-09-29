@@ -6269,31 +6269,6 @@ export default function Styles() {
         justify-content: center;
         color: #fff;
       }
-      /* Pantalla de "entrega confirmada" dentro del propio modal del QR
-         — reemplaza la vista de cámara mientras se lo mantiene abierto
-         unos segundos antes de cerrar todo (ver EntregaActivaModal). */
-      .tz-qr-confirmado {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        padding: 30px 10px;
-        text-align: center;
-      }
-      .tz-qr-confirmado-icono {
-        width: 64px;
-        height: 64px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--green-bg);
-        color: var(--green);
-        box-shadow: 0 0 24px rgba(57,255,176,0.5);
-      }
-      .tz-qr-confirmado h3 { margin: 0; color: var(--green); font-family: 'Orbitron', sans-serif; font-size: 16px; }
-
       /* Aviso de cuenta eliminada — marco rojo con glow pulsante,
          mismo lenguaje visual "neón" del resto de la app pero en rojo
          de alerta en vez de cyan/verde/rosa. */

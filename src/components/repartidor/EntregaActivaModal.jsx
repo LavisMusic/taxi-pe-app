@@ -82,10 +82,9 @@ function Chat({ entregaId, conductorId, hilo }) {
   );
 }
 
-export default function EntregaActivaModal({ entrega, conductorId, onClose, avanzar, finalizar }) {
+export default function EntregaActivaModal({ entrega, conductorId, onClose, avanzar, finalizar, onEntregado }) {
   const [hilo, setHilo] = useState("cliente_conductor");
   const [escaneando, setEscaneando] = useState(false);
-  const [confirmado, setConfirmado] = useState(false);
   const [intentosQr, setIntentosQr] = useState(0);
   const [pinForzado, setPinForzado] = useState(false);
   const [pin, setPin] = useState("");
@@ -113,17 +112,20 @@ export default function EntregaActivaModal({ entrega, conductorId, onClose, avan
     if (r?.status && r.status !== "ok") setMsg(`No se pudo (${r.status}).`);
   };
 
-  // Intenta finalizar con un código (del QR o del PIN). Si sale bien, NO
-  // cierra al toque: se queda un rato mostrando la confirmación (+
-  // serpentinas si vino del QR, ver onQrLeido) y cierra todo después.
+  // Intenta finalizar con un código (del QR o del PIN). Si sale bien,
+  // cierra el escáner Y este modal al toque, y avisa a 'onEntregado':
+  // la celebración (AnimacionExitoNeon) la monta ConductorPage a
+  // pantalla completa — no puede vivir acá ni en el panel de reparto,
+  // que se desmonta solo apenas no quedan entregas activas.
   const intentarFinalizar = async (codigo) => {
     setBusy(true);
     setMsg("");
     const r = await finalizar(entrega.id, codigo);
     setBusy(false);
     if (r?.status === "ok") {
-      setConfirmado(true);
-      setTimeout(onClose, 1900);
+      setEscaneando(false);
+      onEntregado?.();
+      onClose();
       return true;
     }
     setMsg(
@@ -137,8 +139,7 @@ export default function EntregaActivaModal({ entrega, conductorId, onClose, avan
   const onQrLeido = async (texto) => {
     const ok = await intentarFinalizar(texto);
     if (!ok) {
-      // Solo se cierra el escáner si FALLÓ — si salió bien, se queda
-      // abierto mostrando la pantalla de éxito (ver EscanerQrModal).
+      // Si salió bien, intentarFinalizar ya cerró todo.
       setEscaneando(false);
       setIntentosQr((n) => n + 1);
       setMsg("Ese QR no corresponde a esta entrega. Intentá de nuevo.");
@@ -300,7 +301,6 @@ export default function EntregaActivaModal({ entrega, conductorId, onClose, avan
 
       {escaneando && (
         <EscanerQrModal
-          confirmado={confirmado}
           onLeido={onQrLeido}
           onTimeout={onQrTimeout}
           onSinCamara={onSinCamara}
