@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Send, ShieldAlert, Loader2, Plus, ChevronUp, ChevronDown } from "lucide-react";
 import { formatTime, formatDate } from "../utils/format";
 import { supabase } from "../supabaseClient";
@@ -21,7 +22,7 @@ import {
 import { MAPA_NIVEL_COLOR } from "../lib/nivelServicio";
 import { MAPBOX_TOKEN } from "../lib/mapboxConfig";
 import MapaViaje from "./MapaViaje";
-import Confetti from "./Confetti";
+import AnimacionExitoNeon from "./AnimacionExitoNeon";
 import logo from "../assets/logo.webp";
 
 // Mini-Mapa en Mensaje de Señas: Mapbox Static Images API — a
@@ -471,9 +472,14 @@ export default function ChatWindow({
   useEffect(() => {
     const anterior = estadoViajeAnteriorRef.current;
     estadoViajeAnteriorRef.current = estadoViaje;
-    if (anterior !== ESTADO_OFERTA_FINALIZADO && estadoViaje === ESTADO_OFERTA_FINALIZADO) {
+    // Solo una transición REAL desde un viaje en marcha: al reabrir el
+    // chat de un viaje ya terminado, estadoViaje pasa de null a
+    // 'finalizado' al cargar y antes eso también disparaba el festejo.
+    if (
+      (anterior === ESTADO_OFERTA_ACEPTADA || anterior === ESTADO_OFERTA_EN_TRANSITO) &&
+      estadoViaje === ESTADO_OFERTA_FINALIZADO
+    ) {
       setMostrarConfetiViaje(true);
-      setTimeout(() => setMostrarConfetiViaje(false), 2000);
     }
   }, [estadoViaje]);
   // Fix Cronómetro Infinito: override optimista de `viaje_fin_at`,
@@ -1250,7 +1256,22 @@ export default function ChatWindow({
 
   return (
     <>
-      {mostrarConfetiViaje && <Confetti />}
+      {/* Portal a body: el chat vive dentro de un modal y un ancestro
+          con transform rompería el position:fixed de pantalla completa.
+          El chat queda abierto debajo, con el resumen del viaje. */}
+      {mostrarConfetiViaje &&
+        createPortal(
+          <AnimacionExitoNeon
+            titulo="¡Viaje finalizado!"
+            descripcion={
+              remitentePropio === REMITENTE_CONDUCTOR
+                ? "Carrera completada. ¡Buen trabajo!"
+                : "Gracias por viajar con Taxi-PE."
+            }
+            onTerminar={() => setMostrarConfetiViaje(false)}
+          />,
+          document.body
+        )}
       <div className="tz-chat-window">
       {toastCancelacion && (
         <div className="tz-chat-toast" role="status">
