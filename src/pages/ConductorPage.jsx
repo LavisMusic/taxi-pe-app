@@ -24,9 +24,10 @@ import GestionImagenModal from "../components/admin/GestionImagenModal";
 import ConductorPublicCard from "../components/ConductorPublicCard";
 import ConductorChatInboxModal from "../components/ConductorChatInboxModal";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
+import AnimacionExitoNeon from "../components/AnimacionExitoNeon";
 import VerificarConductorForm from "../components/VerificarConductorForm";
 import EntregasRepartidorPanel from "../components/repartidor/EntregasRepartidorPanel";
-import logo from "../assets/logo.png";
+import logo from "../assets/logo.webp";
 
 // Ruta /conductor — entra por RequireUsuarioRol rol="conductor".
 // Mobile-first a propósito: una sola columna angosta (max 420px,
@@ -152,6 +153,10 @@ export default function ConductorPage() {
   }, [conductor, tieneAcceso, setEstado]);
 
   const [toggling, setToggling] = useState(false);
+  // Celebración a pantalla completa al confirmar una entrega de reparto
+  // (QR o PIN) — vive acá y no en EntregasRepartidorPanel porque ese
+  // panel se desmonta solo apenas no le quedan entregas activas.
+  const [exitoEntrega, setExitoEntrega] = useState(false);
   const [toggleError, setToggleError] = useState("");
   const [editandoPerfil, setEditandoPerfil] = useState(false);
   const [mensajesOpen, setMensajesOpen] = useState(false);
@@ -202,6 +207,7 @@ export default function ConductorPage() {
       ) : mostrarMembresiaActivada ? (
         <AnimacionNeonBienvenida
           eyebrow="✦ Membresía Activada ✦"
+          icono="corona"
           titulo={paqueteActivado.nombre}
           descripcion={paqueteActivado.descripcion}
           onTerminar={marcarMembresiaVista}
@@ -209,11 +215,19 @@ export default function ConductorPage() {
       ) : mostrarCompraCreditos ? (
         <AnimacionNeonBienvenida
           eyebrow="✦ Compra Confirmada ✦"
+          icono="rayo"
           titulo={compraCreditos.nombre}
           descripcion={compraCreditos.descripcion}
           onTerminar={marcarCompraCreditosVista}
         />
       ) : null}
+      {exitoEntrega && (
+        <AnimacionExitoNeon
+          titulo="¡Entrega confirmada!"
+          descripcion="Gracias por completar el reparto."
+          onTerminar={() => setExitoEntrega(false)}
+        />
+      )}
       <header className="tz-header">
         <div className="tz-header-row">
           {conductor ? (
@@ -378,7 +392,7 @@ export default function ConductorPage() {
 
             {toggleError && <p className="tz-error" style={{ textAlign: "center" }}>{toggleError}</p>}
 
-            {conductor.aprobado && <EntregasRepartidorPanel conductorId={conductor.id} />}
+            {conductor.aprobado && <EntregasRepartidorPanel conductorId={conductor.id} onEntregado={() => setExitoEntrega(true)} />}
 
             <div className="tz-method-history" style={{ marginTop: 18 }}>
               <span className="tz-method-history-label">Mi perfil de chat</span>

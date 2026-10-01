@@ -1,5 +1,5 @@
 import { formatSoles } from "../utils/format";
-import logo from "../assets/logo.png";
+import logo from "../assets/logo.webp";
 
 /* Plantilla visual de boleta/ticket para enviar por WhatsApp. Su único
    trabajo es existir en el DOM con un tamaño y estilos fijos para que

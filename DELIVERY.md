@@ -321,3 +321,27 @@ copia al portapapeles. (Es la app real, no un artifact — sin restricción de C
    "Anular venta"), marca `pedidos.venta_revertida` y avisa por el chat.
    El cliente puede cancelar en `nuevo`/`en_atencion`; si ya había venta,
    el stock se repone la próxima vez que un admin/cajero abre el Gestor.
+9. **Multi-oferta**: un repartidor puede tener **varias entregas
+   `aceptado`** a la vez (sin recogerlas todavía). Apenas UNA llega a
+   `en_ruta` (recogió y pagó esa), deja de recibir ofertas nuevas —
+   `rpc_conductores_para_reparto()` lo excluye y `rpc_entrega_aceptar`
+   rechaza cualquier intento (`status: 'conductor_en_ruta'`) — hasta que
+   la cierre (entregado/no_entregado). `rpc_entrega_activa_conductor`
+   devuelve TODAS sus entregas activas, no solo la última.
+10. **Tarifa de envío** (`entregas.tarifa`): lo que la Caja le paga al
+    repartidor por el reparto en sí, aparte del monto del pedido (que el
+    repartidor cobra en el mostrador). El cajero la carga en el modal de
+    "Asignar repartidor" (bloquea "Ofertar" hasta que sea > 0) —
+    `rpc_entrega_ofertar` la graba y avisa por el chat `cajero_conductor`.
+    El repartidor la ve en la oferta (`rpc_entrega_ofertas_conductor`)
+    antes de aceptar/rechazar, y queda en la boleta del cliente.
+11. **Timeout de oferta = 30s**: si el conductor no responde, la oferta
+    se "expira" sola (`rpc_entrega_oferta_expirar`, idempotente — la
+    llama quien la vea vencida primero, conductor o cajero) y se avisa
+    por el chat `cajero_conductor`. Se representa como una barra verde
+    regresiva en el borde inferior de la tarjeta de oferta (repartidor)
+    y de la fila del conductor ofertado (radar del cajero).
+12. **Vista previa de ruta antes de aceptar**: el repartidor mantiene
+    presionado "Ver ruta" en la tarjeta de oferta para ver, en un
+    popover 4:5 con blur de fondo, la sucursal + el punto de entrega +
+    su propia posición — solo para mirar, se cierra al soltar.

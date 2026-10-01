@@ -205,7 +205,8 @@ export default function Styles() {
         margin: 0 auto;
         box-sizing: border-box;
         /* Calculado con margen de sobra sobre el tamaño real del logo
-           (src/assets/logo.png es 640x460, ratio ~1.39:1) + subtítulo +
+           (src/assets/logo.webp, ratio ~1.5:1 — más ancho que alto que
+           el logo viejo, así que sobra todavía más margen) + subtítulo +
            gap, para esta base ('.tz-logo{max-width:130px}' acá abajo).
            Se pisa en los @media de tablet/desktop porque el logo
            también crece ahí (170px/190px) — un 'min-height' único para
@@ -1827,6 +1828,87 @@ export default function Styles() {
       .tz-add-entry-actions .tz-camera-cancel { flex: 1; }
       .tz-add-entry-actions .tz-payment-save { flex: 2; margin-top: 0; }
 
+      /* Tarjeta de oferta de reparto: relative para que la barra de
+         los 30s (abajo, absolute) se apoye en su propio borde. */
+      .tz-oferta-card { position: relative; overflow: hidden; padding-bottom: 16px; }
+      .tz-oferta-ruta-btn {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 5px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(43,232,255,0.4);
+        background: rgba(43,232,255,0.1);
+        color: var(--cyan);
+        font-size: 11.5px;
+        font-weight: 700;
+        cursor: pointer;
+        -webkit-user-select: none;
+        user-select: none;
+        touch-action: none;
+      }
+      .tz-oferta-ruta-btn:active { background: rgba(43,232,255,0.25); box-shadow: 0 0 10px rgba(43,232,255,0.35); }
+
+      /* Barra regresiva de 30s — pegada al borde inferior de la
+         tarjeta, se achica de a poco (actualizada cada 250ms desde JS,
+         no es una animation CSS: así arranca desde el % real aunque el
+         componente se remonte a mitad de camino). */
+      .tz-oferta-timeout-track {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 3px;
+        background: rgba(255,255,255,0.06);
+      }
+      .tz-oferta-timeout-fill {
+        height: 100%;
+        background: var(--green);
+        box-shadow: 0 0 8px rgba(57,255,176,0.7);
+        transition: width 0.25s linear;
+      }
+
+      /* Vista previa de ruta ("Ver ruta") — modal tradicional: overlay a
+         pantalla completa con blur de fondo, tarjeta 4:5 centrada con
+         su propia X de cerrar. */
+      .tz-ruta-preview-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 3500;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: rgba(5,3,12,0.55);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+      }
+      .tz-ruta-preview-card {
+        position: relative;
+        width: min(340px, 82vw);
+        aspect-ratio: 4 / 5;
+        border-radius: 16px;
+        overflow: hidden;
+        background: #10141c;
+        border: 1px solid rgba(43,232,255,0.35);
+        box-shadow: 0 12px 40px rgba(0,0,0,0.55), 0 0 30px rgba(43,232,255,0.15);
+        display: flex;
+        flex-direction: column;
+      }
+      .tz-ruta-preview-map { flex: 1 1 auto; width: 100%; }
+      .tz-ruta-preview-map .leaflet-container { background: #10141c; }
+      .tz-ruta-preview-caption {
+        flex-shrink: 0;
+        padding: 8px 10px;
+        text-align: center;
+        font-size: 11.5px;
+        font-weight: 700;
+        color: var(--text-dim);
+        background: rgba(255,255,255,0.04);
+      }
+      .tz-ruta-preview-faltante { color: var(--danger, #ff5470); }
+
       .tz-method-history {
         display: flex;
         flex-direction: column;
@@ -2942,6 +3024,29 @@ export default function Styles() {
         background: rgba(5,3,12,0.8);
         backdrop-filter: blur(3px);
         border: 1px solid rgba(255,255,255,0.15);
+      }
+      /* Botón "volver a vista amplia" — el mapa ahora se puede mover y
+         hacer zoom libremente (el auto-encuadre solo corre una vez), así
+         que hace falta una forma explícita de recentrar. */
+      .tz-mapa-viaje-recentrar {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 30px;
+        border-radius: 999px;
+        background: rgba(5,3,12,0.8);
+        backdrop-filter: blur(3px);
+        border: 1px solid rgba(255,255,255,0.15);
+        color: var(--cyan);
+        cursor: pointer;
+      }
+      .tz-mapa-viaje-recentrar:active {
+        transform: scale(0.92);
       }
       /* Botón "Cancelar Viaje" — vive DENTRO del panel del Pasajero, no
          suelto: 'flex-wrap' arriba deja que baje de línea en pantallas
@@ -4564,7 +4669,11 @@ export default function Styles() {
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
-        filter: drop-shadow(0 0 18px rgba(43,232,255,0.35));
+        /* text-shadow en vez de filter:drop-shadow — con
+           background-clip:text, drop-shadow recorta el glow al
+           bounding-box del texto en varios navegadores (bug de diseño
+           reportado: "cortes en los bordes"). text-shadow no lo sufre. */
+        text-shadow: 0 0 18px rgba(43,232,255,0.35);
       }
       .tz-brand-sub {
         text-align: center;
@@ -6028,6 +6137,15 @@ export default function Styles() {
       .tz-entrega-badge-entregado  { color: var(--green);  border-color: rgba(57,255,176,0.5); background: var(--green-bg); }
       .tz-entrega-badge-cancelado,
       .tz-entrega-badge-no_entregado { color: var(--danger); border-color: rgba(255,84,112,0.5); background: rgba(255,84,112,0.12); }
+      /* Etiqueta de sucursal junto al badge de estado — mismo tamaño
+         (.tz-entrega-badge de base), color rosado neón para distinguirla
+         del estado. */
+      .tz-entrega-badge-sucursal {
+        color: var(--pink);
+        border-color: rgba(255,47,158,0.5);
+        background: rgba(255,47,158,0.12);
+        text-transform: none;
+      }
 
       .tz-entrega-chat {
         margin-top: 8px;
@@ -6151,11 +6269,72 @@ export default function Styles() {
         justify-content: center;
         color: #fff;
       }
+      /* Aviso de cuenta eliminada — marco rojo con glow pulsante,
+         mismo lenguaje visual "neón" del resto de la app pero en rojo
+         de alerta en vez de cyan/verde/rosa. */
+      .tz-cuenta-eliminada-modal {
+        border: 2px solid var(--danger);
+        animation: tz-cuenta-eliminada-glow 2s ease-in-out infinite;
+      }
+      @keyframes tz-cuenta-eliminada-glow {
+        0%, 100% { box-shadow: 0 0 18px rgba(255,84,112,0.5), 0 0 36px rgba(255,84,112,0.25); }
+        50% { box-shadow: 0 0 30px rgba(255,84,112,0.75), 0 0 56px rgba(255,84,112,0.4); }
+      }
+      .tz-cuenta-eliminada-icono {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255,84,112,0.12);
+        border: 1px solid var(--danger);
+        color: var(--danger);
+        box-shadow: 0 0 20px rgba(255,84,112,0.6);
+      }
+      .tz-cuenta-eliminada-salir-btn {
+        background: var(--danger);
+        border-color: var(--danger);
+        color: #05030c;
+      }
+
+      /* Serpentinas (Confetti.jsx) — overlay a pantalla completa,
+         fixed, por encima de todo (incluso del modal del QR, que ya usa
+         z-index:90). Cada tira cae con 'fall' y gira con
+         'var(--tz-confetti-rotate)'/'var(--tz-confetti-drift)' puestos
+         inline por pieza — 'forwards' la deja invisible al terminar sin
+         que haga falta desmontar el componente en el momento exacto. */
+      .tz-confetti-wrap {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 4000;
+        overflow: hidden;
+      }
+      .tz-confetti-piece {
+        position: absolute;
+        top: -12px;
+        width: 9px;
+        height: 14px;
+        border-radius: 2px;
+        opacity: 0;
+        animation-name: tz-confetti-fall;
+        animation-timing-function: ease-in;
+        animation-fill-mode: forwards;
+      }
+      @keyframes tz-confetti-fall {
+        0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+        100% {
+          opacity: 0.9;
+          transform: translate(var(--tz-confetti-drift, 0px), 100vh) rotate(var(--tz-confetti-rotate, 180deg));
+        }
+      }
 
       /* ---- Mapa de entrega (MapaEntrega) — reusa .tz-mapa-viaje ---- */
       .tz-entrega-mapa-wrap { margin-top: 10px; }
       .tz-entrega-mapa-bar {
-        display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 6px;
+        display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;
       }
       .tz-fresh {
         display: inline-flex; align-items: center; gap: 5px;

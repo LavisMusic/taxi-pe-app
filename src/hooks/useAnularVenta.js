@@ -9,11 +9,11 @@ import {
   TIPO_ITEM_MEMBRESIA,
 } from "../lib/taxiEnums";
 
-// Anular una venta: revierte al conductor (resta los créditos que
-// había sumado, o le quita los días de membresía que le había
-// extendido — parseados del propio `detalle`, NO de la configuración
-// actual, para que revertir una venta vieja siga siendo correcta
-// aunque el admin haya cambiado la duración después) y marca
+// Anular una venta: revierte al conductor O AL CLIENTE (resta los
+// créditos que había sumado, o le quita los días de membresía que le
+// había extendido — parseados del propio `detalle`, NO de la
+// configuración actual, para que revertir una venta vieja siga siendo
+// correcta aunque el admin haya cambiado la duración después) y marca
 // `ventas.anulado = true` — no se borra la fila, queda en el
 // Historial con su badge.
 //
@@ -21,38 +21,46 @@ import {
 // `fiados_conductores.venta_id` y la marca 'anulado' (deja de sumar al
 // saldo pendiente, pero el registro queda para auditoría). Si no
 // encuentra ninguna (datos de antes de que existiera venta_id), avisa
-// al llamador para que el admin la revise a mano.
+// al llamador para que el admin la revise a mano. Fiado no aplica a
+// cliente (nunca se le ofrece ese método), así que esta parte es
+// siempre no-op para una venta de cliente.
 export function useAnularVenta({ onDone }) {
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState("");
 
   const anular = useCallback(
-    async (venta, conductor) => {
+    async (venta, conductor, cliente) => {
       setBusyId(venta.id);
       setError("");
 
+      const esCliente = !!venta.cliente_id;
+      const destinatario = esCliente ? cliente : conductor;
+      const tablaDestino = esCliente ? "usuarios" : "conductores";
+      const campoVencimiento = esCliente ? "membresia_vencimiento" : "vencimiento_suscripcion";
+      const campoCreditos = esCliente ? "creditos_disponibles" : "creditos";
+
       const patch = {};
-      if (conductor) {
-        if (venta.tipo_item === TIPO_ITEM_MEMBRESIA && conductor.vencimiento_suscripcion) {
+      if (destinatario) {
+        if (venta.tipo_item === TIPO_ITEM_MEMBRESIA && destinatario[campoVencimiento]) {
           const dias = parseDiasMembresiaFromDetalle(venta.detalle);
-          const nuevaFecha = new Date(conductor.vencimiento_suscripcion);
+          const nuevaFecha = new Date(destinatario[campoVencimiento]);
           nuevaFecha.setDate(nuevaFecha.getDate() - dias);
-          patch.vencimiento_suscripcion = nuevaFecha.toISOString();
+          patch[campoVencimiento] = nuevaFecha.toISOString();
         } else if (venta.tipo_item === TIPO_ITEM_CREDITOS) {
           const cantidad = parseCantidadCreditosFromDetalle(venta.detalle);
-          patch.creditos = Math.max(0, Number(conductor.creditos || 0) - cantidad);
+          patch[campoCreditos] = Math.max(0, Number(destinatario[campoCreditos] || 0) - cantidad);
         }
       }
 
-      if (conductor && Object.keys(patch).length > 0) {
-        const { error: conductorError } = await supabase
-          .from("conductores")
+      if (destinatario && Object.keys(patch).length > 0) {
+        const { error: destinatarioError } = await supabase
+          .from(tablaDestino)
           .update(patch)
-          .eq("id", conductor.id);
-        if (conductorError) {
-          setError("No se pudo revertir el saldo del conductor.");
+          .eq("id", destinatario.id);
+        if (destinatarioError) {
+          setError(`No se pudo revertir el saldo ${esCliente ? "del cliente" : "del conductor"}.`);
           setBusyId(null);
-          return { error: conductorError };
+          return { error: destinatarioError };
         }
       }
 

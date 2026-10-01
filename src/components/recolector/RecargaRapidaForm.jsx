@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Zap, Loader2, UserPlus, Camera, RotateCcw, AlertTriangle } from "lucide-react";
+import { Zap, Loader2, UserPlus, Camera, RotateCcw, AlertTriangle, Phone } from "lucide-react";
 import {
   METODOS_PAGO,
   METODOS_CON_COMPROBANTE,
@@ -18,6 +18,9 @@ import ComprobanteScannerModal from "./ComprobanteScannerModal";
 
 const MONTOS_RAPIDOS = [20, 50, 100, 200];
 
+const DESTINATARIO_CONDUCTOR = "conductor";
+const DESTINATARIO_CLIENTE = "cliente";
+
 const nivelLabel = (nivel) => NIVELES_SERVICIO.find((n) => n.value === (nivel || NIVEL_SERVICIO_ECONOMICO))?.label ?? nivel;
 
 // Módulo principal de /recolector (y accesible desde /admin): buscar
@@ -26,8 +29,17 @@ const nivelLabel = (nivel) => NIVELES_SERVICIO.find((n) => n.value === (nivel ||
 // a mano — el precio y lo que otorga vienen fijos del paquete, así que
 // no hace falta "validar que coincida": coincide siempre, por
 // construcción) y método de pago con su lógica propia.
+//
+// Unificación pasajero/cliente: además de recargar a un CONDUCTOR, el
+// repartidor ahora puede recargar a un CLIENTE (buscándolo por
+// teléfono) exactamente con el mismo criterio — cobro directo,
+// instantáneo, sin aprobación del Admin. El selector Conductor/Cliente
+// solo aparece cuando no viene `lockedConductor` (ese caso es siempre
+// el botón ⚡ de una tarjeta de conductor del Directorio del Admin, no
+// tiene sentido ofrecer cambiar de audiencia ahí).
 export default function RecargaRapidaForm({
   conductores,
+  usuariosClientes = [],
   categorias,
   subgrupos,
   recolectorId,
@@ -42,6 +54,7 @@ export default function RecargaRapidaForm({
   saving,
   error,
   paquetes = [],
+  paquetesClientes = [],
   // Fase Neón — "Glow Realtime" (ver usePaquetes.js): true un ratito
   // cada vez que el Admin edita/reordena el catálogo de paquetes,
   // mientras este formulario ya está abierto. Solo la pantalla del
@@ -49,14 +62,17 @@ export default function RecargaRapidaForm({
   // mismo formulario, se deja sin pasar (el Admin no necesita que le
   // avisen de sus propios cambios).
   glowPaquetes = false,
+  glowPaquetesClientes = false,
   // Cuando se abre desde el botón de recarga directa de una tarjeta
   // del Directorio (admin), ya se sabe para quién es — se salta el
   // combobox por completo y no se puede cambiar de conductor desde acá.
   lockedConductor = null,
 }) {
+  const [destinatarioTipo, setDestinatarioTipo] = useState(DESTINATARIO_CONDUCTOR);
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [conductorId, setConductorId] = useState(lockedConductor?.id ?? "");
+  const [clienteId, setClienteId] = useState("");
   const [tipoItem, setTipoItem] = useState(TIPO_ITEM_MEMBRESIA);
   const [paqueteId, setPaqueteId] = useState("");
   const [metodoPago, setMetodoPago] = useState("");
@@ -67,34 +83,59 @@ export default function RecargaRapidaForm({
   const [localError, setLocalError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
+  const esCliente = destinatarioTipo === DESTINATARIO_CLIENTE;
+
   const conductor = lockedConductor || conductores.find((c) => c.id === conductorId) || null;
+  const cliente = usuariosClientes.find((u) => u.id === clienteId) || null;
+  // Vista unificada del destinatario elegido, sin importar la
+  // audiencia — el resto del formulario (paquete, método de pago,
+  // resumen) es idéntico para los dos, solo cambia de dónde sale.
+  const destinatario = esCliente ? cliente : conductor;
 
   // Búsqueda por DNI (Fase 6): el Recolector suele tener el DNI a mano
   // (documento físico del conductor) antes que el nombre o la placa —
   // se suma al mismo texto combinado en vez de armar un filtro aparte,
   // así una sola caja de búsqueda sirve para las tres formas de ubicar
-  // al conductor.
-  const resultados = search.trim()
-    ? conductores
-        .filter((c) => `${c.nombre} ${c.placa} ${c.dni ?? ""}`.toLowerCase().includes(search.trim().toLowerCase()))
-        .slice(0, 8)
-    : [];
+  // al conductor. Para cliente, se busca por teléfono (pedido explícito)
+  // y de paso por nombre.
+  const resultados = !search.trim()
+    ? []
+    : esCliente
+      ? usuariosClientes
+          .filter((u) => `${u.nombre ?? ""} ${u.telefono ?? ""}`.toLowerCase().includes(search.trim().toLowerCase()))
+          .slice(0, 8)
+      : conductores
+          .filter((c) => `${c.nombre} ${c.placa} ${c.dni ?? ""}`.toLowerCase().includes(search.trim().toLowerCase()))
+          .slice(0, 8);
   const sinResultados = search.trim().length > 0 && resultados.length === 0;
 
   // Paquetes reales del tipo elegido; si no hay ninguno configurado
   // todavía, cae a la lista demo (marcada "(demo)") SOLO para poder
   // probar el flujo — nunca se guarda en la base por sí sola, solo si
   // el usuario de verdad aprieta "Registrar Recarga" con una elegida.
-  const paquetesReales = paquetes.filter((p) => p.tipo_item === tipoItem && p.activo !== false);
+  const catalogoBase = esCliente ? paquetesClientes : paquetes;
+  const paquetesReales = catalogoBase.filter((p) => p.tipo_item === tipoItem && p.activo !== false);
   const paquetesDelTipo = paquetesReales.length > 0 ? paquetesReales : PAQUETES_DEMO[tipoItem];
   const usandoDemo = paquetesReales.length === 0;
   const paquete = paquetesDelTipo.find((p) => String(p.id) === String(paqueteId)) || null;
+  const glowPaquetesActivo = esCliente ? glowPaquetesClientes : glowPaquetes;
 
   // Al cambiar el tipo de venta, la lista de paquetes cambia entera —
   // la selección anterior ya no tiene sentido.
   useEffect(() => {
     setPaqueteId("");
   }, [tipoItem]);
+
+  // Al cambiar de audiencia, ninguna selección anterior sigue siendo
+  // válida (el buscador, el paquete elegido, todo cambia de universo).
+  useEffect(() => {
+    setSearch("");
+    setSearchOpen(false);
+    setConductorId(lockedConductor?.id ?? "");
+    setClienteId("");
+    setPaqueteId("");
+    setLocalError("");
+  }, [destinatarioTipo, lockedConductor]);
 
   const requiereComprobante = METODOS_CON_COMPROBANTE.includes(metodoPago);
   const montoNum = Number(paquete?.precio) || 0;
@@ -111,6 +152,7 @@ export default function RecargaRapidaForm({
   const resetForm = () => {
     setSearch("");
     setConductorId(lockedConductor?.id ?? "");
+    setClienteId("");
     setTipoItem(TIPO_ITEM_MEMBRESIA);
     setPaqueteId("");
     setMetodoPago("");
@@ -123,19 +165,23 @@ export default function RecargaRapidaForm({
   // buscador (a propósito — el recolector necesita encontrarlo para
   // saber que ya está cargado en el sistema) pero no puede cobrar nada
   // todavía: recién es "real" para la plata cuando el Admin lo aprueba
-  // desde el Centro de Peticiones.
-  const conductorNoAprobado = !!conductor && conductor.aprobado === false;
+  // desde el Centro de Peticiones. Un cliente no pasa por ninguna
+  // revisión del Admin, así que este bloqueo no le aplica.
+  const conductorNoAprobado = !esCliente && !!conductor && conductor.aprobado === false;
+  // Vencimiento de membresía vigente — mismo chequeo, distinto campo
+  // según la audiencia (conductores.vencimiento_suscripcion vs
+  // usuarios.membresia_vencimiento).
+  const vencimientoActualStr = esCliente ? destinatario?.membresia_vencimiento : destinatario?.vencimiento_suscripcion;
   // Bug/pedido: no se puede vender una membresía nueva mientras la
   // actual siga vigente — ver el mismo chequeo (fuente de la verdad)
   // en useRecargas.js. Esto acá es solo para avisar temprano y
   // deshabilitar el envío ANTES de hacer escanear un comprobante para
   // nada; el hook igual lo vuelve a validar por su cuenta.
-  const membresiaActivaVigente =
-    !!conductor && !!conductor.vencimiento_suscripcion && new Date(conductor.vencimiento_suscripcion) > new Date();
+  const membresiaActivaVigente = !!destinatario && !!vencimientoActualStr && new Date(vencimientoActualStr) > new Date();
   const bloqueadoPorMembresiaVigente = tipoItem === TIPO_ITEM_MEMBRESIA && membresiaActivaVigente;
 
   const puedeEnviar =
-    !!conductor &&
+    !!destinatario &&
     !conductorNoAprobado &&
     !bloqueadoPorMembresiaVigente &&
     !!paquete &&
@@ -147,8 +193,8 @@ export default function RecargaRapidaForm({
     setLocalError("");
     setSuccessMsg("");
 
-    if (!conductor) {
-      setLocalError("Busca y selecciona un conductor.");
+    if (!destinatario) {
+      setLocalError(esCliente ? "Busca y selecciona un cliente." : "Busca y selecciona un conductor.");
       return;
     }
     if (conductorNoAprobado) {
@@ -159,7 +205,7 @@ export default function RecargaRapidaForm({
     }
     if (bloqueadoPorMembresiaVigente) {
       setLocalError(
-        `Ya tiene una membresía activa hasta el ${new Date(conductor.vencimiento_suscripcion).toLocaleDateString("es-PE")} — no se puede recargar otra hasta que esta termine.`
+        `Ya tiene una membresía activa hasta el ${new Date(vencimientoActualStr).toLocaleDateString("es-PE")} — no se puede recargar otra hasta que esta termine.`
       );
       return;
     }
@@ -177,7 +223,9 @@ export default function RecargaRapidaForm({
     }
 
     const { error: submitError } = await registrarRecarga({
-      conductor,
+      destinatarioTipo,
+      conductor: esCliente ? null : conductor,
+      cliente: esCliente ? cliente : null,
       recolectorId,
       tipoItem,
       monto: montoNum,
@@ -191,7 +239,7 @@ export default function RecargaRapidaForm({
     });
 
     if (!submitError) {
-      setSuccessMsg(`Recarga registrada para ${conductor.nombre}.`);
+      setSuccessMsg(`Recarga registrada para ${destinatario.nombre}.`);
       resetForm();
     }
   };
@@ -203,8 +251,27 @@ export default function RecargaRapidaForm({
           <Zap size={17} /> Recarga Rápida
         </h2>
 
-        <label className="tz-field-label">Conductor</label>
-        {conductor && (
+        {!lockedConductor && (
+          <div className="tz-gasto-tipo-buttons" style={{ marginBottom: 4 }}>
+            <button
+              type="button"
+              className={`tz-gasto-tipo-btn ${!esCliente ? "tz-gasto-tipo-active" : ""}`}
+              onClick={() => setDestinatarioTipo(DESTINATARIO_CONDUCTOR)}
+            >
+              Conductor
+            </button>
+            <button
+              type="button"
+              className={`tz-gasto-tipo-btn ${esCliente ? "tz-gasto-tipo-active" : ""}`}
+              onClick={() => setDestinatarioTipo(DESTINATARIO_CLIENTE)}
+            >
+              Cliente
+            </button>
+          </div>
+        )}
+
+        <label className="tz-field-label">{esCliente ? "Cliente" : "Conductor"}</label>
+        {destinatario && (
           <div
             style={{
               display: "flex",
@@ -218,50 +285,60 @@ export default function RecargaRapidaForm({
             }}
           >
             <span>
-              <strong style={{ color: "var(--text)" }}>{conductor.nombre}</strong>
-              <span style={{ color: "var(--text-dim)", marginLeft: 6 }}>{conductor.placa}</span>
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                  marginLeft: 8,
-                  color: NIVEL_COLOR[conductor.nivel_servicio || NIVEL_SERVICIO_ECONOMICO] ?? "var(--text-dim)",
-                  fontSize: 12,
-                  fontWeight: 700,
-                }}
-              >
-                <span
-                  style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: "50%",
-                    background: NIVEL_COLOR[conductor.nivel_servicio || NIVEL_SERVICIO_ECONOMICO] ?? "var(--text-dim)",
-                  }}
-                />
-                {nivelLabel(conductor.nivel_servicio)}
-              </span>
+              <strong style={{ color: "var(--text)" }}>{destinatario.nombre}</strong>
+              {esCliente ? (
+                <span style={{ color: "var(--text-dim)", marginLeft: 6 }}>{destinatario.telefono}</span>
+              ) : (
+                <>
+                  <span style={{ color: "var(--text-dim)", marginLeft: 6 }}>{conductor.placa}</span>
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      marginLeft: 8,
+                      color: NIVEL_COLOR[conductor.nivel_servicio || NIVEL_SERVICIO_ECONOMICO] ?? "var(--text-dim)",
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: "50%",
+                        background: NIVEL_COLOR[conductor.nivel_servicio || NIVEL_SERVICIO_ECONOMICO] ?? "var(--text-dim)",
+                      }}
+                    />
+                    {nivelLabel(conductor.nivel_servicio)}
+                  </span>
+                </>
+              )}
             </span>
-            {!lockedConductor && (
-              <button type="button" className="tz-metodo-pago-change" onClick={() => setConductorId("")}>
+            {!(lockedConductor && !esCliente) && (
+              <button
+                type="button"
+                className="tz-metodo-pago-change"
+                onClick={() => (esCliente ? setClienteId("") : setConductorId(""))}
+              >
                 Cambiar
               </button>
             )}
           </div>
         )}
-        {conductor && conductorNoAprobado && (
+        {conductorNoAprobado && (
           <p className="tz-error" style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <AlertTriangle size={14} />
             Este conductor está pendiente de aprobación en el Centro de Peticiones. No se pueden procesar
             pagos aún.
           </p>
         )}
-        {!conductor && (
+        {!destinatario && (
           <div className="tz-global-search-wrap">
             <input
               type="text"
               className="tz-text-input"
-              placeholder="Buscar por nombre, placa o DNI…"
+              placeholder={esCliente ? "Buscar por teléfono o nombre…" : "Buscar por nombre, placa o DNI…"}
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -274,38 +351,57 @@ export default function RecargaRapidaForm({
             />
             {searchOpen && resultados.length > 0 && (
               <div className="tz-global-search-dropdown">
-                {resultados.map((c) => {
-                  // Formato estricto pedido: "[DNI] - [Placa] - [Categoría]"
-                  // — el nombre queda como subtítulo, no lo saco del todo
-                  // (el Recolector también reconoce conductores por
-                  // nombre), pero la línea principal es la que se pidió.
-                  const categoriaNombre = categorias.find((cat) => String(cat.id) === String(c.categoria_id))?.nombre;
-                  return (
-                    <button
-                      type="button"
-                      key={c.id}
-                      className="tz-global-search-item"
-                      onClick={() => {
-                        setConductorId(c.id);
-                        setSearch("");
-                        setSearchOpen(false);
-                      }}
-                    >
-                      <span className="tz-global-search-item-name">
-                        {c.dni ?? "sin DNI"} - {c.placa} - {categoriaNombre ?? "sin categoría"}
-                      </span>
-                      <span className="tz-global-search-item-meta">
-                        {c.nombre} · {c.estado ?? "pendiente"} ·{" "}
-                        <span style={{ color: NIVEL_COLOR[c.nivel_servicio || NIVEL_SERVICIO_ECONOMICO] ?? "inherit" }}>
-                          {nivelLabel(c.nivel_servicio)}
+                {esCliente
+                  ? resultados.map((u) => (
+                      <button
+                        type="button"
+                        key={u.id}
+                        className="tz-global-search-item"
+                        onClick={() => {
+                          setClienteId(u.id);
+                          setSearch("");
+                          setSearchOpen(false);
+                        }}
+                      >
+                        <span className="tz-global-search-item-name">
+                          <Phone size={12} style={{ marginRight: 4, verticalAlign: "-1px" }} />
+                          {u.telefono}
                         </span>
-                      </span>
-                    </button>
-                  );
-                })}
+                        <span className="tz-global-search-item-meta">{u.nombre ?? "Sin nombre"}</span>
+                      </button>
+                    ))
+                  : resultados.map((c) => {
+                      // Formato estricto pedido: "[DNI] - [Placa] - [Categoría]"
+                      // — el nombre queda como subtítulo, no lo saco del todo
+                      // (el Recolector también reconoce conductores por
+                      // nombre), pero la línea principal es la que se pidió.
+                      const categoriaNombre = categorias.find((cat) => String(cat.id) === String(c.categoria_id))?.nombre;
+                      return (
+                        <button
+                          type="button"
+                          key={c.id}
+                          className="tz-global-search-item"
+                          onClick={() => {
+                            setConductorId(c.id);
+                            setSearch("");
+                            setSearchOpen(false);
+                          }}
+                        >
+                          <span className="tz-global-search-item-name">
+                            {c.dni ?? "sin DNI"} - {c.placa} - {categoriaNombre ?? "sin categoría"}
+                          </span>
+                          <span className="tz-global-search-item-meta">
+                            {c.nombre} · {c.estado ?? "pendiente"} ·{" "}
+                            <span style={{ color: NIVEL_COLOR[c.nivel_servicio || NIVEL_SERVICIO_ECONOMICO] ?? "inherit" }}>
+                              {nivelLabel(c.nivel_servicio)}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
               </div>
             )}
-            {searchOpen && sinResultados && (
+            {searchOpen && sinResultados && !esCliente && (
               <div className="tz-global-search-dropdown">
                 <button
                   type="button"
@@ -316,6 +412,13 @@ export default function RecargaRapidaForm({
                   <UserPlus size={14} style={{ marginRight: 6, verticalAlign: "-2px" }} />
                   Crear nuevo conductor "{search.trim()}"
                 </button>
+              </div>
+            )}
+            {searchOpen && sinResultados && esCliente && (
+              <div className="tz-global-search-dropdown">
+                <span className="tz-global-search-item" style={{ color: "var(--text-dim)", cursor: "default" }}>
+                  Ningún cliente coincide — solo se puede recargar a cuentas ya registradas.
+                </span>
               </div>
             )}
           </div>
@@ -343,9 +446,9 @@ export default function RecargaRapidaForm({
 
         {bloqueadoPorMembresiaVigente && (
           <p className="tz-error" style={{ marginTop: 8 }}>
-            ⚠️ {conductor.nombre} ya tiene una membresía activa hasta el{" "}
-            {new Date(conductor.vencimiento_suscripcion).toLocaleDateString("es-PE")} — no se le puede
-            vender otra hasta que esta termine.
+            ⚠️ {destinatario.nombre} ya tiene una membresía activa hasta el{" "}
+            {new Date(vencimientoActualStr).toLocaleDateString("es-PE")} — no se le puede vender otra hasta
+            que esta termine.
           </p>
         )}
 
@@ -353,7 +456,7 @@ export default function RecargaRapidaForm({
           {tipoItem === TIPO_ITEM_MEMBRESIA ? "Membresía" : "Paquete de créditos"}
         </label>
         <select
-          className={`tz-text-input ${glowPaquetes ? "tz-select-glow-neon" : ""}`}
+          className={`tz-text-input ${glowPaquetesActivo ? "tz-select-glow-neon" : ""}`}
           value={paqueteId}
           onChange={(e) => setPaqueteId(e.target.value)}
           disabled={bloqueadoPorMembresiaVigente}
@@ -368,7 +471,7 @@ export default function RecargaRapidaForm({
             </option>
           ))}
         </select>
-        {glowPaquetes && (
+        {glowPaquetesActivo && (
           <p className="tz-camera-note" style={{ margin: "4px 0 0", color: "var(--pink)" }}>
             ✨ El Admin actualizó el catálogo — revisa las opciones.
           </p>
@@ -510,7 +613,7 @@ export default function RecargaRapidaForm({
         </button>
 
         {/* ---- Fiado: atajo visible para dar de alta un conductor nuevo ---- */}
-        {metodoPago === METODO_PAGO_FIADO && !conductor && (
+        {metodoPago === METODO_PAGO_FIADO && !esCliente && !conductor && (
           <button
             type="button"
             className="tz-camera-cancel"

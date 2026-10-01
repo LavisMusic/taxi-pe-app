@@ -3,7 +3,7 @@ import { Lock } from "lucide-react";
 import { supabase, setAuthPersistence } from "../supabaseClient";
 import { ADMIN_DUMMY_EMAIL, usuarioToDummyEmail } from "../lib/auth";
 import Styles from "./Styles";
-import logo from "../assets/logo.png";
+import logo from "../assets/logo.webp";
 
 // Puerta de entrada del personal (/admin): dos modos sobre la MISMA
 // pantalla, sin exponer nunca un campo de correo.

@@ -14,6 +14,7 @@ import { useCrearConductorConUsuario } from "../hooks/useCrearConductorConUsuari
 import { useRecargas } from "../hooks/useRecargas";
 import { usePeticionesPin } from "../hooks/usePeticionesPin";
 import { usePaquetesRecolectores } from "../hooks/usePaquetesRecolectores";
+import { usePaquetesClientes } from "../hooks/usePaquetesClientes";
 import { useRecargasRecolector } from "../hooks/useRecargasRecolector";
 import { useCierresCaja } from "../hooks/useCierresCaja";
 import { useAnuncios } from "../hooks/useAnuncios";
@@ -26,6 +27,8 @@ import {
 import { buildTopRanking } from "../lib/ranking";
 import { useRankingRepartidores } from "../hooks/useRankingRepartidores";
 import Styles from "../components/Styles";
+import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
+import { useBienvenidaNeon } from "../hooks/useBienvenidaNeon";
 import StatsSection from "../components/admin/StatsSection";
 import UsuarioEstrellaChip from "../components/admin/UsuarioEstrellaChip";
 import TopUsuariosModal from "../components/admin/TopUsuariosModal";
@@ -44,7 +47,7 @@ import PagosMetodoModal from "../components/admin/PagosMetodoModal";
 import LimpiarChatsModal from "../components/admin/LimpiarChatsModal";
 import RecargaRapidaForm from "../components/recolector/RecargaRapidaForm";
 import RecargaRapidaRecolectorForm from "../components/admin/RecargaRapidaRecolectorForm";
-import logo from "../assets/logo.png";
+import logo from "../assets/logo.webp";
 
 // Opciones del dropdown "Pagos" del header: Yape/Plin/Otros abren
 // PagosMetodoModal (gauges Hoy/Histórico), Fiados reusa la Libreta ya
@@ -57,6 +60,10 @@ const METODOS_PAGO_MENU = METODOS_PAGO.filter((m) => METODOS_CON_COMPROBANTE.inc
 // pero leyendo únicamente las tablas nuevas de TaxiP.
 export default function AdminDashboardPage() {
   const { logout } = useTaxiAuth();
+  // Bienvenida del super admin — una vez por acceso, igual que el resto
+  // de los roles. El admin master no tiene fila de usuario propia, así
+  // que la clave es fija.
+  const { mostrar: mostrarBienvenida, marcarVista: marcarBienvenidaVista } = useBienvenidaNeon("admin-master", true);
   const {
     ventas,
     ventasVigentes,
@@ -76,6 +83,10 @@ export default function AdminDashboardPage() {
     rechazarUsuario,
     refresh: refreshUsuarios,
   } = useUsuarios();
+  // Recarga a clientes (unificación pasajero/cliente) desde el Admin —
+  // mismo `usuarios` ya cargado para el Directorio/ranking, filtrado a
+  // rol pasajero.
+  const usuariosClientes = usuarios.filter((u) => u.rol === "pasajero");
   const {
     conductores,
     categorias,
@@ -168,6 +179,15 @@ export default function AdminDashboardPage() {
     reordenarPaquetes: reordenarPaquetesRecolector,
   } = usePaquetesRecolectores();
   const {
+    paquetes: paquetesClientes,
+    loading: paquetesClientesLoading,
+    error: paquetesClientesError,
+    crearPaquete: crearPaqueteCliente,
+    actualizarPaquete: actualizarPaqueteCliente,
+    eliminarPaquete: eliminarPaqueteCliente,
+    reordenarPaquetes: reordenarPaquetesCliente,
+  } = usePaquetesClientes();
+  const {
     pendientes: recargasRecolectorPendientes,
     crearPeticion: crearRecargaRecolector,
     aprobarPeticion: aprobarRecargaRecolector,
@@ -243,6 +263,14 @@ export default function AdminDashboardPage() {
   return (
     <div className="tz-root">
       <Styles />
+      {mostrarBienvenida && (
+        <AnimacionNeonBienvenida
+          eyebrow="✦ Bienvenido a TaxiPE ✦"
+          titulo="Super Admin"
+          descripcion="Todo el panel bajo control — ¡a por un gran día! 💪"
+          onTerminar={marcarBienvenidaVista}
+        />
+      )}
       <header className="tz-header">
         <div className="tz-header-row">
           <div className="tz-header-side tz-header-side-left">
@@ -424,6 +452,7 @@ export default function AdminDashboardPage() {
             </button>
             <RecargaRapidaForm
               conductores={conductores}
+              usuariosClientes={usuariosClientes}
               categorias={categorias}
               subgrupos={subgrupos}
               recolectorId={null}
@@ -432,6 +461,7 @@ export default function AdminDashboardPage() {
               saving={savingRecargaAdmin}
               error={errorRecargaAdmin}
               paquetes={paquetes}
+              paquetesClientes={paquetesClientes}
               lockedConductor={recargaConductor}
             />
           </div>
@@ -550,6 +580,17 @@ export default function AdminDashboardPage() {
               actualizarPaquete: actualizarPaqueteRecolector,
               eliminarPaquete: eliminarPaqueteRecolector,
               reordenarPaquetes: reordenarPaquetesRecolector,
+            },
+            {
+              key: "clientes",
+              label: "Clientes",
+              paquetes: paquetesClientes,
+              loading: paquetesClientesLoading,
+              error: paquetesClientesError,
+              crearPaquete: crearPaqueteCliente,
+              actualizarPaquete: actualizarPaqueteCliente,
+              eliminarPaquete: eliminarPaqueteCliente,
+              reordenarPaquetes: reordenarPaquetesCliente,
             },
           ]}
           onClose={() => setMembresiasOpen(false)}

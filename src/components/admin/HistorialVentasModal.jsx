@@ -24,7 +24,8 @@ export default function HistorialVentasModal({ ventas, conductores, usuarios, an
 
   const handleAnular = async (venta) => {
     const conductor = conductoresById.get(venta.conductor_id);
-    const { error, eraFiado, fiadoEncontrado } = await anular(venta, conductor);
+    const cliente = usuariosById.get(venta.cliente_id);
+    const { error, eraFiado, fiadoEncontrado } = await anular(venta, conductor, cliente);
     setConfirmandoId(null);
     if (!error && eraFiado && !fiadoEncontrado) {
       setAviso(
@@ -58,6 +59,8 @@ export default function HistorialVentasModal({ ventas, conductores, usuarios, an
             <ul className="tz-history-rows">
               {ventas.map((v) => {
                 const conductor = conductoresById.get(v.conductor_id);
+                const cliente = usuariosById.get(v.cliente_id);
+                const esVentaCliente = !!v.cliente_id;
                 const recolector = usuariosById.get(v.recolector_id);
                 const confirmando = confirmandoId === v.id;
                 const esMembresia = v.tipo_item === TIPO_ITEM_MEMBRESIA;
@@ -67,7 +70,10 @@ export default function HistorialVentasModal({ ventas, conductores, usuarios, an
                     <div className="tz-history-row-detail" style={{ padding: 12 }}>
                       <div className="tz-mov-row" style={{ background: "transparent", borderLeft: "none", padding: 0 }}>
                         <span className="tz-mov-row-desc">
-                          {conductor?.nombre ?? "Conductor eliminado"} ·{" "}
+                          {esVentaCliente
+                            ? (cliente?.nombre ?? "Cliente eliminado")
+                            : (conductor?.nombre ?? "Conductor eliminado")}{" "}
+                          · {esVentaCliente ? "Cliente" : "Conductor"} ·{" "}
                           {esMembresia ? "Membresía" : "Créditos"} · {v.detalle}
                           <span className="tz-mov-row-date">
                             {formatDate(v.created_at)} · {v.metodo_pago} · recolector:{" "}

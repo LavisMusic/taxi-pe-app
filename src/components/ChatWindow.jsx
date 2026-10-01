@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Send, ShieldAlert, Loader2, Plus, ChevronUp, ChevronDown } from "lucide-react";
 import { formatTime, formatDate } from "../utils/format";
 import { supabase } from "../supabaseClient";
@@ -21,7 +22,8 @@ import {
 import { MAPA_NIVEL_COLOR } from "../lib/nivelServicio";
 import { MAPBOX_TOKEN } from "../lib/mapboxConfig";
 import MapaViaje from "./MapaViaje";
-import logo from "../assets/logo.png";
+import AnimacionExitoNeon from "./AnimacionExitoNeon";
+import logo from "../assets/logo.webp";
 
 // Mini-Mapa en Mensaje de Señas: Mapbox Static Images API — a
 // diferencia del mapa interactivo (MapaViaje.jsx/RadarGlobal.jsx), acá
@@ -461,6 +463,25 @@ export default function ChatWindow({
   // perdiera y solo llegara por postgres_changes. Nunca se pisa a un
   // valor "para atrás" — ver ese efecto.
   const [estadoViaje, setEstadoViaje] = useState(null);
+  // Confeti al confirmar que el pasajero llegó a destino — dispara para
+  // AMBOS lados (conductor que toca "Finalizar Carrera" Y pasajero que
+  // lo ve llegar por Broadcast/postgres_changes), watcheando la
+  // TRANSICIÓN real de estadoViaje, no un solo lado a mano.
+  const [mostrarConfetiViaje, setMostrarConfetiViaje] = useState(false);
+  const estadoViajeAnteriorRef = useRef(null);
+  useEffect(() => {
+    const anterior = estadoViajeAnteriorRef.current;
+    estadoViajeAnteriorRef.current = estadoViaje;
+    // Solo una transición REAL desde un viaje en marcha: al reabrir el
+    // chat de un viaje ya terminado, estadoViaje pasa de null a
+    // 'finalizado' al cargar y antes eso también disparaba el festejo.
+    if (
+      (anterior === ESTADO_OFERTA_ACEPTADA || anterior === ESTADO_OFERTA_EN_TRANSITO) &&
+      estadoViaje === ESTADO_OFERTA_FINALIZADO
+    ) {
+      setMostrarConfetiViaje(true);
+    }
+  }, [estadoViaje]);
   // Fix Cronómetro Infinito: override optimista de `viaje_fin_at`,
   // seteado en DOS lugares — (a) el propio Conductor, apenas confirma
   // el fin en la base (handleFinalizarViaje, no espera a que le vuelva
@@ -1235,6 +1256,22 @@ export default function ChatWindow({
 
   return (
     <>
+      {/* Portal a body: el chat vive dentro de un modal y un ancestro
+          con transform rompería el position:fixed de pantalla completa.
+          El chat queda abierto debajo, con el resumen del viaje. */}
+      {mostrarConfetiViaje &&
+        createPortal(
+          <AnimacionExitoNeon
+            titulo="¡Viaje finalizado!"
+            descripcion={
+              remitentePropio === REMITENTE_CONDUCTOR
+                ? "Carrera completada. ¡Buen trabajo!"
+                : "Gracias por viajar con Taxi-PE."
+            }
+            onTerminar={() => setMostrarConfetiViaje(false)}
+          />,
+          document.body
+        )}
       <div className="tz-chat-window">
       {toastCancelacion && (
         <div className="tz-chat-toast" role="status">

@@ -1,0 +1,11 @@
+project_id = "silfhbdmfdryjdzpwzvh"
+
+# Receptores de webhook (Caja -> Taxi-PE) y relays sin sesión de
+# Supabase (pasajero no tiene JWT, su auth es la tabla 'usuarios') — la
+# autenticación real es el HMAC (o, en mirror-a-caja, la verificación
+# del PIN contra la tabla) hecha DENTRO de la función. Ver WEBHOOKS.md.
+[functions.webhook-caja-mirror-cuenta]
+verify_jwt = false
+
+[functions.mirror-a-caja]
+verify_jwt = false

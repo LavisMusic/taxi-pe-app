@@ -8,12 +8,13 @@ import { useUsuarios } from "../hooks/useUsuarios";
 import { useRecargas } from "../hooks/useRecargas";
 import { usePaquetes } from "../hooks/usePaquetes";
 import { usePaquetesRecolectores } from "../hooks/usePaquetesRecolectores";
+import { usePaquetesClientes } from "../hooks/usePaquetesClientes";
 import { useRecargasRecolector } from "../hooks/useRecargasRecolector";
 import { useGastosOperativos } from "../hooks/useGastosOperativos";
 import { useAnularVenta } from "../hooks/useAnularVenta";
 import { useCierresCaja } from "../hooks/useCierresCaja";
 import { useBienvenidaNeon } from "../hooks/useBienvenidaNeon";
-import { startOfTodayISO, TIPO_ITEM_MEMBRESIA } from "../lib/taxiEnums";
+import { startOfTodayISO } from "../lib/taxiEnums";
 import { formatSoles, formatDate } from "../utils/format";
 import Styles from "../components/Styles";
 import RecargaRapidaForm from "../components/recolector/RecargaRapidaForm";
@@ -22,7 +23,7 @@ import AutorecargaRecolectorModal from "../components/recolector/AutorecargaReco
 import CierreCajaModal from "../components/admin/CierreCajaModal";
 import HistorialVentasModal from "../components/admin/HistorialVentasModal";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
-import logo from "../assets/logo.png";
+import logo from "../assets/logo.webp";
 
 // Ruta /recolector — entra por RequireUsuarioRol rol="recolector".
 // Pantalla operativa de calle: widget de turno bien visible arriba,
@@ -57,15 +58,19 @@ export default function RecolectorPage() {
 
   const { paquetes, glow: glowPaquetes } = usePaquetes();
   const { paquetes: paquetesRecolectores, glow: glowPaquetesRecolectores } = usePaquetesRecolectores();
+  const { paquetes: paquetesClientes, glow: glowPaquetesClientes } = usePaquetesClientes();
+  // Recarga a clientes (unificación pasajero/cliente): mismo `usuarios`
+  // ya cargado para el Historial, filtrado a rol pasajero — no hace
+  // falta una consulta aparte.
+  const usuariosClientes = usuarios.filter((u) => u.rol === "pasajero");
 
-  // Animación Épica de Bienvenida (Fase Neón) — ver el mismo bloque en
-  // ConductorPage.jsx: acá el catálogo destacado es el DEL RECOLECTOR
-  // (paquetes_recolectores), no el de conductor.
-  const paqueteDestacadoRecolector =
-    paquetesRecolectores.find((p) => p.tipo_item === TIPO_ITEM_MEMBRESIA && p.activo !== false) ?? null;
+  // Animación de Bienvenida — una vez por acceso, como en todos los
+  // roles (ver useBienvenidaNeon.js). Antes solo salía si había un
+  // paquete destacado de recolector y mostraba ESE paquete en vez de
+  // dar la bienvenida.
   const { mostrar: mostrarBienvenida, marcarVista: marcarBienvenidaVista } = useBienvenidaNeon(
     usuario?.id,
-    !!paqueteDestacadoRecolector
+    !!usuario
   );
   const { crearPeticion: crearAutorecarga } = useRecargasRecolector();
   const { gastosHoy, totalGastosHoy } = useGastosOperativos();
@@ -146,14 +151,10 @@ export default function RecolectorPage() {
     <div className="tz-root">
       <Styles />
       {mostrarBienvenida && (
-        // Nota: el Recolector todavía usa el diseño viejo (paquete
-        // destacado al primer login) — el pedido de separar "bienvenida
-        // de cuenta nueva" vs. "membresía activada" en 2 partes fue
-        // explícitamente solo para Conductor (ver ConductorPage.jsx).
-        // Si en algún momento se quiere el mismo criterio acá, avisar.
         <AnimacionNeonBienvenida
-          titulo={paqueteDestacadoRecolector.nombre}
-          descripcion={paqueteDestacadoRecolector.descripcion}
+          eyebrow="✦ Bienvenido a TaxiPE ✦"
+          titulo={usuario?.nombre || "Recolector"}
+          descripcion="Que tengas una excelente jornada — ¡vamos con todo! 💪"
           onTerminar={marcarBienvenidaVista}
         />
       )}
@@ -225,6 +226,7 @@ export default function RecolectorPage() {
 
             <RecargaRapidaForm
               conductores={conductores}
+              usuariosClientes={usuariosClientes}
               categorias={categorias}
               subgrupos={subgrupos}
               recolectorId={usuario?.id}
@@ -233,7 +235,9 @@ export default function RecolectorPage() {
               saving={saving}
               error={error}
               paquetes={paquetes}
+              paquetesClientes={paquetesClientes}
               glowPaquetes={glowPaquetes}
+              glowPaquetesClientes={glowPaquetesClientes}
             />
           </>
         )}

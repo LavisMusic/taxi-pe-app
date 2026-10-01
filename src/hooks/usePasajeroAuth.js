@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { hashPin, verifyPin } from "../lib/pinAuth";
+import { mirrorCuentaACaja } from "../lib/mirrorCaja";
 import {
   ESTADO_VERIFICACION_PERMANENTE,
   ESTADO_VERIFICACION_TEMPORAL,
@@ -90,6 +91,7 @@ export function usePasajeroAuth() {
     if (updateError || !data) {
       return { error: updateError, message: "No se pudo guardar tu verificación. Intenta de nuevo." };
     }
+    mirrorCuentaACaja({ telefono: data.telefono, pin, nombre: data.nombre });
     return { usuario: data, error: null };
   }, []);
 
@@ -165,6 +167,7 @@ export function usePasajeroAuth() {
     if (updateError || !data) {
       return { error: updateError, message: "No se pudo guardar el PIN. Intenta de nuevo." };
     }
+    mirrorCuentaACaja({ telefono: data.telefono, pin: nuevoPin, nombre: data.nombre });
     return { usuario: data, error: null };
   }, []);
 

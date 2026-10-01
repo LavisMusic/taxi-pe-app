@@ -3,7 +3,7 @@ import { X, Lock } from "lucide-react";
 import { supabase, setAuthPersistence } from "../supabaseClient";
 import { celularToDummyEmail } from "../lib/auth";
 import Styles from "./Styles";
-import logo from "../assets/logo.png";
+import logo from "../assets/logo.webp";
 
 // Login de clientes: solo Celular + PIN, sin correo, sin SMS. Por dentro
 // arma un "dummy email" y usa signInWithPassword de Supabase Auth.

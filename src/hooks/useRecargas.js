@@ -9,11 +9,14 @@ import {
 } from "../lib/taxiEnums";
 
 // Registra una recarga completa del Recolector (o del Admin): inserta
-// la venta, actualiza al conductor (créditos o vencimiento) y, si el
-// método fue Fiado, además abre una deuda en `fiados_conductores` — el
-// conductor recibe el beneficio de inmediato en todos los casos,
-// "Fiado" solo cambia de dónde sale la plata (no se cobró hoy, queda
-// pendiente en la Libreta en vez de contarse como recaudado).
+// la venta, actualiza al conductor O AL CLIENTE (créditos o
+// vencimiento, según `destinatarioTipo` — unificación pasajero/cliente)
+// y, si el método fue Fiado, además abre una deuda en
+// `fiados_conductores` (solo aplica a conductor: un cliente no tiene
+// libreta de fiados) — el destinatario recibe el beneficio de
+// inmediato en todos los casos, "Fiado" solo cambia de dónde sale la
+// plata (no se cobró hoy, queda pendiente en la Libreta en vez de
+// contarse como recaudado).
 //
 // `diasMembresia` ahora viene del PAQUETE elegido en Recarga Rápida
 // (cada paquete de tipo "membresia" define su propia duración) — se
@@ -32,7 +35,9 @@ export function useRecargas({ onDone }) {
 
   const registrarRecarga = useCallback(
     async ({
+      destinatarioTipo = "conductor",
       conductor,
+      cliente,
       recolectorId,
       tipoItem,
       monto,
@@ -59,18 +64,25 @@ export function useRecargas({ onDone }) {
       setSaving(true);
       setError("");
 
-      // Bug/pedido: no se puede vender una membresía nueva a un
-      // conductor que YA tiene una vigente — antes esto simplemente
-      // EXTENDÍA el vencimiento actual (sumaba días sobre lo que ya
-      // tenía), lo cual además pisaba `membresia_paquete_id` con el
-      // paquete nuevo aunque el viejo todavía no hubiera terminado.
-      // Ahora se bloquea de raíz hasta que la vigente termine. Esto NO
-      // aplica a créditos — los créditos se siguen pudiendo sumar en
-      // cualquier momento.
+      const esCliente = destinatarioTipo === "cliente";
+      const destinatario = esCliente ? cliente : conductor;
+      const tablaDestino = esCliente ? "usuarios" : "conductores";
+      // Mismo campo de negocio, distinto nombre de columna según la
+      // audiencia — conductores.vencimiento_suscripcion/.creditos vs
+      // usuarios.membresia_vencimiento/.creditos_disponibles (estas
+      // últimas ya existían, las usa la autorecarga del recolector).
+      const campoVencimiento = esCliente ? "membresia_vencimiento" : "vencimiento_suscripcion";
+      const campoCreditos = esCliente ? "creditos_disponibles" : "creditos";
+
+      // Bug/pedido: no se puede vender una membresía nueva a alguien
+      // que YA tiene una vigente — antes esto simplemente EXTENDÍA el
+      // vencimiento actual (sumaba días sobre lo que ya tenía), lo cual
+      // además pisaba `membresia_paquete_id` con el paquete nuevo aunque
+      // el viejo todavía no hubiera terminado. Ahora se bloquea de raíz
+      // hasta que la vigente termine. Esto NO aplica a créditos — los
+      // créditos se siguen pudiendo sumar en cualquier momento.
       if (tipoItem === TIPO_ITEM_MEMBRESIA) {
-        const vencimientoActual = conductor.vencimiento_suscripcion
-          ? new Date(conductor.vencimiento_suscripcion)
-          : null;
+        const vencimientoActual = destinatario[campoVencimiento] ? new Date(destinatario[campoVencimiento]) : null;
         if (vencimientoActual && vencimientoActual > new Date()) {
           const message = `Ya tiene una membresía activa hasta el ${vencimientoActual.toLocaleDateString("es-PE")} — no se puede recargar otra hasta que esta termine.`;
           setError(message);
@@ -93,7 +105,8 @@ export function useRecargas({ onDone }) {
         .from("ventas")
         .insert({
           codigo_venta: generarCodigoVenta(),
-          conductor_id: conductor.id,
+          conductor_id: esCliente ? null : conductor.id,
+          cliente_id: esCliente ? cliente.id : null,
           recolector_id: recolectorId,
           tipo_item: tipoItem,
           detalle,
@@ -111,58 +124,59 @@ export function useRecargas({ onDone }) {
 
       const patch = {};
       if (tipoItem === TIPO_ITEM_MEMBRESIA) {
-        const vencimientoActual = conductor.vencimiento_suscripcion
-          ? new Date(conductor.vencimiento_suscripcion)
-          : null;
+        const vencimientoActual = destinatario[campoVencimiento] ? new Date(destinatario[campoVencimiento]) : null;
         const base = vencimientoActual && vencimientoActual > new Date() ? vencimientoActual : new Date();
         base.setDate(base.getDate() + dias);
-        patch.vencimiento_suscripcion = base.toISOString();
+        patch[campoVencimiento] = base.toISOString();
         // Explícito siempre (incluso `null` si por lo que sea no llegó
         // paqueteId) — nunca dejamos que quede el valor viejo puesto:
         // si esto es un downgrade a otro paquete, tiene que reflejar el
         // NUEVO, no arrastrar el anterior.
         patch.membresia_paquete_id = paqueteId ?? null;
       } else {
-        patch.creditos = Number(conductor.creditos || 0) + Number(cantidadCreditos);
-        // Descuento de Créditos (24h): el reloj de "1 crédito cada 24h"
-        // arranca (o se REINICIA) exactamente cuando el conductor pasa
-        // de 0/sin créditos a tener saldo de nuevo — "activó su compra"
-        // literal. Si ya tenía créditos corriendo y solo suma más
-        // (recarga a mitad de camino), el reloj sigue igual: no se le
-        // regala un día extra de gracia por recargar antes de llegar a
-        // 0. Ver la lógica de catch-up en useConductorSesion.js.
-        if (Number(conductor.creditos || 0) <= 0) {
+        patch[campoCreditos] = Number(destinatario[campoCreditos] || 0) + Number(cantidadCreditos);
+        // Descuento de Créditos (24h, SOLO conductor): el reloj de "1
+        // crédito cada 24h" arranca (o se REINICIA) exactamente cuando
+        // el conductor pasa de 0/sin créditos a tener saldo de nuevo —
+        // "activó su compra" literal. Un cliente no tiene este descuento
+        // automático (sus créditos se consumen por uso, no por reloj),
+        // así que esto no le aplica.
+        if (!esCliente && Number(destinatario[campoCreditos] || 0) <= 0) {
           patch.ultimo_descuento_creditos = new Date().toISOString();
         }
         // "Compra Confirmada" (pedido nuevo): a diferencia de la
         // membresía, acá SIEMPRE se pisa con la compra más reciente —
         // no hay noción de "cambió de paquete", cualquier compra de
         // créditos (repita el mismo paquete o no) es una novedad que
-        // vale la pena confirmarle al conductor.
+        // vale la pena confirmarle al destinatario.
         patch.ultimo_paquete_creditos_nombre = paqueteNombre ?? null;
         patch.ultimo_paquete_creditos_descripcion = paqueteDescripcion ?? null;
         patch.ultima_compra_creditos_at = new Date().toISOString();
       }
 
-      const { data: conductorActualizado, error: conductorError } = await supabase
-        .from("conductores")
+      const { data: destinatarioActualizado, error: destinatarioError } = await supabase
+        .from(tablaDestino)
         .update(patch)
-        .eq("id", conductor.id)
+        .eq("id", destinatario.id)
         .select();
-      if (conductorError) {
-        setError("La venta se registró, pero no se pudo actualizar al conductor.");
+      if (destinatarioError) {
+        setError(`La venta se registró, pero no se pudo actualizar ${esCliente ? "al cliente" : "al conductor"}.`);
         setSaving(false);
-        return { error: conductorError };
+        return { error: destinatarioError };
       }
-      if (!conductorActualizado || conductorActualizado.length === 0) {
+      if (!destinatarioActualizado || destinatarioActualizado.length === 0) {
         setError(
-          "La venta se registró, pero el conductor no se actualizó (0 filas — revisa la política RLS de UPDATE en `conductores`)."
+          `La venta se registró, pero ${esCliente ? "el cliente" : "el conductor"} no se actualizó (0 filas — revisa la política RLS de UPDATE en \`${tablaDestino}\`).`
         );
         setSaving(false);
         return { error: new Error("0 filas afectadas") };
       }
 
-      if (metodoPago === METODO_PAGO_FIADO) {
+      // Fiado: solo tiene sentido para conductor (Libreta de Fiados es
+      // un concepto de conductor/negocio, un cliente no tiene una) — el
+      // formulario ya oculta este método de pago cuando la audiencia es
+      // cliente, esto es el respaldo del lado del hook.
+      if (!esCliente && metodoPago === METODO_PAGO_FIADO) {
         const { error: fiadoError } = await supabase.from("fiados_conductores").insert({
           conductor_id: conductor.id,
           venta_id: ventaCreada.id,

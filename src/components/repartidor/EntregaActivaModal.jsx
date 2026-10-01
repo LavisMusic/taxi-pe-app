@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, MapPin, Store, PackageCheck, QrCode, KeyRound, Loader2, Send, Check, CheckCheck } from "lucide-react";
+import { X, MapPin, Store, PackageCheck, QrCode, KeyRound, Loader2, Send, Check, CheckCheck, Navigation } from "lucide-react";
 import { useEntregaChat } from "../../hooks/useEntregaChat";
 import { formatSoles } from "../../utils/format";
 import EscanerQrModal from "./EscanerQrModal";
@@ -82,7 +82,7 @@ function Chat({ entregaId, conductorId, hilo }) {
   );
 }
 
-export default function EntregaActivaModal({ entrega, conductorId, onClose, avanzar, finalizar }) {
+export default function EntregaActivaModal({ entrega, conductorId, onClose, avanzar, finalizar, onEntregado }) {
   const [hilo, setHilo] = useState("cliente_conductor");
   const [escaneando, setEscaneando] = useState(false);
   const [intentosQr, setIntentosQr] = useState(0);
@@ -97,6 +97,12 @@ export default function EntregaActivaModal({ entrega, conductorId, onClose, avan
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
     entrega.entrega_lat && entrega.entrega_lng ? `${entrega.entrega_lat},${entrega.entrega_lng}` : dir
   )}`;
+  // Waze solo entiende coordenadas (no una dirección de texto libre) —
+  // si el pedido no tiene lat/lng todavía, no hay link posible.
+  const wazeUrl =
+    entrega.entrega_lat && entrega.entrega_lng
+      ? `https://waze.com/ul?ll=${entrega.entrega_lat},${entrega.entrega_lng}&navigate=yes`
+      : null;
 
   const marcarRecogido = async () => {
     setBusy(true);
@@ -106,13 +112,19 @@ export default function EntregaActivaModal({ entrega, conductorId, onClose, avan
     if (r?.status && r.status !== "ok") setMsg(`No se pudo (${r.status}).`);
   };
 
-  // Intenta finalizar con un código (del QR o del PIN). Devuelve true si cerró.
+  // Intenta finalizar con un código (del QR o del PIN). Si sale bien,
+  // cierra el escáner Y este modal al toque, y avisa a 'onEntregado':
+  // la celebración (AnimacionExitoNeon) la monta ConductorPage a
+  // pantalla completa — no puede vivir acá ni en el panel de reparto,
+  // que se desmonta solo apenas no quedan entregas activas.
   const intentarFinalizar = async (codigo) => {
     setBusy(true);
     setMsg("");
     const r = await finalizar(entrega.id, codigo);
     setBusy(false);
     if (r?.status === "ok") {
+      setEscaneando(false);
+      onEntregado?.();
       onClose();
       return true;
     }
@@ -125,9 +137,10 @@ export default function EntregaActivaModal({ entrega, conductorId, onClose, avan
   };
 
   const onQrLeido = async (texto) => {
-    setEscaneando(false);
     const ok = await intentarFinalizar(texto);
     if (!ok) {
+      // Si salió bien, intentarFinalizar ya cerró todo.
+      setEscaneando(false);
       setIntentosQr((n) => n + 1);
       setMsg("Ese QR no corresponde a esta entrega. Intentá de nuevo.");
     }
@@ -176,15 +189,28 @@ export default function EntregaActivaModal({ entrega, conductorId, onClose, avan
           {entrega.total != null && (
             <p className="tz-camera-note" style={{ margin: 0 }}>Total del pedido: {formatSoles(entrega.total)}</p>
           )}
-          <a
-            href={mapsUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="tz-camera-cancel tz-image-manager-btn"
-            style={{ marginTop: 8, display: "inline-flex" }}
-          >
-            <MapPin size={14} /> Abrir en Google Maps
-          </a>
+          <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap", justifyContent: "center" }}>
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="tz-camera-cancel tz-image-manager-btn"
+              style={{ display: "inline-flex" }}
+            >
+              <MapPin size={14} /> Google Maps
+            </a>
+            {wazeUrl && (
+              <a
+                href={wazeUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="tz-camera-cancel tz-image-manager-btn"
+                style={{ display: "inline-flex" }}
+              >
+                <Navigation size={14} /> Waze
+              </a>
+            )}
+          </div>
         </div>
 
         {/* El mapa se DESMONTA mientras el escáner está abierto — leaflet

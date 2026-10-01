@@ -10,7 +10,7 @@ import ComboIngredients from "../components/ComboIngredients";
 import ProductImage from "../components/ProductImage";
 import LogoEasterEgg from "../components/LogoEasterEgg";
 import { formatSoles } from "../utils/format";
-import logo from "../assets/logo.png";
+import logo from "../assets/logo.webp";
 
 // Copiado tal cual de App.jsx: mismo cálculo, mismo criterio de
 // "disponible" — el catálogo público necesita saber si algo está

@@ -7,6 +7,9 @@ import jsQR from "jsqr";
 // ~20 s sin leer nada, llama `onTimeout`. Si no hay cámara o el usuario
 // niega el permiso, llama `onSinCamara(mensaje)` (ahí la pantalla padre
 // muestra directo el input de PIN).
+//
+// Al confirmarse la entrega el padre cierra este modal al toque; la
+// celebración es AnimacionExitoNeon a pantalla completa (ConductorPage).
 
 const TIMEOUT_MS = 20000;
 
