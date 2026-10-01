@@ -24,6 +24,7 @@ import CierreCajaModal from "../components/admin/CierreCajaModal";
 import HistorialVentasModal from "../components/admin/HistorialVentasModal";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import logo from "../assets/logo.webp";
+import BotonSoporte from "../components/BotonSoporte";
 
 // Ruta /recolector — entra por RequireUsuarioRol rol="recolector".
 // Pantalla operativa de calle: widget de turno bien visible arriba,
@@ -173,6 +174,7 @@ export default function RecolectorPage() {
           </div>
 
           <div className="tz-header-side tz-header-side-right">
+            <BotonSoporte />
             <button className="tz-header-btn" onClick={logout} aria-label="Cerrar sesión" title="Cerrar sesión">
               <LogOut size={19} />
               <span className="tz-header-btn-label">Salir</span>

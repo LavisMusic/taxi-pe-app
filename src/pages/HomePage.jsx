@@ -30,6 +30,7 @@ import AnuncioPopupModal from "../components/AnuncioPopupModal";
 import RadarGlobal from "../components/RadarGlobal";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import logo from "../assets/logo.webp";
+import BotonSoporte from "../components/BotonSoporte";
 
 // Persistencia del filtro de localidad — sobrevive a un F5 (ver el
 // useState/useEffect de `localidad` más abajo). Es la única pieza de
@@ -350,6 +351,7 @@ export default function HomePage() {
           </div>
 
           <div className="tz-header-side tz-header-side-right">
+            <BotonSoporte />
             {usuario ? (
               <button className="tz-header-btn" onClick={logout} aria-label="Cerrar sesión" title="Cerrar sesión">
                 <LogOut size={19} />

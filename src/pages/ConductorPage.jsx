@@ -28,6 +28,7 @@ import AnimacionExitoNeon from "../components/AnimacionExitoNeon";
 import VerificarConductorForm from "../components/VerificarConductorForm";
 import EntregasRepartidorPanel from "../components/repartidor/EntregasRepartidorPanel";
 import logo from "../assets/logo.webp";
+import BotonSoporte from "../components/BotonSoporte";
 
 // Ruta /conductor — entra por RequireUsuarioRol rol="conductor".
 // Mobile-first a propósito: una sola columna angosta (max 420px,
@@ -263,6 +264,7 @@ export default function ConductorPage() {
             <p className="tz-subtitle">{conductor?.nombre ?? usuario?.nombre ?? "Conductor"}</p>
           </div>
           <div className="tz-header-side tz-header-side-right">
+            <BotonSoporte />
             <button className="tz-header-btn" onClick={logout} aria-label="Cerrar sesión" title="Cerrar sesión">
               <LogOut size={19} />
               <span className="tz-header-btn-label">Salir</span>
