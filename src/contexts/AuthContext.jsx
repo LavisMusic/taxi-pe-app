@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { reiniciarBienvenidas } from "../hooks/useBienvenidaNeon";
 import { supabase } from "../supabaseClient";
 
 const AuthContext = createContext(null);
@@ -59,6 +60,7 @@ export function AuthProvider({ children }) {
   }, [session?.user?.id]);
 
   const signOut = async () => {
+    reiniciarBienvenidas();
     await supabase.auth.signOut();
     setSession(null);
     setProfile(null);

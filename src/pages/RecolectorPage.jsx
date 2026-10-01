@@ -14,7 +14,7 @@ import { useGastosOperativos } from "../hooks/useGastosOperativos";
 import { useAnularVenta } from "../hooks/useAnularVenta";
 import { useCierresCaja } from "../hooks/useCierresCaja";
 import { useBienvenidaNeon } from "../hooks/useBienvenidaNeon";
-import { startOfTodayISO, TIPO_ITEM_MEMBRESIA } from "../lib/taxiEnums";
+import { startOfTodayISO } from "../lib/taxiEnums";
 import { formatSoles, formatDate } from "../utils/format";
 import Styles from "../components/Styles";
 import RecargaRapidaForm from "../components/recolector/RecargaRapidaForm";
@@ -64,14 +64,13 @@ export default function RecolectorPage() {
   // falta una consulta aparte.
   const usuariosClientes = usuarios.filter((u) => u.rol === "pasajero");
 
-  // Animación Épica de Bienvenida (Fase Neón) — ver el mismo bloque en
-  // ConductorPage.jsx: acá el catálogo destacado es el DEL RECOLECTOR
-  // (paquetes_recolectores), no el de conductor.
-  const paqueteDestacadoRecolector =
-    paquetesRecolectores.find((p) => p.tipo_item === TIPO_ITEM_MEMBRESIA && p.activo !== false) ?? null;
+  // Animación de Bienvenida — una vez por acceso, como en todos los
+  // roles (ver useBienvenidaNeon.js). Antes solo salía si había un
+  // paquete destacado de recolector y mostraba ESE paquete en vez de
+  // dar la bienvenida.
   const { mostrar: mostrarBienvenida, marcarVista: marcarBienvenidaVista } = useBienvenidaNeon(
     usuario?.id,
-    !!paqueteDestacadoRecolector
+    !!usuario
   );
   const { crearPeticion: crearAutorecarga } = useRecargasRecolector();
   const { gastosHoy, totalGastosHoy } = useGastosOperativos();
@@ -152,14 +151,10 @@ export default function RecolectorPage() {
     <div className="tz-root">
       <Styles />
       {mostrarBienvenida && (
-        // Nota: el Recolector todavía usa el diseño viejo (paquete
-        // destacado al primer login) — el pedido de separar "bienvenida
-        // de cuenta nueva" vs. "membresía activada" en 2 partes fue
-        // explícitamente solo para Conductor (ver ConductorPage.jsx).
-        // Si en algún momento se quiere el mismo criterio acá, avisar.
         <AnimacionNeonBienvenida
-          titulo={paqueteDestacadoRecolector.nombre}
-          descripcion={paqueteDestacadoRecolector.descripcion}
+          eyebrow="✦ Bienvenido a TaxiPE ✦"
+          titulo={usuario?.nombre || "Recolector"}
+          descripcion="Que tengas una excelente jornada — ¡vamos con todo! 💪"
           onTerminar={marcarBienvenidaVista}
         />
       )}

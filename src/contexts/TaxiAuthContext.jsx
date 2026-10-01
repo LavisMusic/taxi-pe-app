@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { reiniciarBienvenidas } from "../hooks/useBienvenidaNeon";
 import { ShieldAlert } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { TAXI_ADMIN_KEY, TAXI_SESSION_KEY } from "../lib/taxiAuth";
@@ -115,6 +116,7 @@ export function TaxiAuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
+    reiniciarBienvenidas();
     setUsuario(null);
     setIsAdminMaster(false);
     window.localStorage.removeItem(TAXI_SESSION_KEY);

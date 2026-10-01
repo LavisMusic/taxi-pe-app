@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 
 // Cuánto dura CADA fase — pedido explícito: "10 segundos de animación
 // como tal". 1s entrada + 8.1s sostenida + 0.9s salida = 10s de punta a
@@ -24,6 +24,179 @@ const variantesOverlay = {
     transition: { duration: 0.9, ease: "easeIn" },
   },
 };
+
+// ---- Capa "pro" sobre la Selva Neón (mismo lenguaje que
+// AnimacionExitoNeon.jsx): un EMBLEMA central —aro que se dibuja +
+// ícono selvático + corona de hojitas que brota alrededor—, textos que
+// entran escalonados DESPUÉS del emblema, y oleadas de hojas y
+// luciérnagas que estallan desde el centro en vez de serpentinas. La
+// escena de fondo (lianas, hojas, criaturas, aves, maleza) se queda
+// tal cual y se refuerza con hojas cayendo de la copa y luciérnagas
+// flotando durante toda la animación.
+const variantesAro = {
+  initial: { scale: 0.3, opacity: 0, rotate: -20 },
+  animate: {
+    scale: 1,
+    opacity: 1,
+    rotate: 0,
+    transition: { delay: 0.35, type: "spring", stiffness: 140, damping: 14 },
+  },
+};
+const variantesTrazo = (delay) => ({
+  initial: { pathLength: 0, opacity: 0 },
+  animate: { pathLength: 1, opacity: 1, transition: { delay, duration: 0.7, ease: "easeInOut" } },
+});
+const variantesTexto = {
+  initial: { opacity: 0, y: 18, filter: "blur(6px)" },
+  animate: (i) => ({
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: { delay: 1.45 + i * 0.16, duration: 0.65, ease: [0.16, 1, 0.3, 1] },
+  }),
+};
+
+// Íconos del emblema (coordenadas del aro: viewBox 0-120, centro 60,60).
+// Cada uno es una lista de trazos que se DIBUJAN (pathLength), no
+// rellenos — mismo efecto que el check de la animación de entrega.
+const ICONOS = {
+  // Bienvenida: hoja de selva con nervaduras.
+  hoja: [
+    "M60 28 C82 38 90 62 76 84 C70 92 63 94 60 94 C57 94 50 92 44 84 C30 62 38 38 60 28 Z",
+    "M60 36 L60 92 M60 54 L47 65 M60 54 L73 65 M60 71 L49 80 M60 71 L71 80",
+  ],
+  // Membresía activada: corona.
+  corona: ["M34 80 L30 44 L47 59 L60 36 L73 59 L90 44 L86 80 Z", "M36 90 L84 90"],
+  // Compra de créditos confirmada: rayo.
+  rayo: ["M67 28 L41 64 L58 64 L51 94 L81 54 L63 54 Z"],
+};
+
+// Corona de hojitas alrededor del aro — brotan en cadena apenas el aro
+// termina de dibujarse.
+const HOJITAS_CORONA = Array.from({ length: 12 }, (_, i) => ({ id: i, angulo: (i / 12) * 360 + 15 }));
+
+// Oleadas que estallan desde el emblema: hojas (giran y caen meciéndose)
+// y luciérnagas (titilan y se apagan).
+const COLORES_HOJA = ["#4dffa0", "#2be8ff", "#a6ff4d", "#3ddc84"];
+function crearOleadaSelva(cantidad, delayBase) {
+  return Array.from({ length: cantidad }, (_, i) => {
+    const angulo = (i / cantidad) * Math.PI * 2 + Math.random() * 0.4;
+    const distancia = 30 + Math.random() * 40;
+    const esLuciernaga = i % 3 === 0;
+    return {
+      id: i,
+      esLuciernaga,
+      color: esLuciernaga ? "#eaff7a" : COLORES_HOJA[i % COLORES_HOJA.length],
+      dx: Math.cos(angulo) * distancia,
+      dy: Math.sin(angulo) * distancia - 8,
+      caida: 18 + Math.random() * 22,
+      rotate: Math.random() * 600 - 300,
+      delay: delayBase + Math.random() * 0.2,
+      duration: esLuciernaga ? 2.4 + Math.random() * 1.2 : 2 + Math.random() * 0.9,
+      size: esLuciernaga ? 4 + Math.random() * 3 : 9 + Math.random() * 7,
+    };
+  });
+}
+const OLEADAS_SELVA = [crearOleadaSelva(18, 1.05), crearOleadaSelva(15, 1.45), crearOleadaSelva(12, 1.85)];
+
+// Ambiente durante TODA la animación: hojas que se desprenden de la copa
+// y luciérnagas flotando por la escena (CSS puro, posiciones al azar).
+const HOJAS_CAYENDO = Array.from({ length: 9 }, (_, i) => ({
+  id: i,
+  left: 4 + Math.random() * 92,
+  delay: 0.8 + i * 0.75 + Math.random() * 0.4,
+  duration: 4.5 + Math.random() * 2,
+  size: 12 + Math.random() * 10,
+  color: COLORES_HOJA[i % COLORES_HOJA.length],
+  deriva: (Math.random() - 0.5) * 22,
+}));
+const LUCIERNAGAS = Array.from({ length: 16 }, (_, i) => ({
+  id: i,
+  left: Math.random() * 100,
+  top: 12 + Math.random() * 70,
+  delay: Math.random() * 3,
+  duration: 2.2 + Math.random() * 2.4,
+  size: 3 + Math.random() * 3,
+}));
+
+function EmblemaSelva({ icono }) {
+  const trazos = ICONOS[icono] || ICONOS.hoja;
+  return (
+    <motion.div className="tz-neon-emblema" variants={variantesAro} initial="initial" animate="animate">
+      <div className="tz-neon-emblema-glow" />
+      {OLEADAS_SELVA.map((oleada, oi) => (
+        <div key={oi} className="tz-neon-burst">
+          {oleada.map((p) => (
+            <motion.span
+              key={p.id}
+              className={p.esLuciernaga ? "tz-neon-burst-luciernaga" : "tz-neon-burst-hoja"}
+              style={{ background: p.color, color: p.color, width: p.size, height: p.esLuciernaga ? p.size : p.size * 1.4 }}
+              initial={{ opacity: 0, x: 0, y: 0, rotate: 0, scale: 0.4 }}
+              animate={
+                p.esLuciernaga
+                  ? { opacity: [0, 1, 0.35, 1, 0], x: `${p.dx}vmin`, y: [`0vmin`, `${p.dy}vmin`, `${p.dy - 6}vmin`], scale: 1 }
+                  : {
+                      opacity: [0, 1, 1, 0],
+                      x: [`0vmin`, `${p.dx}vmin`, `${p.dx + 4}vmin`, `${p.dx - 3}vmin`],
+                      y: [`0vmin`, `${p.dy}vmin`, `${p.dy + p.caida * 0.5}vmin`, `${p.dy + p.caida}vmin`],
+                      rotate: p.rotate,
+                      scale: 1,
+                    }
+              }
+              transition={{
+                delay: p.delay,
+                duration: p.duration,
+                ease: "easeOut",
+                ...(p.esLuciernaga ? {} : { times: [0, 0.25, 0.65, 1] }),
+              }}
+            />
+          ))}
+        </div>
+      ))}
+      <svg className="tz-neon-emblema-svg" viewBox="-34 -34 188 188" aria-hidden="true">
+        <defs>
+          <linearGradient id="tz-neon-aro-grad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#4dffa0" />
+            <stop offset="50%" stopColor="#2be8ff" />
+            <stop offset="100%" stopColor="#ff2f9e" />
+          </linearGradient>
+        </defs>
+        {HOJITAS_CORONA.map((h, i) => (
+          <g key={h.id} transform={`rotate(${h.angulo} 60 60)`}>
+            <motion.path
+              className={`tz-neon-corona-hoja ${i % 2 ? "tz-neon-corona-hoja-b" : ""}`}
+              d="M60 -22 C69 -14 69 -4 60 4 C51 -4 51 -14 60 -22 Z"
+              style={{ transformBox: "fill-box", transformOrigin: "50% 100%" }}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 1.05 + i * 0.045, type: "spring", stiffness: 260, damping: 13 }}
+            />
+          </g>
+        ))}
+        <circle className="tz-neon-aro-fondo" cx="60" cy="60" r="52" />
+        <motion.circle
+          className="tz-neon-aro-trazo"
+          cx="60"
+          cy="60"
+          r="52"
+          variants={variantesTrazo(0.5)}
+          initial="initial"
+          animate="animate"
+        />
+        {trazos.map((d, i) => (
+          <motion.path
+            key={i}
+            className="tz-neon-emblema-icono"
+            d={d}
+            variants={variantesTrazo(0.85 + i * 0.25)}
+            initial="initial"
+            animate="animate"
+          />
+        ))}
+      </svg>
+    </motion.div>
+  );
+}
 
 // Silueta de hoja reusable (un solo <symbol> definido una vez, referenciado
 // con <use> en cada instancia) — antes cada hoja repetía el mismo <path>
@@ -127,6 +300,9 @@ export default function AnimacionNeonBienvenida({
   eyebrow = "✦ Bienvenido ✦",
   titulo,
   descripcion,
+  // Ícono del emblema central: "hoja" (bienvenida), "corona"
+  // (membresía activada) o "rayo" (compra de créditos).
+  icono = "hoja",
   onTerminar,
 }) {
   const [presente, setPresente] = useState(true);
@@ -152,6 +328,7 @@ export default function AnimacionNeonBienvenida({
   const saltar = () => setPresente(false);
 
   return (
+    <MotionConfig reducedMotion="user">
     <AnimatePresence onExitComplete={onTerminar}>
       {presente && (
         <motion.div
@@ -382,11 +559,55 @@ export default function AnimacionNeonBienvenida({
             />
           </svg>
 
+          {/* Refuerzo de la selva: hojas que se desprenden de la copa y
+             luciérnagas flotando durante toda la animación. */}
+          {HOJAS_CAYENDO.map((h) => (
+            <span
+              key={h.id}
+              className="tz-neon-hoja-cae"
+              aria-hidden="true"
+              style={{
+                left: `${h.left}%`,
+                width: h.size,
+                height: h.size * 1.4,
+                background: h.color,
+                color: h.color,
+                animationDelay: `${h.delay}s`,
+                animationDuration: `${h.duration}s`,
+                "--tz-neon-deriva": `${h.deriva}vw`,
+              }}
+            />
+          ))}
+          {LUCIERNAGAS.map((l) => (
+            <span
+              key={l.id}
+              className="tz-neon-luciernaga"
+              aria-hidden="true"
+              style={{
+                left: `${l.left}%`,
+                top: `${l.top}%`,
+                width: l.size,
+                height: l.size,
+                animationDelay: `${l.delay}s, ${l.delay}s`,
+                animationDuration: `${l.duration}s, ${l.duration * 2.5}s`,
+              }}
+            />
+          ))}
+
           {/* ---- Contenido central ---- */}
           <div className="tz-neon-content">
-            <p className="tz-neon-eyebrow">{eyebrow}</p>
-            <h1 className="tz-neon-title">{titulo}</h1>
-            {descripcion && <p className="tz-neon-desc">{descripcion}</p>}
+            <EmblemaSelva icono={icono} />
+            <motion.p className="tz-neon-eyebrow" custom={0} variants={variantesTexto} initial="initial" animate="animate">
+              {eyebrow}
+            </motion.p>
+            <motion.h1 className="tz-neon-title" custom={1} variants={variantesTexto} initial="initial" animate="animate">
+              {titulo}
+            </motion.h1>
+            {descripcion && (
+              <motion.p className="tz-neon-desc" custom={2} variants={variantesTexto} initial="initial" animate="animate">
+                {descripcion}
+              </motion.p>
+            )}
           </div>
 
           <button type="button" className="tz-neon-skip-btn" onClick={saltar}>
@@ -875,8 +1096,6 @@ export default function AnimacionNeonBienvenida({
               font-size: clamp(12px, 2.4vw, 15px);
               color: var(--tz-neon-green);
               text-shadow: 0 0 12px var(--tz-neon-green);
-              opacity: 0;
-              animation: tz-neon-text-in 0.8s ease-out 0.35s both;
             }
             .tz-neon-title {
               margin: 0 0 14px;
@@ -897,8 +1116,7 @@ export default function AnimacionNeonBienvenida({
                  filtro de bitmap) y sigue funcionando con color:
                  transparent + el relleno en gradiente. */
               text-shadow: 0 0 18px rgba(43,232,255,0.55), 0 0 34px rgba(255,47,158,0.35);
-              opacity: 0;
-              animation: tz-neon-text-in 0.9s ease-out 0.55s both, tz-neon-title-pulse 2.6s ease-in-out 1.5s infinite;
+              animation: tz-neon-title-pulse 2.6s ease-in-out 2.3s infinite;
             }
             .tz-neon-desc {
               margin: 0;
@@ -907,8 +1125,6 @@ export default function AnimacionNeonBienvenida({
               font-size: clamp(14px, 3vw, 19px);
               color: #dffcff;
               text-shadow: 0 0 14px rgba(43,232,255,0.4);
-              opacity: 0;
-              animation: tz-neon-text-in 0.8s ease-out 0.8s both;
             }
             @keyframes tz-neon-text-in {
               0% { opacity: 0; transform: translateY(16px); }
@@ -917,6 +1133,134 @@ export default function AnimacionNeonBienvenida({
             @keyframes tz-neon-title-pulse {
               0%, 100% { text-shadow: 0 0 18px rgba(43,232,255,0.55), 0 0 34px rgba(255,47,158,0.35); }
               50% { text-shadow: 0 0 30px rgba(43,232,255,0.8), 0 0 54px rgba(255,47,158,0.55); }
+            }
+
+            /* ---- Emblema central ---- */
+            .tz-neon-emblema {
+              position: relative;
+              width: min(30vmin, 150px);
+              height: min(30vmin, 150px);
+              margin-bottom: 18px;
+            }
+            .tz-neon-emblema-svg {
+              position: absolute;
+              inset: -28%;
+              width: 156%;
+              height: 156%;
+              overflow: visible;
+            }
+            .tz-neon-emblema-glow {
+              position: absolute;
+              inset: -45%;
+              border-radius: 50%;
+              background: radial-gradient(circle, rgba(77,255,160,0.32), rgba(43,232,255,0.14) 45%, transparent 70%);
+              filter: blur(14px);
+              animation: tz-neon-emblema-pulse 2.2s ease-in-out infinite;
+              pointer-events: none;
+            }
+            @keyframes tz-neon-emblema-pulse {
+              0%, 100% { transform: scale(1); opacity: 0.75; }
+              50% { transform: scale(1.14); opacity: 1; }
+            }
+            .tz-neon-aro-fondo {
+              fill: rgba(4,20,14,0.55);
+              stroke: rgba(77,255,160,0.16);
+              stroke-width: 3;
+            }
+            .tz-neon-aro-trazo {
+              fill: none;
+              stroke: url(#tz-neon-aro-grad);
+              stroke-width: 5;
+              stroke-linecap: round;
+              transform-origin: 60px 60px;
+              transform: rotate(-90deg);
+              filter: drop-shadow(0 0 8px rgba(77,255,160,0.9)) drop-shadow(0 0 18px rgba(43,232,255,0.6));
+            }
+            .tz-neon-emblema-icono {
+              fill: none;
+              stroke: #eafff4;
+              stroke-width: 5;
+              stroke-linecap: round;
+              stroke-linejoin: round;
+              filter: drop-shadow(0 0 6px rgba(77,255,160,0.95)) drop-shadow(0 0 14px rgba(77,255,160,0.5));
+            }
+            .tz-neon-corona-hoja {
+              fill: rgba(77,255,160,0.85);
+              filter: drop-shadow(0 0 5px rgba(77,255,160,0.9));
+            }
+            .tz-neon-corona-hoja-b {
+              fill: rgba(43,232,255,0.8);
+              filter: drop-shadow(0 0 5px rgba(43,232,255,0.9));
+            }
+
+            /* Oleadas que estallan desde el emblema */
+            .tz-neon-burst {
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              width: 0;
+              height: 0;
+              pointer-events: none;
+            }
+            .tz-neon-burst-hoja,
+            .tz-neon-burst-luciernaga {
+              position: absolute;
+              top: 0;
+              left: 0;
+            }
+            .tz-neon-burst-hoja {
+              border-radius: 2px 80% 2px 80%;
+              box-shadow: 0 0 8px currentColor;
+            }
+            .tz-neon-burst-luciernaga {
+              border-radius: 50%;
+              box-shadow: 0 0 6px 2px currentColor, 0 0 14px 4px rgba(234,255,122,0.45);
+            }
+
+            /* Ambiente: hojas que caen de la copa */
+            .tz-neon-hoja-cae {
+              position: absolute;
+              top: -6%;
+              z-index: 1;
+              border-radius: 2px 80% 2px 80%;
+              box-shadow: 0 0 8px currentColor;
+              opacity: 0;
+              pointer-events: none;
+              animation-name: tz-neon-hoja-cae;
+              animation-timing-function: ease-in-out;
+              animation-fill-mode: both;
+            }
+            @keyframes tz-neon-hoja-cae {
+              0% { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+              10% { opacity: 0.9; }
+              30% { transform: translate(calc(var(--tz-neon-deriva) * 0.6), 30vh) rotate(140deg); }
+              55% { transform: translate(calc(var(--tz-neon-deriva) * -0.3), 58vh) rotate(260deg); }
+              85% { opacity: 0.8; }
+              100% { opacity: 0; transform: translate(var(--tz-neon-deriva), 105vh) rotate(420deg); }
+            }
+
+            /* Ambiente: luciérnagas flotando */
+            .tz-neon-luciernaga {
+              position: absolute;
+              z-index: 1;
+              border-radius: 50%;
+              background: #eaff7a;
+              box-shadow: 0 0 6px 2px rgba(234,255,122,0.9), 0 0 16px 5px rgba(166,255,77,0.45);
+              opacity: 0;
+              pointer-events: none;
+              animation-name: tz-neon-luciernaga-titila, tz-neon-luciernaga-vuela;
+              animation-timing-function: ease-in-out, ease-in-out;
+              animation-iteration-count: infinite, infinite;
+              animation-direction: normal, alternate;
+            }
+            @keyframes tz-neon-luciernaga-titila {
+              0%, 100% { opacity: 0; }
+              40%, 60% { opacity: 1; }
+            }
+            @keyframes tz-neon-luciernaga-vuela {
+              0% { transform: translate(0, 0); }
+              50% { transform: translate(18px, -14px); }
+              100% { transform: translate(-12px, -26px); }
             }
 
             .tz-neon-skip-btn {
@@ -952,5 +1296,6 @@ export default function AnimacionNeonBienvenida({
         </motion.div>
       )}
     </AnimatePresence>
+    </MotionConfig>
   );
 }

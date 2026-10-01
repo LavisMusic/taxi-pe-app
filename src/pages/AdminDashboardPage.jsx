@@ -27,6 +27,8 @@ import {
 import { buildTopRanking } from "../lib/ranking";
 import { useRankingRepartidores } from "../hooks/useRankingRepartidores";
 import Styles from "../components/Styles";
+import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
+import { useBienvenidaNeon } from "../hooks/useBienvenidaNeon";
 import StatsSection from "../components/admin/StatsSection";
 import UsuarioEstrellaChip from "../components/admin/UsuarioEstrellaChip";
 import TopUsuariosModal from "../components/admin/TopUsuariosModal";
@@ -58,6 +60,10 @@ const METODOS_PAGO_MENU = METODOS_PAGO.filter((m) => METODOS_CON_COMPROBANTE.inc
 // pero leyendo únicamente las tablas nuevas de TaxiP.
 export default function AdminDashboardPage() {
   const { logout } = useTaxiAuth();
+  // Bienvenida del super admin — una vez por acceso, igual que el resto
+  // de los roles. El admin master no tiene fila de usuario propia, así
+  // que la clave es fija.
+  const { mostrar: mostrarBienvenida, marcarVista: marcarBienvenidaVista } = useBienvenidaNeon("admin-master", true);
   const {
     ventas,
     ventasVigentes,
@@ -257,6 +263,14 @@ export default function AdminDashboardPage() {
   return (
     <div className="tz-root">
       <Styles />
+      {mostrarBienvenida && (
+        <AnimacionNeonBienvenida
+          eyebrow="✦ Bienvenido a TaxiPE ✦"
+          titulo="Super Admin"
+          descripcion="Todo el panel bajo control — ¡a por un gran día! 💪"
+          onTerminar={marcarBienvenidaVista}
+        />
+      )}
       <header className="tz-header">
         <div className="tz-header-row">
           <div className="tz-header-side tz-header-side-left">

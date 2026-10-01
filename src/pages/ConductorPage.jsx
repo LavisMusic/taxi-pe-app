@@ -207,6 +207,7 @@ export default function ConductorPage() {
       ) : mostrarMembresiaActivada ? (
         <AnimacionNeonBienvenida
           eyebrow="✦ Membresía Activada ✦"
+          icono="corona"
           titulo={paqueteActivado.nombre}
           descripcion={paqueteActivado.descripcion}
           onTerminar={marcarMembresiaVista}
@@ -214,6 +215,7 @@ export default function ConductorPage() {
       ) : mostrarCompraCreditos ? (
         <AnimacionNeonBienvenida
           eyebrow="✦ Compra Confirmada ✦"
+          icono="rayo"
           titulo={compraCreditos.nombre}
           descripcion={compraCreditos.descripcion}
           onTerminar={marcarCompraCreditosVista}
