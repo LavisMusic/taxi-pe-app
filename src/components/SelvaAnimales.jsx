@@ -14,7 +14,7 @@
 // Ventanas de la secuencia (s). La bienvenida empieza a cerrarse a los
 // 9 s (ver MS_CIERRE en AnimacionNeonBienvenida.jsx).
 const TIEMPOS = {
-  heliconias: 0.45, // brotan y quedan colgando toda la animación
+  heliconias: 0.12, // bajan completas con la escena y quedan colgando
   loros: 1.25,
   mono: 2.4,
   tigrillo: 3.5,
@@ -43,7 +43,12 @@ const BRACTEAS = Array.from({ length: 7 }, (_, i) => {
 
 function Heliconia({ className, delay }) {
   return (
-    <svg className={`tz-selva-heliconia ${className}`} viewBox="0 0 50 140" aria-hidden="true">
+    <svg
+      className={`tz-selva-heliconia ${className}`}
+      viewBox="0 0 50 140"
+      aria-hidden="true"
+      style={{ animationDelay: `${delay}s` }}
+    >
       <defs>
         <linearGradient id="tz-hel-izq" x1="1" y1="0" x2="0" y2="0">
           <stop offset="0%" stopColor="#ff2f5e" />
@@ -64,7 +69,7 @@ function Heliconia({ className, delay }) {
             d={b.d}
             className={`tz-selva-bractea ${b.izq ? "tz-selva-bractea-izq" : "tz-selva-bractea-der"}`}
             fill={b.izq ? "url(#tz-hel-izq)" : "url(#tz-hel-der)"}
-            style={{ animationDelay: `${delay + b.i * 0.09}s` }}
+            style={{ animationDelay: `${delay + 0.15 + b.i * 0.05}s` }}
           />
         ))}
       </g>
@@ -222,7 +227,6 @@ function Serpiente() {
   return (
     <div className="tz-selva-animal tz-selva-serpiente" style={d}>
       <svg viewBox="0 0 40 200" preserveAspectRatio="none" aria-hidden="true">
-        <path className="tz-selva-serpiente-liana" d="M20,0 C18,50 22,100 20,200" vectorEffect="non-scaling-stroke" />
         <path className="tz-selva-serpiente-cuerpo" d={CAMINO_SERPIENTE} pathLength="100" vectorEffect="non-scaling-stroke" style={d} />
         <path className="tz-selva-serpiente-dibujo" d={CAMINO_SERPIENTE} pathLength="100" vectorEffect="non-scaling-stroke" style={d} />
         <path className="tz-selva-serpiente-cabeza" d={CAMINO_SERPIENTE} pathLength="100" vectorEffect="non-scaling-stroke" style={d} />
@@ -234,41 +238,80 @@ function Serpiente() {
 // ---------------------------------------------------------------------
 // Río (aparece al final y queda), caimán y barbones saltando.
 // ---------------------------------------------------------------------
+// Olas: camino periódico de 0 a 200 (el doble del viewBox) que se
+// desplaza UN periodo hacia la izquierda en bucle — corriente continua
+// sin saltos. Ancho de 100 unidades estirado al ancho de la pantalla.
+function ola(y, amp, periodo, cerrar) {
+  let d = `M0,${y}`;
+  for (let x = 0; x < 200; x += periodo) {
+    d += ` Q${x + periodo / 4},${y - amp} ${x + periodo / 2},${y} T${x + periodo},${y}`;
+  }
+  return cerrar ? `${d} L200,24 L0,24 Z` : d;
+}
+const OLA_FONDO = ola(7, 2.2, 20, true);
+const OLA_FRENTE = ola(5, 3, 25, true);
+const CRESTA = ola(5, 3, 25, false);
+
 function Rio() {
   return (
-    <svg className="tz-selva-rio" viewBox="0 0 100 20" preserveAspectRatio="none" aria-hidden="true" style={{ animationDelay: `${TIEMPOS.rio}s` }}>
+    <svg className="tz-selva-rio" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true" style={{ animationDelay: `${TIEMPOS.rio}s` }}>
       <defs>
         <linearGradient id="tz-rio-agua" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="rgba(43,232,255,0.38)" />
-          <stop offset="100%" stopColor="rgba(10,40,80,0.05)" />
+          <stop offset="0%" stopColor="rgba(43,232,255,0.45)" />
+          <stop offset="100%" stopColor="rgba(10,40,80,0.08)" />
         </linearGradient>
       </defs>
-      <path d="M0,4 C12,2 22,6 34,4 C46,2 56,6 68,4 C80,2 90,6 100,4 L100,20 L0,20 Z" fill="url(#tz-rio-agua)" />
-      <path className="tz-selva-rio-onda" d="M0,4 C12,2 22,6 34,4 C46,2 56,6 68,4 C80,2 90,6 100,4" vectorEffect="non-scaling-stroke" />
-      <path className="tz-selva-rio-onda tz-selva-rio-onda-2" d="M0,10 C10,8 24,12 36,10 C48,8 58,12 72,10 C84,8 92,12 100,10" vectorEffect="non-scaling-stroke" />
-      <path className="tz-selva-rio-onda tz-selva-rio-onda-3" d="M0,15 C14,13 26,17 40,15 C52,13 64,17 76,15 C88,13 94,17 100,15" vectorEffect="non-scaling-stroke" />
+      <g className="tz-selva-ola tz-selva-ola-fondo">
+        <path d={OLA_FONDO} fill="rgba(43,180,255,0.18)" />
+      </g>
+      <g className="tz-selva-ola tz-selva-ola-frente">
+        <path d={OLA_FRENTE} fill="url(#tz-rio-agua)" />
+        <path className="tz-selva-rio-cresta" d={CRESTA} vectorEffect="non-scaling-stroke" />
+      </g>
+      <path className="tz-selva-rio-onda" d="M0,14 C10,12 24,16 36,14 C48,12 58,16 72,14 C84,12 92,16 100,14" vectorEffect="non-scaling-stroke" />
+      <path className="tz-selva-rio-onda tz-selva-rio-onda-3" d="M0,19 C14,17 26,21 40,19 C52,17 64,21 76,19 C88,17 94,21 100,19" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
 
+// Caimán asomando la cabeza: ojo con pupila de rendija, hocico largo y
+// la mandíbula abierta con dientes; la mandíbula de abajo "chasquea".
+// Línea del agua en y=58 (todo lo de abajo queda recortado): con la
+// mandíbula abierta, los dientes de abajo siguen fuera del agua.
+const DIENTES_ARRIBA = Array.from({ length: 8 }, (_, k) => 116 + k * 9)
+  .map((x) => `M${x},36 L${x + 3},42.5 L${x + 6},36 Z`)
+  .join(" ");
+const DIENTES_ABAJO = Array.from({ length: 7 }, (_, k) => 120 + k * 9)
+  .map((x) => `M${x},46.5 L${x + 3},40.5 L${x + 6},46.5 Z`)
+  .join(" ");
+
 function Caiman() {
   return (
     <div className="tz-selva-animal tz-selva-caiman" style={{ animationDelay: `${TIEMPOS.caiman}s` }}>
-      <svg viewBox="0 0 170 44" aria-hidden="true">
+      <svg viewBox="0 0 200 64" aria-hidden="true">
         <defs>
           <clipPath id="tz-caiman-agua">
-            <rect x="0" y="0" width="170" height="30" />
+            <rect x="0" y="0" width="200" height="58" />
           </clipPath>
         </defs>
         <g clipPath="url(#tz-caiman-agua)">
           <g className="tz-selva-caiman-cuerpo" style={{ animationDelay: `${TIEMPOS.caiman}s` }}>
-            <path className="tz-selva-caiman-forma" d="M14,30 L20,23 L26,30 L32,22 L38,30 L44,22 L50,30 L56,22 L62,30 L68,23 L74,30 Z" />
-            <path className="tz-selva-caiman-forma" d="M84,30 C86,20 98,17 104,25 C114,21 142,21 160,27 C163,28 163,30 161,30 Z" />
-            <ellipse className="tz-selva-caiman-ojo" cx="95" cy="22" rx="3.6" ry="2.4" />
-            <circle cx="156" cy="25.4" r="1.2" fill="#39ff8a" />
+            <path className="tz-selva-caiman-forma" d="M6,58 L12,50 L18,58 L24,49 L30,58 L36,49 L42,58 L48,50 L54,58 L60,51 L66,58 Z" />
+            <path className="tz-selva-caiman-boca" d="M110,36 L193,36 C191,40 187,43 183,45 L114,46.5 Z" />
+            <path className="tz-selva-caiman-diente" d={DIENTES_ARRIBA} />
+            <g className="tz-selva-caiman-mandibula" style={{ animationDelay: `${TIEMPOS.caiman + 0.35}s` }}>
+              <path className="tz-selva-caiman-forma" d="M96,50 C100,47.5 108,46.5 114,46.5 L183,45 C188,45 189,47.5 185,49 C160,50 130,50.5 104,50.5 Z" />
+              <path className="tz-selva-caiman-diente" d={DIENTES_ABAJO} />
+            </g>
+            <path className="tz-selva-caiman-forma" d="M62,58 C62,34 74,22 90,19 C99,17.5 106,21 110,25 C136,25 166,27 188,31 C194,32 196,34 193,36 L110,36 C98,38 84,48 80,58 Z" />
+            <circle className="tz-selva-caiman-forma" cx="93" cy="22" r="6.2" />
+            <ellipse className="tz-selva-caiman-ojo" cx="94" cy="21.5" rx="3.6" ry="2.6" />
+            <path d="M94,19.4 L94,23.6" stroke="#1a1a00" strokeWidth="1.1" strokeLinecap="round" />
+            <circle cx="186.5" cy="30.5" r="1.5" fill="#39ff8a" />
+            <path className="tz-selva-caiman-escama" d="M118,29 L124,28 M132,29 L138,28 M146,30 L152,29 M160,30.5 L166,30" />
           </g>
         </g>
-        <ellipse className="tz-selva-onda-agua" cx="95" cy="31" rx="40" ry="3" style={{ animationDelay: `${TIEMPOS.caiman + 0.15}s` }} />
+        <ellipse className="tz-selva-onda-agua" cx="120" cy="59" rx="62" ry="4" style={{ animationDelay: `${TIEMPOS.caiman + 0.15}s` }} />
       </svg>
     </div>
   );
@@ -277,11 +320,11 @@ function Caiman() {
 // Barbones (bagre de río, con sus "barbas"): saltan con el MISMO ritmo
 // pero desfasados y a distintas alturas — sincronía asimétrica.
 const BARBONES = [
-  { left: 46, alto: 11, delay: 0, dur: 0.82 },
-  { left: 54, alto: 16, delay: 0.17, dur: 0.78 },
-  { left: 62, alto: 9, delay: 0.07, dur: 0.86 },
-  { left: 70, alto: 14, delay: 0.26, dur: 0.8 },
-  { left: 79, alto: 18, delay: 0.12, dur: 0.84 },
+  { left: 44, alto: 11, delay: 0, dur: 0.86 },
+  { left: 53, alto: 16, delay: 0.17, dur: 0.82 },
+  { left: 62, alto: 9, delay: 0.07, dur: 0.9 },
+  { left: 71, alto: 14, delay: 0.26, dur: 0.84 },
+  { left: 80, alto: 18, delay: 0.12, dur: 0.88 },
 ];
 
 function Barbon({ left, alto, delay, dur }) {
@@ -353,6 +396,12 @@ export default function SelvaAnimales() {
           width: auto;
           aspect-ratio: 50 / 140;
           filter: drop-shadow(0 0 6px rgba(255,47,94,0.55));
+          transform-origin: 50% 0%;
+          animation: tz-selva-heliconia-baja 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        @keyframes tz-selva-heliconia-baja {
+          from { opacity: 0; transform: translateY(-100%); }
+          to { opacity: 1; transform: translateY(0); }
         }
         .tz-selva .tz-selva-heliconia-1 { left: 13%; }
         .tz-selva .tz-selva-heliconia-2 { left: 63%; height: clamp(90px, 19vh, 190px); }
@@ -363,7 +412,7 @@ export default function SelvaAnimales() {
           stroke-width: 0.7;
           transform-box: fill-box;
           transform: scale(0);
-          animation: tz-selva-brote 0.45s cubic-bezier(.34,1.56,.64,1) both;
+          animation: tz-selva-brote 0.55s cubic-bezier(.34,1.56,.64,1) both;
         }
         .tz-selva-bractea-izq { transform-origin: 100% 0%; }
         .tz-selva-bractea-der { transform-origin: 0% 0%; }
@@ -538,7 +587,6 @@ export default function SelvaAnimales() {
           10%, 88% { opacity: 1; }
           100% { opacity: 0; }
         }
-        .tz-selva-serpiente-liana { fill: none; stroke: rgba(57,255,138,0.55); stroke-width: 3; }
         .tz-selva-serpiente-cuerpo,
         .tz-selva-serpiente-dibujo,
         .tz-selva-serpiente-cabeza {
@@ -577,9 +625,9 @@ export default function SelvaAnimales() {
           position: absolute;
           left: 0;
           right: 0;
-          bottom: 6vh;
+          bottom: 5vh;
           width: 100% !important;
-          height: 13vh !important;
+          height: 18vh !important;
           opacity: 0;
           animation: tz-selva-rio-sube 0.6s ease-out both;
         }
@@ -595,15 +643,26 @@ export default function SelvaAnimales() {
           animation: tz-selva-corriente 1.6s linear infinite;
           filter: drop-shadow(0 0 4px rgba(43,232,255,0.8));
         }
-        .tz-selva-rio-onda-2 { opacity: 0.6; animation-duration: 2.1s; }
+        .tz-selva-ola { transform-box: view-box; animation: tz-selva-ola-corre 1.8s linear infinite; }
+        .tz-selva-ola-fondo { animation-duration: 2.6s; animation-direction: reverse; }
+        @keyframes tz-selva-ola-corre { from { transform: translateX(0); } to { transform: translateX(-25px); } }
+        .tz-selva-ola-fondo { animation-name: tz-selva-ola-corre-fondo; }
+        @keyframes tz-selva-ola-corre-fondo { from { transform: translateX(0); } to { transform: translateX(-20px); } }
+        .tz-selva-rio-cresta {
+          fill: none;
+          stroke: rgba(170,245,255,0.9);
+          stroke-width: 2.2;
+          filter: drop-shadow(0 0 5px rgba(43,232,255,0.9));
+        }
         .tz-selva-rio-onda-3 { opacity: 0.35; animation-duration: 2.7s; }
         @keyframes tz-selva-corriente { to { stroke-dashoffset: -32; } }
 
         /* ---- Caimán ---- */
         .tz-selva-caiman {
-          left: 24%;
-          bottom: 13vh;
-          width: clamp(180px, 42vmin, 400px);
+          --tz-caiman-ancho: clamp(250px, 68vmin, 540px);
+          left: 6%;
+          bottom: calc(19.25vh - var(--tz-caiman-ancho) * 0.03);
+          width: var(--tz-caiman-ancho);
           animation-name: tz-selva-aparece-y-va;
           animation-duration: 1.3s;
         }
@@ -612,11 +671,24 @@ export default function SelvaAnimales() {
           animation: tz-selva-caiman-asoma 1.3s ease-in-out both;
         }
         @keyframes tz-selva-caiman-asoma {
-          0% { transform: translate(0, 16px); }
-          28% { transform: translate(0, 0); }
-          72% { transform: translate(14px, 0); }
-          100% { transform: translate(18px, 16px); }
+          0% { transform: translate(0, 34px); }
+          26% { transform: translate(0, 0); }
+          74% { transform: translate(10px, 0); }
+          100% { transform: translate(14px, 34px); }
         }
+        .tz-selva-caiman-mandibula {
+          transform-box: view-box;
+          transform-origin: 104px 48px;
+          animation: tz-selva-chasquido 0.2s ease-in-out 4 alternate both;
+        }
+        /* Boca abierta (dientes a la vista) que se cierra de golpe. */
+        @keyframes tz-selva-chasquido {
+          from { transform: rotate(7deg); }
+          to { transform: rotate(-1deg); }
+        }
+        .tz-selva-caiman-boca { fill: #5a0f1a; }
+        .tz-selva-caiman-diente { fill: #f4ffe8; stroke: rgba(255,255,255,0.6); stroke-width: 0.3; }
+        .tz-selva-caiman-escama { fill: none; stroke: rgba(57,255,138,0.6); stroke-width: 1.2; stroke-linecap: round; }
         .tz-selva-caiman-forma { fill: rgba(8,40,20,0.95); stroke: #39ff8a; stroke-width: 1.4; filter: drop-shadow(0 0 5px rgba(57,255,138,0.8)); }
         .tz-selva-caiman-ojo { fill: #fff36b; filter: drop-shadow(0 0 4px #fff36b) drop-shadow(0 0 8px #ffe600); }
         .tz-selva-onda-agua {
@@ -635,8 +707,8 @@ export default function SelvaAnimales() {
 
         /* ---- Barbones ---- */
         .tz-selva-barbon {
-          bottom: 15vh;
-          width: clamp(52px, 12vmin, 110px);
+          bottom: 16.5vh;
+          width: clamp(72px, 18vmin, 160px);
           animation-name: tz-selva-salto;
           animation-timing-function: linear;
         }
@@ -652,10 +724,10 @@ export default function SelvaAnimales() {
         .tz-selva-barbon-barba { fill: none; stroke: #eafcff; stroke-width: 1; stroke-linecap: round; }
         .tz-selva-salpicadura {
           position: absolute;
-          bottom: 16vh;
-          width: 7vmin;
-          height: 1.6vmin;
-          margin-left: -3.5vmin;
+          bottom: 19vh;
+          width: 11vmin;
+          height: 2.4vmin;
+          margin-left: -5.5vmin;
           border-radius: 50%;
           border: 1.5px solid rgba(150,240,255,0.85);
           box-shadow: 0 0 8px rgba(43,232,255,0.7);

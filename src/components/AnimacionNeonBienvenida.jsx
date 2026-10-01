@@ -9,24 +9,26 @@ import SelvaAnimales from "./SelvaAnimales";
 const MS_CIERRE = 9000;
 const MS_DURACION_CIERRE = 1000;
 
-// Orquestación de fases vía variants (no un solo "transition" suelto)
-// porque entrada y salida piden curvas Y duraciones DISTINTAS: la
-// entrada es un "pop" hacia afuera (easeOutExpo-ish), la salida es un
-// desvanecido simple y un poco más rápido.
-const variantesOverlay = {
-  initial: { opacity: 0, scale: 1.12 },
-  animate: {
-    opacity: 1,
-    scale: 1,
-    transition: { duration: 1, ease: [0.16, 1, 0.3, 1] },
-  },
+// Dos capas:
+//  * TELÓN: fondo oscuro que tapa la app casi al instante (0.15 s) y se
+//    estira más allá de la pantalla (ver .tz-neon-telon) para cubrir
+//    también la zona de la barra de estado y la barra de Safari en
+//    iPhone. Antes la capa entera entraba con un fundido de 1 s y en
+//    ese segundo se veía la app detrás (cabecera, botones = "cortes de
+//    luz"), y en iOS quedaban franjas sin cubrir arriba y abajo.
+//  * ESCENA: todo lo de la selva entra JUNTO, como un conjunto (fundido
+//    + leve zoom), sobre un telón que ya está puesto.
+const variantesTelon = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.15, ease: "easeOut" } },
   // Solo fundido — el cierre "creativo" (la selva se abre) ya pasó
   // antes con la clase .tz-neon-cerrando. Nunca se achica la capa: eso
   // dejaba bordes vacíos con la app asomando detrás.
-  exit: {
-    opacity: 0,
-    transition: { duration: 0.35, ease: "easeOut" },
-  },
+  exit: { opacity: 0, transition: { duration: 0.35, ease: "easeOut" } },
+};
+const variantesEscena = {
+  initial: { opacity: 0, scale: 1.06 },
+  animate: { opacity: 1, scale: 1, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } },
 };
 
 // ---- Capa "pro" sobre la Selva Neón (mismo lenguaje que
@@ -320,8 +322,8 @@ export default function AnimacionNeonBienvenida({
     <AnimatePresence onExitComplete={onTerminar}>
       {presente && (
         <motion.div
-          className={`tz-neon-bienvenida-overlay ${cerrando ? "tz-neon-cerrando" : ""}`}
-          variants={variantesOverlay}
+          className={`tz-neon-telon ${cerrando ? "tz-neon-cerrando" : ""}`}
+          variants={variantesTelon}
           initial="initial"
           animate="animate"
           exit="exit"
@@ -330,12 +332,13 @@ export default function AnimacionNeonBienvenida({
           // botón "Saltar" (que queda igual, de paso, como pista visual
           // de que se puede saltar). Dispara la MISMA función "saltar"
           // que el botón: al ser un simple setPresente(false), el
-          // fade-out ya definido en variantesOverlay.exit se encarga
+          // fade-out ya definido en variantesTelon.exit se encarga
           // solo de que el cierre sea suave, nunca un corte brusco.
           onClick={saltar}
           role="dialog"
           aria-label="Bienvenida"
         >
+        <motion.div className="tz-neon-bienvenida-overlay" variants={variantesEscena} initial="initial" animate="animate">
           {/* ---- Fondo: manchas de luz + líneas neón fluidas ---- */}
           <div className="tz-neon-blob tz-neon-blob-a" />
           <div className="tz-neon-blob tz-neon-blob-b" />
@@ -377,19 +380,19 @@ export default function AnimacionNeonBienvenida({
              que nunca tuvieron este problema), posicionado con CSS
              encima de la punta de cada tallo. */}
           <svg className="tz-neon-canopy" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true">
-            <g className="tz-neon-vine-enter" style={{ animationDelay: "0.3s" }}>
+            <g className="tz-neon-vine-enter" style={{ animationDelay: "0.1s" }}>
               <path className="tz-neon-vine" d="M6,0 C4,9 9,16 6,26" vectorEffect="non-scaling-stroke" />
             </g>
-            <g className="tz-neon-vine-enter" style={{ animationDelay: "0.55s" }}>
+            <g className="tz-neon-vine-enter" style={{ animationDelay: "0.19s" }}>
               <path className="tz-neon-vine" d="M22,0 C25,8 19,15 23,24" vectorEffect="non-scaling-stroke" />
             </g>
-            <g className="tz-neon-vine-enter" style={{ animationDelay: "0.4s" }}>
+            <g className="tz-neon-vine-enter" style={{ animationDelay: "0.14s" }}>
               <path className="tz-neon-vine" d="M50,0 C48,10 53,17 50,26" vectorEffect="non-scaling-stroke" />
             </g>
-            <g className="tz-neon-vine-enter" style={{ animationDelay: "0.7s" }}>
+            <g className="tz-neon-vine-enter" style={{ animationDelay: "0.24s" }}>
               <path className="tz-neon-vine" d="M74,0 C77,9 71,14 75,22" vectorEffect="non-scaling-stroke" />
             </g>
-            <g className="tz-neon-vine-enter" style={{ animationDelay: "0.5s" }}>
+            <g className="tz-neon-vine-enter" style={{ animationDelay: "0.17s" }}>
               <path className="tz-neon-vine" d="M92,0 C90,10 95,17 92,26" vectorEffect="non-scaling-stroke" />
             </g>
           </svg>
@@ -404,27 +407,27 @@ export default function AnimacionNeonBienvenida({
              parada, no colgando) — si colgara desde arriba pero
              pivotara desde abajo, se vería mal, como un péndulo al
              revés. */}
-          <svg className="tz-neon-vine-leaf-tip tz-neon-vine-leaf-tip-1" style={{ animationDelay: "0.5s" }} viewBox="0 0 40 72" aria-hidden="true">
+          <svg className="tz-neon-vine-leaf-tip tz-neon-vine-leaf-tip-1" style={{ animationDelay: "0.17s" }} viewBox="0 0 40 72" aria-hidden="true">
             <g className="tz-neon-vine-leaf-sway">
               <use href="#tz-neon-hoja-vid" />
             </g>
           </svg>
-          <svg className="tz-neon-vine-leaf-tip tz-neon-vine-leaf-tip-2" style={{ animationDelay: "0.75s" }} viewBox="0 0 40 72" aria-hidden="true">
+          <svg className="tz-neon-vine-leaf-tip tz-neon-vine-leaf-tip-2" style={{ animationDelay: "0.26s" }} viewBox="0 0 40 72" aria-hidden="true">
             <g className="tz-neon-vine-leaf-sway tz-neon-vine-leaf-sway-b">
               <use href="#tz-neon-hoja-vid" />
             </g>
           </svg>
-          <svg className="tz-neon-vine-leaf-tip tz-neon-vine-leaf-tip-3" style={{ animationDelay: "0.6s" }} viewBox="0 0 40 72" aria-hidden="true">
+          <svg className="tz-neon-vine-leaf-tip tz-neon-vine-leaf-tip-3" style={{ animationDelay: "0.21s" }} viewBox="0 0 40 72" aria-hidden="true">
             <g className="tz-neon-vine-leaf-sway">
               <use href="#tz-neon-hoja-vid" />
             </g>
           </svg>
-          <svg className="tz-neon-vine-leaf-tip tz-neon-vine-leaf-tip-4" style={{ animationDelay: "0.9s" }} viewBox="0 0 40 72" aria-hidden="true">
+          <svg className="tz-neon-vine-leaf-tip tz-neon-vine-leaf-tip-4" style={{ animationDelay: "0.31s" }} viewBox="0 0 40 72" aria-hidden="true">
             <g className="tz-neon-vine-leaf-sway tz-neon-vine-leaf-sway-b">
               <use href="#tz-neon-hoja-vid" />
             </g>
           </svg>
-          <svg className="tz-neon-vine-leaf-tip tz-neon-vine-leaf-tip-5" style={{ animationDelay: "0.7s" }} viewBox="0 0 40 72" aria-hidden="true">
+          <svg className="tz-neon-vine-leaf-tip tz-neon-vine-leaf-tip-5" style={{ animationDelay: "0.24s" }} viewBox="0 0 40 72" aria-hidden="true">
             <g className="tz-neon-vine-leaf-sway">
               <use href="#tz-neon-hoja-vid" />
             </g>
@@ -449,22 +452,22 @@ export default function AnimacionNeonBienvenida({
              borde inferior (no solo las esquinas) — cada una es su
              propio <svg>, posicionado con CSS, así mantiene su
              proporción real sin importar el ancho de pantalla. */}
-          <svg className="tz-neon-leaf tz-neon-leaf-1" style={{ animationDelay: "0.5s" }} viewBox="0 0 120 160" aria-hidden="true">
+          <svg className="tz-neon-leaf tz-neon-leaf-1" style={{ animationDelay: "0.17s" }} viewBox="0 0 120 160" aria-hidden="true">
             <g className="tz-neon-leaf-sway">
               <use href="#tz-neon-hoja" />
             </g>
           </svg>
-          <svg className="tz-neon-leaf tz-neon-leaf-2" style={{ animationDelay: "0.75s" }} viewBox="0 0 120 160" aria-hidden="true">
+          <svg className="tz-neon-leaf tz-neon-leaf-2" style={{ animationDelay: "0.26s" }} viewBox="0 0 120 160" aria-hidden="true">
             <g className="tz-neon-leaf-sway tz-neon-leaf-sway-b">
               <use href="#tz-neon-hoja" />
             </g>
           </svg>
-          <svg className="tz-neon-leaf tz-neon-leaf-3" style={{ animationDelay: "1s" }} viewBox="0 0 120 160" aria-hidden="true">
+          <svg className="tz-neon-leaf tz-neon-leaf-3" style={{ animationDelay: "0.34s" }} viewBox="0 0 120 160" aria-hidden="true">
             <g className="tz-neon-leaf-sway">
               <use href="#tz-neon-hoja" />
             </g>
           </svg>
-          <svg className="tz-neon-leaf tz-neon-leaf-4" style={{ animationDelay: "0.6s" }} viewBox="0 0 120 160" aria-hidden="true">
+          <svg className="tz-neon-leaf tz-neon-leaf-4" style={{ animationDelay: "0.21s" }} viewBox="0 0 120 160" aria-hidden="true">
             <g className="tz-neon-leaf-sway tz-neon-leaf-sway-b">
               <use href="#tz-neon-hoja" />
             </g>
@@ -472,12 +475,12 @@ export default function AnimacionNeonBienvenida({
           {/* Hojas de marco a media altura en los bordes izquierdo y
              derecho — "los bordes repletos de plantas" pedido, no solo
              arriba/abajo. */}
-          <svg className="tz-neon-leaf tz-neon-leaf-edge-l" style={{ animationDelay: "0.9s" }} viewBox="0 0 120 160" aria-hidden="true">
+          <svg className="tz-neon-leaf tz-neon-leaf-edge-l" style={{ animationDelay: "0.31s" }} viewBox="0 0 120 160" aria-hidden="true">
             <g className="tz-neon-leaf-sway">
               <use href="#tz-neon-hoja" />
             </g>
           </svg>
-          <svg className="tz-neon-leaf tz-neon-leaf-edge-r" style={{ animationDelay: "1.1s" }} viewBox="0 0 120 160" aria-hidden="true">
+          <svg className="tz-neon-leaf tz-neon-leaf-edge-r" style={{ animationDelay: "0.38s" }} viewBox="0 0 120 160" aria-hidden="true">
             <g className="tz-neon-leaf-sway tz-neon-leaf-sway-b">
               <use href="#tz-neon-hoja" />
             </g>
@@ -544,21 +547,35 @@ export default function AnimacionNeonBienvenida({
           <button type="button" className="tz-neon-skip-btn" onClick={saltar}>
             Saltar ▸
           </button>
+        </motion.div>
 
           <style>{`
+            /* Telón: 150% del alto de la pantalla (25% de más arriba y
+               abajo) para tapar también lo que queda detrás de la barra
+               de estado y de la barra de Safari en iPhone. La escena va
+               adentro ocupando EXACTAMENTE la pantalla visible
+               (16.6667% = 25/150 de margen arriba y abajo). */
+            .tz-neon-telon {
+              position: fixed;
+              left: 0;
+              right: 0;
+              top: -25%;
+              bottom: -25%;
+              z-index: 999999;
+              cursor: pointer;
+              background: #020605;
+            }
             .tz-neon-bienvenida-overlay {
               --tz-neon-cyan: #2be8ff;
               --tz-neon-pink: #ff2f9e;
               --tz-neon-green: #4dffa0;
               --tz-neon-purple: #b98bff;
-              position: fixed;
-              inset: 0;
-              z-index: 999999;
+              position: absolute;
+              inset: 16.6667% 0;
               display: flex;
               align-items: center;
               justify-content: center;
               overflow: hidden;
-              cursor: pointer;
               background:
                 radial-gradient(circle at 50% 42%, rgba(15,40,32,0.9) 0%, rgba(4,10,9,0.97) 55%, #000 100%);
             }
@@ -566,7 +583,6 @@ export default function AnimacionNeonBienvenida({
             .tz-neon-blob {
               position: absolute;
               border-radius: 50%;
-              filter: blur(70px);
               opacity: 0.5;
               pointer-events: none;
             }
@@ -614,15 +630,18 @@ export default function AnimacionNeonBienvenida({
               width: 16vw;
               min-width: 90px;
               pointer-events: none;
-              filter: blur(22px);
-              mix-blend-mode: screen;
+              /* Bordes suaves con degradados (horizontal en el fondo +
+                 máscara vertical), sin blur ni mix-blend-mode: en Safari
+                 esos dos dejaban un recorte rectangular visible. */
+              -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 85%);
+              mask-image: linear-gradient(to bottom, #000 0%, transparent 85%);
               transform-origin: top center;
               opacity: 0;
               animation: tz-neon-rayo-barre 7s ease-in-out infinite alternate, tz-neon-rayo-pulso 3.2s ease-in-out infinite;
             }
-            .tz-neon-rayo-1 { left: 8%; background: linear-gradient(to bottom, rgba(77,255,160,0.32), transparent 75%); }
-            .tz-neon-rayo-2 { left: 42%; width: 10vw; background: linear-gradient(to bottom, rgba(43,232,255,0.28), transparent 70%); animation-duration: 9s, 4s; animation-delay: -2s, -1s; }
-            .tz-neon-rayo-3 { left: 72%; background: linear-gradient(to bottom, rgba(255,47,158,0.24), transparent 72%); animation-duration: 8s, 3.6s; animation-delay: -4s, -2s; }
+            .tz-neon-rayo-1 { left: 8%; background: linear-gradient(to right, transparent, rgba(77,255,160,0.22) 50%, transparent); }
+            .tz-neon-rayo-2 { left: 42%; width: 10vw; background: linear-gradient(to right, transparent, rgba(43,232,255,0.2) 50%, transparent); animation-duration: 9s, 4s; animation-delay: -2s, -1s; }
+            .tz-neon-rayo-3 { left: 72%; background: linear-gradient(to right, transparent, rgba(255,47,158,0.18) 50%, transparent); animation-duration: 8s, 3.6s; animation-delay: -4s, -2s; }
             @keyframes tz-neon-rayo-barre {
               from { transform: rotate(22deg) translateX(-8vw); }
               to { transform: rotate(10deg) translateX(10vw); }
@@ -638,6 +657,18 @@ export default function AnimacionNeonBienvenida({
               width: 100%;
               height: 100%;
               pointer-events: none;
+            }
+            /* Fundido propio para las capas sin animación de entrada:
+               Safari a veces pinta los elementos con drop-shadow sin
+               respetar el fundido del contenedor, y se veían solos y a
+               pleno brillo en el primer instante. */
+            .tz-neon-svg-layer,
+            .tz-neon-ground {
+              animation: tz-neon-aparece 0.8s ease-out both;
+            }
+            @keyframes tz-neon-aparece {
+              from { opacity: 0; }
+              to { opacity: 1; }
             }
             .tz-neon-svg-defs {
               position: absolute;
@@ -933,7 +964,6 @@ export default function AnimacionNeonBienvenida({
               inset: -45%;
               border-radius: 50%;
               background: radial-gradient(circle, rgba(77,255,160,0.32), rgba(43,232,255,0.14) 45%, transparent 70%);
-              filter: blur(14px);
               animation: tz-neon-emblema-pulse 2.2s ease-in-out infinite;
               pointer-events: none;
             }
@@ -1048,7 +1078,7 @@ export default function AnimacionNeonBienvenida({
               inherits: false;
               initial-value: 0%;
             }
-            .tz-neon-bienvenida-overlay.tz-neon-cerrando {
+            .tz-neon-telon.tz-neon-cerrando {
               cursor: default;
               -webkit-mask-image: radial-gradient(circle at 50% 46%, transparent calc(var(--tz-neon-hueco) - 22%), #000 var(--tz-neon-hueco));
               mask-image: radial-gradient(circle at 50% 46%, transparent calc(var(--tz-neon-hueco) - 22%), #000 var(--tz-neon-hueco));
