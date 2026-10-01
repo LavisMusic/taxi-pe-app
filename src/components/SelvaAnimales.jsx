@@ -8,6 +8,14 @@
 // bien en celulares modestos. Siluetas de neón dibujadas a mano, mismo
 // lenguaje que las hojas/lianas de la escena.
 //
+// Dos capas, para respetar la profundidad pedida:
+//  * SelvaAgua (export con nombre): caimán y barbones DETRÁS del río, y
+//    el río detrás del suelo y las hojas de abajo.
+//  * SelvaAnimales (default): el resto de la fauna, delante de todo el
+//    fondo pero detrás de la insignia y los textos.
+// Los estilos de las dos viven en SelvaAnimales (siempre se montan
+// juntas).
+//
 // Mismo archivo en Caja Tonazo y Taxi-PE — mantener las dos copias
 // iguales.
 
@@ -22,7 +30,7 @@ const TIEMPOS = {
   serpiente: 5.9,
   rio: 6.7, // aparece y queda hasta el cierre
   caiman: 7.0,
-  barbones: 7.95,
+  barbones: 8.05,
 };
 
 // ---------------------------------------------------------------------
@@ -296,10 +304,9 @@ function Caiman() {
         </defs>
         <g clipPath="url(#tz-caiman-agua)">
           <g className="tz-selva-caiman-cuerpo" style={{ animationDelay: `${TIEMPOS.caiman}s` }}>
-            <path className="tz-selva-caiman-forma" d="M6,58 L12,50 L18,58 L24,49 L30,58 L36,49 L42,58 L48,50 L54,58 L60,51 L66,58 Z" />
             <path className="tz-selva-caiman-boca" d="M110,36 L193,36 C191,40 187,43 183,45 L114,46.5 Z" />
             <path className="tz-selva-caiman-diente" d={DIENTES_ARRIBA} />
-            <g className="tz-selva-caiman-mandibula" style={{ animationDelay: `${TIEMPOS.caiman + 0.35}s` }}>
+            <g className="tz-selva-caiman-mandibula" style={{ animationDelay: `${TIEMPOS.caiman + 0.25}s` }}>
               <path className="tz-selva-caiman-forma" d="M96,50 C100,47.5 108,46.5 114,46.5 L183,45 C188,45 189,47.5 185,49 C160,50 130,50.5 104,50.5 Z" />
               <path className="tz-selva-caiman-diente" d={DIENTES_ABAJO} />
             </g>
@@ -327,11 +334,19 @@ const BARBONES = [
   { left: 80, alto: 18, delay: 0.12, dur: 0.88 },
 ];
 
+function Salpicadura({ left, delay, dur }) {
+  return (
+    <span
+      className="tz-selva-salpicadura"
+      style={{ left: `calc(${left}% + 4vmin)`, animationDelay: `${TIEMPOS.barbones + delay}s`, animationDuration: `${dur}s` }}
+    />
+  );
+}
+
 function Barbon({ left, alto, delay, dur }) {
   const t = `${TIEMPOS.barbones + delay}s`;
   return (
     <>
-      <span className="tz-selva-salpicadura" style={{ left: `calc(${left}% + 2vmin)`, animationDelay: t, animationDuration: `${dur}s` }} />
       <div
         className="tz-selva-animal tz-selva-barbon"
         style={{ left: `${left}%`, animationDelay: t, animationDuration: `${dur}s`, "--tz-barbon-alto": `-${alto}vh` }}
@@ -345,6 +360,22 @@ function Barbon({ left, alto, delay, dur }) {
         </svg>
       </div>
     </>
+  );
+}
+
+// Caimán y peces detrás del río; las salpicaduras, sobre la superficie.
+export function SelvaAgua() {
+  return (
+    <div className="tz-selva-agua" aria-hidden="true">
+      <Caiman />
+      {BARBONES.map((b) => (
+        <Barbon key={b.left} {...b} />
+      ))}
+      <Rio />
+      {BARBONES.map((b) => (
+        <Salpicadura key={b.left} {...b} />
+      ))}
+    </div>
   );
 }
 
@@ -364,21 +395,16 @@ export default function SelvaAnimales() {
       <Gallito />
       <Serpiente />
 
-      <Rio />
-      <Caiman />
-      {BARBONES.map((b) => (
-        <Barbon key={b.left} {...b} />
-      ))}
-
       <style>{`
-        .tz-selva {
+        .tz-selva,
+        .tz-selva-agua {
           position: absolute;
           inset: 0;
-          z-index: 1;
           pointer-events: none;
           overflow: hidden;
         }
-        .tz-selva svg { display: block; width: 100%; height: auto; overflow: visible; }
+        .tz-selva svg,
+        .tz-selva-agua svg { display: block; width: 100%; height: auto; overflow: visible; }
         .tz-selva-animal {
           position: absolute;
           opacity: 0;
@@ -429,9 +455,9 @@ export default function SelvaAnimales() {
 
         /* ---- Loros ---- */
         .tz-selva-loro { width: clamp(92px, 20vmin, 210px); animation-name: tz-selva-loro-vuelo; animation-duration: 1.55s; animation-timing-function: linear; }
-        .tz-selva-loro-1 { top: 7%; }
-        .tz-selva-loro-2 { top: 17%; width: clamp(70px, 15vmin, 160px); }
-        .tz-selva-loro-3 { top: 11%; width: clamp(80px, 17vmin, 180px); }
+        .tz-selva-loro-1 { top: 18%; }
+        .tz-selva-loro-2 { top: 26%; width: clamp(70px, 15vmin, 160px); }
+        .tz-selva-loro-3 { top: 22%; width: clamp(80px, 17vmin, 180px); }
         @keyframes tz-selva-loro-vuelo {
           0% { opacity: 0; transform: translate(-22vw, 3vh) rotate(-6deg); }
           10% { opacity: 1; }
@@ -663,12 +689,19 @@ export default function SelvaAnimales() {
           left: 6%;
           bottom: calc(19.25vh - var(--tz-caiman-ancho) * 0.03);
           width: var(--tz-caiman-ancho);
-          animation-name: tz-selva-aparece-y-va;
-          animation-duration: 1.3s;
+          animation-name: tz-selva-caiman-nada;
+          animation-duration: 1.05s;
+          animation-timing-function: linear;
+        }
+        @keyframes tz-selva-caiman-nada {
+          0% { opacity: 0; transform: translateX(-8vw); }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { opacity: 0; transform: translateX(18vw); }
         }
         .tz-selva-caiman-cuerpo {
           transform-box: view-box;
-          animation: tz-selva-caiman-asoma 1.3s ease-in-out both;
+          animation: tz-selva-caiman-asoma 1.05s ease-in-out both;
         }
         @keyframes tz-selva-caiman-asoma {
           0% { transform: translate(0, 34px); }
@@ -679,7 +712,7 @@ export default function SelvaAnimales() {
         .tz-selva-caiman-mandibula {
           transform-box: view-box;
           transform-origin: 104px 48px;
-          animation: tz-selva-chasquido 0.2s ease-in-out 4 alternate both;
+          animation: tz-selva-chasquido 0.16s ease-in-out 4 alternate both;
         }
         /* Boca abierta (dientes a la vista) que se cierra de golpe. */
         @keyframes tz-selva-chasquido {
@@ -743,9 +776,6 @@ export default function SelvaAnimales() {
           100% { opacity: 0; }
         }
 
-        @media (prefers-reduced-motion: reduce) {
-          .tz-selva-animal, .tz-selva-salpicadura { display: none; }
-        }
       `}</style>
     </div>
   );

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
-import SelvaAnimales from "./SelvaAnimales";
+import SelvaAnimales, { SelvaAgua } from "./SelvaAnimales";
 
 // Cuánto dura CADA fase — pedido explícito: "10 segundos de animación
 // como tal". A los 9 s arranca el cierre "la selva se abre" (1 s) y al
@@ -10,12 +10,11 @@ const MS_CIERRE = 9000;
 const MS_DURACION_CIERRE = 1000;
 
 // Dos capas:
-//  * TELÓN: fondo oscuro que tapa la app casi al instante (0.15 s) y se
-//    estira más allá de la pantalla (ver .tz-neon-telon) para cubrir
-//    también la zona de la barra de estado y la barra de Safari en
-//    iPhone. Antes la capa entera entraba con un fundido de 1 s y en
-//    ese segundo se veía la app detrás (cabecera, botones = "cortes de
-//    luz"), y en iOS quedaban franjas sin cubrir arriba y abajo.
+//  * TELÓN: fondo oscuro que tapa la app casi al instante (0.15 s).
+//    Antes la capa entera entraba con un fundido de 1 s y en ese
+//    segundo se veía la app detrás (cabecera, botones = "cortes de
+//    luz"). Las barras del iPhone se cubren aparte (ver el efecto de
+//    "color de las barras" más abajo).
 //  * ESCENA: todo lo de la selva entra JUNTO, como un conjunto (fundido
 //    + leve zoom), sobre un telón que ya está puesto.
 const variantesTelon = {
@@ -312,13 +311,48 @@ export default function AnimacionNeonBienvenida({
     };
   }, []);
 
+  // Barras del iPhone (estado arriba, Safari abajo): Safari las pinta
+  // con el color del elemento fijo que toca los bordes de la pantalla,
+  // con el theme-color y con el fondo del documento. Mientras dura la
+  // bienvenida se ponen los tres en el tono del telón, así las barras
+  // se ven oscuras desde el primer instante; al terminar se restaura
+  // todo como estaba.
+  useEffect(() => {
+    const COLOR = "#020605";
+    const html = document.documentElement;
+    const previoHtml = html.style.backgroundColor;
+    const previoBody = document.body.style.backgroundColor;
+    let meta = document.querySelector('meta[name="theme-color"]');
+    const creada = !meta;
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "theme-color");
+      document.head.appendChild(meta);
+    }
+    const previoMeta = meta.getAttribute("content");
+    html.style.backgroundColor = COLOR;
+    document.body.style.backgroundColor = COLOR;
+    meta.setAttribute("content", COLOR);
+    return () => {
+      html.style.backgroundColor = previoHtml;
+      document.body.style.backgroundColor = previoBody;
+      if (creada) meta.remove();
+      else if (previoMeta == null) meta.removeAttribute("content");
+      else meta.setAttribute("content", previoMeta);
+    };
+  }, []);
+
   const saltar = (e) => {
     e?.stopPropagation?.();
     cerrar();
   };
 
   return (
-    <MotionConfig reducedMotion="user">
+    // "never": la bienvenida se ve completa aunque el sistema tenga
+    // "reducir movimiento"/"quitar animaciones" (pedido del dueño: en
+    // Android/iOS con esa opción no se veía nada). Se puede omitir
+    // igual con "Saltar" o tocando la pantalla.
+    <MotionConfig reducedMotion="never">
     <AnimatePresence onExitComplete={onTerminar}>
       {presente && (
         <motion.div
@@ -433,6 +467,47 @@ export default function AnimacionNeonBienvenida({
             </g>
           </svg>
 
+          {/* Refuerzo de la selva: hojas que se desprenden de la copa y
+             luciérnagas flotando durante toda la animación. */}
+          {HOJAS_CAYENDO.map((h) => (
+            <span
+              key={h.id}
+              className="tz-neon-hoja-cae"
+              aria-hidden="true"
+              style={{
+                left: `${h.left}%`,
+                width: h.size,
+                height: h.size * 1.4,
+                background: h.color,
+                color: h.color,
+                animationDelay: `${h.delay}s`,
+                animationDuration: `${h.duration}s`,
+                "--tz-neon-deriva": `${h.deriva}vw`,
+              }}
+            />
+          ))}
+          {LUCIERNAGAS.map((l) => (
+            <span
+              key={l.id}
+              className="tz-neon-luciernaga"
+              aria-hidden="true"
+              style={{
+                left: `${l.left}%`,
+                top: `${l.top}%`,
+                width: l.size,
+                height: l.size,
+                animationDelay: `${l.delay}s, ${l.delay}s`,
+                animationDuration: `${l.duration}s, ${l.duration * 2.5}s`,
+                "--tz-neon-fuga-x": `${(l.left - 50) * 1.2}vw`,
+                "--tz-neon-fuga-y": `${(l.top - 50) * 1.2}vh`,
+              }}
+            />
+          ))}
+
+          {/* Caimán y barbones detrás del río; el río detrás del suelo y
+             de las hojas de abajo (ver SelvaAgua en SelvaAnimales.jsx). */}
+          <SelvaAgua />
+
           {/* ---- Maleza a lo largo de TODO el borde inferior — estirada
              de punta a punta (preserveAspectRatio="none"), así nunca
              deja un tramo pelado sin importar cuán ancha sea la
@@ -486,47 +561,16 @@ export default function AnimacionNeonBienvenida({
             </g>
           </svg>
 
-          {/* Secuencia de fauna y flora (pico de loro, loros, mono,
-             tigrillo, gallito de las rocas, serpiente, río con caimán y
-             barbones) — cada uno en su turno, ver SelvaAnimales.jsx. */}
-          <SelvaAnimales />
+          {/* Sombra suave detrás del texto para que se lea — capa propia
+             DEBAJO de los animales (antes era el fondo de .tz-neon-content
+             y se veía como un rectángulo que además apagaba al gallito). */}
+          <div className="tz-neon-vineta" aria-hidden="true" />
 
-          {/* Refuerzo de la selva: hojas que se desprenden de la copa y
-             luciérnagas flotando durante toda la animación. */}
-          {HOJAS_CAYENDO.map((h) => (
-            <span
-              key={h.id}
-              className="tz-neon-hoja-cae"
-              aria-hidden="true"
-              style={{
-                left: `${h.left}%`,
-                width: h.size,
-                height: h.size * 1.4,
-                background: h.color,
-                color: h.color,
-                animationDelay: `${h.delay}s`,
-                animationDuration: `${h.duration}s`,
-                "--tz-neon-deriva": `${h.deriva}vw`,
-              }}
-            />
-          ))}
-          {LUCIERNAGAS.map((l) => (
-            <span
-              key={l.id}
-              className="tz-neon-luciernaga"
-              aria-hidden="true"
-              style={{
-                left: `${l.left}%`,
-                top: `${l.top}%`,
-                width: l.size,
-                height: l.size,
-                animationDelay: `${l.delay}s, ${l.delay}s`,
-                animationDuration: `${l.duration}s, ${l.duration * 2.5}s`,
-                "--tz-neon-fuga-x": `${(l.left - 50) * 1.2}vw`,
-                "--tz-neon-fuga-y": `${(l.top - 50) * 1.2}vh`,
-              }}
-            />
-          ))}
+          {/* Secuencia de fauna y flora (pico de loro, loros, mono,
+             tigrillo, gallito de las rocas, serpiente) — cada uno en su
+             turno, delante del fondo y detrás de la insignia y los
+             textos, ver SelvaAnimales.jsx. */}
+          <SelvaAnimales />
 
           {/* ---- Contenido central ---- */}
           <div className="tz-neon-content">
@@ -550,17 +594,13 @@ export default function AnimacionNeonBienvenida({
         </motion.div>
 
           <style>{`
-            /* Telón: 150% del alto de la pantalla (25% de más arriba y
-               abajo) para tapar también lo que queda detrás de la barra
-               de estado y de la barra de Safari en iPhone. La escena va
-               adentro ocupando EXACTAMENTE la pantalla visible
-               (16.6667% = 25/150 de margen arriba y abajo). */
+            /* Telón: EXACTAMENTE la pantalla, tocando los cuatro bordes —
+               Safari en iPhone usa el color de un elemento fijo pegado a
+               los bordes para pintar la barra de estado y la de abajo
+               (si se estira más allá, deja de detectarlo). */
             .tz-neon-telon {
               position: fixed;
-              left: 0;
-              right: 0;
-              top: -25%;
-              bottom: -25%;
+              inset: 0;
               z-index: 999999;
               cursor: pointer;
               background: #020605;
@@ -571,7 +611,7 @@ export default function AnimacionNeonBienvenida({
               --tz-neon-green: #4dffa0;
               --tz-neon-purple: #b98bff;
               position: absolute;
-              inset: 16.6667% 0;
+              inset: 0;
               display: flex;
               align-items: center;
               justify-content: center;
@@ -879,8 +919,6 @@ export default function AnimacionNeonBienvenida({
               opacity: 0.65;
             }
 
-            /* Contenido central — fondo propio (vignette) para que el
-               texto siga legible con una escena de fondo más ocupada. */
             .tz-neon-content {
               position: relative;
               z-index: 2;
@@ -890,8 +928,19 @@ export default function AnimacionNeonBienvenida({
               text-align: center;
               padding: 28px 28px 32px;
               max-width: 880px;
-              border-radius: 28px;
-              background: radial-gradient(ellipse at center, rgba(3,8,7,0.55) 0%, rgba(3,8,7,0.25) 60%, transparent 100%);
+            }
+            /* Sombra detrás del texto: "closest-side" hace que el
+               degradado llegue a transparente ANTES del borde de la caja,
+               así nunca se ve un rectángulo. */
+            .tz-neon-vineta {
+              position: absolute;
+              left: 50%;
+              top: 50%;
+              width: min(900px, 120%);
+              height: 80%;
+              transform: translate(-50%, -50%);
+              pointer-events: none;
+              background: radial-gradient(closest-side, rgba(3,8,7,0.6) 0%, rgba(3,8,7,0.3) 55%, transparent 100%);
             }
             .tz-neon-eyebrow {
               margin: 0 0 10px;
@@ -1030,7 +1079,6 @@ export default function AnimacionNeonBienvenida({
             .tz-neon-hoja-cae {
               position: absolute;
               top: -6%;
-              z-index: 1;
               border-radius: 2px 80% 2px 80%;
               box-shadow: 0 0 8px currentColor;
               opacity: 0;
@@ -1051,7 +1099,6 @@ export default function AnimacionNeonBienvenida({
             /* Ambiente: luciérnagas flotando */
             .tz-neon-luciernaga {
               position: absolute;
-              z-index: 1;
               border-radius: 50%;
               background: #eaff7a;
               box-shadow: 0 0 6px 2px rgba(234,255,122,0.9), 0 0 16px 5px rgba(166,255,77,0.45);
@@ -1094,6 +1141,8 @@ export default function AnimacionNeonBienvenida({
             .tz-neon-leaf,
             .tz-neon-ground,
             .tz-selva,
+            .tz-selva-agua,
+            .tz-neon-vineta,
             .tz-neon-luciernaga {
               transition: translate 0.9s cubic-bezier(0.5, 0, 0.75, 0), scale 0.9s ease-in, opacity 0.7s ease-in, filter 0.7s ease-in;
             }
@@ -1101,7 +1150,9 @@ export default function AnimacionNeonBienvenida({
             .tz-neon-cerrando .tz-neon-canopy,
             .tz-neon-cerrando .tz-neon-vine-leaf-tip { translate: 0 -40vh; }
             .tz-neon-cerrando .tz-selva { translate: 0 -12vh; opacity: 0; }
-            .tz-neon-cerrando .tz-neon-ground { translate: 0 30vh; }
+            .tz-neon-cerrando .tz-neon-ground,
+            .tz-neon-cerrando .tz-selva-agua { translate: 0 30vh; }
+            .tz-neon-cerrando .tz-neon-vineta { opacity: 0; }
             .tz-neon-cerrando .tz-neon-leaf-1,
             .tz-neon-cerrando .tz-neon-leaf-3,
             .tz-neon-cerrando .tz-neon-leaf-edge-l { translate: -45vw 10vh; }
@@ -1134,12 +1185,6 @@ export default function AnimacionNeonBienvenida({
               color: var(--tz-neon-cyan);
             }
 
-            @media (prefers-reduced-motion: reduce) {
-              .tz-neon-bienvenida-overlay * {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-              }
-            }
           `}</style>
         </motion.div>
       )}
