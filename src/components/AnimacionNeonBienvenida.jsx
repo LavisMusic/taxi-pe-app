@@ -1,28 +1,34 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
+import SelvaAnimales from "./SelvaAnimales";
 
 // Cuánto dura CADA fase — pedido explícito: "10 segundos de animación
-// como tal". 1s entrada + 8.1s sostenida + 0.9s salida = 10s de punta a
-// punta.
-const MS_VISIBLE = 8100;
+// como tal". A los 9 s arranca el cierre "la selva se abre" (1 s) y al
+// final un fundido corto: ~10 s de punta a punta. La secuencia de
+// animales (SelvaAnimales.jsx) está repartida dentro de esos 9 s.
+const MS_CIERRE = 9000;
+const MS_DURACION_CIERRE = 1000;
 
-// Orquestación de fases vía variants (no un solo "transition" suelto)
-// porque entrada y salida piden curvas Y duraciones DISTINTAS: la
-// entrada es un "pop" hacia afuera (easeOutExpo-ish), la salida es un
-// desvanecido simple y un poco más rápido.
-const variantesOverlay = {
-  initial: { opacity: 0, scale: 1.12 },
-  animate: {
-    opacity: 1,
-    scale: 1,
-    transition: { duration: 1, ease: [0.16, 1, 0.3, 1] },
-  },
-  exit: {
-    opacity: 0,
-    scale: 0.94,
-    filter: "blur(10px)",
-    transition: { duration: 0.9, ease: "easeIn" },
-  },
+// Dos capas:
+//  * TELÓN: fondo oscuro que tapa la app casi al instante (0.15 s) y se
+//    estira más allá de la pantalla (ver .tz-neon-telon) para cubrir
+//    también la zona de la barra de estado y la barra de Safari en
+//    iPhone. Antes la capa entera entraba con un fundido de 1 s y en
+//    ese segundo se veía la app detrás (cabecera, botones = "cortes de
+//    luz"), y en iOS quedaban franjas sin cubrir arriba y abajo.
+//  * ESCENA: todo lo de la selva entra JUNTO, como un conjunto (fundido
+//    + leve zoom), sobre un telón que ya está puesto.
+const variantesTelon = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.15, ease: "easeOut" } },
+  // Solo fundido — el cierre "creativo" (la selva se abre) ya pasó
+  // antes con la clase .tz-neon-cerrando. Nunca se achica la capa: eso
+  // dejaba bordes vacíos con la app asomando detrás.
+  exit: { opacity: 0, transition: { duration: 0.35, ease: "easeOut" } },
+};
+const variantesEscena = {
+  initial: { opacity: 0, scale: 1.06 },
+  animate: { opacity: 1, scale: 1, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } },
 };
 
 // ---- Capa "pro" sobre la Selva Neón (mismo lenguaje que
@@ -215,39 +221,6 @@ function DefsCompartidos() {
           d="M60,20 L60,145 M60,52 L40,74 M60,52 L80,74 M60,92 L38,114 M60,92 L82,114"
         />
       </symbol>
-      {/* Criatura genérica de la selva — un cuadrúpedo simple visto de
-         perfil, con 2 pares de patas que se animan por separado (ver
-         .tz-neon-walker-legs-a/-b) para leerse como "caminando" sin
-         necesitar un ciclo de animación cuadro por cuadro. */}
-      <symbol id="tz-neon-criatura" viewBox="0 0 120 62">
-        <path className="tz-neon-walker-tail" d="M28,32 C10,27 8,12 18,4" fill="none" strokeLinecap="round" />
-        <g className="tz-neon-walker-legs-b">
-          <line className="tz-neon-walker-leg" x1="68" y1="42" x2="70" y2="58" />
-          <line className="tz-neon-walker-leg" x1="28" y1="42" x2="26" y2="58" />
-        </g>
-        <g className="tz-neon-walker-legs-a">
-          <line className="tz-neon-walker-leg" x1="80" y1="42" x2="78" y2="58" />
-          <line className="tz-neon-walker-leg" x1="40" y1="42" x2="42" y2="58" />
-        </g>
-        <ellipse className="tz-neon-walker-shape" cx="60" cy="30" rx="34" ry="15" />
-        <circle className="tz-neon-walker-shape" cx="98" cy="20" r="11" />
-        <path className="tz-neon-walker-shape" d="M90,10 L86,-2 L98,6 Z" />
-      </symbol>
-      {/* Serpiente — cuerpo ondulado (una sola curva en zigzag, sin
-         patas) más cabeza. El "arrastre" no es un ciclo de músculos
-         real, es la combinación de cruzar la pantalla + un rotate()
-         que se mece de lado a lado (ver .tz-neon-snake-*) — igual que
-         las patas de la criatura de arriba, se lee bien a esta escala
-         sin necesitar una animación cuadro por cuadro de verdad. */}
-      <symbol id="tz-neon-serpiente" viewBox="0 0 140 30">
-        <path
-          className="tz-neon-snake-body"
-          d="M6,15 C20,3 34,27 48,15 C62,3 76,27 90,15 C100,7 108,9 116,14"
-          fill="none"
-          strokeLinecap="round"
-        />
-        <circle className="tz-neon-snake-head" cx="119" cy="14" r="4.2" />
-      </symbol>
       {/* Hoja chica de la punta de cada enredadera — bug reportado dos
          veces: 1) la reusaba de #tz-neon-hoja (relleno oscuro + solo
          contorno verde, pensada para verse grande) en vez de tener
@@ -306,11 +279,25 @@ export default function AnimacionNeonBienvenida({
   onTerminar,
 }) {
   const [presente, setPresente] = useState(true);
+  const [cerrando, setCerrando] = useState(false);
+  const cerrandoRef = useRef(false);
+
+  // Cierre "la selva se abre": las lianas suben, las hojas de los bordes
+  // se abren hacia afuera, las luciérnagas se dispersan y la oscuridad
+  // se disuelve en círculo desde el centro (máscara radial animada) —
+  // recién después se desmonta con un fundido corto. Lo usan el timer Y
+  // el botón/toque de "Saltar" (que así también cierra con estilo).
+  const cerrar = useCallback(() => {
+    if (cerrandoRef.current) return;
+    cerrandoRef.current = true;
+    setCerrando(true);
+    setTimeout(() => setPresente(false), MS_DURACION_CIERRE);
+  }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => setPresente(false), MS_VISIBLE);
+    const t = setTimeout(cerrar, MS_CIERRE);
     return () => clearTimeout(t);
-  }, []);
+  }, [cerrar]);
 
   // Ocupa toda la pantalla a propósito (z-index altísimo) — mientras
   // tanto, el scroll de fondo se congela para que no se pueda "espiar"
@@ -325,15 +312,18 @@ export default function AnimacionNeonBienvenida({
     };
   }, []);
 
-  const saltar = () => setPresente(false);
+  const saltar = (e) => {
+    e?.stopPropagation?.();
+    cerrar();
+  };
 
   return (
     <MotionConfig reducedMotion="user">
     <AnimatePresence onExitComplete={onTerminar}>
       {presente && (
         <motion.div
-          className="tz-neon-bienvenida-overlay"
-          variants={variantesOverlay}
+          className={`tz-neon-telon ${cerrando ? "tz-neon-cerrando" : ""}`}
+          variants={variantesTelon}
           initial="initial"
           animate="animate"
           exit="exit"
@@ -342,16 +332,21 @@ export default function AnimacionNeonBienvenida({
           // botón "Saltar" (que queda igual, de paso, como pista visual
           // de que se puede saltar). Dispara la MISMA función "saltar"
           // que el botón: al ser un simple setPresente(false), el
-          // fade-out ya definido en variantesOverlay.exit se encarga
+          // fade-out ya definido en variantesTelon.exit se encarga
           // solo de que el cierre sea suave, nunca un corte brusco.
           onClick={saltar}
           role="dialog"
           aria-label="Bienvenida"
         >
+        <motion.div className="tz-neon-bienvenida-overlay" variants={variantesEscena} initial="initial" animate="animate">
           {/* ---- Fondo: manchas de luz + líneas neón fluidas ---- */}
           <div className="tz-neon-blob tz-neon-blob-a" />
           <div className="tz-neon-blob tz-neon-blob-b" />
           <div className="tz-neon-blob tz-neon-blob-c" />
+          {/* Rayos de luz entre los árboles — barren el fondo despacio. */}
+          <div className="tz-neon-rayo tz-neon-rayo-1" />
+          <div className="tz-neon-rayo tz-neon-rayo-2" />
+          <div className="tz-neon-rayo tz-neon-rayo-3" />
 
           {/* Líneas — viewBox en % (0-100) + preserveAspectRatio="none":
              se ESTIRAN para llenar el viewport exacto de cada pantalla,
@@ -385,19 +380,19 @@ export default function AnimacionNeonBienvenida({
              que nunca tuvieron este problema), posicionado con CSS
              encima de la punta de cada tallo. */}
           <svg className="tz-neon-canopy" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true">
-            <g className="tz-neon-vine-enter" style={{ animationDelay: "0.3s" }}>
+            <g className="tz-neon-vine-enter" style={{ animationDelay: "0.1s" }}>
               <path className="tz-neon-vine" d="M6,0 C4,9 9,16 6,26" vectorEffect="non-scaling-stroke" />
             </g>
-            <g className="tz-neon-vine-enter" style={{ animationDelay: "0.55s" }}>
+            <g className="tz-neon-vine-enter" style={{ animationDelay: "0.19s" }}>
               <path className="tz-neon-vine" d="M22,0 C25,8 19,15 23,24" vectorEffect="non-scaling-stroke" />
             </g>
-            <g className="tz-neon-vine-enter" style={{ animationDelay: "0.4s" }}>
+            <g className="tz-neon-vine-enter" style={{ animationDelay: "0.14s" }}>
               <path className="tz-neon-vine" d="M50,0 C48,10 53,17 50,26" vectorEffect="non-scaling-stroke" />
             </g>
-            <g className="tz-neon-vine-enter" style={{ animationDelay: "0.7s" }}>
+            <g className="tz-neon-vine-enter" style={{ animationDelay: "0.24s" }}>
               <path className="tz-neon-vine" d="M74,0 C77,9 71,14 75,22" vectorEffect="non-scaling-stroke" />
             </g>
-            <g className="tz-neon-vine-enter" style={{ animationDelay: "0.5s" }}>
+            <g className="tz-neon-vine-enter" style={{ animationDelay: "0.17s" }}>
               <path className="tz-neon-vine" d="M92,0 C90,10 95,17 92,26" vectorEffect="non-scaling-stroke" />
             </g>
           </svg>
@@ -412,27 +407,27 @@ export default function AnimacionNeonBienvenida({
              parada, no colgando) — si colgara desde arriba pero
              pivotara desde abajo, se vería mal, como un péndulo al
              revés. */}
-          <svg className="tz-neon-vine-leaf-tip tz-neon-vine-leaf-tip-1" style={{ animationDelay: "0.5s" }} viewBox="0 0 40 72" aria-hidden="true">
+          <svg className="tz-neon-vine-leaf-tip tz-neon-vine-leaf-tip-1" style={{ animationDelay: "0.17s" }} viewBox="0 0 40 72" aria-hidden="true">
             <g className="tz-neon-vine-leaf-sway">
               <use href="#tz-neon-hoja-vid" />
             </g>
           </svg>
-          <svg className="tz-neon-vine-leaf-tip tz-neon-vine-leaf-tip-2" style={{ animationDelay: "0.75s" }} viewBox="0 0 40 72" aria-hidden="true">
+          <svg className="tz-neon-vine-leaf-tip tz-neon-vine-leaf-tip-2" style={{ animationDelay: "0.26s" }} viewBox="0 0 40 72" aria-hidden="true">
             <g className="tz-neon-vine-leaf-sway tz-neon-vine-leaf-sway-b">
               <use href="#tz-neon-hoja-vid" />
             </g>
           </svg>
-          <svg className="tz-neon-vine-leaf-tip tz-neon-vine-leaf-tip-3" style={{ animationDelay: "0.6s" }} viewBox="0 0 40 72" aria-hidden="true">
+          <svg className="tz-neon-vine-leaf-tip tz-neon-vine-leaf-tip-3" style={{ animationDelay: "0.21s" }} viewBox="0 0 40 72" aria-hidden="true">
             <g className="tz-neon-vine-leaf-sway">
               <use href="#tz-neon-hoja-vid" />
             </g>
           </svg>
-          <svg className="tz-neon-vine-leaf-tip tz-neon-vine-leaf-tip-4" style={{ animationDelay: "0.9s" }} viewBox="0 0 40 72" aria-hidden="true">
+          <svg className="tz-neon-vine-leaf-tip tz-neon-vine-leaf-tip-4" style={{ animationDelay: "0.31s" }} viewBox="0 0 40 72" aria-hidden="true">
             <g className="tz-neon-vine-leaf-sway tz-neon-vine-leaf-sway-b">
               <use href="#tz-neon-hoja-vid" />
             </g>
           </svg>
-          <svg className="tz-neon-vine-leaf-tip tz-neon-vine-leaf-tip-5" style={{ animationDelay: "0.7s" }} viewBox="0 0 40 72" aria-hidden="true">
+          <svg className="tz-neon-vine-leaf-tip tz-neon-vine-leaf-tip-5" style={{ animationDelay: "0.24s" }} viewBox="0 0 40 72" aria-hidden="true">
             <g className="tz-neon-vine-leaf-sway">
               <use href="#tz-neon-hoja-vid" />
             </g>
@@ -457,22 +452,22 @@ export default function AnimacionNeonBienvenida({
              borde inferior (no solo las esquinas) — cada una es su
              propio <svg>, posicionado con CSS, así mantiene su
              proporción real sin importar el ancho de pantalla. */}
-          <svg className="tz-neon-leaf tz-neon-leaf-1" style={{ animationDelay: "0.5s" }} viewBox="0 0 120 160" aria-hidden="true">
+          <svg className="tz-neon-leaf tz-neon-leaf-1" style={{ animationDelay: "0.17s" }} viewBox="0 0 120 160" aria-hidden="true">
             <g className="tz-neon-leaf-sway">
               <use href="#tz-neon-hoja" />
             </g>
           </svg>
-          <svg className="tz-neon-leaf tz-neon-leaf-2" style={{ animationDelay: "0.75s" }} viewBox="0 0 120 160" aria-hidden="true">
+          <svg className="tz-neon-leaf tz-neon-leaf-2" style={{ animationDelay: "0.26s" }} viewBox="0 0 120 160" aria-hidden="true">
             <g className="tz-neon-leaf-sway tz-neon-leaf-sway-b">
               <use href="#tz-neon-hoja" />
             </g>
           </svg>
-          <svg className="tz-neon-leaf tz-neon-leaf-3" style={{ animationDelay: "1s" }} viewBox="0 0 120 160" aria-hidden="true">
+          <svg className="tz-neon-leaf tz-neon-leaf-3" style={{ animationDelay: "0.34s" }} viewBox="0 0 120 160" aria-hidden="true">
             <g className="tz-neon-leaf-sway">
               <use href="#tz-neon-hoja" />
             </g>
           </svg>
-          <svg className="tz-neon-leaf tz-neon-leaf-4" style={{ animationDelay: "0.6s" }} viewBox="0 0 120 160" aria-hidden="true">
+          <svg className="tz-neon-leaf tz-neon-leaf-4" style={{ animationDelay: "0.21s" }} viewBox="0 0 120 160" aria-hidden="true">
             <g className="tz-neon-leaf-sway tz-neon-leaf-sway-b">
               <use href="#tz-neon-hoja" />
             </g>
@@ -480,84 +475,21 @@ export default function AnimacionNeonBienvenida({
           {/* Hojas de marco a media altura en los bordes izquierdo y
              derecho — "los bordes repletos de plantas" pedido, no solo
              arriba/abajo. */}
-          <svg className="tz-neon-leaf tz-neon-leaf-edge-l" style={{ animationDelay: "0.9s" }} viewBox="0 0 120 160" aria-hidden="true">
+          <svg className="tz-neon-leaf tz-neon-leaf-edge-l" style={{ animationDelay: "0.31s" }} viewBox="0 0 120 160" aria-hidden="true">
             <g className="tz-neon-leaf-sway">
               <use href="#tz-neon-hoja" />
             </g>
           </svg>
-          <svg className="tz-neon-leaf tz-neon-leaf-edge-r" style={{ animationDelay: "1.1s" }} viewBox="0 0 120 160" aria-hidden="true">
+          <svg className="tz-neon-leaf tz-neon-leaf-edge-r" style={{ animationDelay: "0.38s" }} viewBox="0 0 120 160" aria-hidden="true">
             <g className="tz-neon-leaf-sway tz-neon-leaf-sway-b">
               <use href="#tz-neon-hoja" />
             </g>
           </svg>
 
-          {/* Criaturas caminando — cruzan la pantalla sobre la maleza.
-             Bug reportado: pidió "animales animados caminando", no
-             solo una silueta quieta. Delays repartidos en toda la
-             ventana de 10s (antes solo entraban en los primeros 2s y
-             se quedaba vacío el resto del tiempo). */}
-          <div className="tz-neon-walker tz-neon-walker-1" style={{ animationDelay: "0.5s" }}>
-            <svg viewBox="0 0 120 62" aria-hidden="true">
-              <use href="#tz-neon-criatura" />
-            </svg>
-          </div>
-          <div className="tz-neon-walker tz-neon-walker-2" style={{ animationDelay: "2.4s" }}>
-            <svg viewBox="0 0 120 62" aria-hidden="true">
-              <use href="#tz-neon-criatura" />
-            </svg>
-          </div>
-          <div className="tz-neon-walker tz-neon-walker-3" style={{ animationDelay: "5.2s" }}>
-            <svg viewBox="0 0 120 62" aria-hidden="true">
-              <use href="#tz-neon-criatura" />
-            </svg>
-          </div>
-
-          {/* Serpientes arrastrándose — pedido nuevo. Cruzan cerca de
-             la maleza, con un rotate() que se mece de lado a lado para
-             simular el arrastre (ver .tz-neon-snake-* / el símbolo
-             #tz-neon-serpiente arriba). */}
-          <div className="tz-neon-snake tz-neon-snake-1" style={{ animationDelay: "0.8s" }}>
-            <svg viewBox="0 0 140 30" aria-hidden="true">
-              <use href="#tz-neon-serpiente" />
-            </svg>
-          </div>
-          <div className="tz-neon-snake tz-neon-snake-2" style={{ animationDelay: "4s" }}>
-            <svg viewBox="0 0 140 30" aria-hidden="true">
-              <use href="#tz-neon-serpiente" />
-            </svg>
-          </div>
-          <div className="tz-neon-snake tz-neon-snake-3" style={{ animationDelay: "6.8s" }}>
-            <svg viewBox="0 0 140 30" aria-hidden="true">
-              <use href="#tz-neon-serpiente" />
-            </svg>
-          </div>
-
-          {/* Aves cruzando el cielo — pedido: "más aves". Subido de 2 a
-             4, repartidas en toda la ventana de 10s. */}
-          <svg className="tz-neon-bird tz-neon-bird-1" style={{ animationDelay: "0.9s" }} viewBox="0 0 100 40" aria-hidden="true">
-            <path
-              className="tz-neon-bird-shape"
-              d="M0,25 C15,5 35,5 50,20 C65,5 85,5 100,25 C85,18 68,15 50,28 C32,15 15,18 0,25 Z"
-            />
-          </svg>
-          <svg className="tz-neon-bird tz-neon-bird-2" style={{ animationDelay: "2.2s" }} viewBox="0 0 100 40" aria-hidden="true">
-            <path
-              className="tz-neon-bird-shape tz-neon-bird-shape-pink"
-              d="M0,25 C15,5 35,5 50,20 C65,5 85,5 100,25 C85,18 68,15 50,28 C32,15 15,18 0,25 Z"
-            />
-          </svg>
-          <svg className="tz-neon-bird tz-neon-bird-3" style={{ animationDelay: "4.4s" }} viewBox="0 0 100 40" aria-hidden="true">
-            <path
-              className="tz-neon-bird-shape tz-neon-bird-shape-green"
-              d="M0,25 C15,5 35,5 50,20 C65,5 85,5 100,25 C85,18 68,15 50,28 C32,15 15,18 0,25 Z"
-            />
-          </svg>
-          <svg className="tz-neon-bird tz-neon-bird-4" style={{ animationDelay: "6.6s" }} viewBox="0 0 100 40" aria-hidden="true">
-            <path
-              className="tz-neon-bird-shape tz-neon-bird-shape-purple"
-              d="M0,25 C15,5 35,5 50,20 C65,5 85,5 100,25 C85,18 68,15 50,28 C32,15 15,18 0,25 Z"
-            />
-          </svg>
+          {/* Secuencia de fauna y flora (pico de loro, loros, mono,
+             tigrillo, gallito de las rocas, serpiente, río con caimán y
+             barbones) — cada uno en su turno, ver SelvaAnimales.jsx. */}
+          <SelvaAnimales />
 
           {/* Refuerzo de la selva: hojas que se desprenden de la copa y
              luciérnagas flotando durante toda la animación. */}
@@ -590,6 +522,8 @@ export default function AnimacionNeonBienvenida({
                 height: l.size,
                 animationDelay: `${l.delay}s, ${l.delay}s`,
                 animationDuration: `${l.duration}s, ${l.duration * 2.5}s`,
+                "--tz-neon-fuga-x": `${(l.left - 50) * 1.2}vw`,
+                "--tz-neon-fuga-y": `${(l.top - 50) * 1.2}vh`,
               }}
             />
           ))}
@@ -613,21 +547,35 @@ export default function AnimacionNeonBienvenida({
           <button type="button" className="tz-neon-skip-btn" onClick={saltar}>
             Saltar ▸
           </button>
+        </motion.div>
 
           <style>{`
+            /* Telón: 150% del alto de la pantalla (25% de más arriba y
+               abajo) para tapar también lo que queda detrás de la barra
+               de estado y de la barra de Safari en iPhone. La escena va
+               adentro ocupando EXACTAMENTE la pantalla visible
+               (16.6667% = 25/150 de margen arriba y abajo). */
+            .tz-neon-telon {
+              position: fixed;
+              left: 0;
+              right: 0;
+              top: -25%;
+              bottom: -25%;
+              z-index: 999999;
+              cursor: pointer;
+              background: #020605;
+            }
             .tz-neon-bienvenida-overlay {
               --tz-neon-cyan: #2be8ff;
               --tz-neon-pink: #ff2f9e;
               --tz-neon-green: #4dffa0;
               --tz-neon-purple: #b98bff;
-              position: fixed;
-              inset: 0;
-              z-index: 999999;
+              position: absolute;
+              inset: 16.6667% 0;
               display: flex;
               align-items: center;
               justify-content: center;
               overflow: hidden;
-              cursor: pointer;
               background:
                 radial-gradient(circle at 50% 42%, rgba(15,40,32,0.9) 0%, rgba(4,10,9,0.97) 55%, #000 100%);
             }
@@ -635,7 +583,6 @@ export default function AnimacionNeonBienvenida({
             .tz-neon-blob {
               position: absolute;
               border-radius: 50%;
-              filter: blur(70px);
               opacity: 0.5;
               pointer-events: none;
             }
@@ -664,12 +611,44 @@ export default function AnimacionNeonBienvenida({
               animation: tz-neon-blob-drift-a 13s ease-in-out infinite reverse;
             }
             @keyframes tz-neon-blob-drift-a {
-              0%, 100% { transform: translate(0, 0) scale(1); }
-              50% { transform: translate(3vmax, 4vmax) scale(1.08); }
+              0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.45; }
+              33% { transform: translate(14vmax, 9vmax) scale(1.18); opacity: 0.65; }
+              66% { transform: translate(4vmax, 18vmax) scale(0.92); opacity: 0.4; }
             }
             @keyframes tz-neon-blob-drift-b {
-              0%, 100% { transform: translate(0, 0) scale(1); }
-              50% { transform: translate(-4vmax, -3vmax) scale(1.1); }
+              0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.45; }
+              40% { transform: translate(-16vmax, -8vmax) scale(1.2); opacity: 0.65; }
+              75% { transform: translate(-6vmax, -16vmax) scale(0.95); opacity: 0.4; }
+            }
+
+            /* Rayos de luz que se cuelan entre los árboles y barren el
+               fondo — refuerzan la sensación de selva viva. */
+            .tz-neon-rayo {
+              position: absolute;
+              top: -20%;
+              height: 140%;
+              width: 16vw;
+              min-width: 90px;
+              pointer-events: none;
+              /* Bordes suaves con degradados (horizontal en el fondo +
+                 máscara vertical), sin blur ni mix-blend-mode: en Safari
+                 esos dos dejaban un recorte rectangular visible. */
+              -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 85%);
+              mask-image: linear-gradient(to bottom, #000 0%, transparent 85%);
+              transform-origin: top center;
+              opacity: 0;
+              animation: tz-neon-rayo-barre 7s ease-in-out infinite alternate, tz-neon-rayo-pulso 3.2s ease-in-out infinite;
+            }
+            .tz-neon-rayo-1 { left: 8%; background: linear-gradient(to right, transparent, rgba(77,255,160,0.22) 50%, transparent); }
+            .tz-neon-rayo-2 { left: 42%; width: 10vw; background: linear-gradient(to right, transparent, rgba(43,232,255,0.2) 50%, transparent); animation-duration: 9s, 4s; animation-delay: -2s, -1s; }
+            .tz-neon-rayo-3 { left: 72%; background: linear-gradient(to right, transparent, rgba(255,47,158,0.18) 50%, transparent); animation-duration: 8s, 3.6s; animation-delay: -4s, -2s; }
+            @keyframes tz-neon-rayo-barre {
+              from { transform: rotate(22deg) translateX(-8vw); }
+              to { transform: rotate(10deg) translateX(10vw); }
+            }
+            @keyframes tz-neon-rayo-pulso {
+              0%, 100% { opacity: 0.35; }
+              50% { opacity: 0.9; }
             }
 
             .tz-neon-svg-layer {
@@ -678,6 +657,18 @@ export default function AnimacionNeonBienvenida({
               width: 100%;
               height: 100%;
               pointer-events: none;
+            }
+            /* Fundido propio para las capas sin animación de entrada:
+               Safari a veces pinta los elementos con drop-shadow sin
+               respetar el fundido del contenedor, y se veían solos y a
+               pleno brillo en el primer instante. */
+            .tz-neon-svg-layer,
+            .tz-neon-ground {
+              animation: tz-neon-aparece 0.8s ease-out both;
+            }
+            @keyframes tz-neon-aparece {
+              from { opacity: 0; }
+              to { opacity: 1; }
             }
             .tz-neon-svg-defs {
               position: absolute;
@@ -888,191 +879,6 @@ export default function AnimacionNeonBienvenida({
               opacity: 0.65;
             }
 
-            /* Criaturas caminando — cruzan usando % (no px), así la
-               distancia recorrida se adapta sola al ancho real de la
-               pantalla en vez de quedar corta o pasarse en un celular. */
-            .tz-neon-walker {
-              position: absolute;
-              width: 13vmin;
-              min-width: 60px;
-              max-width: 130px;
-              opacity: 0;
-              pointer-events: none;
-              animation: tz-neon-walker-cross-1 4.6s linear both;
-            }
-            .tz-neon-walker-1 { bottom: 7vh; }
-            .tz-neon-walker-2 {
-              bottom: 3.5vh;
-              width: 9vmin;
-              min-width: 42px;
-              max-width: 95px;
-              opacity: 0;
-              animation-name: tz-neon-walker-cross-2;
-              animation-duration: 5.2s;
-              filter: brightness(0.8);
-            }
-            .tz-neon-walker-3 {
-              bottom: 9.5vh;
-              width: 11vmin;
-              min-width: 50px;
-              max-width: 110px;
-              opacity: 0;
-              animation-name: tz-neon-walker-cross-1;
-              animation-duration: 4.8s;
-              filter: hue-rotate(60deg) brightness(1.1);
-            }
-            @keyframes tz-neon-walker-cross-1 {
-              0% { left: -16vmin; opacity: 0; }
-              8% { opacity: 0.95; }
-              92% { opacity: 0.95; }
-              100% { left: 78vw; opacity: 0; }
-            }
-            @keyframes tz-neon-walker-cross-2 {
-              0% { right: -14vmin; opacity: 0; transform: scaleX(-1); }
-              8% { opacity: 0.85; }
-              92% { opacity: 0.85; }
-              100% { right: 70vw; opacity: 0; transform: scaleX(-1); }
-            }
-
-            /* Serpientes arrastrándose — pedido nuevo. bottom/rotate
-               animados EN EL MISMO keyframe que el cruce horizontal
-               (no solo left/right) para que el recorrido no sea una
-               línea perfectamente recta — lo más cerca de "aleatorio"
-               que da hacerlo con CSS puro sin JS de por medio. */
-            .tz-neon-snake {
-              position: absolute;
-              width: 15vmin;
-              min-width: 68px;
-              max-width: 150px;
-              opacity: 0;
-              pointer-events: none;
-            }
-            .tz-neon-snake-1 { bottom: 1vh; animation: tz-neon-snake-cross-1 6.5s ease-in-out both; }
-            .tz-neon-snake-2 {
-              bottom: 5vh;
-              width: 11vmin;
-              min-width: 52px;
-              max-width: 110px;
-              animation: tz-neon-snake-cross-2 7.2s ease-in-out both;
-              filter: hue-rotate(50deg);
-            }
-            .tz-neon-snake-3 {
-              bottom: 2.5vh;
-              width: 13vmin;
-              min-width: 60px;
-              max-width: 130px;
-              animation: tz-neon-snake-cross-1 6.8s ease-in-out both;
-              filter: hue-rotate(-40deg) brightness(1.05);
-            }
-            @keyframes tz-neon-snake-cross-1 {
-              0% { left: -18vmin; opacity: 0; transform: rotate(-4deg); }
-              10% { opacity: 0.9; }
-              30% { transform: rotate(6deg); }
-              50% { transform: rotate(-6deg); bottom: 3vh; }
-              70% { transform: rotate(5deg); }
-              90% { opacity: 0.9; }
-              100% { left: 88vw; opacity: 0; transform: rotate(-3deg); }
-            }
-            @keyframes tz-neon-snake-cross-2 {
-              0% { right: -16vmin; opacity: 0; transform: scaleX(-1) rotate(4deg); }
-              10% { opacity: 0.85; }
-              35% { transform: scaleX(-1) rotate(-6deg); }
-              55% { transform: scaleX(-1) rotate(6deg); bottom: 7.5vh; }
-              80% { transform: scaleX(-1) rotate(-5deg); }
-              90% { opacity: 0.85; }
-              100% { right: 82vw; opacity: 0; transform: scaleX(-1) rotate(4deg); }
-            }
-            .tz-neon-snake-body {
-              fill: none;
-              stroke: var(--tz-neon-cyan);
-              stroke-width: 5;
-              filter: drop-shadow(0 0 6px var(--tz-neon-cyan));
-            }
-            .tz-neon-snake-head {
-              fill: var(--tz-neon-cyan);
-              filter: drop-shadow(0 0 6px var(--tz-neon-cyan));
-            }
-            .tz-neon-walker-shape {
-              fill: rgba(20,10,26,0.88);
-              stroke: var(--tz-neon-purple);
-              stroke-width: 2;
-              filter: drop-shadow(0 0 7px var(--tz-neon-purple));
-            }
-            .tz-neon-walker-tail {
-              stroke: var(--tz-neon-purple);
-              stroke-width: 4;
-              filter: drop-shadow(0 0 5px var(--tz-neon-purple));
-            }
-            .tz-neon-walker-leg {
-              stroke: var(--tz-neon-purple);
-              stroke-width: 6;
-              stroke-linecap: round;
-              filter: drop-shadow(0 0 4px var(--tz-neon-purple));
-            }
-            /* Patas A/B alternándose arriba/abajo — no es un ciclo de
-               caminata real cuadro por cuadro, pero combinado con el
-               cruce horizontal y el balanceo de la cola se lee bien
-               como "caminando" a la distancia en la que se ve esto. */
-            .tz-neon-walker-legs-a { animation: tz-neon-walker-step-a 0.5s ease-in-out infinite; }
-            .tz-neon-walker-legs-b { animation: tz-neon-walker-step-b 0.5s ease-in-out infinite; }
-            @keyframes tz-neon-walker-step-a {
-              0%, 100% { transform: translateY(-2.5px); }
-              50% { transform: translateY(2.5px); }
-            }
-            @keyframes tz-neon-walker-step-b {
-              0%, 100% { transform: translateY(2.5px); }
-              50% { transform: translateY(-2.5px); }
-            }
-
-            /* Aves cruzando el cielo — % en vez de px por el mismo
-               motivo que las criaturas de abajo. */
-            .tz-neon-bird {
-              position: absolute;
-              width: 9vmin;
-              min-width: 34px;
-              max-width: 70px;
-              opacity: 0;
-              pointer-events: none;
-            }
-            .tz-neon-bird-1 { top: 10%; animation: tz-neon-bird-cross-1 4.4s ease-in-out both; }
-            .tz-neon-bird-2 { top: 20%; animation: tz-neon-bird-cross-2 4.9s ease-in-out both; }
-            .tz-neon-bird-3 { top: 16%; animation: tz-neon-bird-cross-1 4.7s ease-in-out both; }
-            .tz-neon-bird-4 { top: 27%; animation: tz-neon-bird-cross-2 5.1s ease-in-out both; }
-            @keyframes tz-neon-bird-cross-1 {
-              0% { left: -12vw; opacity: 0; transform: scale(0.7); }
-              12% { opacity: 1; }
-              88% { opacity: 1; }
-              100% { left: 108vw; opacity: 0; transform: scale(1.1); }
-            }
-            @keyframes tz-neon-bird-cross-2 {
-              0% { right: -12vw; opacity: 0; transform: scale(0.6) scaleX(-1); }
-              12% { opacity: 0.9; }
-              88% { opacity: 0.9; }
-              100% { right: 108vw; opacity: 0; transform: scale(0.95) scaleX(-1); }
-            }
-            .tz-neon-bird-shape {
-              fill: var(--tz-neon-cyan);
-              filter: drop-shadow(0 0 10px var(--tz-neon-cyan));
-              animation: tz-neon-bird-flap 0.5s ease-in-out infinite alternate;
-              transform-origin: 50px 15px;
-            }
-            .tz-neon-bird-shape-green {
-              fill: var(--tz-neon-green);
-              filter: drop-shadow(0 0 10px var(--tz-neon-green));
-            }
-            .tz-neon-bird-shape-purple {
-              fill: var(--tz-neon-purple);
-              filter: drop-shadow(0 0 10px var(--tz-neon-purple));
-            }
-            .tz-neon-bird-shape-pink {
-              fill: var(--tz-neon-pink);
-              filter: drop-shadow(0 0 10px var(--tz-neon-pink));
-            }
-            @keyframes tz-neon-bird-flap {
-              0% { transform: scaleY(1); }
-              100% { transform: scaleY(0.6); }
-            }
-
             /* Contenido central — fondo propio (vignette) para que el
                texto siga legible con una escena de fondo más ocupada. */
             .tz-neon-content {
@@ -1140,7 +946,11 @@ export default function AnimacionNeonBienvenida({
               position: relative;
               width: min(30vmin, 150px);
               height: min(30vmin, 150px);
-              margin-bottom: 18px;
+              /* El dibujo (corona de hojitas) sobresale un 28% de esta
+                 caja hacia abajo: el margen arranca desde ese borde real
+                 y deja ~22px de aire visible hasta el texto. */
+              margin-top: calc(min(30vmin, 150px) * 0.28);
+              margin-bottom: calc(min(30vmin, 150px) * 0.28 + 22px);
             }
             .tz-neon-emblema-svg {
               position: absolute;
@@ -1154,7 +964,6 @@ export default function AnimacionNeonBienvenida({
               inset: -45%;
               border-radius: 50%;
               background: radial-gradient(circle, rgba(77,255,160,0.32), rgba(43,232,255,0.14) 45%, transparent 70%);
-              filter: blur(14px);
               animation: tz-neon-emblema-pulse 2.2s ease-in-out infinite;
               pointer-events: none;
             }
@@ -1262,6 +1071,45 @@ export default function AnimacionNeonBienvenida({
               50% { transform: translate(18px, -14px); }
               100% { transform: translate(-12px, -26px); }
             }
+
+            /* ---- Cierre: la selva se abre ---- */
+            @property --tz-neon-hueco {
+              syntax: '<percentage>';
+              inherits: false;
+              initial-value: 0%;
+            }
+            .tz-neon-telon.tz-neon-cerrando {
+              cursor: default;
+              -webkit-mask-image: radial-gradient(circle at 50% 46%, transparent calc(var(--tz-neon-hueco) - 22%), #000 var(--tz-neon-hueco));
+              mask-image: radial-gradient(circle at 50% 46%, transparent calc(var(--tz-neon-hueco) - 22%), #000 var(--tz-neon-hueco));
+              animation: tz-neon-abrir ${MS_DURACION_CIERRE}ms cubic-bezier(0.55, 0, 0.75, 0.4) forwards;
+            }
+            @keyframes tz-neon-abrir {
+              from { --tz-neon-hueco: 0%; }
+              to { --tz-neon-hueco: 125%; }
+            }
+            .tz-neon-content,
+            .tz-neon-canopy,
+            .tz-neon-vine-leaf-tip,
+            .tz-neon-leaf,
+            .tz-neon-ground,
+            .tz-selva,
+            .tz-neon-luciernaga {
+              transition: translate 0.9s cubic-bezier(0.5, 0, 0.75, 0), scale 0.9s ease-in, opacity 0.7s ease-in, filter 0.7s ease-in;
+            }
+            .tz-neon-cerrando .tz-neon-content { scale: 1.18; opacity: 0; filter: blur(8px); }
+            .tz-neon-cerrando .tz-neon-canopy,
+            .tz-neon-cerrando .tz-neon-vine-leaf-tip { translate: 0 -40vh; }
+            .tz-neon-cerrando .tz-selva { translate: 0 -12vh; opacity: 0; }
+            .tz-neon-cerrando .tz-neon-ground { translate: 0 30vh; }
+            .tz-neon-cerrando .tz-neon-leaf-1,
+            .tz-neon-cerrando .tz-neon-leaf-3,
+            .tz-neon-cerrando .tz-neon-leaf-edge-l { translate: -45vw 10vh; }
+            .tz-neon-cerrando .tz-neon-leaf-2,
+            .tz-neon-cerrando .tz-neon-leaf-4,
+            .tz-neon-cerrando .tz-neon-leaf-edge-r { translate: 45vw 10vh; }
+            .tz-neon-cerrando .tz-neon-luciernaga { translate: var(--tz-neon-fuga-x) var(--tz-neon-fuga-y); }
+            .tz-neon-cerrando .tz-neon-skip-btn { opacity: 0; transition: opacity 0.3s; }
 
             .tz-neon-skip-btn {
               position: absolute;

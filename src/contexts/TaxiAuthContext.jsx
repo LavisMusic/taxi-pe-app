@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { reiniciarBienvenidas } from "../hooks/useBienvenidaNeon";
-import { ShieldAlert } from "lucide-react";
+import { ShieldAlert, Headset } from "lucide-react";
+import { useContactoPlataforma } from "../hooks/useContactoPlataforma";
+import { buildWhatsappLink } from "../lib/whatsapp";
 import { supabase } from "../supabaseClient";
 import { TAXI_ADMIN_KEY, TAXI_SESSION_KEY } from "../lib/taxiAuth";
 
@@ -11,6 +13,8 @@ import { TAXI_ADMIN_KEY, TAXI_SESSION_KEY } from "../lib/taxiAuth";
 // recargara a mano. Mismas clases tz-modal-backdrop/tz-modal que
 // cualquier otro modal de la app.
 function CuentaEliminadaOverlay({ onCerrar }) {
+  const { whatsapp_soporte } = useContactoPlataforma();
+  const linkSoporte = buildWhatsappLink(whatsapp_soporte, "Hola, eliminaron mi cuenta de Taxi-PE y creo que es un error.");
   return (
     <div className="tz-modal-backdrop" style={{ zIndex: 999999 }}>
       <div
@@ -25,6 +29,17 @@ function CuentaEliminadaOverlay({ onCerrar }) {
         <p className="tz-brand-sub" style={{ marginTop: 8 }}>
           Un administrador eliminó esta cuenta. Si crees que es un error, comunícate con soporte.
         </p>
+        {linkSoporte && (
+          <a
+            href={linkSoporte}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="tz-scan-btn tz-payment-save"
+            style={{ marginTop: 16, width: "100%", display: "inline-flex", justifyContent: "center", gap: 8, textDecoration: "none" }}
+          >
+            <Headset size={16} /> Escribir a soporte
+          </a>
+        )}
         <button
           type="button"
           className="tz-scan-btn tz-cuenta-eliminada-salir-btn"
