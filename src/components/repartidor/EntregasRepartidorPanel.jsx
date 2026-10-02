@@ -49,7 +49,7 @@ function RutaPreviewModal({ origen, destino, miPos, onClose }) {
   const puntos = [origen, destino, miPos].filter(Boolean);
   const centro = miPos || destino || origen || { lat: -12.0464, lng: -77.0428 };
   return createPortal(
-    <div className="tz-ruta-preview-backdrop" onClick={onClose}>
+    <div className="tz-ruta-preview-backdrop">
       <div className="tz-ruta-preview-card" onClick={(e) => e.stopPropagation()}>
         <button className="tz-modal-close" onClick={onClose} aria-label="Cerrar">
           <X size={18} />
