@@ -2433,6 +2433,80 @@ export default function Styles() {
         font-size: 12px;
       }
       .tz-plan-pago-confirmar { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; color: var(--yellow); }
+      .tz-receipt.tz-plan-pago-anulado .tz-receipt-row { text-decoration: line-through; }
+      .tz-receipt .tz-plan-pago-ver { margin-top: 8px; }
+
+      /* ---- Gestor de recarga del conductor (⚡) — mismo gestor que el
+         del super admin de Caja: apartados + Pagos estilo "Mis ventas" ---- */
+      .tz-plan-filtros { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+      .tz-plan-filtros .tz-gasto-tipo-btn { flex: 0 0 auto; padding: 7px 12px; font-size: 12px; }
+      .tz-plan-campo { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+      .tz-plan-campo > span { font-size: 11px; color: var(--text-dim); letter-spacing: 0.04em; text-transform: uppercase; }
+      .tz-plan-campo-ancho { flex: 1 1 100%; }
+      .tz-plan-seccion { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; }
+      .tz-plan-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 9px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        color: var(--tz-plan-color);
+        border: 1px solid var(--tz-plan-color);
+        background: color-mix(in srgb, var(--tz-plan-color) 12%, transparent);
+        white-space: nowrap;
+      }
+      .tz-gestor-recarga-datos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+      .tz-gestor-recarga-dato {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid var(--border-soft);
+        font-size: 13px;
+      }
+      .tz-gestor-recarga-dato strong { color: var(--text); font-size: 14px; }
+      .tz-gestor-recarga-dato span { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; }
+
+      /* Historial: filtro + buscador */
+      .tz-historial-filtros { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+      .tz-historial-filtros .tz-gasto-tipo-btn { flex: 0 0 auto; padding: 7px 12px; }
+      .tz-sa-buscador { display: flex; align-items: center; gap: 8px; color: var(--text-dim); }
+      .tz-sa-buscador .tz-text-input { flex: 1 1 auto; }
+
+      /* ---- Desplegable de venta registrada (como la caja de los
+         negocios): Imprimir / Enviar resumen / Enviar boleta / Copiar ---- */
+      .tz-submitbar.tz-panel-venta { z-index: 140; transition: transform 0.5s ease-in-out; }
+      .tz-panel-venta.tz-submitbar-visible { transform: translateY(0); }
+      .tz-panel-venta.tz-submitbar-hidden { transform: translateY(120%); }
+      .tz-panel-venta .tz-submitbar-content { max-width: 520px; width: 100%; margin: 0 auto; }
+      .tz-panel-venta .tz-whatsapp-send-btn { width: 100%; box-sizing: border-box; cursor: pointer; }
+      .tz-submitbar-collapse {
+        position: absolute;
+        top: -30px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 46px;
+        height: 26px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(43,232,255,0.25);
+        border-bottom: none;
+        border-radius: 10px 10px 0 0;
+        background: rgba(15, 10, 30, 0.94);
+        color: var(--text-dim);
+        cursor: pointer;
+      }
+      .tz-whatsapp-send-btn.tz-print-boleta-btn {
+        background: rgba(43,232,255,0.14);
+        border-color: rgba(43,232,255,0.5);
+        color: var(--cyan);
+      }
+      .tz-whatsapp-send-btn.tz-print-boleta-btn:hover { background: rgba(43,232,255,0.22); }
 
       /* ---------- MODAL ---------- */
       .tz-modal-backdrop {

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { History, Ban, AlertTriangle, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { History, Ban, AlertTriangle, X, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { formatSoles, formatDate } from "../../utils/format";
 import { METODOS_PAGO, TIPO_ITEM_MEMBRESIA } from "../../lib/taxiEnums";
 
@@ -13,6 +13,19 @@ import { METODOS_PAGO, TIPO_ITEM_MEMBRESIA } from "../../lib/taxiEnums";
 // encuentra (datos viejos), avisa para ajustarla a mano.
 // `puedeAnular` (default true): RecolectorPage.jsx lo pasa en false —
 // el recolector no puede borrar sus propias ventas.
+// Filtro Todas / Registradas / Anuladas y buscador (código, nombre,
+// detalle, método). Lo anulado desde el gestor ⚡ de un conductor se ve
+// acá al instante (misma lista de ventas en tiempo real).
+const FILTROS = [
+  { id: "todas", label: "Todas" },
+  { id: "registradas", label: "Registradas" },
+  { id: "anuladas", label: "Anuladas" },
+];
+const normalizar = (t) =>
+  String(t || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
 export default function HistorialVentasModal({ ventas, conductores, usuarios, anular, busyId, onClose, puedeAnular = true }) {
@@ -22,6 +35,8 @@ export default function HistorialVentasModal({ ventas, conductores, usuarios, an
   const [confirmandoId, setConfirmandoId] = useState(null);
   const [aviso, setAviso] = useState("");
   const [ver, setVer] = useState(null);
+  const [filtro, setFiltro] = useState("todas");
+  const [busqueda, setBusqueda] = useState("");
 
   const conductoresById = new Map(conductores.map((c) => [c.id, c]));
   const usuariosById = new Map(usuarios.map((u) => [u.id, u]));
@@ -37,7 +52,16 @@ export default function HistorialVentasModal({ ventas, conductores, usuarios, an
       .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
   }, [ventas, anio, mes]);
   const vigentes = delMes.filter((v) => !v.anulado);
+  const anuladas = delMes.length - vigentes.length;
   const total = vigentes.reduce((s, v) => s + Number(v.monto || 0), 0);
+  const visibles = delMes.filter((v) => {
+    if (filtro === "registradas" && v.anulado) return false;
+    if (filtro === "anuladas" && !v.anulado) return false;
+    const q = normalizar(busqueda.trim());
+    if (!q) return true;
+    const nombre = v.cliente_id ? usuariosById.get(v.cliente_id)?.nombre : conductoresById.get(v.conductor_id)?.nombre;
+    return normalizar([v.codigo_venta, nombre, v.detalle, v.metodo_pago].join(" ")).includes(q);
+  });
 
   const mover = (delta) => {
     const d = new Date(anio, mes + delta, 1);
@@ -86,8 +110,32 @@ export default function HistorialVentasModal({ ventas, conductores, usuarios, an
           <span className="tz-stat-value">{formatSoles(total)}</span>
           <span className="tz-stat-sub">
             {vigentes.length} venta{vigentes.length === 1 ? "" : "s"}
-            {delMes.length > vigentes.length ? ` · ${delMes.length - vigentes.length} anulada(s)` : ""}
+            {anuladas > 0 ? ` · ${anuladas} anulada(s)` : ""}
           </span>
+        </div>
+
+        <div className="tz-historial-filtros">
+          {FILTROS.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              className={`tz-gasto-tipo-btn ${filtro === f.id ? "tz-gasto-tipo-active" : ""}`}
+              onClick={() => setFiltro(f.id)}
+            >
+              {f.label}
+              {f.id === "registradas" ? ` (${vigentes.length})` : f.id === "anuladas" ? ` (${anuladas})` : ""}
+            </button>
+          ))}
+          <div className="tz-sa-buscador" style={{ flex: "1 1 220px", minWidth: 0 }}>
+            <Search size={15} />
+            <input
+              className="tz-text-input"
+              type="search"
+              placeholder="Buscar código, nombre, detalle…"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+            />
+          </div>
         </div>
 
         {aviso && (
@@ -96,11 +144,13 @@ export default function HistorialVentasModal({ ventas, conductores, usuarios, an
           </p>
         )}
 
-        {delMes.length === 0 ? (
-          <p className="tz-method-history-empty">No hay ventas en este mes.</p>
+        {visibles.length === 0 ? (
+          <p className="tz-method-history-empty">
+            {delMes.length === 0 ? "No hay ventas en este mes." : "Ninguna venta coincide con el filtro."}
+          </p>
         ) : (
           <ul className="tz-plan-pagos">
-            {delMes.map((v) => {
+            {visibles.map((v) => {
               const conductor = conductoresById.get(v.conductor_id);
               const cliente = usuariosById.get(v.cliente_id);
               const esVentaCliente = !!v.cliente_id;

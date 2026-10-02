@@ -46,7 +46,7 @@ import CategoriasModal from "../components/admin/CategoriasModal";
 import PeticionesModal from "../components/admin/PeticionesModal";
 import PagosMetodoModal from "../components/admin/PagosMetodoModal";
 import LimpiarChatsModal from "../components/admin/LimpiarChatsModal";
-import RecargaRapidaForm from "../components/recolector/RecargaRapidaForm";
+import GestorRecargaConductorModal from "../components/admin/GestorRecargaConductorModal";
 import RecargaRapidaRecolectorForm from "../components/admin/RecargaRapidaRecolectorForm";
 import logo from "../assets/logo.webp";
 
@@ -439,35 +439,34 @@ export default function AdminDashboardPage() {
 
       {limpiarChatsOpen && <LimpiarChatsModal onClose={() => setLimpiarChatsOpen(false)} />}
 
-      {recargaOpen && (
-        <div className="tz-modal-backdrop">
-          <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
-            <button
-              className="tz-modal-close"
-              onClick={() => {
-                setRecargaOpen(false);
-                setRecargaConductor(null);
-              }}
-              aria-label="Cerrar"
-            >
-              <X size={18} />
-            </button>
-            <RecargaRapidaForm
-              conductores={conductores}
-              usuariosClientes={usuariosClientes}
-              categorias={categorias}
-              subgrupos={subgrupos}
-              recolectorId={null}
-              registrarRecarga={registrarRecargaAdmin}
-              crearConductorConUsuario={crearConductorConUsuario}
-              saving={savingRecargaAdmin}
-              error={errorRecargaAdmin}
-              paquetes={paquetes}
-              paquetesClientes={paquetesClientes}
-              lockedConductor={recargaConductor}
-            />
-          </div>
-        </div>
+      {recargaOpen && recargaConductor && (
+        <GestorRecargaConductorModal
+          conductor={conductores.find((c) => c.id === recargaConductor.id) || recargaConductor}
+          ventas={ventas}
+          usuarios={usuarios}
+          paquetes={paquetes}
+          onSetEstado={setEstado}
+          onUpdate={updateConductor}
+          anular={anular}
+          busyId={anulandoId}
+          recargaProps={{
+            conductores,
+            usuariosClientes,
+            categorias,
+            subgrupos,
+            recolectorId: null,
+            registrarRecarga: registrarRecargaAdmin,
+            crearConductorConUsuario,
+            saving: savingRecargaAdmin,
+            error: errorRecargaAdmin,
+            paquetes,
+            paquetesClientes,
+          }}
+          onClose={() => {
+            setRecargaOpen(false);
+            setRecargaConductor(null);
+          }}
+        />
       )}
 
       {recargaRecolectorOpen && (
@@ -556,6 +555,8 @@ export default function AdminDashboardPage() {
           esAdmin
           cajeroNombre="Admin"
           onClose={() => setCierreOpen(false)}
+          conductores={conductores}
+          usuarios={usuarios}
         />
       )}
       {membresiasOpen && (

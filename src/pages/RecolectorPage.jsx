@@ -18,6 +18,8 @@ import { startOfTodayISO } from "../lib/taxiEnums";
 import { formatSoles, formatDate } from "../utils/format";
 import Styles from "../components/Styles";
 import RecargaRapidaForm from "../components/recolector/RecargaRapidaForm";
+import PanelVentaRegistrada from "../components/PanelVentaRegistrada";
+import { ventaParaPanel } from "../lib/ventaBoleta";
 import RegistroConductorModal from "../components/recolector/RegistroConductorModal";
 import AutorecargaRecolectorModal from "../components/recolector/AutorecargaRecolectorModal";
 import CierreCajaModal from "../components/admin/CierreCajaModal";
@@ -94,6 +96,8 @@ export default function RecolectorPage() {
   const [registroMsg, setRegistroMsg] = useState("");
   const [cierreOpen, setCierreOpen] = useState(false);
   const [historialOpen, setHistorialOpen] = useState(false);
+  // Desplegable de venta registrada (imprimir / resumen / boleta / copiar).
+  const [ventaPanel, setVentaPanel] = useState(null);
   const [autorecargaOpen, setAutorecargaOpen] = useState(false);
 
   // Persistencia de Turno: antes el widget usaba `ventasHoy` (todo lo
@@ -240,6 +244,11 @@ export default function RecolectorPage() {
               paquetesClientes={paquetesClientes}
               glowPaquetes={glowPaquetes}
               glowPaquetesClientes={glowPaquetesClientes}
+              onVentaRegistrada={({ venta, destinatario, montoRecibido }) =>
+                setVentaPanel(
+                  ventaParaPanel(venta, destinatario, { cajero: usuario?.nombre || "Recolector", montoRecibido })
+                )
+              }
             />
           </>
         )}
@@ -300,8 +309,12 @@ export default function RecolectorPage() {
           onClose={() => setCierreOpen(false)}
           onCerrado={handleTurnoCerrado}
           telefonoDestino={usuario?.telefono}
+          conductores={conductores}
+          usuarios={usuarios}
         />
       )}
+      <PanelVentaRegistrada venta={ventaPanel} onCerrar={() => setVentaPanel(null)} />
+
       {historialOpen && (
         <HistorialVentasModal
           ventas={ventas}

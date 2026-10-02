@@ -73,6 +73,11 @@ export default function RecargaRapidaForm({
   // del Directorio (admin), ya se sabe para quién es — se salta el
   // combobox por completo y no se puede cambiar de conductor desde acá.
   lockedConductor = null,
+  // Venta registrada: ({ venta, destinatario, montoRecibido }) — abre el
+  // desplegable inferior (imprimir / resumen / boleta / copiar).
+  onVentaRegistrada,
+  // Dentro del gestor ⚡ (admin) el título ya lo pone el gestor.
+  sinTitulo = false,
 }) {
   const [destinatarioTipo, setDestinatarioTipo] = useState(DESTINATARIO_CONDUCTOR);
   const [search, setSearch] = useState("");
@@ -245,7 +250,8 @@ export default function RecargaRapidaForm({
       return;
     }
 
-    const { error: submitError } = await registrarRecarga({
+    const recibidoAlEnviar = metodoPago === METODO_PAGO_EFECTIVO && montoRecibido !== "" ? Number(montoRecibido) : null;
+    const { error: submitError, venta: ventaCreada, destinatario: destinatarioActualizado } = await registrarRecarga({
       destinatarioTipo,
       conductor: esCliente ? null : conductor,
       cliente: esCliente ? cliente : null,
@@ -264,15 +270,24 @@ export default function RecargaRapidaForm({
     if (!submitError) {
       setSuccessMsg(`Recarga registrada para ${destinatario.nombre}.`);
       resetForm();
+      if (ventaCreada) {
+        onVentaRegistrada?.({
+          venta: ventaCreada,
+          destinatario: { ...destinatario, ...(destinatarioActualizado || {}) },
+          montoRecibido: recibidoAlEnviar,
+        });
+      }
     }
   };
 
   return (
     <>
       <form className="tz-payment-modal" onSubmit={handleSubmit} style={{ maxWidth: 480, margin: "0 auto" }}>
-        <h2>
-          <Zap size={17} /> Recarga Rápida
-        </h2>
+        {!sinTitulo && (
+          <h2>
+            <Zap size={17} /> Recarga Rápida
+          </h2>
+        )}
 
         {!lockedConductor && (
           <div className="tz-gasto-tipo-buttons" style={{ marginBottom: 4 }}>

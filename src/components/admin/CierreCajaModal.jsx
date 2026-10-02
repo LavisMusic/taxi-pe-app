@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Calculator, X, Receipt, Download, MessageCircle, AlertTriangle, Loader2, Save } from "lucide-react";
+import { Calculator, X, Receipt, Download, MessageCircle, AlertTriangle, Loader2, Save, FileSpreadsheet } from "lucide-react";
 import { formatSoles, formatDate, formatTime } from "../../utils/format";
 import { METODOS_PAGO, TIPO_ITEM_CREDITOS, TIPO_ITEM_MEMBRESIA } from "../../lib/taxiEnums";
 import { downloadXLSX } from "../../lib/xlsxExport";
@@ -16,6 +16,11 @@ import { buildWhatsappLink } from "../../lib/whatsapp";
 // `ventas`/`gastos_operativos` siguen siendo globales, "Hoy" sigue
 // calculándose igual después de cerrar. Es solo un registro para
 // exportar/compartir, no reinicia ningún contador.
+//
+// Excel del cierre (como las cajas de Caja Tonazo): hojas Resumen,
+// Ventas (cada venta con su código TX-…, destinatario, detalle, método)
+// y Gastos. Se descarga solo al cerrar el turno y también con el botón
+// "Descargar Excel" en cualquier momento.
 export default function CierreCajaModal({
   ventasHoy,
   gastosHoy,
@@ -36,6 +41,9 @@ export default function CierreCajaModal({
   // Admin no lo pasa, así que su botón sigue exactamente igual que
   // antes (wa.me sin número fijo, elige el contacto/grupo a mano).
   telefonoDestino,
+  // Para poner el nombre del conductor/cliente en el Excel (opcional).
+  conductores = [],
+  usuarios = [],
 }) {
   const [confirmando, setConfirmando] = useState(false);
   const [cerrando, setCerrando] = useState(false);
@@ -50,6 +58,64 @@ export default function CierreCajaModal({
 
   const totalPorMetodo = (metodo) =>
     ventasHoy.filter((v) => v.metodo_pago === metodo).reduce((sum, v) => sum + Number(v.monto || 0), 0);
+
+  const descargarExcelCierre = () => {
+    const ahora = Date.now();
+    const nombreDe = (v) =>
+      v.cliente_id
+        ? usuarios.find((u) => u.id === v.cliente_id)?.nombre || "Cliente"
+        : conductores.find((c) => c.id === v.conductor_id)?.nombre || "Conductor";
+    const recolectorDe = (v) => usuarios.find((u) => u.id === v.recolector_id)?.nombre || (v.recolector_id ? "" : "Admin");
+    const labelMetodo = (key) => METODOS_PAGO.find((m) => m.key === key)?.label ?? key;
+    const resumen = [
+      ["Cierre de caja", `${formatDate(ahora)} ${formatTime(ahora)}`],
+      ["Cajero", cajeroNombre],
+      [],
+      ["Recaudado (S/)", Number(recaudadoHoy.toFixed(2))],
+      ["Gastos operativos (S/)", Number(Number(totalGastosHoy).toFixed(2))],
+      ["Balance neto (S/)", Number(balanceNeto.toFixed(2))],
+      ["Ventas registradas", ventasHoy.length],
+      ["Ticket promedio (S/)", Number(ticketGeneral.toFixed(2))],
+      [],
+      ["Por tipo de venta", ""],
+      ["Membresías (S/)", Number(totalPorTipo(TIPO_ITEM_MEMBRESIA).toFixed(2))],
+      ["Créditos (S/)", Number(totalPorTipo(TIPO_ITEM_CREDITOS).toFixed(2))],
+      [],
+      ["Por método de pago", ""],
+      ...METODOS_PAGO.map((m) => [`${m.label} (S/)`, Number(totalPorMetodo(m.key).toFixed(2))]),
+    ];
+    const ventas = [
+      ["Código", "Fecha", "Hora", "Destinatario", "Tipo", "Detalle", "Método", "Monto (S/)", "Recolector"],
+      ...[...ventasHoy]
+        .sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? ""))
+        .map((v) => [
+          v.codigo_venta || "",
+          formatDate(v.created_at),
+          formatTime(v.created_at),
+          `${nombreDe(v)} (${v.cliente_id ? "cliente" : "conductor"})`,
+          v.tipo_item === TIPO_ITEM_MEMBRESIA ? "Membresía" : "Créditos",
+          v.detalle || "",
+          labelMetodo(v.metodo_pago),
+          Number(Number(v.monto || 0).toFixed(2)),
+          recolectorDe(v),
+        ]),
+    ];
+    const gastos = [
+      ["Fecha", "Hora", "Concepto", "Monto (S/)"],
+      ...gastosHoy.map((g) => [
+        formatDate(g.fecha || g.created_at),
+        formatTime(g.fecha || g.created_at),
+        g.concepto,
+        Number(Number(g.monto || 0).toFixed(2)),
+      ]),
+    ];
+    const fecha = new Date(ahora).toISOString().slice(0, 10);
+    downloadXLSX(`cierre-caja-${fecha}-${ahora}.xlsx`, [
+      { nombre: "Resumen", filas: resumen },
+      { nombre: "Ventas", filas: ventas },
+      { nombre: "Gastos", filas: gastos },
+    ]);
+  };
 
   const ejecutarCierre = async () => {
     setCerrando(true);
@@ -68,6 +134,7 @@ export default function CierreCajaModal({
       return;
     }
     setConfirmando(false);
+    descargarExcelCierre();
     onCerrado?.();
   };
 
@@ -196,7 +263,7 @@ export default function CierreCajaModal({
             <div className="tz-add-entry" style={{ marginTop: 14 }}>
               <p className="tz-cierre-warning">
                 <AlertTriangle size={14} /> Esto guarda una instantánea de estos totales en el historial de
-                cierres. No reinicia "Hoy" ni se puede deshacer.
+                cierres y descarga su Excel. No reinicia "Hoy" ni se puede deshacer.
               </p>
               {cierreError && <p className="tz-error">{cierreError}</p>}
               <div className="tz-add-entry-actions">
@@ -214,6 +281,9 @@ export default function CierreCajaModal({
           <div className="tz-method-history">
             <span className="tz-method-history-label">Historial de cierres</span>
             <div className="tz-export-buttons">
+              <button type="button" className="tz-csv-btn" onClick={descargarExcelCierre}>
+                <FileSpreadsheet size={13} /> Descargar Excel de hoy
+              </button>
               {esAdmin && (
                 <button type="button" className="tz-csv-btn" onClick={exportarHistorialCierresXLSX}>
                   <Download size={13} /> Exportar Historial de Cierres

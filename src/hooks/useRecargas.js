@@ -192,7 +192,9 @@ export function useRecargas({ onDone }) {
 
       setSaving(false);
       onDone?.();
-      return { error: null };
+      // La venta creada (con su código TX-… de la base) y el destinatario
+      // ya actualizado: para el desplegable de venta registrada.
+      return { error: null, venta: ventaCreada, destinatario: destinatarioActualizado[0] };
     },
     [onDone]
   );

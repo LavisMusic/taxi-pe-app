@@ -63,7 +63,7 @@ export default function TicketBoleta({ orden, cliente, productos, totales }) {
       <div style={{ textAlign: "center" }}>
         <img src={logo} alt="TONAZO!" style={{ width: 110, height: "auto", margin: "0 auto" }} />
         <p style={{ margin: "6px 0 0", fontSize: 11, color: COLORS.dim, letterSpacing: 0.4 }}>
-          Caja Registradora
+          {orden?.subtitulo || "Caja Registradora"}
         </p>
       </div>
 
@@ -146,6 +146,19 @@ export default function TicketBoleta({ orden, cliente, productos, totales }) {
         <span>TOTAL</span>
         <span>{formatSoles(totales?.totalPagar ?? 0)}</span>
       </div>
+
+      {totales?.efectivoRecibido != null && !Number.isNaN(Number(totales.efectivoRecibido)) && (
+        <>
+          <div style={{ ...rowStyle, marginTop: 6 }}>
+            <span>Recibido (efectivo)</span>
+            <span>{formatSoles(Number(totales.efectivoRecibido))}</span>
+          </div>
+          <div style={rowStyle}>
+            <span>Vuelto</span>
+            <span>{formatSoles(Number(totales.vuelto) || 0)}</span>
+          </div>
+        </>
+      )}
 
       <div style={dividerStyle} />
 
