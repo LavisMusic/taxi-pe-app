@@ -59,7 +59,6 @@ import {
 import BarcodeScannerModal from "./components/BarcodeScannerModal";
 import CatalogVisibilityAccordion from "./components/CatalogVisibilityAccordion";
 import ColorPicker from "./components/ColorPicker";
-import LogoEasterEgg from "./components/LogoEasterEgg";
 import TicketBoleta from "./components/TicketBoleta";
 
 import logo from "./assets/logo.webp";
@@ -5042,7 +5041,7 @@ export default function App() {
           </div>
 
           <div className="tz-header-center">
-            <LogoEasterEgg src={logo} alt="TONAZO!" className="tz-logo" />
+            <img src={logo} alt="TONAZO!" className="tz-logo" />
             <p className="tz-subtitle">Caja Registradora</p>
           </div>
 

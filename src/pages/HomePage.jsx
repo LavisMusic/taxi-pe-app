@@ -20,7 +20,6 @@ import { distanciaMetros } from "../lib/haversine";
 import Styles from "../components/Styles";
 import Dropdown from "../components/Dropdown";
 import ConductorPublicCard from "../components/ConductorPublicCard";
-import LogoEasterEgg from "../components/LogoEasterEgg";
 import PasajeroAuthForm from "../components/PasajeroAuthForm";
 import NivelAccordionGroup from "../components/NivelAccordionGroup";
 import AccesoConductorModal from "../components/AccesoConductorModal";
@@ -346,7 +345,7 @@ export default function HomePage() {
           </div>
 
           <div className="tz-header-center">
-            <LogoEasterEgg src={logo} alt="TaxiP" className="tz-logo" />
+            <img src={logo} alt="TaxiP" className="tz-logo" />
             <p className="tz-subtitle">Tu taxi, al toque</p>
           </div>
 

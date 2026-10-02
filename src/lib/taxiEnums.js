@@ -217,10 +217,6 @@ export const FRECUENCIAS_ANUNCIO = [
   { value: FRECUENCIA_UNA_VEZ_DIA, label: "Una vez al día" },
 ];
 
-// Costo operativo fijo diario que se descuenta de "Recaudado Hoy" para
-// obtener la "Ganancia Neta (Hoy)" — dado literal en el enunciado.
-export const COSTO_OPERATIVO_DIARIO = 8.67;
-
 export function startOfTodayISO() {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
@@ -253,12 +249,8 @@ export const METODOS_PAGO = [
 // usePaquetes.js/ConfigurarMembresiasModal.jsx).
 export const MEMBRESIA_DIAS_EXTENSION = 30;
 
-// `ventas.codigo_venta` es NOT NULL y no tiene default en la DB (es
-// `text`, no `serial`) — se genera acá un código corto y suficientemente
-// único para uso interno (no es un correlativo fiscal).
-export function generarCodigoVenta() {
-  return `REC-${Date.now().toString(36).toUpperCase()}`;
-}
+// `ventas.codigo_venta` lo asigna la base: correlativo TX-000001…
+// (migración 20261002100000_ventas_codigo_correlativo.sql).
 
 // `ventas` no tiene columnas numéricas de "cantidad de créditos" ni
 // "días de membresía" (solo `monto` en soles) — ambas viajan embebidas

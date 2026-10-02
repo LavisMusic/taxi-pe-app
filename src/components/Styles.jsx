@@ -2403,6 +2403,37 @@ export default function Styles() {
         .tz-page-footer-admin-grid { grid-template-columns: repeat(2, 1fr); }
       }
 
+      /* ---- Historial de ventas (mismo diseño que el super admin de Caja) ---- */
+      .tz-sa-mes-nav { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 4px; }
+      .tz-plan-pagos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+      .tz-plan-pagos li {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 12px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid var(--border-soft);
+        font-size: 13px;
+      }
+      .tz-plan-pagos-hasta { color: var(--green); }
+      .tz-plan-pagos-nota { flex-basis: 100%; color: var(--text-dim); font-size: 12px; }
+      .tz-plan-pago-codigo { font-family: 'Orbitron', sans-serif; font-size: 12px; color: var(--cyan); }
+      .tz-plan-pago-anulado { opacity: 0.55; }
+      .tz-plan-pago-anulado > span:not(.tz-tag) { text-decoration: line-through; }
+      .tz-plan-pago-ver {
+        border: none;
+        background: none;
+        padding: 0;
+        color: var(--cyan);
+        text-decoration: underline;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 12px;
+      }
+      .tz-plan-pago-confirmar { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; color: var(--yellow); }
+
       /* ---------- MODAL ---------- */
       .tz-modal-backdrop {
         position: fixed;

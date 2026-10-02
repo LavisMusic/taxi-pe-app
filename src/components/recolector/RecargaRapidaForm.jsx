@@ -16,6 +16,12 @@ import { formatSoles } from "../../utils/format";
 import RegistroConductorModal from "./RegistroConductorModal";
 import ComprobanteScannerModal from "./ComprobanteScannerModal";
 
+const DURACIONES_MEMBRESIA = [
+  { id: "mensual", label: "Mensual" },
+  { id: "anual", label: "Anual" },
+  { id: "otros", label: "Otros" },
+];
+
 const MONTOS_RAPIDOS = [20, 50, 100, 200];
 
 const DESTINATARIO_CONDUCTOR = "conductor";
@@ -74,6 +80,7 @@ export default function RecargaRapidaForm({
   const [conductorId, setConductorId] = useState(lockedConductor?.id ?? "");
   const [clienteId, setClienteId] = useState("");
   const [tipoItem, setTipoItem] = useState(TIPO_ITEM_MEMBRESIA);
+  const [duracion, setDuracion] = useState("mensual");
   const [paqueteId, setPaqueteId] = useState("");
   const [metodoPago, setMetodoPago] = useState("");
   const [comprobante, setComprobante] = useState(null);
@@ -115,7 +122,23 @@ export default function RecargaRapidaForm({
   // el usuario de verdad aprieta "Registrar Recarga" con una elegida.
   const catalogoBase = esCliente ? paquetesClientes : paquetes;
   const paquetesReales = catalogoBase.filter((p) => p.tipo_item === tipoItem && p.activo !== false);
-  const paquetesDelTipo = paquetesReales.length > 0 ? paquetesReales : PAQUETES_DEMO[tipoItem];
+  const paquetesBase = paquetesReales.length > 0 ? paquetesReales : PAQUETES_DEMO[tipoItem];
+  // Filtro Mensual / Anual / Otros para las membresías (mismo detalle
+  // que la Recarga rápida del super admin de Caja). Acá la duración
+  // viene en días: hasta 31 = mensual, desde 360 = anual.
+  const duracionDe = (p) => {
+    const d = Number(p.dias_membresia) || 0;
+    if (d <= 31) return "mensual";
+    if (d >= 360) return "anual";
+    return "otros";
+  };
+  const duracionesConPaquetes =
+    tipoItem === TIPO_ITEM_MEMBRESIA
+      ? DURACIONES_MEMBRESIA.filter((d) => paquetesBase.some((p) => duracionDe(p) === d.id))
+      : [];
+  const duracionActiva = duracionesConPaquetes.some((d) => d.id === duracion) ? duracion : duracionesConPaquetes[0]?.id;
+  const paquetesDelTipo =
+    tipoItem === TIPO_ITEM_MEMBRESIA && duracionActiva ? paquetesBase.filter((p) => duracionDe(p) === duracionActiva) : paquetesBase;
   const usandoDemo = paquetesReales.length === 0;
   const paquete = paquetesDelTipo.find((p) => String(p.id) === String(paqueteId)) || null;
   const glowPaquetesActivo = esCliente ? glowPaquetesClientes : glowPaquetes;
@@ -450,6 +473,24 @@ export default function RecargaRapidaForm({
             {new Date(vencimientoActualStr).toLocaleDateString("es-PE")} — no se le puede vender otra hasta
             que esta termine.
           </p>
+        )}
+
+        {duracionesConPaquetes.length > 1 && (
+          <div className="tz-gasto-tipo-buttons" style={{ marginTop: 12 }}>
+            {duracionesConPaquetes.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                className={`tz-gasto-tipo-btn ${duracionActiva === d.id ? "tz-gasto-tipo-active" : ""}`}
+                onClick={() => {
+                  setDuracion(d.id);
+                  setPaqueteId("");
+                }}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
         )}
 
         <label className="tz-field-label" style={{ marginTop: 12 }}>

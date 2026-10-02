@@ -23,6 +23,7 @@ import {
   ESTADO_CUENTA_PENDIENTE,
   METODOS_PAGO,
   METODOS_CON_COMPROBANTE,
+  METODO_PAGO_EFECTIVO,
 } from "../lib/taxiEnums";
 import { buildTopRanking } from "../lib/ranking";
 import { useRankingRepartidores } from "../hooks/useRankingRepartidores";
@@ -49,10 +50,11 @@ import RecargaRapidaForm from "../components/recolector/RecargaRapidaForm";
 import RecargaRapidaRecolectorForm from "../components/admin/RecargaRapidaRecolectorForm";
 import logo from "../assets/logo.webp";
 
-// Opciones del dropdown "Pagos" del header: Yape/Plin/Otros abren
-// PagosMetodoModal (gauges Hoy/Histórico), Fiados reusa la Libreta ya
-// existente — Efectivo no tiene medidor propio en la versión vieja.
-const METODOS_PAGO_MENU = METODOS_PAGO.filter((m) => METODOS_CON_COMPROBANTE.includes(m.key));
+// Opciones del dropdown "Pagos" del header: Efectivo/Yape/Plin/Otros
+// abren PagosMetodoModal (medidores Hoy/Histórico + historial) — Efectivo
+// se cuenta aparte, como en las cajas de los negocios; Fiados reusa la
+// Libreta ya existente.
+const METODOS_PAGO_MENU = METODOS_PAGO.filter((m) => m.key === METODO_PAGO_EFECTIVO || METODOS_CON_COMPROBANTE.includes(m.key));
 
 // Ruta /admin — entra por RequireAdminMaster (código maestro en
 // /login-admin). Reemplaza al App.jsx viejo (caja registradora):
@@ -366,7 +368,7 @@ export default function AdminDashboardPage() {
             )}
 
             <section className="tz-stats">
-              <StatsSection metrics={metrics} />
+              <StatsSection metrics={metrics} totalGastosHoy={totalGastosHoy} />
               <UsuarioEstrellaChip ranking={ranking} />
             </section>
 

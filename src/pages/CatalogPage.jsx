@@ -8,7 +8,6 @@ import Styles from "../components/Styles";
 import CardDetail from "../components/CardDetail";
 import ComboIngredients from "../components/ComboIngredients";
 import ProductImage from "../components/ProductImage";
-import LogoEasterEgg from "../components/LogoEasterEgg";
 import { formatSoles } from "../utils/format";
 import logo from "../assets/logo.webp";
 
@@ -92,7 +91,7 @@ export default function CatalogPage() {
           </button>
 
           <div className="tz-header-center">
-            <LogoEasterEgg src={logo} alt="TONAZO!" className="tz-logo" />
+            <img src={logo} alt="TONAZO!" className="tz-logo" />
             <p className="tz-subtitle">Compra Ya</p>
           </div>
 
