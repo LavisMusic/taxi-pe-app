@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { History, Ban, AlertTriangle, X, ChevronLeft, ChevronRight, Search } from "lucide-react";
-import { formatSoles, formatDate } from "../../utils/format";
+import { formatSoles, formatDate, formatTime } from "../../utils/format";
 import { METODOS_PAGO, TIPO_ITEM_MEMBRESIA } from "../../lib/taxiEnums";
 
 // Historial de ventas — mismo diseño que el Historial de ventas del
@@ -91,6 +91,7 @@ export default function HistorialVentasModal({ ventas, conductores, usuarios, an
         <button className="tz-modal-close" onClick={onClose} aria-label="Cerrar">
           <X size={18} />
         </button>
+        <div className="tz-payment-modal">
         <h2>
           <History size={17} /> Historial de Ventas
         </h2>
@@ -149,7 +150,7 @@ export default function HistorialVentasModal({ ventas, conductores, usuarios, an
             {delMes.length === 0 ? "No hay ventas en este mes." : "Ninguna venta coincide con el filtro."}
           </p>
         ) : (
-          <ul className="tz-plan-pagos">
+          <div className="tz-cierre-list">
             {visibles.map((v) => {
               const conductor = conductoresById.get(v.conductor_id);
               const cliente = usuariosById.get(v.cliente_id);
@@ -158,26 +159,47 @@ export default function HistorialVentasModal({ ventas, conductores, usuarios, an
               const confirmando = confirmandoId === v.id;
               const esMembresia = v.tipo_item === TIPO_ITEM_MEMBRESIA;
               return (
-                <li key={v.id} className={v.anulado ? "tz-plan-pago-anulado" : ""}>
-                  <span className="tz-plan-pago-codigo">{v.codigo_venta || "—"}</span>
-                  <span>{v.created_at ? formatDate(v.created_at) : ""}</span>
-                  <strong>
-                    {esVentaCliente ? (cliente?.nombre ?? "Cliente eliminado") : (conductor?.nombre ?? "Conductor eliminado")}
-                  </strong>
-                  <span>
-                    {esVentaCliente ? "Cliente" : "Conductor"} · {esMembresia ? "Membresía" : "Créditos"} · {v.detalle} ·{" "}
-                    {formatSoles(v.monto)} · {labelMetodo(v.metodo_pago)}
-                  </span>
-                  <span className="tz-plan-pagos-nota">Recolector: {recolector?.nombre ?? "—"}</span>
+                <div key={v.id} className={`tz-receipt tz-receipt-compact ${v.anulado ? "tz-plan-pago-anulado" : ""}`}>
+                  <div className="tz-receipt-header">
+                    <span className="tz-receipt-title">{v.codigo_venta || "—"}</span>
+                    <span className="tz-receipt-date">
+                      {v.created_at ? `${formatDate(v.created_at)} · ${formatTime(v.created_at)}` : ""} · {labelMetodo(v.metodo_pago)}
+                    </span>
+                  </div>
+                  <div className="tz-receipt-divider" />
+                  <div className="tz-receipt-row">
+                    <span>
+                      <strong>
+                        {esVentaCliente ? (cliente?.nombre ?? "Cliente eliminado") : (conductor?.nombre ?? "Conductor eliminado")}
+                      </strong>{" "}
+                      · {esVentaCliente ? "Cliente" : "Conductor"}
+                    </span>
+                  </div>
+                  <div className="tz-receipt-row">
+                    <span>{v.detalle || (esMembresia ? "Membresía" : "Créditos")}</span>
+                    <strong>{formatSoles(v.monto)}</strong>
+                  </div>
+                  <div className="tz-receipt-row tz-plan-pagos-nota">
+                    <span>Recolector</span>
+                    <span>{recolector?.nombre ?? "Admin"}</span>
+                  </div>
+                  <div className="tz-receipt-divider" />
+                  <div className="tz-receipt-row tz-receipt-total">
+                    <span>Total</span>
+                    <strong>{formatSoles(v.monto)}</strong>
+                  </div>
                   {v.voucher_url && (
-                    <button type="button" className="tz-plan-pago-ver" onClick={() => setVer(v)}>
-                      Ver comprobante
+                    <button type="button" className="tz-comprobante-mini" onClick={() => setVer(v)} title="Ver comprobante">
+                      <img src={v.voucher_url} alt="Comprobante" loading="lazy" />
+                      <span>Comprobante adjunto · tocar para ampliar</span>
                     </button>
                   )}
                   {v.anulado ? (
-                    <span className="tz-tag tz-tag-danger">Anulada</span>
+                    <p className="tz-tag tz-tag-danger" style={{ marginTop: 10, textAlign: "center" }}>
+                      Anulada
+                    </p>
                   ) : !puedeAnular ? null : confirmando ? (
-                    <span className="tz-plan-pago-confirmar">
+                    <div className="tz-plan-pago-confirmar" style={{ marginTop: 10 }}>
                       ¿Anular? Se revierte el saldo.
                       <button
                         type="button"
@@ -190,23 +212,25 @@ export default function HistorialVentasModal({ ventas, conductores, usuarios, an
                       <button type="button" className="tz-cliente-action-btn" onClick={() => setConfirmandoId(null)}>
                         Cancelar
                       </button>
-                    </span>
+                    </div>
                   ) : (
-                    <button
-                      type="button"
-                      className="tz-vis-reject-btn"
-                      onClick={() => setConfirmandoId(v.id)}
-                      aria-label="Anular venta"
-                      title="Anular"
-                    >
-                      <Ban size={14} />
-                    </button>
+                    <div className="tz-cliente-actions" style={{ marginTop: 10 }}>
+                      <button
+                        type="button"
+                        className="tz-cliente-action-btn tz-cliente-action-deuda"
+                        style={{ flex: 1, justifyContent: "center" }}
+                        onClick={() => setConfirmandoId(v.id)}
+                      >
+                        <Ban size={13} /> Anular Venta
+                      </button>
+                    </div>
                   )}
-                </li>
+                </div>
               );
             })}
-          </ul>
+          </div>
         )}
+        </div>
       </div>
 
       {ver && (

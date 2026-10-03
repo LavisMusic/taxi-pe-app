@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, ChevronDown, Megaphone, MapPin, X, Loader2, Trash2 } from "lucide-react";
+import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, CreditCard, Megaphone, MapPin, X, Loader2, Trash2 } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useLocalidades } from "../hooks/useLocalidades";
 import { useVentas } from "../hooks/useVentas";
@@ -24,7 +24,9 @@ import {
   METODOS_PAGO,
   METODOS_CON_COMPROBANTE,
   METODO_PAGO_EFECTIVO,
+  METODO_PAGO_FIADO,
 } from "../lib/taxiEnums";
+import { formatSoles } from "../utils/format";
 import { buildTopRanking } from "../lib/ranking";
 import { useRankingRepartidores } from "../hooks/useRankingRepartidores";
 import Styles from "../components/Styles";
@@ -75,6 +77,14 @@ export default function AdminDashboardPage() {
     error: ventasError,
     refresh: refreshVentas,
   } = useVentas();
+  // Recaudado HOY por método, para el menú Pagos (como en las cajas).
+  const hoyPorMetodo = useMemo(() => {
+    const t = {};
+    ventasHoy.forEach((v) => {
+      t[v.metodo_pago] = (t[v.metodo_pago] || 0) + Number(v.monto || 0);
+    });
+    return t;
+  }, [ventasHoy]);
   const {
     usuarios,
     loading: usuariosLoading,
@@ -302,42 +312,51 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="tz-header-side tz-header-side-right">
-            <div className="tz-global-search-wrap" style={{ width: "auto", flex: "0 0 auto" }}>
+            {/* Menú Pagos: igual que en las cajas de Caja Tonazo — cada
+               método con lo recaudado HOY al lado. */}
+            <div className="tz-header-payment-wrap">
               <button
                 className="tz-header-btn"
                 onClick={() => setPagosMenuOpen((prev) => !prev)}
-                aria-label="Pagos"
+                aria-label="Métodos de pago"
               >
                 <Wallet size={19} />
                 <span className="tz-header-btn-label">Pagos</span>
-                <ChevronDown size={14} />
               </button>
               {pagosMenuOpen && (
                 <>
                   <div className="tz-dropdown-backdrop" onClick={() => setPagosMenuOpen(false)} />
-                  <div className="tz-global-search-dropdown" style={{ left: "auto", right: 0 }}>
+                  <div className="tz-payment-menu">
                     {METODOS_PAGO_MENU.map((m) => (
                       <button
                         key={m.key}
                         type="button"
-                        className="tz-global-search-item"
+                        className="tz-payment-menu-item"
                         onClick={() => {
                           setPagosMetodoAbierto(m.key);
                           setPagosMenuOpen(false);
                         }}
                       >
+                        <CreditCard size={14} />
                         {m.label}
+                        {hoyPorMetodo[m.key] > 0 && (
+                          <span className="tz-payment-menu-amount">{formatSoles(hoyPorMetodo[m.key])}</span>
+                        )}
                       </button>
                     ))}
                     <button
                       type="button"
-                      className="tz-global-search-item"
+                      className="tz-payment-menu-item"
                       onClick={() => {
                         setLibretaOpen(true);
                         setPagosMenuOpen(false);
                       }}
                     >
+                      <BookOpen size={14} />
                       Fiados
+                      {hoyPorMetodo[METODO_PAGO_FIADO] > 0 && (
+                        <span className="tz-payment-menu-amount">{formatSoles(hoyPorMetodo[METODO_PAGO_FIADO])}</span>
+                      )}
                     </button>
                   </div>
                 </>
@@ -508,6 +527,7 @@ export default function AdminDashboardPage() {
           metodo={pagosMetodoAbierto}
           ventasVigentes={ventasVigentes}
           conductores={conductores}
+          usuarios={usuarios}
           onClose={() => setPagosMetodoAbierto(null)}
         />
       )}

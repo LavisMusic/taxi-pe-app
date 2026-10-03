@@ -244,8 +244,9 @@ export default function GestorRecargaConductorModal({
                     <strong>{formatSoles(v.monto)}</strong>
                   </div>
                   {v.voucher_url && (
-                    <a className="tz-plan-pago-ver" href={v.voucher_url} target="_blank" rel="noreferrer">
-                      Ver comprobante
+                    <a className="tz-comprobante-mini" href={v.voucher_url} target="_blank" rel="noreferrer">
+                      <img src={v.voucher_url} alt="Comprobante" loading="lazy" />
+                      <span>Comprobante adjunto · tocar para ampliar</span>
                     </a>
                   )}
                   {v.anulado ? (

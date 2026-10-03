@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Wallet, Plus, Save, Trash2, X, Loader2, Download } from "lucide-react";
+import { TrendingDown, Plus, Save, Trash2, X, Loader2, Download, ChevronDown, ChevronUp } from "lucide-react";
 import { formatSoles, formatDate, formatTime } from "../../utils/format";
 import { downloadXLSX } from "../../lib/xlsxExport";
 import { TIPO_ITEM_MEMBRESIA } from "../../lib/taxiEnums";
@@ -11,7 +11,9 @@ import { TIPO_ITEM_MEMBRESIA } from "../../lib/taxiEnums";
 // este modal en la caja registradora vieja (Historial de Gastos /
 // Reporte de Precios / Historial de Ventas) — "Reporte de Precios" no
 // tiene sentido acá (TaxiP no vende productos con stock), así que
-// quedan solo los otros 2.
+// quedan solo los otros 2. Mismo diseño que el gestor de Gastos de las
+// cajas de Caja Tonazo: medidores, "Registrar gasto" e historial en filas
+// desplegables (con Eliminar adentro).
 export default function GastosOperativosModal({
   gastos,
   totalGastosHoy,
@@ -27,6 +29,7 @@ export default function GastosOperativosModal({
   const [monto, setMonto] = useState("");
   const [saving, setSaving] = useState(false);
   const [borrandoId, setBorrandoId] = useState(null);
+  const [abiertoId, setAbiertoId] = useState(null);
   const [error, setError] = useState("");
 
   const resetForm = () => {
@@ -94,13 +97,13 @@ export default function GastosOperativosModal({
 
   return (
     <div className="tz-modal-backdrop">
-      <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="tz-modal tz-modal-wide" onClick={(e) => e.stopPropagation()}>
         <button className="tz-modal-close" onClick={onClose} aria-label="Cerrar">
           <X size={18} />
         </button>
         <div className="tz-payment-modal">
           <h2>
-            <Wallet size={17} /> Gastos Operativos
+            <TrendingDown size={17} /> Gastos
           </h2>
           <p className="tz-stock-editor-sub">
             Salidas de dinero del negocio (servidores, etc.) — no es inventario ni stock.
@@ -122,7 +125,7 @@ export default function GastosOperativosModal({
               <Plus size={16} /> Registrar gasto
             </button>
           ) : (
-            <div className="tz-add-entry">
+            <div className="tz-add-entry tz-gasto-form">
               <label className="tz-field-label">Concepto</label>
               <input
                 type="text"
@@ -153,43 +156,51 @@ export default function GastosOperativosModal({
             </div>
           )}
 
-          <div className="tz-export-buttons" style={{ marginTop: 10 }}>
-            <button type="button" className="tz-csv-btn" onClick={descargarHistorialGastosXLSX}>
-              <Download size={13} /> Descargar Historial Gastos
-            </button>
-            <button type="button" className="tz-csv-btn" onClick={descargarHistorialVentasXLSX}>
-              <Download size={13} /> Descargar Historial Ventas
-            </button>
-          </div>
-
           {gastos.length === 0 ? (
             <p className="tz-method-history-empty">No hay gastos registrados todavía.</p>
           ) : (
             <div className="tz-method-history">
-              <span className="tz-method-history-label">Historial</span>
-              <ul className="tz-mov-list">
-                {gastos.map((g) => (
-                  <li key={g.id} className="tz-mov-row tz-mov-deuda">
-                    <span className="tz-mov-row-desc">
-                      {g.concepto}
-                      <span className="tz-mov-row-date">{formatDate(g.created_at)}</span>
-                    </span>
-                    <span style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                      <strong>{formatSoles(g.monto)}</strong>
-                      <button
-                        type="button"
-                        className="tz-vis-reject-btn"
-                        style={{ width: 26, height: 26 }}
-                        disabled={borrandoId === g.id}
-                        onClick={() => handleEliminar(g.id)}
-                        aria-label="Eliminar gasto"
-                        title="Eliminar"
-                      >
-                        <Trash2 size={13} />
+              <span className="tz-method-history-label">Historial de gastos</span>
+              <div className="tz-export-buttons">
+                <button type="button" className="tz-csv-btn" onClick={descargarHistorialGastosXLSX}>
+                  <Download size={13} /> Historial de Gastos
+                </button>
+                <button type="button" className="tz-csv-btn" onClick={descargarHistorialVentasXLSX}>
+                  <Download size={13} /> Historial de Ventas
+                </button>
+              </div>
+              <ul className="tz-history-rows">
+                {gastos.map((g) => {
+                  const abierto = abiertoId === g.id;
+                  return (
+                    <li key={g.id} className="tz-history-row">
+                      <button className="tz-history-row-head" onClick={() => setAbiertoId(abierto ? null : g.id)}>
+                        <span className="tz-history-row-method">{g.concepto}</span>
+                        <span className="tz-history-row-amount tz-cliente-debe">{formatSoles(g.monto)}</span>
+                        {abierto ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                       </button>
-                    </span>
-                  </li>
-                ))}
+                      {abierto && (
+                        <div className="tz-history-row-detail">
+                          <span>
+                            <strong>Fecha:</strong> {formatDate(g.created_at)} · {formatTime(g.created_at)}
+                          </span>
+                          <span>
+                            <strong>Concepto:</strong> {g.concepto}
+                          </span>
+                          <button
+                            type="button"
+                            className="tz-cliente-action-btn tz-cliente-action-deuda"
+                            style={{ alignSelf: "flex-start", marginTop: 4 }}
+                            disabled={borrandoId === g.id}
+                            onClick={() => handleEliminar(g.id)}
+                          >
+                            {borrandoId === g.id ? <Loader2 size={13} className="tz-spin" /> : <Trash2 size={13} />} Eliminar gasto
+                          </button>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}

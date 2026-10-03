@@ -2435,6 +2435,25 @@ export default function Styles() {
       .tz-plan-pago-confirmar { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; color: var(--yellow); }
       .tz-receipt.tz-plan-pago-anulado .tz-receipt-row { text-decoration: line-through; }
       .tz-receipt .tz-plan-pago-ver { margin-top: 8px; }
+      /* Visor chico del comprobante adjunto (historiales). */
+      .tz-comprobante-mini {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        margin-top: 10px;
+        padding: 6px;
+        border-radius: 10px;
+        border: 1px dashed rgba(43,232,255,0.35);
+        background: rgba(43,232,255,0.05);
+        color: var(--cyan);
+        font-family: inherit;
+        font-size: 12px;
+        text-align: left;
+        cursor: pointer;
+      }
+      .tz-comprobante-mini img { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; flex-shrink: 0; background: #fff; }
+      .tz-comprobante-mini:hover { background: rgba(43,232,255,0.12); }
 
       /* ---- Gestor de recarga del conductor (⚡) — mismo gestor que el
          del super admin de Caja: apartados + Pagos estilo "Mis ventas" ---- */
