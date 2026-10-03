@@ -2476,6 +2476,31 @@ export default function Styles() {
         background: color-mix(in srgb, var(--tz-plan-color) 12%, transparent);
         white-space: nowrap;
       }
+      /* Recarga rápida del gestor (copiado tal cual del gestor del super
+         admin de Caja, para que se vean idénticos). */
+      .tz-plan-apartados { margin-bottom: 14px; }
+      .tz-plan-total { font-size: 13px; color: var(--text-dim); }
+      .tz-plan-total strong { color: var(--green); font-size: 15px; }
+      .tz-recarga-bloqueada { line-height: 1.3; text-align: center; }
+      .tz-recarga-comprobante-botones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .tz-recarga-vuelto-rapidos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+      .tz-recarga-vuelto-rapidos .tz-gasto-tipo-btn { flex: 0 0 auto; padding: 6px 10px; font-size: 12px; }
+      .tz-recarga-vuelto-resultado { margin: 8px 0 0; font-family: 'Orbitron', sans-serif; font-size: 18px; color: var(--green); }
+      .tz-recarga-vuelto-falta { color: var(--danger); }
+      .tz-renovar-comprobante { display: block; max-width: 100%; max-height: 260px; margin: 10px auto 0; border-radius: 12px; border: 1px solid var(--border-soft); }
+      .tz-renovar-estado { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 10px 0; }
+      .tz-renovar-estado h3 { margin: 0; color: var(--yellow); }
+      .tz-renovar-estado-icono {
+        width: 58px;
+        height: 58px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--yellow);
+        background: rgba(215,255,59,0.1);
+        box-shadow: 0 0 22px rgba(215,255,59,0.35);
+      }
       .tz-gestor-recarga-datos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
       .tz-gestor-recarga-dato {
         display: flex;
