@@ -283,6 +283,10 @@ export default function Styles() {
            largo, porque text-shadow no tiene ancho propio. */
         text-shadow: 0 0 8px rgba(215,255,59,0.85), 0 0 18px rgba(215,255,59,0.55);
       }
+      /* Pasajero y conductor: el texto bajo el logo sube un poco para
+         centrarlo a ojo (--tz-sub-ajuste; negativo = más arriba). Solo se
+         mueve el texto ("translate"), nada más cambia de lugar. */
+      .tz-subtitle-usuario { --tz-sub-ajuste: -20px; translate: 0 var(--tz-sub-ajuste); }
 
       /* Botones del header (Fiados / Métodos de pago). En móvil (base,
          mobile-first) solo se ve el ícono, para ahorrar espacio.

@@ -346,7 +346,7 @@ export default function HomePage() {
 
           <div className="tz-header-center">
             <img src={logo} alt="TaxiP" className="tz-logo" />
-            <p className="tz-subtitle">Tu taxi, al toque</p>
+            <p className="tz-subtitle tz-subtitle-usuario">Tu taxi, al toque</p>
           </div>
 
           <div className="tz-header-side tz-header-side-right">
