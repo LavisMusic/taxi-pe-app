@@ -286,7 +286,7 @@ export default function Styles() {
       /* Pasajero y conductor: el texto bajo el logo sube un poco para
          centrarlo a ojo (--tz-sub-ajuste; negativo = más arriba). Solo se
          mueve el texto ("translate"), nada más cambia de lugar. */
-      .tz-subtitle-usuario { --tz-sub-ajuste: -20px; translate: 0 var(--tz-sub-ajuste); }
+      .tz-subtitle-usuario { --tz-sub-ajuste: -23px; translate: 0 var(--tz-sub-ajuste); }
 
       /* Botones del header (Fiados / Métodos de pago). En móvil (base,
          mobile-first) solo se ve el ícono, para ahorrar espacio.
