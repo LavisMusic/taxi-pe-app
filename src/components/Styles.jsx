@@ -287,6 +287,45 @@ export default function Styles() {
          centrarlo a ojo (--tz-sub-ajuste; negativo = más arriba). Solo se
          mueve el texto ("translate"), nada más cambia de lugar. */
       .tz-subtitle-usuario { --tz-sub-ajuste: -23px; translate: 0 var(--tz-sub-ajuste); }
+      /* Texto que se escribe solo (TextoMaquina, igual que en la tienda
+         de Caja): la frase de siempre y después las descripciones del
+         Admin. Flota centrado sobre un espacio de alto fijo (una línea):
+         si un mensaje pasa a 2 líneas, crece sobre ese punto y el borde
+         de la cabecera no se mueve. Ancho propio (no el del logo): hasta
+         230 px o el 60% de la pantalla, el espacio libre entre las
+         columnas de botones. */
+      .tz-subtitle-maquina { min-height: 1.6em; white-space: pre; }
+      .tz-subtitle-cursor {
+        display: inline-block;
+        width: 2px;
+        height: 1em;
+        margin-left: 2px;
+        vertical-align: -0.12em;
+        background: currentColor;
+        animation: tz-subtitle-parpadeo 0.9s steps(1) infinite;
+      }
+      @keyframes tz-subtitle-parpadeo { 50% { opacity: 0; } }
+      .tz-subtitle-slot { position: relative; width: 100%; height: 24px; flex: 0 0 auto; }
+      .tz-subtitle-slot > .tz-subtitle-maquina {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: max-content;
+        max-width: min(230px, 60vw);
+        margin: 0;
+        box-sizing: border-box;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      @media (max-width: 767px) {
+        .tz-subtitle-slot > .tz-subtitle-maquina { font-size: 10px; letter-spacing: 0.05em; }
+      }
 
       /* Botones del header (Fiados / Métodos de pago). En móvil (base,
          mobile-first) solo se ve el ícono, para ahorrar espacio.

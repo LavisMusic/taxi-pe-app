@@ -44,7 +44,11 @@ function marcarComoVisto(anuncio) {
 // todavía le toque aparecer según su frecuencia — si el primero ya se
 // agotó (ej. 'una_vez_total' ya visto), prueba con el siguiente en vez
 // de no mostrar nada.
-export function useAnuncioActivo() {
+// `publico`: "pasajeros" (Home) o "conductores" (pantalla del conductor);
+// también entran los anuncios para "todos". Sin la migración
+// 20261007100000 (sin columna "publico") los anuncios son solo de
+// pasajeros, como antes.
+export function useAnuncioActivo(publico = "pasajeros") {
   const [anuncio, setAnuncio] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -56,13 +60,22 @@ export function useAnuncioActivo() {
         // Vigencia en la propia query (menos filas que traer): sin
         // fecha_inicio/fecha_fin en la fila, esa cota no aplica —
         // `.or()` con "is.null" cubre ese caso por cada extremo.
-        const { data, error } = await supabase
-          .from("anuncios")
-          .select("id, titulo, descripcion, imagen_url, video_url, fecha_inicio, fecha_fin, frecuencia_mostrar, orden")
-          .eq("activo", true)
-          .or(`fecha_inicio.is.null,fecha_inicio.lte.${ahora}`)
-          .or(`fecha_fin.is.null,fecha_fin.gte.${ahora}`)
-          .order("orden", { ascending: true });
+        const consultar = (conPublico) => {
+          let q = supabase
+            .from("anuncios")
+            .select("id, titulo, descripcion, imagen_url, video_url, fecha_inicio, fecha_fin, frecuencia_mostrar, orden")
+            .eq("activo", true)
+            .or(`fecha_inicio.is.null,fecha_inicio.lte.${ahora}`)
+            .or(`fecha_fin.is.null,fecha_fin.gte.${ahora}`)
+            .order("orden", { ascending: true });
+          if (conPublico) q = q.in("publico", [publico, "todos"]);
+          return q;
+        };
+        let { data, error } = await consultar(true);
+        if (error) {
+          // Sin la columna "publico": solo los pasajeros ven anuncios.
+          ({ data, error } = publico === "pasajeros" ? await consultar(false) : { data: [], error: null });
+        }
 
         if (cancelado) return;
         if (error || !data) {
@@ -78,7 +91,7 @@ export function useAnuncioActivo() {
     return () => {
       cancelado = true;
     };
-  }, []);
+  }, [publico]);
 
   const cerrar = () => {
     if (anuncio) marcarComoVisto(anuncio);

@@ -26,6 +26,8 @@ import AccesoConductorModal from "../components/AccesoConductorModal";
 import AccesoRecolectorModal from "../components/AccesoRecolectorModal";
 import ChatModal from "../components/ChatModal";
 import AnuncioPopupModal from "../components/AnuncioPopupModal";
+import TextoMaquina from "../components/TextoMaquina";
+import { useDescripcionesPublico } from "../hooks/useDescripciones";
 import RadarGlobal from "../components/RadarGlobal";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import logo from "../assets/logo.webp";
@@ -64,7 +66,10 @@ export default function HomePage() {
   // vigencia (fecha_inicio/fecha_fin) + frecuencia (localStorage). Se
   // muestra a CUALQUIER visitante de la Home, con o sin sesión de
   // Pasajero — es publicidad, no contenido privado.
-  const { anuncio, cerrar: cerrarAnuncio } = useAnuncioActivo();
+  const { anuncio, cerrar: cerrarAnuncio } = useAnuncioActivo("pasajeros");
+  // Texto bajo el logo: "Tu taxi, al toque" y después las descripciones
+  // del Admin para pasajeros.
+  const descripcionesPasajero = useDescripcionesPublico("pasajeros");
   const { localidades } = useLocalidades();
   // Bienvenida de cuenta nueva (Fase Neón) — misma idea que
   // ConductorPage.jsx: una sola vez por usuario, al entrar por primera
@@ -346,7 +351,9 @@ export default function HomePage() {
 
           <div className="tz-header-center">
             <img src={logo} alt="TaxiP" className="tz-logo" />
-            <p className="tz-subtitle tz-subtitle-usuario">Tu taxi, al toque</p>
+            <div className="tz-subtitle-slot">
+              <TextoMaquina mensajes={["Tu taxi, al toque", ...descripcionesPasajero]} className="tz-subtitle-usuario" />
+            </div>
           </div>
 
           <div className="tz-header-side tz-header-side-right">

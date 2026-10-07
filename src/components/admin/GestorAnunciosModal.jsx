@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Megaphone, Plus, Save, Pencil, Trash2, X, Loader2, Upload, Image as ImageIcon, Video, Link2 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { formatDate } from "../../utils/format";
-import { FRECUENCIAS_ANUNCIO, FRECUENCIA_UNA_VEZ_DIA, FRECUENCIA_UNA_VEZ_TOTAL } from "../../lib/taxiEnums";
+import { FRECUENCIAS_ANUNCIO, FRECUENCIA_UNA_VEZ_DIA, FRECUENCIA_UNA_VEZ_TOTAL, PUBLICOS, PUBLICO_PASAJEROS, PUBLICO_TODOS, etiquetaPublico } from "../../lib/taxiEnums";
 import { toYoutubeEmbedUrl } from "../../lib/youtube";
 
 // input datetime-local necesita "YYYY-MM-DDTHH:mm" en hora LOCAL — ni
@@ -83,6 +83,7 @@ function AnuncioForm({ initial, onGuardar, onCancelar, saving }) {
   const [frecuencia, setFrecuencia] = useState(
     initial?.frecuencia_mostrar === FRECUENCIA_UNA_VEZ_DIA ? FRECUENCIA_UNA_VEZ_DIA : FRECUENCIA_UNA_VEZ_TOTAL
   );
+  const [publico, setPublico] = useState(initial?.publico ?? PUBLICO_PASAJEROS);
   const [esVertical, setEsVertical] = useState(false);
   const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState("");
@@ -180,6 +181,7 @@ function AnuncioForm({ initial, onGuardar, onCancelar, saving }) {
       fecha_inicio: usaVigencia && fechaInicio ? new Date(fechaInicio).toISOString() : null,
       fecha_fin: usaVigencia && fechaFin ? new Date(fechaFin).toISOString() : null,
       frecuencia_mostrar: frecuencia,
+      publico,
     });
   };
 
@@ -263,6 +265,20 @@ function AnuncioForm({ initial, onGuardar, onCancelar, saving }) {
           />
         </>
       )}
+
+      <label className="tz-field-label">Mostrar a</label>
+      <div className="tz-gasto-tipo-buttons">
+        {PUBLICOS.map((p) => (
+          <button
+            key={p.value}
+            type="button"
+            className={`tz-gasto-tipo-btn ${publico === p.value ? "tz-gasto-tipo-active" : ""}`}
+            onClick={() => setPublico(p.value)}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
 
       <label className="tz-field-label">Frecuencia</label>
       <select className="tz-text-input" value={frecuencia} onChange={(e) => setFrecuencia(e.target.value)}>
@@ -356,7 +372,7 @@ function AnuncioRow({ anuncio, onActualizar, onEliminar }) {
           <span style={{ minWidth: 0 }}>
             <strong style={{ color: "var(--text)" }}>{anuncio.titulo || "(sin título — solo multimedia)"}</strong>
             <p style={{ margin: "2px 0", color: "var(--text-dim)", fontSize: 12 }}>
-              {frecuenciaLabel}
+              {etiquetaPublico(anuncio.publico)} · {frecuenciaLabel}
               {anuncio.frecuencia_mostrar === FRECUENCIA_UNA_VEZ_DIA && (
                 <>
                   {" "}
@@ -379,13 +395,22 @@ function AnuncioRow({ anuncio, onActualizar, onEliminar }) {
   );
 }
 
-// "Gestor de Anuncios" — botón nuevo del footer del Admin. CRUD de
-// campañas de marketing (pop-up que ve el público en la Home, ver
-// AnuncioPopupModal.jsx / useAnuncioActivo.js).
+// "Gestor de Anuncios" — botón del footer del Admin. CRUD de campañas de
+// marketing (pop-up para pasajeros en la Home, para conductores en su
+// pantalla, o para ambos — ver AnuncioPopupModal.jsx /
+// useAnuncioActivo.js). Pestañas para filtrar por público.
+const FILTROS_ANUNCIO = [{ value: "todos-los", label: "Todos" }, ...PUBLICOS.filter((p) => p.value !== PUBLICO_TODOS)];
 export default function GestorAnunciosModal({ anuncios, loading, error, crearAnuncio, actualizarAnuncio, eliminarAnuncio, onClose }) {
   const [addOpen, setAddOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [filtro, setFiltro] = useState("todos-los");
+  // "Pasajeros" muestra los de pasajeros y los de ambos (lo que de verdad
+  // ve un pasajero); igual "Conductores".
+  const visibles = anuncios.filter((a) => {
+    const p = a.publico || PUBLICO_PASAJEROS;
+    return filtro === "todos-los" || p === filtro || p === PUBLICO_TODOS;
+  });
 
   const crear = async (patch) => {
     setSaving(true);
@@ -410,7 +435,7 @@ export default function GestorAnunciosModal({ anuncios, loading, error, crearAnu
             <Megaphone size={17} /> Gestor de Anuncios
           </h2>
           <p className="tz-stock-editor-sub">
-            Pop-up de marketing que ven los visitantes de la Home pública, con su propia vigencia y frecuencia.
+            Pop-up de marketing para pasajeros (Home), conductores (su pantalla) o ambos, con su propia vigencia y frecuencia.
           </p>
 
           {!addOpen ? (
@@ -424,6 +449,19 @@ export default function GestorAnunciosModal({ anuncios, loading, error, crearAnu
             </>
           )}
 
+          <div className="tz-gasto-tipo-buttons" style={{ marginTop: 12 }}>
+            {FILTROS_ANUNCIO.map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                className={`tz-gasto-tipo-btn ${filtro === f.value ? "tz-gasto-tipo-active" : ""}`}
+                onClick={() => setFiltro(f.value)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
           {loading ? (
             <div className="tz-loading" style={{ minHeight: 100 }}>
               <Loader2 className="tz-spin" size={22} />
@@ -431,11 +469,11 @@ export default function GestorAnunciosModal({ anuncios, loading, error, crearAnu
             </div>
           ) : error ? (
             <p className="tz-error">{error}</p>
-          ) : anuncios.length === 0 ? (
-            <p className="tz-method-history-empty">No hay anuncios creados todavía.</p>
+          ) : visibles.length === 0 ? (
+            <p className="tz-method-history-empty">{anuncios.length === 0 ? "No hay anuncios creados todavía." : "No hay anuncios para este público."}</p>
           ) : (
             <ul className="tz-history-rows">
-              {anuncios.map((a) => (
+              {visibles.map((a) => (
                 <AnuncioRow key={a.id} anuncio={a} onActualizar={actualizarAnuncio} onEliminar={eliminarAnuncio} />
               ))}
             </ul>

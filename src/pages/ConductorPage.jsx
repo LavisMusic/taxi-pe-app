@@ -29,6 +29,10 @@ import VerificarConductorForm from "../components/VerificarConductorForm";
 import EntregasRepartidorPanel from "../components/repartidor/EntregasRepartidorPanel";
 import logo from "../assets/logo.webp";
 import BotonSoporte from "../components/BotonSoporte";
+import TextoMaquina from "../components/TextoMaquina";
+import AnuncioPopupModal from "../components/AnuncioPopupModal";
+import { useDescripcionesPublico } from "../hooks/useDescripciones";
+import { useAnuncioActivo } from "../hooks/useAnuncioActivo";
 
 // Ruta /conductor — entra por RequireUsuarioRol rol="conductor".
 // Mobile-first a propósito: una sola columna angosta (max 420px,
@@ -39,6 +43,10 @@ export default function ConductorPage() {
   const { conductor, loading, error, setEstado, actualizar, refresh: refrescarConductor } = useConductorSesion(usuario);
   const [mostrandoVerificacion, setMostrandoVerificacion] = useState(false);
   const { unreadCount, alertaSenas, descartarAlertaSenas, pasajerosEnCarrera } = useHilosChatConductor(conductor?.id);
+  // Texto bajo el logo: el nombre y después las descripciones del Admin
+  // para conductores; y los anuncios para conductores (o para ambos).
+  const descripcionesConductor = useDescripcionesPublico("conductores");
+  const { anuncio, cerrar: cerrarAnuncio } = useAnuncioActivo("conductores");
   // Panel de Categorías e Íconos: la propia categoría del conductor —
   // el mismo ícono que ya se ve en RadarGlobal.jsx ahora también en el
   // mapa interno de SU bandeja de chats (ConductorChatInboxModal.jsx).
@@ -261,7 +269,12 @@ export default function ConductorPage() {
           )}
           <div className="tz-header-center">
             <img src={logo} alt="TaxiP" className="tz-logo" />
-            <p className="tz-subtitle tz-subtitle-usuario">{conductor?.nombre ?? usuario?.nombre ?? "Conductor"}</p>
+            <div className="tz-subtitle-slot">
+              <TextoMaquina
+                mensajes={[conductor?.nombre ?? usuario?.nombre ?? "Conductor", ...descripcionesConductor]}
+                className="tz-subtitle-usuario"
+              />
+            </div>
           </div>
           <div className="tz-header-side tz-header-side-right">
             <BotonSoporte />
@@ -541,6 +554,8 @@ export default function ConductorPage() {
           </div>
         </div>
       )}
+
+      {anuncio && !mostrarBienvenida && <AnuncioPopupModal anuncio={anuncio} onClose={cerrarAnuncio} />}
     </div>
   );
 }

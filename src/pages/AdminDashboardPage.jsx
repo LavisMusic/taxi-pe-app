@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, CreditCard, Megaphone, MapPin, X, Loader2, Trash2 } from "lucide-react";
+import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, CreditCard, Megaphone, MapPin, X, Loader2, Trash2, MessageSquareText } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useLocalidades } from "../hooks/useLocalidades";
 import { useVentas } from "../hooks/useVentas";
@@ -18,6 +18,7 @@ import { usePaquetesClientes } from "../hooks/usePaquetesClientes";
 import { useRecargasRecolector } from "../hooks/useRecargasRecolector";
 import { useCierresCaja } from "../hooks/useCierresCaja";
 import { useAnuncios } from "../hooks/useAnuncios";
+import { useDescripciones } from "../hooks/useDescripciones";
 import {
   ESTADO_CONDUCTOR_RECHAZADO,
   ESTADO_CUENTA_PENDIENTE,
@@ -42,6 +43,7 @@ import HistorialVentasModal from "../components/admin/HistorialVentasModal";
 import CierreCajaModal from "../components/admin/CierreCajaModal";
 import ConfigurarMembresiasModal from "../components/admin/ConfigurarMembresiasModal";
 import GestorAnunciosModal from "../components/admin/GestorAnunciosModal";
+import GestorDescripcionesModal from "../components/admin/GestorDescripcionesModal";
 import AdminLocalidadesModal from "../components/admin/AdminLocalidadesModal";
 import UsuariosModal from "../components/admin/UsuariosModal";
 import CategoriasModal from "../components/admin/CategoriasModal";
@@ -230,6 +232,8 @@ export default function AdminDashboardPage() {
   const [usuariosOpen, setUsuariosOpen] = useState(false);
   const [categoriasOpen, setCategoriasOpen] = useState(false);
   const [anunciosOpen, setAnunciosOpen] = useState(false);
+  const [descripcionesOpen, setDescripcionesOpen] = useState(false);
+  const gestorDescripciones = useDescripciones();
   const [localidadesOpen, setLocalidadesOpen] = useState(false);
   const [limpiarChatsOpen, setLimpiarChatsOpen] = useState(false);
   const {
@@ -446,6 +450,10 @@ export default function AdminDashboardPage() {
           <Megaphone size={18} />
           Anuncios
         </button>
+        <button className="tz-footer-btn tz-footer-btn-catalogo" onClick={() => setDescripcionesOpen(true)}>
+          <MessageSquareText size={18} />
+          Descripciones
+        </button>
         <button className="tz-footer-btn tz-footer-btn-localidades" onClick={() => setLocalidadesOpen(true)}>
           <MapPin size={18} />
           Localidades
@@ -630,6 +638,8 @@ export default function AdminDashboardPage() {
           onClose={() => setAnunciosOpen(false)}
         />
       )}
+
+      {descripcionesOpen && <GestorDescripcionesModal {...gestorDescripciones} onClose={() => setDescripcionesOpen(false)} />}
 
       {localidadesOpen && (
         <AdminLocalidadesModal
