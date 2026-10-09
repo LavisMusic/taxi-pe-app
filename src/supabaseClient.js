@@ -25,6 +25,20 @@ export function setAuthPersistence(remember) {
   rememberMe = remember;
 }
 
+// Mueve la sesión ya guardada al storage que corresponde (la sesión de
+// Taxi-PE se abre antes de saber si el usuario marcó "Mantener sesión").
+export function moverSesionGuardada(remember) {
+  rememberMe = remember;
+  const desde = remember ? window.sessionStorage : window.localStorage;
+  const hacia = remember ? window.localStorage : window.sessionStorage;
+  for (const key of Object.keys(desde)) {
+    if (/^sb-.+-auth-token/.test(key)) {
+      hacia.setItem(key, desde.getItem(key));
+      desde.removeItem(key);
+    }
+  }
+}
+
 const dynamicStorage = {
   getItem: (key) => {
     return window.localStorage.getItem(key) ?? window.sessionStorage.getItem(key);

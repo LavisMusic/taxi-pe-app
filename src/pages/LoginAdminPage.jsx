@@ -6,6 +6,7 @@ import { useAvisoTop } from "../hooks/useAvisoTop";
 import AvisoTop from "../components/AvisoTop";
 import { supabase } from "../supabaseClient";
 import { MENSAJE_BLOQUEADO } from "../lib/pinAuth";
+import { abrirSesion } from "../lib/sesionTaxi";
 import Styles from "../components/Styles";
 import logo from "../assets/logo.webp";
 
@@ -61,6 +62,7 @@ export default function LoginAdminPage() {
       return;
     }
 
+    await abrirSesion(data.ticket);
     mostrar("✓ Sesión iniciada correctamente", "exito");
     setTimeout(() => {
       loginAdminMaster(data.token, rememberMe);

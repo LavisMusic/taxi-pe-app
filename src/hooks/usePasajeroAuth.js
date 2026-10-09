@@ -1,10 +1,9 @@
 import { useCallback, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { loginConPin, crearPin as crearPinBase, MENSAJE_BLOQUEADO } from "../lib/pinAuth";
+import { loginConPin, crearPin as crearPinBase, registrarTemporal as registrarTemporalBase, MENSAJE_BLOQUEADO } from "../lib/pinAuth";
 import { mirrorCuentaACaja } from "../lib/mirrorCaja";
 import {
   ESTADO_VERIFICACION_PERMANENTE,
-  ESTADO_VERIFICACION_TEMPORAL,
   fechaExpiracionCuentaTemporal,
 } from "../lib/taxiEnums";
 
@@ -39,25 +38,29 @@ export function usePasajeroAuth() {
       return { error: new Error("duplicado"), message: "Ya existe una cuenta con ese usuario o teléfono." };
     }
 
-    const { data, error: insertError } = await supabase
-      .from("usuarios")
-      .insert({
-        nombre_usuario: nombreUsuario,
-        telefono,
-        pin: null,
-        dni: null,
+    // La cuenta la crea la base (taxi_registrar_temporal), que además
+    // devuelve el ticket de la sesión.
+    let resultado;
+    try {
+      resultado = await registrarTemporalBase({
         rol: "pasajero",
-        estado_verificacion: ESTADO_VERIFICACION_TEMPORAL,
-        expira_en: fechaExpiracionCuentaTemporal(),
-      })
-      .select()
-      .single();
+        telefono,
+        nombreUsuario,
+        expiraEn: fechaExpiracionCuentaTemporal(),
+      });
+    } catch (rpcError) {
+      setLoading(false);
+      return { error: rpcError, message: "No se pudo crear tu cuenta. Intenta de nuevo." };
+    }
 
     setLoading(false);
-    if (insertError) {
-      return { error: insertError, message: "No se pudo crear tu cuenta. Intenta de nuevo." };
+    if (resultado?.estado === "duplicado") {
+      return { error: new Error("duplicado"), message: "Ya existe una cuenta con ese usuario o teléfono." };
     }
-    return { usuario: data, error: null };
+    if (resultado?.estado !== "ok") {
+      return { error: new Error(resultado?.estado || "error"), message: "No se pudo crear tu cuenta. Intenta de nuevo." };
+    }
+    return { usuario: resultado.usuario, error: null };
   }, []);
 
   // Segundo paso del registro exprés: completa los datos reales y crea
