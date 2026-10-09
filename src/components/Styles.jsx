@@ -283,10 +283,10 @@ export default function Styles() {
            largo, porque text-shadow no tiene ancho propio. */
         text-shadow: 0 0 8px rgba(215,255,59,0.85), 0 0 18px rgba(215,255,59,0.55);
       }
-      /* Pasajero y conductor: el texto bajo el logo sube un poco para
-         centrarlo a ojo (--tz-sub-ajuste; negativo = más arriba). Solo se
+      /* Pasajero y conductor: el texto va justo debajo del logo, como en
+         Caja Tonazo (--tz-sub-ajuste; negativo = más arriba). Solo se
          mueve el texto ("translate"), nada más cambia de lugar. */
-      .tz-subtitle-usuario { --tz-sub-ajuste: -23px; translate: 0 var(--tz-sub-ajuste); }
+      .tz-subtitle-usuario { --tz-sub-ajuste: 0px; translate: 0 var(--tz-sub-ajuste); }
       /* Texto que se escribe solo (TextoMaquina, igual que en la tienda
          de Caja): la frase de siempre y después las descripciones del
          Admin. Flota centrado sobre un espacio de alto fijo (una línea):
