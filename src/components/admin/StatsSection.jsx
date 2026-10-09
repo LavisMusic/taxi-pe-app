@@ -1,14 +1,16 @@
 import { TrendingUp, CreditCard, IdCard } from "lucide-react";
 import { formatSoles } from "../../utils/format";
-import { COSTO_OPERATIVO_DIARIO } from "../../lib/taxiEnums";
 
 // Métricas superiores del dashboard — mismos chips (.tz-stat-chip) que
 // usaba la caja registradora vieja, con las 4 métricas nuevas del
 // roadmap de TaxiP. Sin <section> propia: el padre (AdminDashboardPage)
 // pone un único .tz-stats (CSS grid) que envuelve esto + UsuarioEstrellaChip,
 // para no anidar dos grids una dentro de otra.
-export default function StatsSection({ metrics }) {
-  const { recaudadoHoy, gananciaNetaHoy, membresiasActivas, creditosVendidosHoy } = metrics;
+export default function StatsSection({ metrics, totalGastosHoy = 0 }) {
+  const { recaudadoHoy, membresiasActivas, creditosVendidosHoy } = metrics;
+  // Ganancia neta = lo recaudado hoy − los gastos cargados a mano hoy
+  // (ya no hay un costo operativo fijo predefinido).
+  const gananciaNetaHoy = recaudadoHoy - Number(totalGastosHoy || 0);
 
   return (
     <>
@@ -22,7 +24,7 @@ export default function StatsSection({ metrics }) {
           <TrendingUp size={13} /> Ganancia Neta (hoy)
         </span>
         <span className="tz-stat-value tz-green">{formatSoles(gananciaNetaHoy)}</span>
-        <span className="tz-stat-sub">− {formatSoles(COSTO_OPERATIVO_DIARIO)} costo operativo</span>
+        <span className="tz-stat-sub">− {formatSoles(totalGastosHoy)} en gastos de hoy</span>
       </div>
 
       <div className="tz-stat-chip">

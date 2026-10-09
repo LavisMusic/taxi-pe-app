@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   // basicSsl + host:true: para probar la cámara (ComprobanteScannerModal,
   // getUserMedia) desde el celular en la misma WiFi. El navegador solo
   // permite cámara en un "contexto seguro" — localhost cuenta como
@@ -11,8 +11,11 @@ export default defineConfig({
   // que el sitio sea https. El certificado es autofirmado: el celular va
   // a mostrar una advertencia la primera vez, hay que aceptarla a mano
   // (ver instrucciones aparte) — es awaited, no un bug.
-  plugins: [react(), basicSsl()],
+  // Modo "pane" (vista previa del panel de Claude, ver
+  // .claude/launch.json): sin https — el panel no acepta certificados
+  // autofirmados. Igual que en Caja Tonazo.
+  plugins: mode === 'pane' ? [react()] : [react(), basicSsl()],
   server: {
     host: true,
   },
-})
+}))

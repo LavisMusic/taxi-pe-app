@@ -212,14 +212,23 @@ export const FRECUENCIA_UNA_VEZ_TOTAL = "una_vez_total";
 // palancas) — se deja la constante FRECUENCIA_SIEMPRE viva por si queda
 // algún registro viejo en la base con ese valor (tocaMostrar en
 // useAnuncioActivo.js todavía sabe interpretarlo).
+// A quién va una descripción (texto bajo el logo) o un anuncio.
+export const PUBLICO_PASAJEROS = "pasajeros";
+export const PUBLICO_CONDUCTORES = "conductores";
+export const PUBLICO_TODOS = "todos";
+export const PUBLICOS = [
+  { value: PUBLICO_PASAJEROS, label: "Pasajeros" },
+  { value: PUBLICO_CONDUCTORES, label: "Conductores" },
+  { value: PUBLICO_TODOS, label: "Ambos" },
+];
+export const etiquetaPublico = (v) => PUBLICOS.find((p) => p.value === v)?.label || "Pasajeros";
+// Largo máximo de una descripción (entra en 2 líneas en el celular).
+export const DESCRIPCION_MAX = 40;
+
 export const FRECUENCIAS_ANUNCIO = [
   { value: FRECUENCIA_UNA_VEZ_TOTAL, label: "Una sola vez (total)" },
   { value: FRECUENCIA_UNA_VEZ_DIA, label: "Una vez al día" },
 ];
-
-// Costo operativo fijo diario que se descuenta de "Recaudado Hoy" para
-// obtener la "Ganancia Neta (Hoy)" — dado literal en el enunciado.
-export const COSTO_OPERATIVO_DIARIO = 8.67;
 
 export function startOfTodayISO() {
   const d = new Date();
@@ -253,12 +262,8 @@ export const METODOS_PAGO = [
 // usePaquetes.js/ConfigurarMembresiasModal.jsx).
 export const MEMBRESIA_DIAS_EXTENSION = 30;
 
-// `ventas.codigo_venta` es NOT NULL y no tiene default en la DB (es
-// `text`, no `serial`) — se genera acá un código corto y suficientemente
-// único para uso interno (no es un correlativo fiscal).
-export function generarCodigoVenta() {
-  return `REC-${Date.now().toString(36).toUpperCase()}`;
-}
+// `ventas.codigo_venta` lo asigna la base: correlativo TX-000001…
+// (migración 20261002100000_ventas_codigo_correlativo.sql).
 
 // `ventas` no tiene columnas numéricas de "cantidad de créditos" ni
 // "días de membresía" (solo `monto` en soles) — ambas viajan embebidas

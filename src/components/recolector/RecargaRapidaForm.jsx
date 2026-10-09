@@ -16,6 +16,12 @@ import { formatSoles } from "../../utils/format";
 import RegistroConductorModal from "./RegistroConductorModal";
 import ComprobanteScannerModal from "./ComprobanteScannerModal";
 
+const DURACIONES_MEMBRESIA = [
+  { id: "mensual", label: "Mensual" },
+  { id: "anual", label: "Anual" },
+  { id: "otros", label: "Otros" },
+];
+
 const MONTOS_RAPIDOS = [20, 50, 100, 200];
 
 const DESTINATARIO_CONDUCTOR = "conductor";
@@ -67,6 +73,11 @@ export default function RecargaRapidaForm({
   // del Directorio (admin), ya se sabe para quién es — se salta el
   // combobox por completo y no se puede cambiar de conductor desde acá.
   lockedConductor = null,
+  // Venta registrada: ({ venta, destinatario, montoRecibido }) — abre el
+  // desplegable inferior (imprimir / resumen / boleta / copiar).
+  onVentaRegistrada,
+  // Dentro del gestor ⚡ (admin) el título ya lo pone el gestor.
+  sinTitulo = false,
 }) {
   const [destinatarioTipo, setDestinatarioTipo] = useState(DESTINATARIO_CONDUCTOR);
   const [search, setSearch] = useState("");
@@ -74,6 +85,7 @@ export default function RecargaRapidaForm({
   const [conductorId, setConductorId] = useState(lockedConductor?.id ?? "");
   const [clienteId, setClienteId] = useState("");
   const [tipoItem, setTipoItem] = useState(TIPO_ITEM_MEMBRESIA);
+  const [duracion, setDuracion] = useState("mensual");
   const [paqueteId, setPaqueteId] = useState("");
   const [metodoPago, setMetodoPago] = useState("");
   const [comprobante, setComprobante] = useState(null);
@@ -115,7 +127,23 @@ export default function RecargaRapidaForm({
   // el usuario de verdad aprieta "Registrar Recarga" con una elegida.
   const catalogoBase = esCliente ? paquetesClientes : paquetes;
   const paquetesReales = catalogoBase.filter((p) => p.tipo_item === tipoItem && p.activo !== false);
-  const paquetesDelTipo = paquetesReales.length > 0 ? paquetesReales : PAQUETES_DEMO[tipoItem];
+  const paquetesBase = paquetesReales.length > 0 ? paquetesReales : PAQUETES_DEMO[tipoItem];
+  // Filtro Mensual / Anual / Otros para las membresías (mismo detalle
+  // que la Recarga rápida del super admin de Caja). Acá la duración
+  // viene en días: hasta 31 = mensual, desde 360 = anual.
+  const duracionDe = (p) => {
+    const d = Number(p.dias_membresia) || 0;
+    if (d <= 31) return "mensual";
+    if (d >= 360) return "anual";
+    return "otros";
+  };
+  const duracionesConPaquetes =
+    tipoItem === TIPO_ITEM_MEMBRESIA
+      ? DURACIONES_MEMBRESIA.filter((d) => paquetesBase.some((p) => duracionDe(p) === d.id))
+      : [];
+  const duracionActiva = duracionesConPaquetes.some((d) => d.id === duracion) ? duracion : duracionesConPaquetes[0]?.id;
+  const paquetesDelTipo =
+    tipoItem === TIPO_ITEM_MEMBRESIA && duracionActiva ? paquetesBase.filter((p) => duracionDe(p) === duracionActiva) : paquetesBase;
   const usandoDemo = paquetesReales.length === 0;
   const paquete = paquetesDelTipo.find((p) => String(p.id) === String(paqueteId)) || null;
   const glowPaquetesActivo = esCliente ? glowPaquetesClientes : glowPaquetes;
@@ -222,7 +250,8 @@ export default function RecargaRapidaForm({
       return;
     }
 
-    const { error: submitError } = await registrarRecarga({
+    const recibidoAlEnviar = metodoPago === METODO_PAGO_EFECTIVO && montoRecibido !== "" ? Number(montoRecibido) : null;
+    const { error: submitError, venta: ventaCreada, destinatario: destinatarioActualizado } = await registrarRecarga({
       destinatarioTipo,
       conductor: esCliente ? null : conductor,
       cliente: esCliente ? cliente : null,
@@ -241,15 +270,24 @@ export default function RecargaRapidaForm({
     if (!submitError) {
       setSuccessMsg(`Recarga registrada para ${destinatario.nombre}.`);
       resetForm();
+      if (ventaCreada) {
+        onVentaRegistrada?.({
+          venta: ventaCreada,
+          destinatario: { ...destinatario, ...(destinatarioActualizado || {}) },
+          montoRecibido: recibidoAlEnviar,
+        });
+      }
     }
   };
 
   return (
     <>
       <form className="tz-payment-modal" onSubmit={handleSubmit} style={{ maxWidth: 480, margin: "0 auto" }}>
-        <h2>
-          <Zap size={17} /> Recarga Rápida
-        </h2>
+        {!sinTitulo && (
+          <h2>
+            <Zap size={17} /> Recarga Rápida
+          </h2>
+        )}
 
         {!lockedConductor && (
           <div className="tz-gasto-tipo-buttons" style={{ marginBottom: 4 }}>
@@ -450,6 +488,24 @@ export default function RecargaRapidaForm({
             {new Date(vencimientoActualStr).toLocaleDateString("es-PE")} — no se le puede vender otra hasta
             que esta termine.
           </p>
+        )}
+
+        {duracionesConPaquetes.length > 1 && (
+          <div className="tz-gasto-tipo-buttons" style={{ marginTop: 12 }}>
+            {duracionesConPaquetes.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                className={`tz-gasto-tipo-btn ${duracionActiva === d.id ? "tz-gasto-tipo-active" : ""}`}
+                onClick={() => {
+                  setDuracion(d.id);
+                  setPaqueteId("");
+                }}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
         )}
 
         <label className="tz-field-label" style={{ marginTop: 12 }}>

@@ -2,7 +2,6 @@ import { useCallback, useState } from "react";
 import { supabase } from "../supabaseClient";
 import {
   buildDetalleRecarga,
-  generarCodigoVenta,
   MEMBRESIA_DIAS_EXTENSION,
   METODO_PAGO_FIADO,
   TIPO_ITEM_MEMBRESIA,
@@ -104,7 +103,7 @@ export function useRecargas({ onDone }) {
       const { data: ventaCreada, error: ventaError } = await supabase
         .from("ventas")
         .insert({
-          codigo_venta: generarCodigoVenta(),
+          // codigo_venta lo asigna la base (TX-000001…, correlativo).
           conductor_id: esCliente ? null : conductor.id,
           cliente_id: esCliente ? cliente.id : null,
           recolector_id: recolectorId,
@@ -193,7 +192,9 @@ export function useRecargas({ onDone }) {
 
       setSaving(false);
       onDone?.();
-      return { error: null };
+      // La venta creada (con su código TX-… de la base) y el destinatario
+      // ya actualizado: para el desplegable de venta registrada.
+      return { error: null, venta: ventaCreada, destinatario: destinatarioActualizado[0] };
     },
     [onDone]
   );

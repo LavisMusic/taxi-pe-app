@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { subscribeTable } from "../lib/realtime";
 import {
-  COSTO_OPERATIVO_DIARIO,
   startOfTodayISO,
   TIPO_ITEM_CREDITOS,
   TIPO_ITEM_MEMBRESIA,
@@ -67,7 +66,8 @@ export function useVentas() {
   const ventasHoy = ventasVigentes.filter((v) => v.created_at && v.created_at >= startToday);
 
   const recaudadoHoy = ventasHoy.reduce((sum, v) => sum + Number(v.monto || 0), 0);
-  const gananciaNetaHoy = recaudadoHoy - COSTO_OPERATIVO_DIARIO;
+  // La Ganancia Neta ya no resta un costo fijo predefinido: StatsSection
+  // le resta los gastos cargados a mano hoy (gestor de Gastos).
 
   // "Conteo de ventas donde tipo_item === 'membresia'" — el enunciado
   // no dice "hoy" para esta métrica (a diferencia de Recaudado y
@@ -90,7 +90,6 @@ export function useVentas() {
     refresh,
     metrics: {
       recaudadoHoy,
-      gananciaNetaHoy,
       membresiasActivas,
       creditosVendidosHoy,
     },

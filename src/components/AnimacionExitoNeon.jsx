@@ -251,9 +251,6 @@ export default function AnimacionExitoNeon({ titulo = "¡Listo!", descripcion, o
               text-shadow: 0 0 12px rgba(43,232,255,0.35);
             }
 
-            @media (prefers-reduced-motion: reduce) {
-              .tz-exito-overlay * { animation-duration: 0.01ms !important; }
-            }
           `}</style>
         </motion.div>
       )}

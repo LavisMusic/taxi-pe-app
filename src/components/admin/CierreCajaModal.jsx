@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Calculator, X, Receipt, Download, MessageCircle, AlertTriangle, Loader2, Save } from "lucide-react";
+import { X, Receipt, Download, MessageCircle, AlertTriangle, Loader2, Save, FileSpreadsheet } from "lucide-react";
 import { formatSoles, formatDate, formatTime } from "../../utils/format";
 import { METODOS_PAGO, TIPO_ITEM_CREDITOS, TIPO_ITEM_MEMBRESIA } from "../../lib/taxiEnums";
 import { downloadXLSX } from "../../lib/xlsxExport";
@@ -16,6 +16,11 @@ import { buildWhatsappLink } from "../../lib/whatsapp";
 // `ventas`/`gastos_operativos` siguen siendo globales, "Hoy" sigue
 // calculándose igual después de cerrar. Es solo un registro para
 // exportar/compartir, no reinicia ningún contador.
+//
+// Excel del cierre (como las cajas de Caja Tonazo): hojas Resumen,
+// Ventas (cada venta con su código TX-…, destinatario, detalle, método)
+// y Gastos. Se descarga solo al cerrar el turno y también con el botón
+// "Descargar Excel" en cualquier momento.
 export default function CierreCajaModal({
   ventasHoy,
   gastosHoy,
@@ -36,6 +41,9 @@ export default function CierreCajaModal({
   // Admin no lo pasa, así que su botón sigue exactamente igual que
   // antes (wa.me sin número fijo, elige el contacto/grupo a mano).
   telefonoDestino,
+  // Para poner el nombre del conductor/cliente en el Excel (opcional).
+  conductores = [],
+  usuarios = [],
 }) {
   const [confirmando, setConfirmando] = useState(false);
   const [cerrando, setCerrando] = useState(false);
@@ -50,6 +58,64 @@ export default function CierreCajaModal({
 
   const totalPorMetodo = (metodo) =>
     ventasHoy.filter((v) => v.metodo_pago === metodo).reduce((sum, v) => sum + Number(v.monto || 0), 0);
+
+  const descargarExcelCierre = () => {
+    const ahora = Date.now();
+    const nombreDe = (v) =>
+      v.cliente_id
+        ? usuarios.find((u) => u.id === v.cliente_id)?.nombre || "Cliente"
+        : conductores.find((c) => c.id === v.conductor_id)?.nombre || "Conductor";
+    const recolectorDe = (v) => usuarios.find((u) => u.id === v.recolector_id)?.nombre || (v.recolector_id ? "" : "Admin");
+    const labelMetodo = (key) => METODOS_PAGO.find((m) => m.key === key)?.label ?? key;
+    const resumen = [
+      ["Cierre de caja", `${formatDate(ahora)} ${formatTime(ahora)}`],
+      ["Cajero", cajeroNombre],
+      [],
+      ["Recaudado (S/)", Number(recaudadoHoy.toFixed(2))],
+      ["Gastos operativos (S/)", Number(Number(totalGastosHoy).toFixed(2))],
+      ["Balance neto (S/)", Number(balanceNeto.toFixed(2))],
+      ["Ventas registradas", ventasHoy.length],
+      ["Ticket promedio (S/)", Number(ticketGeneral.toFixed(2))],
+      [],
+      ["Por tipo de venta", ""],
+      ["Membresías (S/)", Number(totalPorTipo(TIPO_ITEM_MEMBRESIA).toFixed(2))],
+      ["Créditos (S/)", Number(totalPorTipo(TIPO_ITEM_CREDITOS).toFixed(2))],
+      [],
+      ["Por método de pago", ""],
+      ...METODOS_PAGO.map((m) => [`${m.label} (S/)`, Number(totalPorMetodo(m.key).toFixed(2))]),
+    ];
+    const ventas = [
+      ["Código", "Fecha", "Hora", "Destinatario", "Tipo", "Detalle", "Método", "Monto (S/)", "Recolector"],
+      ...[...ventasHoy]
+        .sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? ""))
+        .map((v) => [
+          v.codigo_venta || "",
+          formatDate(v.created_at),
+          formatTime(v.created_at),
+          `${nombreDe(v)} (${v.cliente_id ? "cliente" : "conductor"})`,
+          v.tipo_item === TIPO_ITEM_MEMBRESIA ? "Membresía" : "Créditos",
+          v.detalle || "",
+          labelMetodo(v.metodo_pago),
+          Number(Number(v.monto || 0).toFixed(2)),
+          recolectorDe(v),
+        ]),
+    ];
+    const gastos = [
+      ["Fecha", "Hora", "Concepto", "Monto (S/)"],
+      ...gastosHoy.map((g) => [
+        formatDate(g.fecha || g.created_at),
+        formatTime(g.fecha || g.created_at),
+        g.concepto,
+        Number(Number(g.monto || 0).toFixed(2)),
+      ]),
+    ];
+    const fecha = new Date(ahora).toISOString().slice(0, 10);
+    downloadXLSX(`cierre-caja-${fecha}-${ahora}.xlsx`, [
+      { nombre: "Resumen", filas: resumen },
+      { nombre: "Ventas", filas: ventas },
+      { nombre: "Gastos", filas: gastos },
+    ]);
+  };
 
   const ejecutarCierre = async () => {
     setCerrando(true);
@@ -68,6 +134,7 @@ export default function CierreCajaModal({
       return;
     }
     setConfirmando(false);
+    descargarExcelCierre();
     onCerrado?.();
   };
 
@@ -122,81 +189,92 @@ export default function CierreCajaModal({
 
   return (
     <div className="tz-modal-backdrop">
-      <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="tz-modal tz-modal-wide" onClick={(e) => e.stopPropagation()}>
         <button className="tz-modal-close" onClick={onClose} aria-label="Cerrar">
           <X size={18} />
         </button>
         <div className="tz-payment-modal">
           <h2>
-            <Calculator size={17} /> Cierre de Caja (Hoy)
+            <Receipt size={17} /> Cierre de Caja
           </h2>
 
-          <div className="tz-method-totals">
-            <div className="tz-method-total">
+          {/* Recibo del turno actual — mismo diseño del cierre de las
+             cajas de Caja Tonazo. */}
+          <div className="tz-receipt">
+            <div className="tz-receipt-header">
+              <span className="tz-receipt-title">Turno actual</span>
+              <span className="tz-receipt-date">
+                {formatDate(Date.now())} · {formatTime(Date.now())}
+              </span>
+            </div>
+            <div className="tz-receipt-row">
+              <span>Cajero</span>
+              <strong>{cajeroNombre}</strong>
+            </div>
+            <div className="tz-receipt-divider" />
+            <div className="tz-receipt-row">
+              <span>Membresías</span>
+              <strong>{formatSoles(totalPorTipo(TIPO_ITEM_MEMBRESIA))}</strong>
+            </div>
+            <div className="tz-receipt-row">
+              <span>Créditos</span>
+              <strong>{formatSoles(totalPorTipo(TIPO_ITEM_CREDITOS))}</strong>
+            </div>
+            <div className="tz-receipt-divider" />
+            {METODOS_PAGO.map((m) => (
+              <div key={m.key} className="tz-receipt-row">
+                <span>Ingresos ({m.label})</span>
+                <strong>{formatSoles(totalPorMetodo(m.key))}</strong>
+              </div>
+            ))}
+            <div className="tz-receipt-divider" />
+            <div className="tz-receipt-row">
               <span>Recaudado</span>
-              <strong className="tz-cyan">{formatSoles(recaudadoHoy)}</strong>
+              <strong>{formatSoles(recaudadoHoy)}</strong>
             </div>
-            <div className="tz-method-total">
+            <div className="tz-receipt-row">
+              <span>Ventas registradas</span>
+              <strong>{ventasHoy.length}</strong>
+            </div>
+            <div className="tz-receipt-row">
               <span>Gastos operativos</span>
-              <strong className="tz-pink">− {formatSoles(totalGastosHoy)}</strong>
+              <strong>{formatSoles(totalGastosHoy)}</strong>
             </div>
-            <div className="tz-method-total">
-              <span>Balance neto</span>
-              <strong className={balanceNeto >= 0 ? "tz-green" : undefined} style={balanceNeto < 0 ? { color: "var(--danger)" } : undefined}>
-                {formatSoles(balanceNeto)}
-              </strong>
+            {gastosHoy.map((g) => (
+              <div key={g.id} className="tz-receipt-row tz-plan-pagos-nota">
+                <span>· {g.concepto}</span>
+                <span>{formatSoles(g.monto)}</span>
+              </div>
+            ))}
+            <div className="tz-receipt-row">
+              <span>Ticket general</span>
+              <strong>{formatSoles(ticketGeneral)}</strong>
+            </div>
+            <div className="tz-receipt-divider" />
+            <div className="tz-receipt-row tz-receipt-total">
+              <span>BALANCE NETO DEL TURNO</span>
+              <strong>{formatSoles(balanceNeto)}</strong>
             </div>
           </div>
 
-          <div className="tz-method-history">
-            <span className="tz-method-history-label">Por tipo de venta</span>
-            <ul className="tz-mov-list">
-              <li className="tz-mov-row tz-mov-pago">
-                <span className="tz-mov-row-desc">Membresías</span>
-                <strong>{formatSoles(totalPorTipo(TIPO_ITEM_MEMBRESIA))}</strong>
-              </li>
-              <li className="tz-mov-row tz-mov-pago">
-                <span className="tz-mov-row-desc">Créditos</span>
-                <strong>{formatSoles(totalPorTipo(TIPO_ITEM_CREDITOS))}</strong>
-              </li>
-            </ul>
+          <div className="tz-export-buttons">
+            <button type="button" className="tz-csv-btn" onClick={enviarResumenPorWhatsApp}>
+              <MessageCircle size={13} /> Enviar Resumen a WhatsApp
+            </button>
+            <button type="button" className="tz-csv-btn" onClick={descargarExcelCierre}>
+              <FileSpreadsheet size={13} /> Descargar Excel de hoy
+            </button>
           </div>
-
-          <div className="tz-method-history">
-            <span className="tz-method-history-label">Por método de pago</span>
-            <ul className="tz-mov-list">
-              {METODOS_PAGO.map((m) => (
-                <li key={m.key} className="tz-mov-row tz-mov-pago">
-                  <span className="tz-mov-row-desc">{m.label}</span>
-                  <strong>{formatSoles(totalPorMetodo(m.key))}</strong>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {gastosHoy.length > 0 && (
-            <div className="tz-method-history">
-              <span className="tz-method-history-label">Gastos de hoy</span>
-              <ul className="tz-mov-list">
-                {gastosHoy.map((g) => (
-                  <li key={g.id} className="tz-mov-row tz-mov-deuda">
-                    <span className="tz-mov-row-desc">{g.concepto}</span>
-                    <strong>{formatSoles(g.monto)}</strong>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
 
           {!confirmando ? (
-            <button className="tz-scan-btn tz-add-entry-toggle" onClick={() => setConfirmando(true)} style={{ marginTop: 14 }}>
+            <button className="tz-scan-btn tz-add-entry-toggle" onClick={() => setConfirmando(true)}>
               <Receipt size={16} /> Cerrar turno
             </button>
           ) : (
-            <div className="tz-add-entry" style={{ marginTop: 14 }}>
+            <div className="tz-add-entry">
               <p className="tz-cierre-warning">
                 <AlertTriangle size={14} /> Esto guarda una instantánea de estos totales en el historial de
-                cierres. No reinicia "Hoy" ni se puede deshacer.
+                cierres y descarga su Excel. No reinicia "Hoy" ni se puede deshacer.
               </p>
               {cierreError && <p className="tz-error">{cierreError}</p>}
               <div className="tz-add-entry-actions">
@@ -211,7 +289,7 @@ export default function CierreCajaModal({
             </div>
           )}
 
-          <div className="tz-method-history">
+          <div className="tz-method-history" style={{ marginTop: 14 }}>
             <span className="tz-method-history-label">Historial de cierres</span>
             <div className="tz-export-buttons">
               {esAdmin && (
@@ -219,9 +297,6 @@ export default function CierreCajaModal({
                   <Download size={13} /> Exportar Historial de Cierres
                 </button>
               )}
-              <button type="button" className="tz-csv-btn" onClick={enviarResumenPorWhatsApp}>
-                <MessageCircle size={13} /> Enviar Resumen a WhatsApp
-              </button>
             </div>
 
             {cierres.length === 0 ? (

@@ -20,13 +20,14 @@ import { distanciaMetros } from "../lib/haversine";
 import Styles from "../components/Styles";
 import Dropdown from "../components/Dropdown";
 import ConductorPublicCard from "../components/ConductorPublicCard";
-import LogoEasterEgg from "../components/LogoEasterEgg";
 import PasajeroAuthForm from "../components/PasajeroAuthForm";
 import NivelAccordionGroup from "../components/NivelAccordionGroup";
 import AccesoConductorModal from "../components/AccesoConductorModal";
 import AccesoRecolectorModal from "../components/AccesoRecolectorModal";
 import ChatModal from "../components/ChatModal";
 import AnuncioPopupModal from "../components/AnuncioPopupModal";
+import TextoMaquina from "../components/TextoMaquina";
+import { useDescripcionesPublico } from "../hooks/useDescripciones";
 import RadarGlobal from "../components/RadarGlobal";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import logo from "../assets/logo.webp";
@@ -65,7 +66,10 @@ export default function HomePage() {
   // vigencia (fecha_inicio/fecha_fin) + frecuencia (localStorage). Se
   // muestra a CUALQUIER visitante de la Home, con o sin sesión de
   // Pasajero — es publicidad, no contenido privado.
-  const { anuncio, cerrar: cerrarAnuncio } = useAnuncioActivo();
+  const { anuncio, cerrar: cerrarAnuncio } = useAnuncioActivo("pasajeros");
+  // Texto bajo el logo: "Tu taxi, al toque" y después las descripciones
+  // del Admin para pasajeros.
+  const descripcionesPasajero = useDescripcionesPublico("pasajeros");
   const { localidades } = useLocalidades();
   // Bienvenida de cuenta nueva (Fase Neón) — misma idea que
   // ConductorPage.jsx: una sola vez por usuario, al entrar por primera
@@ -346,8 +350,10 @@ export default function HomePage() {
           </div>
 
           <div className="tz-header-center">
-            <LogoEasterEgg src={logo} alt="TaxiP" className="tz-logo" />
-            <p className="tz-subtitle">Tu taxi, al toque</p>
+            <img src={logo} alt="TaxiP" className="tz-logo" />
+            <div className="tz-subtitle-slot">
+              <TextoMaquina mensajes={["Tu taxi, al toque", ...descripcionesPasajero]} className="tz-subtitle-usuario" />
+            </div>
           </div>
 
           <div className="tz-header-side tz-header-side-right">

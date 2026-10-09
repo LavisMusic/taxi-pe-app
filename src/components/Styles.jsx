@@ -283,6 +283,49 @@ export default function Styles() {
            largo, porque text-shadow no tiene ancho propio. */
         text-shadow: 0 0 8px rgba(215,255,59,0.85), 0 0 18px rgba(215,255,59,0.55);
       }
+      /* Pasajero y conductor: el texto va justo debajo del logo, como en
+         Caja Tonazo (--tz-sub-ajuste; negativo = más arriba). Solo se
+         mueve el texto ("translate"), nada más cambia de lugar. */
+      .tz-subtitle-usuario { --tz-sub-ajuste: 7px; translate: 0 var(--tz-sub-ajuste); }
+      /* Texto que se escribe solo (TextoMaquina, igual que en la tienda
+         de Caja): la frase de siempre y después las descripciones del
+         Admin. Flota centrado sobre un espacio de alto fijo (una línea):
+         si un mensaje pasa a 2 líneas, crece sobre ese punto y el borde
+         de la cabecera no se mueve. Ancho propio (no el del logo): hasta
+         230 px o el 60% de la pantalla, el espacio libre entre las
+         columnas de botones. */
+      .tz-subtitle-maquina { min-height: 1.6em; white-space: pre; }
+      .tz-subtitle-cursor {
+        display: inline-block;
+        width: 2px;
+        height: 1em;
+        margin-left: 2px;
+        vertical-align: -0.12em;
+        background: currentColor;
+        animation: tz-subtitle-parpadeo 0.9s steps(1) infinite;
+      }
+      @keyframes tz-subtitle-parpadeo { 50% { opacity: 0; } }
+      .tz-subtitle-slot { position: relative; width: 100%; height: 24px; flex: 0 0 auto; }
+      .tz-subtitle-slot > .tz-subtitle-maquina {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: max-content;
+        max-width: min(230px, 60vw);
+        margin: 0;
+        box-sizing: border-box;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      @media (max-width: 767px) {
+        .tz-subtitle-slot > .tz-subtitle-maquina { font-size: 10px; letter-spacing: 0.05em; }
+      }
 
       /* Botones del header (Fiados / Métodos de pago). En móvil (base,
          mobile-first) solo se ve el ícono, para ahorrar espacio.
@@ -2402,6 +2445,155 @@ export default function Styles() {
       @media (max-width: 640px) {
         .tz-page-footer-admin-grid { grid-template-columns: repeat(2, 1fr); }
       }
+
+      /* ---- Historial de ventas (mismo diseño que el super admin de Caja) ---- */
+      .tz-sa-mes-nav { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 4px; }
+      .tz-plan-pagos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+      .tz-plan-pagos li {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 12px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid var(--border-soft);
+        font-size: 13px;
+      }
+      .tz-plan-pagos-hasta { color: var(--green); }
+      .tz-plan-pagos-nota { flex-basis: 100%; color: var(--text-dim); font-size: 12px; }
+      .tz-plan-pago-codigo { font-family: 'Orbitron', sans-serif; font-size: 12px; color: var(--cyan); }
+      .tz-plan-pago-anulado { opacity: 0.55; }
+      .tz-plan-pago-anulado > span:not(.tz-tag) { text-decoration: line-through; }
+      .tz-plan-pago-ver {
+        border: none;
+        background: none;
+        padding: 0;
+        color: var(--cyan);
+        text-decoration: underline;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 12px;
+      }
+      .tz-plan-pago-confirmar { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; color: var(--yellow); }
+      .tz-receipt.tz-plan-pago-anulado .tz-receipt-row { text-decoration: line-through; }
+      .tz-receipt .tz-plan-pago-ver { margin-top: 8px; }
+      /* Visor chico del comprobante adjunto (historiales). */
+      .tz-comprobante-mini {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        margin-top: 10px;
+        padding: 6px;
+        border-radius: 10px;
+        border: 1px dashed rgba(43,232,255,0.35);
+        background: rgba(43,232,255,0.05);
+        color: var(--cyan);
+        font-family: inherit;
+        font-size: 12px;
+        text-align: left;
+        cursor: pointer;
+      }
+      .tz-comprobante-mini img { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; flex-shrink: 0; background: #fff; }
+      .tz-comprobante-mini:hover { background: rgba(43,232,255,0.12); }
+
+      /* ---- Gestor de recarga del conductor (⚡) — mismo gestor que el
+         del super admin de Caja: apartados + Pagos estilo "Mis ventas" ---- */
+      .tz-plan-filtros { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+      .tz-plan-filtros .tz-gasto-tipo-btn { flex: 0 0 auto; padding: 7px 12px; font-size: 12px; }
+      .tz-plan-campo { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+      .tz-plan-campo > span { font-size: 11px; color: var(--text-dim); letter-spacing: 0.04em; text-transform: uppercase; }
+      .tz-plan-campo-ancho { flex: 1 1 100%; }
+      .tz-plan-seccion { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; }
+      .tz-plan-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 9px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        color: var(--tz-plan-color);
+        border: 1px solid var(--tz-plan-color);
+        background: color-mix(in srgb, var(--tz-plan-color) 12%, transparent);
+        white-space: nowrap;
+      }
+      /* Recarga rápida del gestor (copiado tal cual del gestor del super
+         admin de Caja, para que se vean idénticos). */
+      .tz-plan-apartados { margin-bottom: 14px; }
+      .tz-plan-total { font-size: 13px; color: var(--text-dim); }
+      .tz-plan-total strong { color: var(--green); font-size: 15px; }
+      .tz-recarga-bloqueada { line-height: 1.3; text-align: center; }
+      .tz-recarga-comprobante-botones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .tz-recarga-vuelto-rapidos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+      .tz-recarga-vuelto-rapidos .tz-gasto-tipo-btn { flex: 0 0 auto; padding: 6px 10px; font-size: 12px; }
+      .tz-recarga-vuelto-resultado { margin: 8px 0 0; font-family: 'Orbitron', sans-serif; font-size: 18px; color: var(--green); }
+      .tz-recarga-vuelto-falta { color: var(--danger); }
+      .tz-renovar-comprobante { display: block; max-width: 100%; max-height: 260px; margin: 10px auto 0; border-radius: 12px; border: 1px solid var(--border-soft); }
+      .tz-renovar-estado { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 10px 0; }
+      .tz-renovar-estado h3 { margin: 0; color: var(--yellow); }
+      .tz-renovar-estado-icono {
+        width: 58px;
+        height: 58px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--yellow);
+        background: rgba(215,255,59,0.1);
+        box-shadow: 0 0 22px rgba(215,255,59,0.35);
+      }
+      .tz-gestor-recarga-datos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+      .tz-gestor-recarga-dato {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid var(--border-soft);
+        font-size: 13px;
+      }
+      .tz-gestor-recarga-dato strong { color: var(--text); font-size: 14px; }
+      .tz-gestor-recarga-dato span { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; }
+
+      /* Historial: filtro + buscador */
+      .tz-historial-filtros { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+      .tz-historial-filtros .tz-gasto-tipo-btn { flex: 0 0 auto; padding: 7px 12px; }
+      .tz-sa-buscador { display: flex; align-items: center; gap: 8px; color: var(--text-dim); }
+      .tz-sa-buscador .tz-text-input { flex: 1 1 auto; }
+
+      /* ---- Desplegable de venta registrada (como la caja de los
+         negocios): Imprimir / Enviar resumen / Enviar boleta / Copiar ---- */
+      .tz-submitbar.tz-panel-venta { z-index: 140; transition: transform 0.5s ease-in-out; }
+      .tz-panel-venta.tz-submitbar-visible { transform: translateY(0); }
+      .tz-panel-venta.tz-submitbar-hidden { transform: translateY(120%); }
+      .tz-panel-venta .tz-submitbar-content { max-width: 520px; width: 100%; margin: 0 auto; }
+      .tz-panel-venta .tz-whatsapp-send-btn { width: 100%; box-sizing: border-box; cursor: pointer; }
+      .tz-submitbar-collapse {
+        position: absolute;
+        top: -30px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 46px;
+        height: 26px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(43,232,255,0.25);
+        border-bottom: none;
+        border-radius: 10px 10px 0 0;
+        background: rgba(15, 10, 30, 0.94);
+        color: var(--text-dim);
+        cursor: pointer;
+      }
+      .tz-whatsapp-send-btn.tz-print-boleta-btn {
+        background: rgba(43,232,255,0.14);
+        border-color: rgba(43,232,255,0.5);
+        color: var(--cyan);
+      }
+      .tz-whatsapp-send-btn.tz-print-boleta-btn:hover { background: rgba(43,232,255,0.22); }
 
       /* ---------- MODAL ---------- */
       .tz-modal-backdrop {

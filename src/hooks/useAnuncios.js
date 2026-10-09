@@ -15,13 +15,13 @@ export function useAnuncios() {
   const refresh = useCallback(async () => {
     setLoading(true);
     setError("");
-    const { data, error: fetchError } = await supabase
-      .from("anuncios")
-      .select(
-        "id, titulo, descripcion, imagen_url, video_url, fecha_inicio, fecha_fin, frecuencia_mostrar, activo, orden, created_at"
-      )
-      .order("orden", { ascending: true })
-      .order("created_at", { ascending: false });
+    const columnas = "id, titulo, descripcion, imagen_url, video_url, fecha_inicio, fecha_fin, frecuencia_mostrar, activo, orden, created_at";
+    const consultar = (cols) =>
+      supabase.from("anuncios").select(cols).order("orden", { ascending: true }).order("created_at", { ascending: false });
+    // "publico" (a quién se muestra) viene de la migración 20261007100000;
+    // si todavía no se corrió, se lee sin esa columna (todos = pasajeros).
+    let { data, error: fetchError } = await consultar(`${columnas}, publico`);
+    if (fetchError) ({ data, error: fetchError } = await consultar(columnas));
 
     if (fetchError) {
       setError("No se pudieron cargar los anuncios.");

@@ -1,16 +1,23 @@
-import { Wallet, X, ExternalLink } from "lucide-react";
-import { formatSoles, formatDate } from "../../utils/format";
-import { startOfTodayISO, METODOS_PAGO } from "../../lib/taxiEnums";
+import { useState } from "react";
+import { CreditCard, X, ChevronDown, ChevronUp } from "lucide-react";
+import { formatSoles, formatDate, formatTime } from "../../utils/format";
+import { startOfTodayISO, METODOS_PAGO, METODO_PAGO_EFECTIVO } from "../../lib/taxiEnums";
 
-// "Pagos" del header → dropdown Yape/Plin/Otros/Fiados → este modal
-// para los 3 primeros (Fiados sigue abriendo la Libreta de siempre).
-// Dos medidores (Hoy/Histórico, mismo look que "Por cobrar" de la
-// Libreta) + el historial de comprobantes de ESE método — todo
-// derivado de `ventas` que ya está cargado en AdminDashboardPage, sin
-// hook nuevo.
-export default function PagosMetodoModal({ metodo, ventasVigentes, conductores, onClose }) {
+// "Pagos" del header → dropdown (cada método con lo recaudado hoy) →
+// este modal. Mismo diseño que "Pagos" de las cajas de Caja Tonazo: dos
+// medidores (Hoy / Histórico) y el historial de ESE método en filas que
+// se despliegan con hora, fecha, código, destinatario y la foto del
+// comprobante. Todo derivado de `ventas` (ya cargado en
+// AdminDashboardPage), sin hook nuevo.
+export default function PagosMetodoModal({ metodo, ventasVigentes, conductores, usuarios = [], onClose }) {
+  const [abiertoId, setAbiertoId] = useState(null);
   const label = METODOS_PAGO.find((m) => m.key === metodo)?.label ?? metodo;
   const conductoresById = new Map(conductores.map((c) => [c.id, c]));
+  const usuariosById = new Map(usuarios.map((u) => [u.id, u]));
+  const nombreDe = (v) =>
+    v.cliente_id
+      ? usuariosById.get(v.cliente_id)?.nombre ?? "Cliente eliminado"
+      : conductoresById.get(v.conductor_id)?.nombre ?? "Conductor eliminado";
 
   const ventasDelMetodo = ventasVigentes
     .filter((v) => v.metodo_pago === metodo)
@@ -30,7 +37,7 @@ export default function PagosMetodoModal({ metodo, ventasVigentes, conductores, 
         </button>
         <div className="tz-payment-modal">
           <h2>
-            <Wallet size={17} /> {label}
+            <CreditCard size={17} /> {label}
           </h2>
 
           <div className="tz-method-totals">
@@ -44,41 +51,57 @@ export default function PagosMetodoModal({ metodo, ventasVigentes, conductores, 
             </div>
           </div>
 
-          {ventasDelMetodo.length === 0 ? (
-            <p className="tz-method-history-empty">Aún no hay ingresos registrados por esta vía.</p>
-          ) : (
-            <div className="tz-method-history">
-              <span className="tz-method-history-label">Historial</span>
+          <div className="tz-method-history">
+            <span className="tz-method-history-label">Historial</span>
+            {ventasDelMetodo.length === 0 ? (
+              <p className="tz-method-history-empty">Aún no hay ingresos registrados por esta vía.</p>
+            ) : (
               <ul className="tz-history-rows">
-                {ventasDelMetodo.map((v) => (
-                  <li key={v.id} className="tz-history-row">
-                    <div
-                      className="tz-history-row-detail"
-                      style={{ padding: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
-                    >
-                      <span>
-                        <strong style={{ color: "var(--text)" }}>
-                          {conductoresById.get(v.conductor_id)?.nombre ?? "Conductor eliminado"}
-                        </strong>
-                        <p style={{ margin: "2px 0", color: "var(--text-dim)", fontSize: 12.5 }}>
-                          {v.created_at ? formatDate(v.created_at) : ""}
-                          {v.voucher_url && (
-                            <>
-                              {" · "}
-                              <a href={v.voucher_url} target="_blank" rel="noreferrer" style={{ color: "var(--cyan)" }}>
-                                comprobante <ExternalLink size={11} style={{ verticalAlign: "-1px" }} />
-                              </a>
-                            </>
+                {ventasDelMetodo.map((v) => {
+                  const abierto = abiertoId === v.id;
+                  return (
+                    <li key={v.id} className="tz-history-row">
+                      <button className="tz-history-row-head" onClick={() => setAbiertoId(abierto ? null : v.id)}>
+                        <span className="tz-history-row-method">
+                          {v.created_at ? formatDate(v.created_at) : ""} · {nombreDe(v)}
+                        </span>
+                        <span className="tz-history-row-amount">{formatSoles(v.monto)}</span>
+                        {abierto ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      </button>
+                      {abierto && (
+                        <div className="tz-history-row-detail">
+                          <span>
+                            <strong>Hora:</strong> {v.created_at ? formatTime(v.created_at) : "—"}
+                          </span>
+                          <span>
+                            <strong>Fecha:</strong> {v.created_at ? formatDate(v.created_at) : "—"}
+                          </span>
+                          <span>
+                            <strong>Código:</strong> {v.codigo_venta || "—"}
+                          </span>
+                          <span>
+                            <strong>{v.cliente_id ? "Cliente" : "Conductor"}:</strong> {nombreDe(v)}
+                          </span>
+                          <span>
+                            <strong>Detalle:</strong> {v.detalle || "—"}
+                          </span>
+                          {v.voucher_url ? (
+                            <a href={v.voucher_url} target="_blank" rel="noreferrer" className="tz-history-row-photo-link">
+                              <img src={v.voucher_url} alt="Comprobante escaneado" className="tz-history-row-photo" />
+                            </a>
+                          ) : (
+                            metodo !== METODO_PAGO_EFECTIVO && (
+                              <span className="tz-history-row-manual-note">Sin captura adjunta</span>
+                            )
                           )}
-                        </p>
-                      </span>
-                      <strong>{formatSoles(v.monto)}</strong>
-                    </div>
-                  </li>
-                ))}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>
