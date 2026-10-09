@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { hashPin } from "../lib/pinAuth";
+import { crearPin } from "../lib/pinAuth";
 import { ESTADOS_CONDUCTOR_OPERATIVOS } from "../lib/taxiEnums";
 
 // El puente final: un conductor pre-registrado por un Recolector tiene
@@ -73,29 +73,29 @@ export function useVincularConductor() {
       return { error: new Error("duplicado"), message };
     }
 
-    let pinHash;
-    try {
-      pinHash = await hashPin(pin);
-    } catch (hashErr) {
-      const message = "No se pudo proteger tu PIN. Intenta de nuevo.";
-      setError(message);
-      setLoading(false);
-      return { error: hashErr, message };
-    }
-
-    const { data: nuevoUsuario, error: insertError } = await supabase
+    // La cuenta nace sin PIN y el PIN se fija en la base (taxi_crear_pin):
+    // el PIN no se escribe desde la app.
+    const { data: nuevo, error: insertError } = await supabase
       .from("usuarios")
-      .insert({ dni, telefono, pin: pinHash, nombre, rol: "conductor" })
-      .select()
+      .insert({ dni, telefono, nombre, rol: "conductor" })
+      .select("id")
       .single();
+    let resultadoPin = null;
+    if (!insertError) {
+      try {
+        resultadoPin = await crearPin(nuevo.id, pin);
+      } catch {
+        resultadoPin = null;
+      }
+    }
 
     setLoading(false);
-    if (insertError) {
+    if (insertError || resultadoPin?.estado !== "ok") {
       const message = "No se pudo crear tu cuenta. Intenta de nuevo.";
       setError(message);
-      return { error: insertError, message };
+      return { error: insertError || new Error("pin"), message };
     }
-    return { usuario: nuevoUsuario, error: null };
+    return { usuario: resultadoPin.usuario, error: null };
   }, []);
 
   return { buscarPreRegistro, crearCuenta, loading, error };

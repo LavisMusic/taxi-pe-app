@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { hashPin } from "../lib/pinAuth";
+import { fijarPinRecuperacion } from "../lib/pinAuth";
 import { ESTADO_PETICION_PENDIENTE, ESTADO_PETICION_VERIFICADO, ESTADO_PETICION_RESUELTO } from "../lib/taxiEnums";
 
 // Lado PÚBLICO del flujo de recuperación de PIN — la página
@@ -62,51 +62,28 @@ export function useCrearPeticionPin() {
 
   // Paso 2 (self-service): ya verificado por WhatsApp, el propio dueño
   // de la cuenta elige su PIN nuevo acá — nadie más lo ve ni lo elige
-  // por él. Busca la cuenta por DNI (mismo criterio que ya usaba el
-  // lado Admin en usePeticionesPin.js), guarda el hash y cierra la
-  // petición. Devuelve el `usuario` completo para poder loguearlo
-  // directo, igual que ya hace useVincularConductor.js en
-  // /registro-conductor.
+  // por él. Todo pasa en la base (taxi_fijar_pin_recuperacion): solo
+  // funciona si el Admin marcó la petición como 'verificado' y el DNI
+  // coincide; guarda el PIN, cierra la petición y devuelve el `usuario`
+  // para poder loguearlo directo, igual que ya hace useVincularConductor.js
+  // en /registro-conductor.
   const fijarNuevoPin = useCallback(async ({ peticionId, dni, nuevoPin }) => {
     setLoading(true);
-
-    const { data: usuario, error: usuarioError } = await supabase
-      .from("usuarios")
-      .select("*")
-      .eq("dni", dni)
-      .maybeSingle();
-    if (usuarioError || !usuario) {
-      setLoading(false);
-      return { error: usuarioError || new Error("sin cuenta"), message: "No se encontró tu cuenta. Contacta a un Admin." };
-    }
-
-    let pinHash;
+    let resultado;
     try {
-      pinHash = await hashPin(nuevoPin);
-    } catch (hashError) {
+      resultado = await fijarPinRecuperacion(peticionId, dni, nuevoPin);
+    } catch (rpcError) {
       setLoading(false);
-      return { error: hashError, message: "No se pudo proteger tu PIN. Intenta de nuevo." };
+      return { error: rpcError, message: "No se pudo guardar tu PIN nuevo. Intenta de nuevo." };
     }
-
-    const { data: usuarioActualizado, error: updateError } = await supabase
-      .from("usuarios")
-      .update({ pin: pinHash })
-      .eq("id", usuario.id)
-      .select()
-      .single();
-    if (updateError || !usuarioActualizado) {
-      setLoading(false);
-      return { error: updateError || new Error("no actualizado"), message: "No se pudo guardar tu PIN nuevo. Intenta de nuevo." };
-    }
-
-    // Si esto falla no revertimos el PIN ya guardado — perder el
-    // "cierre" de la petición es un problema cosmético (queda una fila
-    // vieja en el Centro de Peticiones del Admin), muy distinto a
-    // dejar a la persona sin poder loguearse con su PIN nuevo.
-    await supabase.from("peticiones_pin").update({ estado: ESTADO_PETICION_RESUELTO }).eq("id", peticionId);
-
     setLoading(false);
-    return { error: null, usuario: usuarioActualizado };
+    if (resultado?.estado === "no_existe") {
+      return { error: new Error("sin cuenta"), message: "No se encontró tu cuenta. Contacta a un Admin." };
+    }
+    if (resultado?.estado !== "ok") {
+      return { error: new Error(resultado?.estado || "error"), message: "Tu solicitud todavía no fue verificada por un Admin." };
+    }
+    return { error: null, usuario: resultado.usuario };
   }, []);
 
   return { crear, fijarNuevoPin, loading };

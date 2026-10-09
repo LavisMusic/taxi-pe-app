@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { hashPin } from "../lib/pinAuth";
+import { crearPin } from "../lib/pinAuth";
 import {
   ESTADO_CUENTA_ACTIVO,
   ESTADO_VERIFICACION_EN_REVISION,
@@ -98,30 +98,24 @@ export function useConductorTemporal() {
         return { error: new Error("duplicado"), message: "Ya existe una cuenta con ese DNI." };
       }
 
-      let pinHash;
-      try {
-        pinHash = await hashPin(pin);
-      } catch (hashError) {
-        setLoading(false);
-        return { error: hashError, message: "No se pudo proteger tu PIN. Intenta de nuevo." };
-      }
-
-      const { data: usuario, error: usuarioError } = await supabase
+      // Datos primero (como siempre) y el PIN en la base (taxi_crear_pin):
+      // el PIN no se escribe desde la app.
+      const { error: datosError } = await supabase
         .from("usuarios")
-        .update({
-          apellido,
-          edad,
-          sexo,
-          dni,
-          pin: pinHash,
-          estado_verificacion: ESTADO_VERIFICACION_EN_REVISION,
-        })
-        .eq("id", usuarioId)
-        .select()
-        .single();
-      if (usuarioError || !usuario) {
+        .update({ apellido, edad, sexo, dni, estado_verificacion: ESTADO_VERIFICACION_EN_REVISION })
+        .eq("id", usuarioId);
+      let resultadoPin = null;
+      if (!datosError) {
+        try {
+          resultadoPin = await crearPin(usuarioId, pin);
+        } catch {
+          resultadoPin = null;
+        }
+      }
+      const usuario = resultadoPin?.usuario;
+      if (datosError || resultadoPin?.estado !== "ok" || !usuario) {
         setLoading(false);
-        return { error: usuarioError, message: "No se pudo guardar tu verificación. Intenta de nuevo." };
+        return { error: datosError || new Error("pin"), message: "No se pudo guardar tu verificación. Intenta de nuevo." };
       }
 
       // Un rechazo previo (ver useConductores.js `rechazar`) deja la fila

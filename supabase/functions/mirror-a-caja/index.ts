@@ -73,6 +73,8 @@ Deno.serve(async (req) => {
   // Anti-abuso: el pin en texto plano tiene que coincidir de verdad con
   // el hash que YA está guardado para ese teléfono — si no, no se
   // reenvía nada.
+  // (El hash vive en usuarios_credenciales; taxi_pin_correcto compara en
+  // la base, ver la migración 20261009100000.)
   const { data: match, error: findErr } = await admin
     .from("usuarios")
     .select("nombre, pin, creditos_disponibles, membresia_vencimiento")
@@ -84,7 +86,11 @@ Deno.serve(async (req) => {
     return json(404, { error: "cuenta no encontrada" });
   }
 
-  const { data: valido, error: verifyErr } = await admin.rpc("verify_pin", { pin, hash: match.pin });
+  const { data: valido, error: verifyErr } = await admin.rpc("taxi_pin_correcto", {
+    p_telefono: telefono,
+    p_rol: "pasajero",
+    p_pin: pin,
+  });
   if (verifyErr || valido !== true) {
     return json(403, { error: "pin no coincide" });
   }
