@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { hashPin, verifyPin } from "../lib/pinAuth";
+import { loginConPin, crearPin as crearPinBase, MENSAJE_BLOQUEADO } from "../lib/pinAuth";
 import { mirrorCuentaACaja } from "../lib/mirrorCaja";
 import {
   ESTADO_VERIFICACION_PERMANENTE,
@@ -63,34 +63,29 @@ export function usePasajeroAuth() {
   // Segundo paso del registro exprés: completa los datos reales y crea
   // el PIN — de acá en más la cuenta ya no vence a los 7 días.
   const verificarCuenta = useCallback(async ({ usuarioId, nombre, apellido, edad, sexo, pin }) => {
+    // Datos + PIN en un solo paso en la base (taxi_crear_pin): el PIN
+    // nunca se escribe desde acá.
     setLoading(true);
-    let pinHash;
+    let resultado;
     try {
-      pinHash = await hashPin(pin);
-    } catch (hashError) {
-      setLoading(false);
-      return { error: hashError, message: "No se pudo proteger tu PIN. Intenta de nuevo." };
-    }
-
-    const { data, error: updateError } = await supabase
-      .from("usuarios")
-      .update({
+      resultado = await crearPinBase(usuarioId, pin, {
         nombre,
         apellido,
         edad,
         sexo,
-        pin: pinHash,
         estado_verificacion: ESTADO_VERIFICACION_PERMANENTE,
         expira_en: null,
-      })
-      .eq("id", usuarioId)
-      .select()
-      .single();
+      });
+    } catch (rpcError) {
+      setLoading(false);
+      return { error: rpcError, message: "No se pudo guardar tu verificación. Intenta de nuevo." };
+    }
 
     setLoading(false);
-    if (updateError || !data) {
-      return { error: updateError, message: "No se pudo guardar tu verificación. Intenta de nuevo." };
+    if (resultado?.estado !== "ok") {
+      return { error: new Error(resultado?.estado || "error"), message: "No se pudo guardar tu verificación. Intenta de nuevo." };
     }
+    const data = resultado.usuario;
     mirrorCuentaACaja({ telefono: data.telefono, pin, nombre: data.nombre });
     return { usuario: data, error: null };
   }, []);
@@ -102,47 +97,28 @@ export function usePasajeroAuth() {
   // identidad (nadie más tiene ese teléfono) — se devuelve
   // `usuarioSinPin` para que el form pase al paso de "Crea tu PIN",
   // mismo criterio que StaffLoginForm.jsx usa para conductor/recolector.
+  // El PIN se compara en la base (taxi_login): el hash nunca llega acá.
   const login = useCallback(async ({ telefono, pin }) => {
     setLoading(true);
-    const { data, error: fetchError } = await supabase
-      .from("usuarios")
-      .select("*")
-      .eq("telefono", telefono)
-      .eq("rol", "pasajero")
-      .maybeSingle();
-
-    if (fetchError) {
-      setLoading(false);
-      return { error: fetchError, message: "No se pudo verificar tus datos. Intenta de nuevo." };
-    }
-    if (!data) {
-      setLoading(false);
-      return { error: new Error("no encontrado"), message: "Teléfono o PIN incorrectos." };
-    }
-
-    if (!data.pin) {
-      setLoading(false);
-      return { usuarioSinPin: data, error: null };
-    }
-
-    if (!/^\d{6}$/.test(pin)) {
-      setLoading(false);
-      return { error: new Error("pin invalido"), message: "El PIN debe tener 6 dígitos." };
-    }
-
-    let valido = false;
+    let resultado;
     try {
-      valido = await verifyPin(pin, data.pin);
-    } catch (verifyError) {
+      resultado = await loginConPin(telefono, pin, ["pasajero"]);
+    } catch (rpcError) {
       setLoading(false);
-      return { error: verifyError, message: "No se pudo verificar tu PIN. Intenta de nuevo." };
+      return { error: rpcError, message: "No se pudo verificar tus datos. Intenta de nuevo." };
     }
-
     setLoading(false);
-    if (!valido) {
+
+    if (resultado?.estado === "sin_pin") {
+      return { usuarioSinPin: resultado.usuario, error: null };
+    }
+    if (resultado?.estado === "bloqueado") {
+      return { error: new Error("bloqueado"), message: MENSAJE_BLOQUEADO };
+    }
+    if (resultado?.estado !== "ok") {
       return { error: new Error("pin incorrecto"), message: "Teléfono o PIN incorrectos." };
     }
-    return { usuario: data, error: null };
+    return { usuario: resultado.usuario, error: null };
   }, []);
 
   // Paso 2 del primer ingreso: crea y guarda el PIN de una cuenta que
@@ -150,23 +126,18 @@ export function usePasajeroAuth() {
   // StaffLoginForm.jsx/handleCrearPin.
   const crearPin = useCallback(async ({ usuarioId, nuevoPin }) => {
     setLoading(true);
-    let hash;
+    let resultado;
     try {
-      hash = await hashPin(nuevoPin);
-    } catch (hashError) {
+      resultado = await crearPinBase(usuarioId, nuevoPin);
+    } catch (rpcError) {
       setLoading(false);
-      return { error: hashError, message: "No se pudo proteger el PIN. Intenta de nuevo." };
+      return { error: rpcError, message: "No se pudo guardar el PIN. Intenta de nuevo." };
     }
-    const { data, error: updateError } = await supabase
-      .from("usuarios")
-      .update({ pin: hash })
-      .eq("id", usuarioId)
-      .select()
-      .single();
     setLoading(false);
-    if (updateError || !data) {
-      return { error: updateError, message: "No se pudo guardar el PIN. Intenta de nuevo." };
+    if (resultado?.estado !== "ok") {
+      return { error: new Error(resultado?.estado || "error"), message: "No se pudo guardar el PIN. Intenta de nuevo." };
     }
+    const data = resultado.usuario;
     mirrorCuentaACaja({ telefono: data.telefono, pin: nuevoPin, nombre: data.nombre });
     return { usuario: data, error: null };
   }, []);

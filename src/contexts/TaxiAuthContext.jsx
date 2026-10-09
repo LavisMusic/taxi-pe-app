@@ -4,7 +4,7 @@ import { ShieldAlert, Headset } from "lucide-react";
 import { useContactoPlataforma } from "../hooks/useContactoPlataforma";
 import { buildWhatsappLink } from "../lib/whatsapp";
 import { supabase } from "../supabaseClient";
-import { TAXI_ADMIN_KEY, TAXI_SESSION_KEY } from "../lib/taxiAuth";
+import { TAXI_ADMIN_KEY, TAXI_SESSION_KEY, leerTokenAdmin } from "../lib/taxiAuth";
 
 // Aviso a pantalla completa cuando el Admin elimina la cuenta MIENTRAS
 // la persona la sigue teniendo abierta en su dispositivo — sin esto,
@@ -86,10 +86,12 @@ function readStoredUsuario() {
 // que ya tiene el login normal (ver loginUsuario/readStoredUsuario más
 // arriba): ahora es el propio Admin quien elige, en /login-admin, si
 // quiere que persista o no.
+// Lo guardado es el token de sesión que entrega la base al comprobar el
+// código (taxi_admin_login), no un simple "1": se vuelve a validar contra
+// la base al abrir la app (ver más abajo), así que escribirlo a mano en
+// el navegador no abre el panel.
 function readStoredAdminMaster() {
-  return (
-    window.localStorage.getItem(TAXI_ADMIN_KEY) === "1" || window.sessionStorage.getItem(TAXI_ADMIN_KEY) === "1"
-  );
+  return Boolean(leerTokenAdmin());
 }
 
 export function TaxiAuthProvider({ children }) {
@@ -110,12 +112,18 @@ export function TaxiAuthProvider({ children }) {
   // (más restrictivo que loginUsuario, sigue siendo una puerta
   // administrativa): sessionStorage salvo que el propio Admin marque
   // "Mantener sesión iniciada" en el checkbox de /login-admin.
-  const loginAdminMaster = useCallback((remember = false) => {
+  const loginAdminMaster = useCallback((token, remember = false) => {
     setIsAdminMaster(true);
     const target = remember ? window.localStorage : window.sessionStorage;
     const other = remember ? window.sessionStorage : window.localStorage;
-    target.setItem(TAXI_ADMIN_KEY, "1");
+    target.setItem(TAXI_ADMIN_KEY, token);
     other.removeItem(TAXI_ADMIN_KEY);
+  }, []);
+
+  const olvidarAdmin = useCallback(() => {
+    setIsAdminMaster(false);
+    window.localStorage.removeItem(TAXI_ADMIN_KEY);
+    window.sessionStorage.removeItem(TAXI_ADMIN_KEY);
   }, []);
 
   const updateUsuario = useCallback((patch) => {
@@ -131,6 +139,8 @@ export function TaxiAuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
+    const tokenAdmin = leerTokenAdmin();
+    if (tokenAdmin) supabase.rpc("taxi_admin_salir", { p_token: tokenAdmin }).then(() => {}, () => {});
     reiniciarBienvenidas();
     setUsuario(null);
     setIsAdminMaster(false);
@@ -222,6 +232,33 @@ export function TaxiAuthProvider({ children }) {
       window.removeEventListener("focus", validarCuentaExiste);
     };
   }, [usuario?.id, marcarCuentaEliminada]);
+
+  // La sesión de Admin se comprueba en la base al abrir la app y al
+  // volver a la pestaña: si el token no existe, venció o se cambió el
+  // código (eso cierra todas las sesiones), se sale del panel.
+  useEffect(() => {
+    if (!isAdminMaster) return undefined;
+    let active = true;
+    const validar = () => {
+      const token = leerTokenAdmin();
+      if (!token) return olvidarAdmin();
+      supabase.rpc("taxi_admin_sesion_valida", { p_token: token }).then(({ data, error }) => {
+        // Un corte de red no saca a nadie; solo un "no válido" de la base
+        // (o un token con formato viejo, como el "1" de antes).
+        if (!active) return;
+        if (error ? error.code === "22P02" : data !== true) olvidarAdmin();
+      });
+    };
+    validar();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") validar();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      active = false;
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [isAdminMaster, olvidarAdmin]);
 
   const value = {
     usuario,

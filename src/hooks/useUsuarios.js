@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { hashPin } from "../lib/pinAuth";
+import { adminFijarPin } from "../lib/pinAuth";
 import { subscribeTable } from "../lib/realtime";
 import { ESTADO_CUENTA_ACTIVO, ESTADO_CUENTA_RECHAZADO } from "../lib/taxiEnums";
 
@@ -71,24 +71,28 @@ export function useUsuarios() {
     if (checkError) return { error: checkError };
     if (existente) return { error: new Error("Ya existe una cuenta con ese DNI o teléfono.") };
 
-    let pinHash = null;
-    if (pin) {
+    // La cuenta nace sin PIN; si igual llegó uno, se fija en la base con
+    // la sesión de Admin (el PIN no se escribe desde la app).
+    const { data: nuevo, error: insertError } = await supabase
+      .from("usuarios")
+      .insert({
+        dni,
+        telefono,
+        nombre,
+        rol,
+        foto_url: fotoUrl || null,
+        estado_cuenta: ESTADO_CUENTA_ACTIVO,
+      })
+      .select("id")
+      .single();
+    if (!insertError && pin) {
       try {
-        pinHash = await hashPin(pin);
-      } catch (hashError) {
-        return { error: hashError };
+        await adminFijarPin(nuevo.id, pin);
+      } catch (pinError) {
+        await refresh();
+        return { error: pinError };
       }
     }
-
-    const { error: insertError } = await supabase.from("usuarios").insert({
-      dni,
-      telefono,
-      pin: pinHash,
-      nombre,
-      rol,
-      foto_url: fotoUrl || null,
-      estado_cuenta: ESTADO_CUENTA_ACTIVO,
-    });
     if (!insertError) await refresh();
     return { error: insertError };
   }, [refresh]);
@@ -126,20 +130,26 @@ export function useUsuarios() {
         }
       }
 
-      let finalPatch = patch;
-      if (patch.pin) {
+      // El PIN nuevo (si el Admin lo sobrescribe) va aparte, a la base
+      // con la sesión de Admin; el resto de los campos, como siempre.
+      const { pin: pinNuevo, ...resto } = patch;
+      if (pinNuevo) {
         try {
-          finalPatch = { ...patch, pin: await hashPin(patch.pin) };
-        } catch (hashError) {
-          return { error: hashError };
+          await adminFijarPin(id, pinNuevo);
+        } catch (pinError) {
+          return { error: pinError };
+        }
+        if (Object.keys(resto).length === 0) {
+          await refresh();
+          return { error: null };
         }
       }
 
       const { data, error: updateError } = await supabase
         .from("usuarios")
-        .update(finalPatch)
+        .update(resto)
         .eq("id", id)
-        .select();
+        .select("id");
       if (updateError) return { error: updateError };
       if (!data || data.length === 0) {
         return {

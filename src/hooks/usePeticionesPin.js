@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import { leerTokenAdmin } from "../lib/taxiAuth";
 import { subscribeTable } from "../lib/realtime";
-import { ESTADO_PETICION_VERIFICADO, ESTADO_PETICION_RESUELTO } from "../lib/taxiEnums";
+import { ESTADO_PETICION_RESUELTO } from "../lib/taxiEnums";
 
 // Lado ADMIN del flujo de recuperación de PIN (Centro de Peticiones,
 // pestaña "Recuperación de PIN"). El formulario público
@@ -70,10 +71,13 @@ export function usePeticionesPin() {
   // identidad pasa por WhatsApp, no por acá.
   const marcarVerificado = useCallback(
     async (id) => {
-      const { error: updateError } = await supabase
-        .from("peticiones_pin")
-        .update({ estado: ESTADO_PETICION_VERIFICADO })
-        .eq("id", id);
+      // Solo el Admin (con su sesión) puede marcar 'verificado': la base
+      // rechaza ese cambio si llega directo desde la app.
+      const { data, error: rpcError } = await supabase.rpc("taxi_admin_verificar_peticion", {
+        p_token: leerTokenAdmin(),
+        p_peticion_id: String(id),
+      });
+      const updateError = rpcError || (data?.estado !== "ok" ? new Error("Tu sesión de Admin venció. Vuelve a entrar.") : null);
       if (!updateError) await refresh();
       return { error: updateError };
     },

@@ -8,7 +8,10 @@
 // Edge Function, como ya existe el patrón en supabase/functions/) — no
 // en auth.uid(), que acá no existe.
 
-export const ADMIN_MASTER_CODE = "745745";
+// El código del Admin ya NO vive acá (estaba en el JavaScript que
+// descarga cualquiera): se comprueba en la base (taxi_admin_login), que
+// devuelve un token de sesión. Lo que se guarda en el navegador es ese
+// token, y las funciones de Admin de la base lo piden.
 
 export const TAXI_SESSION_KEY = "taxipe_usuario";
 export const TAXI_ADMIN_KEY = "taxipe_admin_master";
@@ -21,4 +24,13 @@ export const ROLE_HOME_ROUTES = {
 
 export function routeForRole(rol) {
   return ROLE_HOME_ROUTES[rol] ?? "/";
+}
+
+// Token de la sesión de Admin guardado en este navegador (o null).
+export function leerTokenAdmin() {
+  try {
+    return window.localStorage.getItem(TAXI_ADMIN_KEY) || window.sessionStorage.getItem(TAXI_ADMIN_KEY) || null;
+  } catch {
+    return null;
+  }
 }

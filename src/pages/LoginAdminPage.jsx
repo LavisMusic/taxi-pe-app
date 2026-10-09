@@ -4,7 +4,8 @@ import { ShieldCheck } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useAvisoTop } from "../hooks/useAvisoTop";
 import AvisoTop from "../components/AvisoTop";
-import { ADMIN_MASTER_CODE } from "../lib/taxiAuth";
+import { supabase } from "../supabaseClient";
+import { MENSAJE_BLOQUEADO } from "../lib/pinAuth";
 import Styles from "../components/Styles";
 import logo from "../assets/logo.webp";
 
@@ -15,8 +16,10 @@ const ENTRAR_DELAY_MS = 700;
 // Ruta /login-admin: un único campo de código maestro, sin usuario ni
 // DNI. Reusa exactamente las clases tz-modal/tz-login-field/tz-text-input
 // del login viejo (AdminLoginGate) para no romper la estética — la
-// diferencia es que esto ya no crea una sesión de Supabase Auth, solo
-// marca `isAdminMaster` en TaxiAuthContext (ver RequireAdminMaster).
+// diferencia es que esto ya no crea una sesión de Supabase Auth: el
+// código se comprueba en la base (taxi_admin_login, con límite de
+// intentos) y lo que se guarda es el token de sesión que devuelve (ver
+// TaxiAuthContext y RequireAdminMaster).
 export default function LoginAdminPage() {
   const { loginAdminMaster } = useTaxiAuth();
   const navigate = useNavigate();
@@ -30,7 +33,7 @@ export default function LoginAdminPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
@@ -40,16 +43,27 @@ export default function LoginAdminPage() {
     }
 
     setSubmitting(true);
-    if (codigo.trim() !== ADMIN_MASTER_CODE) {
+    const { data, error: rpcError } = await supabase.rpc("taxi_admin_login", {
+      p_codigo: codigo.trim(),
+      p_recordar: rememberMe,
+    });
+    if (rpcError || data?.estado !== "ok") {
       setSubmitting(false);
-      setError("Código incorrecto.");
-      mostrar("Código incorrecto.", "error");
+      const mensaje = rpcError
+        ? "No se pudo verificar el código. Intenta de nuevo."
+        : data?.estado === "bloqueado"
+          ? MENSAJE_BLOQUEADO
+          : data?.estado === "sin_configurar"
+            ? "Falta configurar el código del Admin en la base."
+            : "Código incorrecto.";
+      setError(mensaje);
+      mostrar(mensaje, "error");
       return;
     }
 
     mostrar("✓ Sesión iniciada correctamente", "exito");
     setTimeout(() => {
-      loginAdminMaster(rememberMe);
+      loginAdminMaster(data.token, rememberMe);
       navigate("/admin", { replace: true });
     }, ENTRAR_DELAY_MS);
   };
@@ -73,7 +87,6 @@ export default function LoginAdminPage() {
             <input
               id="admin-master-code"
               type="password"
-              inputMode="numeric"
               autoFocus
               className="tz-text-input"
               value={codigo}

@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogIn, ShieldCheck, KeyRound } from "lucide-react";
-import { supabase } from "../supabaseClient";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useAvisoTop } from "../hooks/useAvisoTop";
 import AvisoTop from "./AvisoTop";
 import VerificarConductorForm from "./VerificarConductorForm";
-import { hashPin, verifyPin } from "../lib/pinAuth";
+import { loginConPin, crearPin, MENSAJE_BLOQUEADO } from "../lib/pinAuth";
 import { esTelefonoValido, ESTADO_VERIFICACION_TEMPORAL } from "../lib/taxiEnums";
 import { routeForRole } from "../lib/taxiAuth";
 
@@ -66,55 +65,35 @@ export default function StaffLoginForm({ onSuccess }) {
       return;
     }
 
+    // El PIN se compara en la base (taxi_login): el hash nunca llega acá.
     setSubmitting(true);
-    const { data, error: queryError } = await supabase
-      .from("usuarios")
-      .select("*")
-      .eq("telefono", telefonoTrim)
-      .in("rol", ["conductor", "recolector"])
-      .maybeSingle();
-
-    if (queryError) {
+    let resultado;
+    try {
+      resultado = await loginConPin(telefonoTrim, pin, ["conductor", "recolector"]);
+    } catch {
       setSubmitting(false);
       setError("No se pudo verificar tus datos. Intenta de nuevo.");
       mostrar("No se pudo verificar tus datos.", "error");
       return;
     }
-    if (!data) {
-      setSubmitting(false);
-      setError("Teléfono o PIN incorrectos.");
-      mostrar("Teléfono o PIN incorrectos.", "error");
-      return;
-    }
-
-    if (!data.pin) {
-      setSubmitting(false);
-      setUsuarioSinPin(data);
-      return;
-    }
-
-    if (!/^\d{6}$/.test(pin)) {
-      setSubmitting(false);
-      setError("El PIN debe tener 6 dígitos.");
-      return;
-    }
-
-    let valido = false;
-    try {
-      valido = await verifyPin(pin, data.pin);
-    } catch {
-      setSubmitting(false);
-      setError("No se pudo verificar tu PIN. Intenta de nuevo.");
-      return;
-    }
     setSubmitting(false);
-    if (!valido) {
+
+    if (resultado?.estado === "sin_pin") {
+      setUsuarioSinPin(resultado.usuario);
+      return;
+    }
+    if (resultado?.estado === "bloqueado") {
+      setError(MENSAJE_BLOQUEADO);
+      mostrar(MENSAJE_BLOQUEADO, "error");
+      return;
+    }
+    if (resultado?.estado !== "ok") {
       setError("Teléfono o PIN incorrectos.");
       mostrar("Teléfono o PIN incorrectos.", "error");
       return;
     }
 
-    entrar(data);
+    entrar(resultado.usuario);
   };
 
   const handleCrearPin = async (e) => {
@@ -130,29 +109,20 @@ export default function StaffLoginForm({ onSuccess }) {
     }
 
     setCreandoPin(true);
-    let hash;
+    let resultado;
     try {
-      hash = await hashPin(nuevoPin);
+      resultado = await crearPin(usuarioSinPin.id, nuevoPin);
     } catch {
-      setCreandoPin(false);
-      setError("No se pudo proteger el PIN. Intenta de nuevo.");
-      return;
+      resultado = null;
     }
-
-    const { data, error: updateError } = await supabase
-      .from("usuarios")
-      .update({ pin: hash })
-      .eq("id", usuarioSinPin.id)
-      .select()
-      .single();
     setCreandoPin(false);
-    if (updateError || !data) {
+    if (resultado?.estado !== "ok") {
       setError("No se pudo guardar el PIN. Intenta de nuevo.");
       mostrar("No se pudo guardar el PIN.", "error");
       return;
     }
 
-    entrar(data);
+    entrar(resultado.usuario);
   };
 
   if (usuarioSinPin?.rol === "conductor" && usuarioSinPin.estado_verificacion === ESTADO_VERIFICACION_TEMPORAL) {
