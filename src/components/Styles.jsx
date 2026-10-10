@@ -279,9 +279,10 @@ export default function Styles() {
         color: var(--yellow);
         text-align: center;
         white-space: nowrap;
-        /* Aura limón — se estira sola con el texto, sea cual sea su
-           largo, porque text-shadow no tiene ancho propio. */
-        text-shadow: 0 0 8px rgba(215,255,59,0.85), 0 0 18px rgba(215,255,59,0.55);
+        /* Brillo sutil de las letras, de su mismo color (antes un aura
+           neón de hasta 18 px que, recortada por el límite de 2 líneas,
+           se veía como un recuadro). */
+        text-shadow: 0 0 6px rgba(215,255,59,0.55);
       }
       /* Pasajero y conductor: el texto va justo debajo del logo, como en
          Caja Tonazo (--tz-sub-ajuste; negativo = más arriba). Solo se
@@ -312,7 +313,11 @@ export default function Styles() {
         top: 50%;
         transform: translate(-50%, -50%);
         width: max-content;
-        max-width: min(230px, 60vw);
+        /* +20 px de aire interno: el brillo de las letras cabe dentro
+           de la caja (que recorta para limitar a 2 líneas) y no se ve
+           como un recuadro. */
+        max-width: calc(min(230px, 60vw) + 20px);
+        padding: 6px 10px;
         margin: 0;
         box-sizing: border-box;
         white-space: pre-wrap;
