@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { fijarPinRecuperacion } from "../lib/pinAuth";
-import { ESTADO_PETICION_PENDIENTE, ESTADO_PETICION_VERIFICADO, ESTADO_PETICION_RESUELTO } from "../lib/taxiEnums";
+import { ESTADO_PETICION_PENDIENTE, ESTADO_PETICION_VERIFICADO } from "../lib/taxiEnums";
 
 // Lado PÚBLICO del flujo de recuperación de PIN — la página
 // /recuperar-pin (sin sesión, es justo para quien no puede loguearse).
@@ -25,12 +25,9 @@ export function useCrearPeticionPin() {
   const crear = useCallback(async ({ nombre, dni, placa, tipoUsuario }) => {
     setLoading(true);
 
-    const { data: existente, error: checkError } = await supabase
-      .from("peticiones_pin")
-      .select("id, estado")
-      .eq("dni", dni)
-      .neq("estado", ESTADO_PETICION_RESUELTO)
-      .maybeSingle();
+    // Estado de la petición abierta de este DNI, sin datos personales
+    // (la tabla solo la lee el Admin; ver la migración 20261011100000).
+    const { data: existente, error: checkError } = await supabase.rpc("taxi_peticion_pin_estado", { p_dni: dni });
 
     if (checkError) {
       setLoading(false);
