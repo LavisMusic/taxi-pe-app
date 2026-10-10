@@ -1,8 +1,7 @@
 import { useCallback, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { crearPin } from "../lib/pinAuth";
+import { crearPin, registrarTemporal as registrarTemporalBase } from "../lib/pinAuth";
 import {
-  ESTADO_CUENTA_ACTIVO,
   ESTADO_VERIFICACION_EN_REVISION,
   ESTADO_VERIFICACION_TEMPORAL,
   fechaExpiracionCuentaTemporal,
@@ -37,26 +36,29 @@ export function useConductorTemporal() {
       return { error: new Error("duplicado"), message: "Ya existe una cuenta con ese teléfono." };
     }
 
-    const { data, error: insertError } = await supabase
-      .from("usuarios")
-      .insert({
-        nombre,
-        telefono,
-        pin: null,
-        dni: null,
+    // La cuenta la crea la base (taxi_registrar_temporal), que además
+    // devuelve el ticket de la sesión.
+    let resultado;
+    try {
+      resultado = await registrarTemporalBase({
         rol: "conductor",
-        estado_cuenta: ESTADO_CUENTA_ACTIVO,
-        estado_verificacion: ESTADO_VERIFICACION_TEMPORAL,
-        expira_en: fechaExpiracionCuentaTemporal(),
-      })
-      .select()
-      .single();
+        telefono,
+        nombre,
+        expiraEn: fechaExpiracionCuentaTemporal(),
+      });
+    } catch (rpcError) {
+      setLoading(false);
+      return { error: rpcError, message: "No se pudo crear tu cuenta. Intenta de nuevo." };
+    }
 
     setLoading(false);
-    if (insertError) {
-      return { error: insertError, message: "No se pudo crear tu cuenta. Intenta de nuevo." };
+    if (resultado?.estado === "duplicado") {
+      return { error: new Error("duplicado"), message: "Ya existe una cuenta con ese teléfono." };
     }
-    return { usuario: data, error: null };
+    if (resultado?.estado !== "ok") {
+      return { error: new Error(resultado?.estado || "error"), message: "No se pudo crear tu cuenta. Intenta de nuevo." };
+    }
+    return { usuario: resultado.usuario, error: null };
   }, []);
 
   // Segundo paso: completa apellido/edad/sexo/DNI/placa/fotos/PIN. A

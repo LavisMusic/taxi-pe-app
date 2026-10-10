@@ -9,3 +9,8 @@ verify_jwt = false
 
 [functions.mirror-a-caja]
 verify_jwt = false
+
+# Canjea el ticket de entrada por una sesión de Supabase Auth: se llama
+# justo ANTES de tener sesión (ver la migración 20261010100000).
+[functions.taxi-sesion]
+verify_jwt = false

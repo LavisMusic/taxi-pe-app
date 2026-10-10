@@ -3,7 +3,8 @@ import { reiniciarBienvenidas } from "../hooks/useBienvenidaNeon";
 import { ShieldAlert, Headset } from "lucide-react";
 import { useContactoPlataforma } from "../hooks/useContactoPlataforma";
 import { buildWhatsappLink } from "../lib/whatsapp";
-import { supabase } from "../supabaseClient";
+import { supabase, moverSesionGuardada } from "../supabaseClient";
+import { cerrarSesion, rolDeSesion, abrirSesion } from "../lib/sesionTaxi";
 import { TAXI_ADMIN_KEY, TAXI_SESSION_KEY, leerTokenAdmin } from "../lib/taxiAuth";
 
 // Aviso a pantalla completa cuando el Admin elimina la cuenta MIENTRAS
@@ -101,6 +102,9 @@ export function TaxiAuthProvider({ children }) {
 
   // Login por DNI + Teléfono + PIN (recolector/conductor/pasajero).
   const loginUsuario = useCallback((row, remember = true) => {
+    // La sesión real de Supabase (ya abierta al validar el PIN) sigue la
+    // misma elección de "Mantener sesión iniciada".
+    moverSesionGuardada(remember);
     setUsuario(row);
     const target = remember ? window.localStorage : window.sessionStorage;
     const other = remember ? window.sessionStorage : window.localStorage;
@@ -118,6 +122,7 @@ export function TaxiAuthProvider({ children }) {
     const other = remember ? window.sessionStorage : window.localStorage;
     target.setItem(TAXI_ADMIN_KEY, token);
     other.removeItem(TAXI_ADMIN_KEY);
+    moverSesionGuardada(remember);
   }, []);
 
   const olvidarAdmin = useCallback(() => {
@@ -141,6 +146,7 @@ export function TaxiAuthProvider({ children }) {
   const logout = useCallback(() => {
     const tokenAdmin = leerTokenAdmin();
     if (tokenAdmin) supabase.rpc("taxi_admin_salir", { p_token: tokenAdmin }).then(() => {}, () => {});
+    cerrarSesion();
     reiniciarBienvenidas();
     setUsuario(null);
     setIsAdminMaster(false);
@@ -159,6 +165,7 @@ export function TaxiAuthProvider({ children }) {
   // ahora, así que antes esto quedaba con la sesión local "viva" para
   // siempre, sin avisar nada).
   const marcarCuentaEliminada = useCallback(() => {
+    cerrarSesion();
     setUsuario(null);
     setIsAdminMaster(false);
     window.localStorage.removeItem(TAXI_SESSION_KEY);
@@ -232,6 +239,34 @@ export function TaxiAuthProvider({ children }) {
       window.removeEventListener("focus", validarCuentaExiste);
     };
   }, [usuario?.id, marcarCuentaEliminada]);
+
+  // Paso a sesión real (fase 2A) de quien ya estaba dentro antes de esta
+  // versión: el Admin con su token válido la obtiene solo; una cuenta sin
+  // PIN (registro exprés) también; quien tiene PIN vuelve a entrar con
+  // él (se cierra su sesión local). Si ya hay una sesión del mismo tipo,
+  // no se hace nada.
+  useEffect(() => {
+    if (!usuario?.id && !isAdminMaster) return undefined;
+    let active = true;
+    (async () => {
+      const rol = await rolDeSesion();
+      if (!active) return;
+      if (usuario?.id) {
+        if (rol) return;
+        const { data: ticket, error } = await supabase.rpc("taxi_ticket_sin_pin", { p_usuario_id: usuario.id });
+        if (!active || error) return;
+        if (ticket) abrirSesion(ticket);
+        else logout();
+        return;
+      }
+      if (rol === "admin") return;
+      const { data: ticket } = await supabase.rpc("taxi_ticket_admin", { p_token: leerTokenAdmin() });
+      if (active && ticket) abrirSesion(ticket);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [usuario?.id, isAdminMaster, logout]);
 
   // La sesión de Admin se comprueba en la base al abrir la app y al
   // volver a la pestaña: si el token no existe, venció o se cambió el
