@@ -282,7 +282,7 @@ export default function Styles() {
         /* Brillo sutil de las letras, de su mismo color (antes un aura
            neón de hasta 18 px que, recortada por el límite de 2 líneas,
            se veía como un recuadro). */
-        text-shadow: 0 0 6px rgba(215,255,59,0.55);
+        text-shadow: 0 0 6px rgba(215,255,59,0.8), 0 0 12px rgba(215,255,59,0.45);
       }
       /* Pasajero y conductor: el texto va justo debajo del logo, como en
          Caja Tonazo (--tz-sub-ajuste; negativo = más arriba). Solo se
@@ -313,11 +313,11 @@ export default function Styles() {
         top: 50%;
         transform: translate(-50%, -50%);
         width: max-content;
-        /* +20 px de aire interno: el brillo de las letras cabe dentro
+        /* +24 px de aire interno: el brillo de las letras cabe dentro
            de la caja (que recorta para limitar a 2 líneas) y no se ve
            como un recuadro. */
-        max-width: calc(min(230px, 60vw) + 20px);
-        padding: 6px 10px;
+        max-width: calc(min(230px, 60vw) + 24px);
+        padding: 8px 12px;
         margin: 0;
         box-sizing: border-box;
         white-space: pre-wrap;
