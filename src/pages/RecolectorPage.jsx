@@ -2,6 +2,8 @@ import { useState } from "react";
 import { LogOut, UserPlus, Wallet, Receipt, CreditCard, CalendarClock, Loader2 } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useVentas } from "../hooks/useVentas";
+import TextoMaquina from "../components/TextoMaquina";
+import { useDescripcionesPublico } from "../hooks/useDescripciones";
 import { useConductores } from "../hooks/useConductores";
 import { useCrearConductorConUsuario } from "../hooks/useCrearConductorConUsuario";
 import { useUsuarios } from "../hooks/useUsuarios";
@@ -39,6 +41,9 @@ import BotonSoporte from "../components/BotonSoporte";
 export default function RecolectorPage() {
   const { usuario, logout } = useTaxiAuth();
   const { ventas, ventasVigentes, ventasHoy, loading: ventasLoading, refresh: refreshVentas } = useVentas();
+  // Texto bajo el logo: el nombre y después las descripciones del Admin
+  // (primero las de "Todos", luego las de recolectores).
+  const descripcionesRecolector = useDescripcionesPublico("recolectores");
   const {
     conductores,
     categorias,
@@ -174,7 +179,12 @@ export default function RecolectorPage() {
 
           <div className="tz-header-center">
             <img src={logo} alt="TaxiP" className="tz-logo" />
-            <p className="tz-subtitle">Recolector{usuario?.nombre ? ` · ${usuario.nombre}` : ""}</p>
+            <div className="tz-subtitle-slot">
+              <TextoMaquina
+                mensajes={[usuario?.nombre ? `Recolector · ${usuario.nombre}` : "Recolector", ...descripcionesRecolector]}
+                className="tz-subtitle-usuario"
+              />
+            </div>
           </div>
 
           <div className="tz-header-side tz-header-side-right">

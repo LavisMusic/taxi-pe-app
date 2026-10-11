@@ -215,13 +215,22 @@ export const FRECUENCIA_UNA_VEZ_TOTAL = "una_vez_total";
 // A quién va una descripción (texto bajo el logo) o un anuncio.
 export const PUBLICO_PASAJEROS = "pasajeros";
 export const PUBLICO_CONDUCTORES = "conductores";
+export const PUBLICO_RECOLECTORES = "recolectores";
 export const PUBLICO_TODOS = "todos";
+// Anuncios: pasajeros, conductores o ambos.
 export const PUBLICOS = [
   { value: PUBLICO_PASAJEROS, label: "Pasajeros" },
   { value: PUBLICO_CONDUCTORES, label: "Conductores" },
   { value: PUBLICO_TODOS, label: "Ambos" },
 ];
-export const etiquetaPublico = (v) => PUBLICOS.find((p) => p.value === v)?.label || "Pasajeros";
+// Descripciones: además recolectores ('todos' = los tres).
+export const PUBLICOS_DESCRIPCION = [
+  { value: PUBLICO_PASAJEROS, label: "Pasajeros" },
+  { value: PUBLICO_CONDUCTORES, label: "Conductores" },
+  { value: PUBLICO_RECOLECTORES, label: "Recolectores" },
+  { value: PUBLICO_TODOS, label: "Todos" },
+];
+export const etiquetaPublico = (v, lista = PUBLICOS) => lista.find((p) => p.value === v)?.label || "Pasajeros";
 // Largo máximo de una descripción (entra en 2 líneas en el celular).
 export const DESCRIPCION_MAX = 40;
 
