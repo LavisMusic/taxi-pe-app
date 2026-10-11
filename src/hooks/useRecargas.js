@@ -1,94 +1,57 @@
 import { useCallback, useState } from "react";
 import { supabase } from "../supabaseClient";
-import {
-  buildDetalleRecarga,
-  MEMBRESIA_DIAS_EXTENSION,
-  METODO_PAGO_FIADO,
-  TIPO_ITEM_MEMBRESIA,
-} from "../lib/taxiEnums";
+import { buildDetalleRecarga, MEMBRESIA_DIAS_EXTENSION } from "../lib/taxiEnums";
 
-// Registra una recarga completa del Recolector (o del Admin): inserta
-// la venta, actualiza al conductor O AL CLIENTE (créditos o
-// vencimiento, según `destinatarioTipo` — unificación pasajero/cliente)
-// y, si el método fue Fiado, además abre una deuda en
-// `fiados_conductores` (solo aplica a conductor: un cliente no tiene
-// libreta de fiados) — el destinatario recibe el beneficio de
-// inmediato en todos los casos, "Fiado" solo cambia de dónde sale la
-// plata (no se cobró hoy, queda pendiente en la Libreta en vez de
-// contarse como recaudado).
+// Registra una recarga a un conductor (Recolector o Admin). Si el método
+// fue Fiado, la base además abre la deuda en `fiados_conductores`; el
+// conductor recibe el beneficio de inmediato en todos los casos.
 //
-// `diasMembresia` ahora viene del PAQUETE elegido en Recarga Rápida
-// (cada paquete de tipo "membresia" define su propia duración) — se
-// pasa por llamada, no por hook, para que dos paquetes distintos en la
-// misma sesión no compartan un valor fijo. Si no se pasa (no debería
-// pasar con la UI actual, pero por las dudas), cae al respaldo de
-// taxiEnums.js.
+// `diasMembresia`/`cantidadCreditos` vienen del PAQUETE elegido (la base
+// los vuelve a leer del paquete; acá solo arman el texto del detalle).
 //
 // `comprobante` (opcional, Yape/Plin/Otros): { opId, fecha, hora,
 // voucherUrl } del escaneo — voucherUrl va a `ventas.voucher_url`, el
 // resto se anota al final de `detalle` (texto libre) para que quede en
 // el Historial sin necesitar columnas nuevas.
+
+// Mensajes de la base (taxi_registrar_recarga) para cada caso rechazado.
+function mensajeRecarga(r) {
+  const fecha = r?.vence ? new Date(r.vence).toLocaleDateString("es-PE") : "";
+  switch (r?.estado) {
+    case "membresia_activa":
+      return `Ya tiene una membresía activa hasta el ${fecha} — no se puede recargar otra hasta que esta termine.`;
+    case "conductor_con_membresia":
+      return `Tiene una membresía activa hasta el ${fecha}: no puede comprar créditos hasta que termine.`;
+    case "recolector_sin_membresia":
+      return "Necesitas una membresía activa para vender membresías.";
+    case "recolector_sin_creditos":
+      return `Te faltan créditos: tienes ${r.disponibles ?? 0} y este paquete necesita ${r.necesarios ?? 0}.`;
+    case "no_aprobado":
+      return "Este conductor está pendiente de aprobación en el Centro de Peticiones. No se pueden procesar pagos aún.";
+    case "paquete_invalido":
+      return "Ese paquete ya no existe. Elige otro.";
+    case "no_existe":
+      return "No se encontró al conductor.";
+    case "sin_permiso":
+      return "Tu sesión no permite registrar recargas. Vuelve a entrar.";
+    default:
+      return "No se pudo registrar la recarga.";
+  }
+}
+
 export function useRecargas({ onDone }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  // Toda la recarga es UNA operación de la base (taxi_registrar_recarga,
+  // migración 20261011120000): valida las reglas de créditos/membresías,
+  // descuenta al recolector, registra la venta, actualiza al conductor y
+  // crea el fiado. Ya no se recarga a clientes (sus créditos son puntos
+  // que ganan comprando).
   const registrarRecarga = useCallback(
-    async ({
-      destinatarioTipo = "conductor",
-      conductor,
-      cliente,
-      recolectorId,
-      tipoItem,
-      monto,
-      cantidadCreditos,
-      diasMembresia,
-      // Bienvenida en varias partes — "Membresía Activada": antes esta
-      // venta solo sumaba días a `vencimiento_suscripcion`, sin dejar
-      // registrado CUÁL paquete fue. Con `paqueteId` guardado en
-      // `conductores.membresia_paquete_id`, ConductorPage.jsx puede
-      // detectar en tiempo real (ver useMembresiaActivadaNeon.js) que
-      // cambió de membresía y mostrar su nombre/descripción reales.
-      //
-      // "Compra Confirmada" (créditos): `paqueteNombre`/`paqueteDescripcion`
-      // se guardan tal cual — no una referencia al paquete — porque acá
-      // lo que hace falta es un "recibo" de lo que se compró en ESE
-      // momento (ver useCompraCreditosNeon.js), no un estado "activo"
-      // como el de membresía.
-      paqueteId,
-      paqueteNombre,
-      paqueteDescripcion,
-      metodoPago,
-      comprobante,
-    }) => {
+    async ({ conductor, tipoItem, cantidadCreditos, diasMembresia, paqueteId, metodoPago, comprobante }) => {
       setSaving(true);
       setError("");
-
-      const esCliente = destinatarioTipo === "cliente";
-      const destinatario = esCliente ? cliente : conductor;
-      const tablaDestino = esCliente ? "usuarios" : "conductores";
-      // Mismo campo de negocio, distinto nombre de columna según la
-      // audiencia — conductores.vencimiento_suscripcion/.creditos vs
-      // usuarios.membresia_vencimiento/.creditos_disponibles (estas
-      // últimas ya existían, las usa la autorecarga del recolector).
-      const campoVencimiento = esCliente ? "membresia_vencimiento" : "vencimiento_suscripcion";
-      const campoCreditos = esCliente ? "creditos_disponibles" : "creditos";
-
-      // Bug/pedido: no se puede vender una membresía nueva a alguien
-      // que YA tiene una vigente — antes esto simplemente EXTENDÍA el
-      // vencimiento actual (sumaba días sobre lo que ya tenía), lo cual
-      // además pisaba `membresia_paquete_id` con el paquete nuevo aunque
-      // el viejo todavía no hubiera terminado. Ahora se bloquea de raíz
-      // hasta que la vigente termine. Esto NO aplica a créditos — los
-      // créditos se siguen pudiendo sumar en cualquier momento.
-      if (tipoItem === TIPO_ITEM_MEMBRESIA) {
-        const vencimientoActual = destinatario[campoVencimiento] ? new Date(destinatario[campoVencimiento]) : null;
-        if (vencimientoActual && vencimientoActual > new Date()) {
-          const message = `Ya tiene una membresía activa hasta el ${vencimientoActual.toLocaleDateString("es-PE")} — no se puede recargar otra hasta que esta termine.`;
-          setError(message);
-          setSaving(false);
-          return { error: new Error("membresia_activa"), message };
-        }
-      }
 
       const dias = diasMembresia || MEMBRESIA_DIAS_EXTENSION;
       const detalleBase = buildDetalleRecarga(tipoItem, cantidadCreditos, dias);
@@ -97,104 +60,24 @@ export function useRecargas({ onDone }) {
           ? `${detalleBase} · Op: ${comprobante.opId || "s/d"} · ${comprobante.fecha || ""} ${comprobante.hora || ""}`.trim()
           : detalleBase;
 
-      // select().single() para recuperar el id de la venta recién
-      // creada: fiados_conductores.venta_id lo necesita para que
-      // Anular pueda encontrar exactamente esta deuda después.
-      const { data: ventaCreada, error: ventaError } = await supabase
-        .from("ventas")
-        .insert({
-          // codigo_venta lo asigna la base (TX-000001…, correlativo).
-          conductor_id: esCliente ? null : conductor.id,
-          cliente_id: esCliente ? cliente.id : null,
-          recolector_id: recolectorId,
-          tipo_item: tipoItem,
-          detalle,
-          monto,
-          metodo_pago: metodoPago,
-          voucher_url: comprobante?.voucherUrl || null,
-        })
-        .select()
-        .single();
-      if (ventaError) {
-        setError("No se pudo registrar la venta.");
-        setSaving(false);
-        return { error: ventaError };
-      }
-
-      const patch = {};
-      if (tipoItem === TIPO_ITEM_MEMBRESIA) {
-        const vencimientoActual = destinatario[campoVencimiento] ? new Date(destinatario[campoVencimiento]) : null;
-        const base = vencimientoActual && vencimientoActual > new Date() ? vencimientoActual : new Date();
-        base.setDate(base.getDate() + dias);
-        patch[campoVencimiento] = base.toISOString();
-        // Explícito siempre (incluso `null` si por lo que sea no llegó
-        // paqueteId) — nunca dejamos que quede el valor viejo puesto:
-        // si esto es un downgrade a otro paquete, tiene que reflejar el
-        // NUEVO, no arrastrar el anterior.
-        patch.membresia_paquete_id = paqueteId ?? null;
-      } else {
-        patch[campoCreditos] = Number(destinatario[campoCreditos] || 0) + Number(cantidadCreditos);
-        // Descuento de Créditos (24h, SOLO conductor): el reloj de "1
-        // crédito cada 24h" arranca (o se REINICIA) exactamente cuando
-        // el conductor pasa de 0/sin créditos a tener saldo de nuevo —
-        // "activó su compra" literal. Un cliente no tiene este descuento
-        // automático (sus créditos se consumen por uso, no por reloj),
-        // así que esto no le aplica.
-        if (!esCliente && Number(destinatario[campoCreditos] || 0) <= 0) {
-          patch.ultimo_descuento_creditos = new Date().toISOString();
-        }
-        // "Compra Confirmada" (pedido nuevo): a diferencia de la
-        // membresía, acá SIEMPRE se pisa con la compra más reciente —
-        // no hay noción de "cambió de paquete", cualquier compra de
-        // créditos (repita el mismo paquete o no) es una novedad que
-        // vale la pena confirmarle al destinatario.
-        patch.ultimo_paquete_creditos_nombre = paqueteNombre ?? null;
-        patch.ultimo_paquete_creditos_descripcion = paqueteDescripcion ?? null;
-        patch.ultima_compra_creditos_at = new Date().toISOString();
-      }
-
-      const { data: destinatarioActualizado, error: destinatarioError } = await supabase
-        .from(tablaDestino)
-        .update(patch)
-        .eq("id", destinatario.id)
-        .select();
-      if (destinatarioError) {
-        setError(`La venta se registró, pero no se pudo actualizar ${esCliente ? "al cliente" : "al conductor"}.`);
-        setSaving(false);
-        return { error: destinatarioError };
-      }
-      if (!destinatarioActualizado || destinatarioActualizado.length === 0) {
-        setError(
-          `La venta se registró, pero ${esCliente ? "el cliente" : "el conductor"} no se actualizó (0 filas — revisa la política RLS de UPDATE en \`${tablaDestino}\`).`
-        );
-        setSaving(false);
-        return { error: new Error("0 filas afectadas") };
-      }
-
-      // Fiado: solo tiene sentido para conductor (Libreta de Fiados es
-      // un concepto de conductor/negocio, un cliente no tiene una) — el
-      // formulario ya oculta este método de pago cuando la audiencia es
-      // cliente, esto es el respaldo del lado del hook.
-      if (!esCliente && metodoPago === METODO_PAGO_FIADO) {
-        const { error: fiadoError } = await supabase.from("fiados_conductores").insert({
-          conductor_id: conductor.id,
-          venta_id: ventaCreada.id,
-          concepto: detalle,
-          monto,
-          fecha_fiado: new Date().toISOString(),
-        });
-        if (fiadoError) {
-          setError("La venta y el conductor se actualizaron, pero no se pudo generar el fiado.");
-          setSaving(false);
-          return { error: fiadoError };
-        }
-      }
-
+      const { data, error: rpcError } = await supabase.rpc("taxi_registrar_recarga", {
+        p_conductor_id: conductor?.id,
+        p_paquete_id: String(paqueteId ?? ""),
+        p_metodo_pago: metodoPago,
+        p_voucher_url: comprobante?.voucherUrl || null,
+        p_detalle: detalle,
+      });
       setSaving(false);
+      if (rpcError || data?.estado !== "ok") {
+        const message = rpcError ? "No se pudo registrar la recarga." : mensajeRecarga(data);
+        setError(message);
+        return { error: rpcError || new Error(data?.estado || "error"), message };
+      }
+
       onDone?.();
-      // La venta creada (con su código TX-… de la base) y el destinatario
-      // ya actualizado: para el desplegable de venta registrada.
-      return { error: null, venta: ventaCreada, destinatario: destinatarioActualizado[0] };
+      // La venta creada (con su código TX-… de la base) y el conductor ya
+      // actualizado: para el desplegable de venta registrada.
+      return { error: null, venta: data.venta, destinatario: data.conductor };
     },
     [onDone]
   );
