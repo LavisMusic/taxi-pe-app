@@ -37,9 +37,16 @@ set search_path = public
 as $$
 declare
   v_mem_nueva  boolean := new.vencimiento_suscripcion is not null and new.vencimiento_suscripcion > now();
-  v_mem_vieja  boolean := tg_op = 'UPDATE' and old.vencimiento_suscripcion is not null and old.vencimiento_suscripcion > now();
-  v_cred_viejo integer := case when tg_op = 'UPDATE' then coalesce(old.creditos, 0) else 0 end;
+  v_mem_vieja  boolean := false;
+  v_cred_viejo integer := 0;
+  v_cambia_estado boolean := true;
 begin
+  if tg_op = 'UPDATE' then
+    v_mem_vieja := old.vencimiento_suscripcion is not null and old.vencimiento_suscripcion > now();
+    v_cred_viejo := coalesce(old.creditos, 0);
+    v_cambia_estado := old.estado is distinct from new.estado;
+  end if;
+
   -- Pasa a membresía: los créditos quedan en 0.
   if v_mem_nueva and not v_mem_vieja then
     new.creditos := 0;
@@ -61,7 +68,7 @@ begin
   -- apagarlo).
   if current_user in ('anon', 'authenticated')
      and new.estado in ('activo', 'ocupado')
-     and (tg_op = 'INSERT' or old.estado is distinct from new.estado)
+     and v_cambia_estado
      and not v_mem_nueva and coalesce(new.creditos, 0) <= 0 then
     raise exception 'Sin saldo: necesitas créditos o una membresía activa para conectarte.' using errcode = '22023';
   end if;
@@ -124,15 +131,19 @@ returns trigger
 language plpgsql
 set search_path = public
 as $$
+declare
+  v_puntos_antes integer := 0;
 begin
   if new.rol <> 'pasajero' then
     return new;
   end if;
+  if tg_op = 'UPDATE' then
+    v_puntos_antes := coalesce(old.creditos_disponibles, 0);
+  end if;
   -- Los clientes no tienen membresías.
   new.membresia_vencimiento := null;
   -- Sus créditos (puntos) solo los suma la base (compras en Caja).
-  if current_user in ('anon', 'authenticated')
-     and coalesce(new.creditos_disponibles, 0) > case when tg_op = 'UPDATE' then coalesce(old.creditos_disponibles, 0) else 0 end then
+  if current_user in ('anon', 'authenticated') and coalesce(new.creditos_disponibles, 0) > v_puntos_antes then
     raise exception 'Los puntos del cliente solo se ganan comprando.' using errcode = '42501';
   end if;
   return new;
