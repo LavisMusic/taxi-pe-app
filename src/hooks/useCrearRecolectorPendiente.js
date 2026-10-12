@@ -11,7 +11,7 @@ import { supabase } from "../supabaseClient";
 export function useCrearRecolectorPendiente() {
   const [saving, setSaving] = useState(false);
 
-  const crear = useCallback(async ({ nombre, telefono, dni, fotoUrl }) => {
+  const crear = useCallback(async ({ nombre, telefono, dni, ruc = null, fotoUrl }) => {
     setSaving(true);
 
     // Lo crea la base (taxi_registrar_recolector): sin sesión no se
@@ -20,6 +20,7 @@ export function useCrearRecolectorPendiente() {
       p_nombre: nombre,
       p_telefono: telefono,
       p_dni: dni,
+      p_ruc: ruc || null,
       p_foto_url: fotoUrl || null,
     });
     setSaving(false);

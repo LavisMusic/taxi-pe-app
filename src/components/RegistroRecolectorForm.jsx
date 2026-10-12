@@ -9,12 +9,13 @@ import { esNombreCompletoValido, esTelefonoValido } from "../lib/taxiEnums";
 // pestaña "Registrarse"). Mucho más corto que el de Conductor: sin
 // fotos vehiculares, solo la foto de perfil (obligatoria acá, es el
 // único dato visual que el Admin tiene para reconocerlo antes de
-// aprobarlo). Cae en el Centro de Peticiones
+// aprobarlo) y, opcional, su RUC. Cae en el Centro de Peticiones
 // (usuarios.estado_cuenta='pendiente', ver useCrearRecolectorPendiente).
 export default function RegistroRecolectorForm({ crearRecolector, onClose, onCreated }) {
   const [nombre, setNombre] = useState("");
   const [telefono, setTelefono] = useState("");
   const [dni, setDni] = useState("");
+  const [ruc, setRuc] = useState("");
   const [fotoUrl, setFotoUrl] = useState("");
   const [gestionandoFoto, setGestionandoFoto] = useState(false);
   const [fotoKey] = useState(() => `recolector-${Date.now()}-${Math.round(Math.random() * 1e6)}`);
@@ -26,7 +27,7 @@ export default function RegistroRecolectorForm({ crearRecolector, onClose, onCre
     setError("");
 
     if (!esNombreCompletoValido(nombre)) {
-      setError("Escribe el nombre completo (nombre y apellido), ej. \"Daniela Rivas\".");
+      setError("Escribe el nombre completo (nombre y apellido), ej. \"Josue Ramos\".");
       return;
     }
     if (!esTelefonoValido(telefono)) {
@@ -35,6 +36,10 @@ export default function RegistroRecolectorForm({ crearRecolector, onClose, onCre
     }
     if (!/^\d{8}$/.test(dni.trim())) {
       setError("El DNI debe tener 8 dígitos.");
+      return;
+    }
+    if (ruc.trim() && !/^\d{11}$/.test(ruc.trim())) {
+      setError("El RUC debe tener 11 dígitos (o déjalo vacío).");
       return;
     }
     if (!fotoUrl) {
@@ -47,6 +52,7 @@ export default function RegistroRecolectorForm({ crearRecolector, onClose, onCre
       nombre: nombre.trim(),
       telefono: telefono.trim(),
       dni: dni.trim(),
+      ruc: ruc.trim() || null,
       fotoUrl,
     });
     setSaving(false);
@@ -99,6 +105,17 @@ export default function RegistroRecolectorForm({ crearRecolector, onClose, onCre
           placeholder="12345678"
           value={dni}
           onChange={(e) => setDni(e.target.value)}
+        />
+
+        <label className="tz-field-label">RUC (opcional)</label>
+        <input
+          type="text"
+          inputMode="numeric"
+          maxLength={11}
+          className="tz-text-input"
+          placeholder="10123456789"
+          value={ruc}
+          onChange={(e) => setRuc(e.target.value)}
         />
 
         <label className="tz-field-label">Foto de Perfil (obligatoria)</label>

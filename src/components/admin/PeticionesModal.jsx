@@ -160,7 +160,8 @@ function RecolectorPendienteRow({ usuario, onAprobar, onRechazar }) {
             <div>
               <strong style={{ color: "var(--text)" }}>{usuario.nombre}</strong>
               <p style={{ margin: "2px 0", color: "var(--text-dim)", fontSize: 13 }}>
-                DNI {usuario.dni} · {formatTelefono(usuario.telefono)}
+                DNI {usuario.dni}
+                {usuario.ruc ? ` · RUC ${usuario.ruc}` : ""} · {formatTelefono(usuario.telefono)}
               </p>
             </div>
           </div>

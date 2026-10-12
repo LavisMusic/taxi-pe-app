@@ -4,6 +4,8 @@ import Styles from "../components/Styles";
 import PasajeroAuthForm from "../components/PasajeroAuthForm";
 import StaffLoginForm from "../components/StaffLoginForm";
 import RegistroConductorTemporalForm from "../components/recolector/RegistroConductorTemporalForm";
+import RegistroRecolectorForm from "../components/RegistroRecolectorForm";
+import { useCrearRecolectorPendiente } from "../hooks/useCrearRecolectorPendiente";
 import logo from "../assets/logo.webp";
 
 // Conductor/Recolector: mismo toggle Ingresar/Registrarse que ya usan
@@ -13,9 +15,15 @@ import logo from "../assets/logo.webp";
 // compartido (Teléfono+PIN, rutea sola según el rol real de la
 // cuenta); "Registrarse" es el registro exprés (nombre+teléfono nomás,
 // ver RegistroConductorTemporalForm.jsx) — el resto (DNI/placa/fotos/
-// PIN) se completa después, desde StaffLoginForm.
+// PIN) se completa después, desde StaffLoginForm. Un RECOLECTOR se
+// registra con su propio formulario (nombre, teléfono, DNI, foto y RUC
+// opcional — sin placa ni fotos del vehículo) y queda pendiente de que el
+// Admin lo apruebe.
 function AccesoStaff() {
   const [modo, setModo] = useState("ingresar");
+  const [registroComo, setRegistroComo] = useState("conductor");
+  const [enviado, setEnviado] = useState(false);
+  const { crear: crearRecolector } = useCrearRecolectorPendiente();
 
   return (
     <>
@@ -36,7 +44,40 @@ function AccesoStaff() {
         </button>
       </div>
 
-      {modo === "ingresar" ? <StaffLoginForm /> : <RegistroConductorTemporalForm />}
+      {modo === "ingresar" ? (
+        <StaffLoginForm />
+      ) : (
+        <>
+          <div className="tz-gasto-tipo-buttons" style={{ marginBottom: 14 }}>
+            <button
+              type="button"
+              className={`tz-gasto-tipo-btn ${registroComo === "conductor" ? "tz-gasto-tipo-active" : ""}`}
+              onClick={() => setRegistroComo("conductor")}
+            >
+              Soy conductor
+            </button>
+            <button
+              type="button"
+              className={`tz-gasto-tipo-btn ${registroComo === "recolector" ? "tz-gasto-tipo-active" : ""}`}
+              onClick={() => {
+                setRegistroComo("recolector");
+                setEnviado(false);
+              }}
+            >
+              Soy recolector
+            </button>
+          </div>
+          {registroComo === "conductor" ? (
+            <RegistroConductorTemporalForm />
+          ) : enviado ? (
+            <p className="tz-success">
+              Tu solicitud de recolector fue enviada. El Admin la va a revisar en el Centro de Peticiones.
+            </p>
+          ) : (
+            <RegistroRecolectorForm crearRecolector={crearRecolector} onClose={() => {}} onCreated={() => setEnviado(true)} />
+          )}
+        </>
+      )}
     </>
   );
 }

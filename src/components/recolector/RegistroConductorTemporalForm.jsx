@@ -30,7 +30,7 @@ export default function RegistroConductorTemporalForm({ onSuccess }) {
     e.preventDefault();
     setError("");
     if (!esNombreCompletoValido(nombre)) {
-      setError('Escribe el nombre completo (nombre y apellido), ej. "Daniela Rivas".');
+      setError('Escribe el nombre completo (nombre y apellido), ej. "Josue Ramos".');
       return;
     }
     const telefonoTrim = telefono.trim();
