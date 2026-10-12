@@ -18,6 +18,7 @@ const MENSAJES = {
   sin_permiso: "Solo puedes anular tus propias ventas.",
   no_existe: "No se encontró la venta.",
   ya_anulada: "Esta venta ya estaba anulada.",
+  ya_cerrada: "Esta venta ya entró en un cierre de caja: ya no se puede anular.",
 };
 
 export function useAnularVenta({ onDone }) {

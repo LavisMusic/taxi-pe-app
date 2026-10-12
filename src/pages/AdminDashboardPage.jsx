@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, CreditCard, Megaphone, MapPin, Loader2, Trash2, MessageSquareText } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useLocalidades } from "../hooks/useLocalidades";
@@ -8,6 +8,7 @@ import { useConductores } from "../hooks/useConductores";
 import { useCategorias } from "../hooks/useCategorias";
 import { useFiadosConductores } from "../hooks/useFiadosConductores";
 import { useGastosOperativos } from "../hooks/useGastosOperativos";
+import { useTurnoCaja } from "../hooks/useTurnoCaja";
 import { useAnularVenta } from "../hooks/useAnularVenta";
 import { usePaquetes } from "../hooks/usePaquetes";
 import { useCrearConductorConUsuario } from "../hooks/useCrearConductorConUsuario";
@@ -215,6 +216,20 @@ export default function AdminDashboardPage() {
   const [gastosOpen, setGastosOpen] = useState(false);
   const [historialOpen, setHistorialOpen] = useState(false);
   const [cierreOpen, setCierreOpen] = useState(false);
+  // Turno de caja del Admin (en la base, ver useTurnoCaja): sus propias
+  // ventas (las que no hizo un recolector) y los gastos operativos desde
+  // su último cierre. A las 00:00 (hora de Perú) el cierre se abre solo
+  // para contar el efectivo y cerrar, o extender el turno 30 minutos. El
+  // Admin no ve ni gestiona los cierres de los recolectores.
+  const { desde: turnoDesde, vencido: turnoVencido, extender: extenderTurno, refresh: refreshTurno } = useTurnoCaja();
+  useEffect(() => {
+    if (turnoVencido) setCierreOpen(true);
+  }, [turnoVencido]);
+  const inicioTurno = turnoDesde ? new Date(turnoDesde) : null;
+  const enTurno = (fecha) => !inicioTurno || (fecha && new Date(fecha) > inicioTurno);
+  const ventasTurnoAdmin = ventasVigentes.filter((v) => !v.recolector_id && enTurno(v.created_at));
+  const gastosTurnoAdmin = gastos.filter((g) => enTurno(g.created_at));
+  const totalGastosTurnoAdmin = gastosTurnoAdmin.reduce((sum, g) => sum + Number(g.monto || 0), 0);
   const [membresiasOpen, setMembresiasOpen] = useState(false);
   const [usuariosOpen, setUsuariosOpen] = useState(false);
   const [categoriasOpen, setCategoriasOpen] = useState(false);
@@ -413,7 +428,7 @@ export default function AdminDashboardPage() {
          porque esa clase la comparten RecolectorPage.jsx y el App.jsx
          viejo — no se toca su layout flex original. */}
       <footer className="tz-page-footer tz-page-footer-admin-grid">
-        <button className="tz-footer-btn tz-footer-btn-cierre" onClick={() => setCierreOpen(true)}>
+        <button className={`tz-footer-btn tz-footer-btn-cierre ${turnoVencido ? "tz-btn-aviso" : ""}`} onClick={() => setCierreOpen(true)}>
           <Receipt size={18} />
           Cerrar Caja
         </button>
@@ -554,14 +569,17 @@ export default function AdminDashboardPage() {
       )}
       {cierreOpen && (
         <CierreCajaModal
-          ventasHoy={ventasHoy}
-          gastosHoy={gastosHoy}
-          totalGastosHoy={totalGastosHoy}
+          ventasHoy={ventasTurnoAdmin}
+          gastosHoy={gastosTurnoAdmin}
+          totalGastosHoy={totalGastosTurnoAdmin}
           cierres={cierres}
           crearCierre={crearCierre}
           esAdmin
           cajeroNombre="Admin"
           onClose={() => setCierreOpen(false)}
+          onCerrado={refreshTurno}
+          vencido={turnoVencido}
+          onExtender={extenderTurno}
           conductores={conductores}
           usuarios={usuarios}
         />

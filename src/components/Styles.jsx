@@ -5268,6 +5268,34 @@ export default function Styles() {
         font-weight: 600;
         line-height: 1.4;
       }
+      /* Turno vencido (useTurnoCaja): aviso arriba del cierre con el botón
+         para extender 30 minutos. */
+      .tz-cierre-vencido {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin: 0 0 12px;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(215, 255, 59, 0.45);
+        background: rgba(215, 255, 59, 0.06);
+      }
+      /* Punto amarillo de aviso en un botón (caja sin cerrar). */
+      .tz-btn-aviso {
+        position: relative;
+      }
+      .tz-btn-aviso::after {
+        content: "";
+        position: absolute;
+        top: -3px;
+        right: -3px;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: var(--yellow);
+        box-shadow: 0 0 8px rgba(215, 255, 59, 0.9);
+        animation: tz-subtitle-parpadeo 1.2s steps(1) infinite;
+      }
 
       /* ---------- CRM WHATSAPP EN EL COBRO ---------- */
       .tz-checkout-crm {
