@@ -394,7 +394,13 @@ export default function ConductorPage() {
                 <Car size={44} color="var(--orange)" />
               )}
               <span className="tz-estado-toggle-label">
-                {!tieneAcceso ? "🚫 Inhabilitado" : estadoActivo ? "ACTIVO" : "OCUPADO"}
+                {!tieneAcceso
+                  ? "🚫 Inhabilitado"
+                  : estadoActivo
+                    ? "ACTIVO"
+                    : conductor.estado === ESTADO_CONDUCTOR_OCUPADO
+                      ? "OCUPADO"
+                      : "DESCONECTADO"}
               </span>
               <span className="tz-estado-toggle-hint">
                 {inhabilitadoPorAdmin

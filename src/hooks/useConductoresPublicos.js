@@ -72,6 +72,18 @@ export function useConductoresPublicos() {
   // lado público.
   useEffect(() => subscribeTable("conductores", () => refresh()), [refresh]);
 
+  // Cuando un conductor se DESCONECTA su fila deja de ser pública y
+  // Realtime ya no avisa (tanda 3b) — la base manda además un aviso
+  // propio por este canal (solo el id) y con eso se vuelve a pedir la
+  // lista. Ver migración 20261013110000_aviso_publico_conductores.sql.
+  useEffect(() => {
+    const channel = supabase
+      .channel("conductores-publico")
+      .on("broadcast", { event: "cambio" }, () => refresh())
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [refresh]);
+
   // Fix Contador Congelado (Fase 5): la publicación de Realtime de
   // `conductores` ya está confirmada activa — el "stale" reportado
   // específicamente en pestañas de escritorio dejadas abiertas mucho
