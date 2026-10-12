@@ -71,7 +71,7 @@ export default function VerificarRecolectorForm({ usuario, onVerificado, submitL
       <form onSubmit={handleSubmit}>
         <p className="tz-stock-editor-sub">
           Hola, {usuario.nombre} — completa esto para verificar tu cuenta. Podrás usar la app cuando el Admin la
-          apruebe.
+          apruebe. Si no verificas tu cuenta en 7 días, se eliminará.
         </p>
         <label className="tz-field-label" htmlFor="verif-rec-apellido">
           Apellido

@@ -88,7 +88,7 @@ export default function RegistroConductorTemporalForm({ onSuccess, rol = "conduc
     <form onSubmit={handleSubmit}>
       <p className="tz-stock-editor-sub">
         {esRecolector
-          ? "Crea tu cuenta con tu nombre y teléfono; en el siguiente paso verificas tus datos para que el Admin la apruebe."
+          ? "Crea tu cuenta con tu nombre y teléfono; en el siguiente paso verificas tus datos para que el Admin la apruebe. Si no verificas tu cuenta en 7 días, se eliminará."
           : "Ingresa ya mismo — dentro de la app puedes completar tus datos (DNI, placa, fotos y PIN) cuando quieras, tienes 7 días antes de que la cuenta se elimine si no lo haces."}
       </p>
       <label className="tz-field-label" htmlFor="cond-temp-nombre">
