@@ -54,7 +54,7 @@ export function useVentas() {
   // el Admin desde su gestor ⚡) refresca esta lista
   // sola — el Admin ve el saldo/turno acumulado de CADA Recolector en
   // vivo, sin F5.
-  useEffect(() => subscribeTable("ventas", () => refresh()), [refresh]);
+  useEffect(() => subscribeTable("ventas", () => refresh(), { respaldo: true }), [refresh]);
 
   // `ventas` trae TODO (incluidas las anuladas) — el Historial necesita
   // mostrarlas con su badge. Todo lo demás (métricas, turno del

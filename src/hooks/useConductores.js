@@ -93,7 +93,7 @@ export function useConductores() {
   // un conductor nuevo pendiente — todo eso son filas de `conductores`,
   // así que un solo canal cubre el Directorio Y el badge del Centro de
   // Peticiones sin que el Admin tenga que darle F5.
-  useEffect(() => subscribeTable("conductores", () => refresh()), [refresh]);
+  useEffect(() => subscribeTable("conductores", () => refresh(), { respaldo: true }), [refresh]);
 
   // .select() después del update + chequear que volvió al menos 1 fila:
   // sin esto, un UPDATE bloqueado en silencio por RLS (0 filas

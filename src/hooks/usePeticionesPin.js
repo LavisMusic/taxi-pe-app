@@ -62,7 +62,7 @@ export function usePeticionesPin() {
 
   // Una solicitud pública nueva (/recuperar-pin) tiene que aparecer en
   // el Centro de Peticiones sin F5.
-  useEffect(() => subscribeTable("peticiones_pin", () => refresh()), [refresh]);
+  useEffect(() => subscribeTable("peticiones_pin", () => refresh(), { respaldo: true }), [refresh]);
 
   // El Admin ya abrió WhatsApp y mandó "¿confirmas que fuiste tú?" —
   // esto solo mueve el estado a 'verificado', que es lo que le permite

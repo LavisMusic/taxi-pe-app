@@ -48,7 +48,7 @@ export function useUsuarios() {
   // en el Centro de Peticiones sin F5 — y el saldo (creditos_disponibles/
   // membresia_vencimiento) también vive acá, así que esto también cubre
   // que la tarjeta del Directorio se actualice sola tras una aprobación.
-  useEffect(() => subscribeTable("usuarios", () => refresh()), [refresh]);
+  useEffect(() => subscribeTable("usuarios", () => refresh(), { respaldo: true }), [refresh]);
 
   // Mismo chequeo anti-duplicado que useVincularConductor.js (el login
   // matchea por dni+telefono a la vez, así que dos cuentas con el mismo
