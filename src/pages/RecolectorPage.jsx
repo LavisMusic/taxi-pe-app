@@ -324,7 +324,6 @@ export default function RecolectorPage() {
           anular={anular}
           busyId={anulandoId}
           onClose={() => setHistorialOpen(false)}
-          puedeAnular={false}
         />
       )}
     </div>

@@ -20,9 +20,9 @@ import { subirComprobante } from "../../lib/comprobantes";
 // uno con los datos de Taxi-PE:
 //   * Membresía y estado: tarjetas (membresía, vence, créditos,
 //     teléfono) + membresía asignada (sin cobrar) y estado operativo.
-//   * Recarga rápida: Membresía / Créditos (diferencia propia de
-//     Taxi-PE: los créditos se pueden recargar aunque la membresía siga
-//     activa); bloqueada si la membresía sigue vigente; filtro Mensual /
+//   * Recarga rápida: Membresía / Créditos; con la membresía vigente no
+//     se recarga ninguno de los dos (regla de créditos y membresías,
+//     migración 20261011120000); filtro Mensual /
 //     Anual / Otros; paquete; total; método; comprobante OBLIGATORIO si
 //     es digital (Tomar foto / Adjuntar — se comprime y se GUARDA); vuelto
 //     si es efectivo. Al registrar sube el desplegable de venta
@@ -129,7 +129,7 @@ function RecargaRapida({ conductor, paquetes, registrarRecarga, saving, errorExt
     return <p className="tz-error">Este conductor está pendiente de aprobación en el Centro de Peticiones.</p>;
   }
 
-  if (tipo === TIPO_ITEM_MEMBRESIA && membresiaVigente) {
+  if (membresiaVigente) {
     return (
       <>
         {selectorTipo}
@@ -143,7 +143,7 @@ function RecargaRapida({ conductor, paquetes, registrarRecarga, saving, errorExt
             hasta el {formatDate(conductor.vencimiento_suscripcion)}
           </h3>
           <p className="tz-stock-editor-sub">
-            No se puede recargar otra membresía mientras esta siga activa. Los créditos sí se pueden recargar.
+            Mientras la membresía siga activa no se le puede recargar otra membresía ni créditos.
           </p>
         </div>
       </>

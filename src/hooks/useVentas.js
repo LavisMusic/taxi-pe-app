@@ -51,7 +51,7 @@ export function useVentas() {
 
   // Sincronización Realtime de Saldos: cualquier venta/recarga nueva (la
   // dispare el propio Recolector, otro Recolector desde otro celular, o
-  // el Admin desde RecargaRapidaRecolectorForm.jsx) refresca esta lista
+  // el Admin desde su gestor ⚡) refresca esta lista
   // sola — el Admin ve el saldo/turno acumulado de CADA Recolector en
   // vivo, sin F5.
   useEffect(() => subscribeTable("ventas", () => refresh()), [refresh]);

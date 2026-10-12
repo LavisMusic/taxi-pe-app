@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, CreditCard, Megaphone, MapPin, X, Loader2, Trash2, MessageSquareText } from "lucide-react";
+import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, CreditCard, Megaphone, MapPin, Loader2, Trash2, MessageSquareText } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useLocalidades } from "../hooks/useLocalidades";
 import { useVentas } from "../hooks/useVentas";
@@ -50,7 +50,7 @@ import PeticionesModal from "../components/admin/PeticionesModal";
 import PagosMetodoModal from "../components/admin/PagosMetodoModal";
 import LimpiarChatsModal from "../components/admin/LimpiarChatsModal";
 import GestorRecargaConductorModal from "../components/admin/GestorRecargaConductorModal";
-import RecargaRapidaRecolectorForm from "../components/admin/RecargaRapidaRecolectorForm";
+import GestorPlanRecolectorModal from "../components/admin/GestorPlanRecolectorModal";
 import logo from "../assets/logo.webp";
 
 // Opciones del dropdown "Pagos" del header: Efectivo/Yape/Plin/Otros
@@ -188,6 +188,7 @@ export default function AdminDashboardPage() {
     reordenarPaquetes: reordenarPaquetesRecolector,
   } = usePaquetesRecolectores();
   const {
+    peticiones: peticionesRecargaRecolector,
     pendientes: recargasRecolectorPendientes,
     crearPeticion: crearRecargaRecolector,
     aprobarPeticion: aprobarRecargaRecolector,
@@ -480,26 +481,21 @@ export default function AdminDashboardPage() {
       )}
 
       {recargaRecolectorOpen && (
-        <div className="tz-modal-backdrop">
-          <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
-            <button
-              className="tz-modal-close"
-              onClick={() => {
-                setRecargaRecolectorOpen(false);
-                setRecargaRecolector(null);
-              }}
-              aria-label="Cerrar"
-            >
-              <X size={18} />
-            </button>
-            <RecargaRapidaRecolectorForm
-              recolector={recargaRecolector}
-              paquetes={paquetesRecolectores}
-              crearPeticion={crearRecargaRecolector}
-              onDone={refreshUsuarios}
-            />
-          </div>
-        </div>
+        <GestorPlanRecolectorModal
+          recolector={usuarios.find((u) => u.id === recargaRecolector.id) || recargaRecolector}
+          paquetes={paquetesRecolectores}
+          peticiones={peticionesRecargaRecolector}
+          crearPeticion={async (args) => {
+            const r = await crearRecargaRecolector(args);
+            if (!r.error) await refreshUsuarios();
+            return r;
+          }}
+          onUpdate={actualizarUsuario}
+          onClose={() => {
+            setRecargaRecolectorOpen(false);
+            setRecargaRecolector(null);
+          }}
+        />
       )}
 
       {topOpen && <TopUsuariosModal ranking={ranking} onClose={() => setTopOpen(false)} />}
