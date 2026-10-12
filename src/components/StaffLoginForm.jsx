@@ -5,8 +5,9 @@ import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useAvisoTop } from "../hooks/useAvisoTop";
 import AvisoTop from "./AvisoTop";
 import VerificarConductorForm from "./VerificarConductorForm";
+import VerificarRecolectorForm from "./VerificarRecolectorForm";
 import { loginConPin, crearPin, MENSAJE_BLOQUEADO } from "../lib/pinAuth";
-import { esTelefonoValido, ESTADO_VERIFICACION_TEMPORAL } from "../lib/taxiEnums";
+import { esTelefonoValido, ESTADO_CUENTA_PENDIENTE, ESTADO_VERIFICACION_TEMPORAL } from "../lib/taxiEnums";
 import { routeForRole } from "../lib/taxiAuth";
 
 // Bug reportado: mismo aviso chico arriba de la pantalla que
@@ -29,7 +30,7 @@ const ENTRAR_DELAY_MS = 700;
 //     placa/fotos — acá se pide el formulario de verificación completo
 //     (VerificarConductorForm.jsx) en vez de solo el PIN.
 //   - 'permanente' (alta manual del Admin/Recolector, ver
-//     useCrearConductorConUsuario.js/useCrearRecolectorPendiente.js):
+//     useCrearConductorConUsuario.js / registro exprés):
 //     ya tiene todos sus datos, solo falta el PIN — flujo de siempre.
 export default function StaffLoginForm({ onSuccess }) {
   const { loginUsuario } = useTaxiAuth();
@@ -45,8 +46,16 @@ export default function StaffLoginForm({ onSuccess }) {
   const [nuevoPin, setNuevoPin] = useState("");
   const [confirmarNuevoPin, setConfirmarNuevoPin] = useState("");
   const [creandoPin, setCreandoPin] = useState(false);
+  // Recolector que ya verificó su cuenta y espera la aprobación del Admin:
+  // no entra a la app, se le avisa acá.
+  const [enRevision, setEnRevision] = useState(false);
 
   const entrar = (usuario, mensaje = "✓ Sesión iniciada correctamente") => {
+    if (usuario.rol === "recolector" && usuario.estado_cuenta === ESTADO_CUENTA_PENDIENTE) {
+      setUsuarioSinPin(null);
+      setEnRevision(true);
+      return;
+    }
     mostrar(mensaje, "exito");
     setTimeout(() => {
       loginUsuario(usuario, rememberMe);
@@ -124,6 +133,32 @@ export default function StaffLoginForm({ onSuccess }) {
 
     entrar(resultado.usuario);
   };
+
+  if (enRevision) {
+    return (
+      <>
+        <AvisoTop aviso={aviso} />
+        <p className="tz-success">
+          ✓ Tu cuenta de recolector está en revisión. Podrás entrar cuando el Admin la apruebe en el Centro de
+          Peticiones.
+        </p>
+        <button type="button" className="tz-camera-cancel" style={{ width: "100%" }} onClick={() => setEnRevision(false)}>
+          Volver
+        </button>
+      </>
+    );
+  }
+
+  // Primer ingreso de un recolector del registro exprés: verifica su cuenta
+  // (sin placa: foto y RUC opcional) y queda en revisión.
+  if (usuarioSinPin?.rol === "recolector" && usuarioSinPin.estado_verificacion === ESTADO_VERIFICACION_TEMPORAL) {
+    return (
+      <>
+        <AvisoTop aviso={aviso} />
+        <VerificarRecolectorForm usuario={usuarioSinPin} onVerificado={(usuario) => entrar(usuario)} />
+      </>
+    );
+  }
 
   if (usuarioSinPin?.rol === "conductor" && usuarioSinPin.estado_verificacion === ESTADO_VERIFICACION_TEMPORAL) {
     return (

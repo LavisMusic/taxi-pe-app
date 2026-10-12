@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { Users, X } from "lucide-react";
 import StaffLoginForm from "./StaffLoginForm";
-import RegistroRecolectorForm from "./RegistroRecolectorForm";
+import RegistroConductorTemporalForm from "./recolector/RegistroConductorTemporalForm";
 
 // Modal dual del botón "Recolectores" del header de la Home — mismo
 // patrón que AccesoConductorModal.jsx: toggle Ingresar/Registrarse,
 // "Ingresar" comparte el StaffLoginForm (Teléfono+PIN, rutea sola por
-// rol real de la cuenta).
-export default function AccesoRecolectorModal({ crearRecolector, onCreated, onClose }) {
+// rol real de la cuenta); "Registrarse" es el registro exprés (nombre y
+// teléfono) con la verificación del recolector a continuación.
+export default function AccesoRecolectorModal({ onCreated, onClose }) {
   const [modo, setModo] = useState("ingresar");
 
   return (
@@ -41,7 +42,7 @@ export default function AccesoRecolectorModal({ crearRecolector, onCreated, onCl
           {modo === "ingresar" ? (
             <StaffLoginForm onSuccess={onClose} />
           ) : (
-            <RegistroRecolectorForm crearRecolector={crearRecolector} onClose={onClose} onCreated={onCreated} />
+            <RegistroConductorTemporalForm rol="recolector" onVerificado={onCreated} />
           )}
         </div>
       </div>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { adminFijarPin } from "../lib/pinAuth";
 import { subscribeTable } from "../lib/realtime";
-import { ESTADO_CUENTA_ACTIVO, ESTADO_CUENTA_RECHAZADO } from "../lib/taxiEnums";
+import { ESTADO_CUENTA_ACTIVO, ESTADO_CUENTA_RECHAZADO, ESTADO_VERIFICACION_PERMANENTE } from "../lib/taxiEnums";
 
 // Lista completa de `usuarios` (id, nombre, rol, ...) — la usan el
 // ranking de Recolectores (ventas.recolector_id -> usuarios.id, ya que
@@ -26,7 +26,7 @@ export function useUsuarios() {
     const { data, error: fetchError } = await supabase
       .from("usuarios")
       .select(
-        "id, dni, telefono, pin, nombre, rol, estado_cuenta, foto_url, creditos_disponibles, membresia_vencimiento, created_at"
+        "id, dni, ruc, telefono, pin, nombre, apellido, rol, estado_cuenta, estado_verificacion, foto_url, creditos_disponibles, membresia_vencimiento, created_at"
       )
       .order("created_at", { ascending: false });
 
@@ -199,7 +199,7 @@ export function useUsuarios() {
   // helper: mismo patrón .select()+chequeo de 0 filas que
   // actualizarUsuario, directo acá.
   const aprobarUsuario = useCallback(
-    (id) => actualizarUsuario(id, { estado_cuenta: ESTADO_CUENTA_ACTIVO }),
+    (id) => actualizarUsuario(id, { estado_cuenta: ESTADO_CUENTA_ACTIVO, estado_verificacion: ESTADO_VERIFICACION_PERMANENTE, expira_en: null }),
     [actualizarUsuario]
   );
 

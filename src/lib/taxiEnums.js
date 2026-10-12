@@ -73,7 +73,7 @@ export const TIPOS_USUARIO = [
 
 // `usuarios.estado_cuenta` — el equivalente de `conductores.aprobado`
 // pero para cuentas que NO tienen fila en `conductores` (Recolectores
-// auto-registrados, ver RegistroRecolectorModal.jsx). Todo lo que crea
+// auto-registrados, ver VerificarRecolectorForm.jsx). Todo lo que crea
 // una fila en `usuarios` la marca explícito ('activo' para altas del
 // Admin/Recolector-a-Recolector, 'pendiente' solo para el auto-registro
 // público) — nunca se deja que sea el DEFAULT de la columna quien

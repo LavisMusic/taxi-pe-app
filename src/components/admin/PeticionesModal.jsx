@@ -15,6 +15,7 @@ import {
 import {
   ESTADO_CONDUCTOR_RECHAZADO,
   ESTADO_CUENTA_PENDIENTE,
+  ESTADO_VERIFICACION_TEMPORAL,
   TIPOS_USUARIO,
   ESTADO_PETICION_VERIFICADO,
   TIPO_ITEM_MEMBRESIA,
@@ -158,9 +159,13 @@ function RecolectorPendienteRow({ usuario, onAprobar, onRechazar }) {
               </div>
             )}
             <div>
-              <strong style={{ color: "var(--text)" }}>{usuario.nombre}</strong>
+              <strong style={{ color: "var(--text)" }}>
+                {usuario.nombre}
+                {usuario.apellido ? ` ${usuario.apellido}` : ""}
+              </strong>
               <p style={{ margin: "2px 0", color: "var(--text-dim)", fontSize: 13 }}>
-                DNI {usuario.dni} · {formatTelefono(usuario.telefono)}
+                DNI {usuario.dni}
+                {usuario.ruc ? ` · RUC ${usuario.ruc}` : ""} · {formatTelefono(usuario.telefono)}
               </p>
             </div>
           </div>
@@ -209,14 +214,43 @@ function RegistroTab({
   onAprobarRecolector,
   onRechazarRecolector,
 }) {
-  const pendientes = conductores.filter(esPendienteDeRevision);
+  // Filtro: Todas / Conductores / Recolectores.
+  const [filtro, setFiltro] = useState("todas");
+  const pendientes = filtro === "recolectores" ? [] : conductores.filter(esPendienteDeRevision);
+  const recolectores = filtro === "conductores" ? [] : recolectoresPendientes;
+  const totalConductores = conductores.filter(esPendienteDeRevision).length;
 
-  if (pendientes.length === 0 && recolectoresPendientes.length === 0) {
-    return <p className="tz-method-history-empty">No hay registros pendientes de aprobación.</p>;
+  const filtros = (
+    <div className="tz-gasto-tipo-buttons" style={{ marginBottom: 10 }}>
+      {[
+        { id: "todas", label: "Todas" },
+        { id: "conductores", label: `Conductores${totalConductores ? ` (${totalConductores})` : ""}` },
+        { id: "recolectores", label: `Recolectores${recolectoresPendientes.length ? ` (${recolectoresPendientes.length})` : ""}` },
+      ].map((f) => (
+        <button
+          key={f.id}
+          type="button"
+          className={`tz-gasto-tipo-btn ${filtro === f.id ? "tz-gasto-tipo-active" : ""}`}
+          onClick={() => setFiltro(f.id)}
+        >
+          {f.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (pendientes.length === 0 && recolectores.length === 0) {
+    return (
+      <>
+        {filtros}
+        <p className="tz-method-history-empty">No hay registros pendientes de aprobación.</p>
+      </>
+    );
   }
 
   return (
     <>
+      {filtros}
       {pendientes.length > 0 && (
         <>
           <p className="tz-field-label">Conductores</p>
@@ -233,13 +267,13 @@ function RegistroTab({
           </ul>
         </>
       )}
-      {recolectoresPendientes.length > 0 && (
+      {recolectores.length > 0 && (
         <>
           <p className="tz-field-label" style={{ marginTop: pendientes.length > 0 ? 14 : 0 }}>
             Recolectores
           </p>
           <ul className="tz-history-rows">
-            {recolectoresPendientes.map((u) => (
+            {recolectores.map((u) => (
               <RecolectorPendienteRow
                 key={u.id}
                 usuario={u}
@@ -462,8 +496,11 @@ export default function PeticionesModal({
   onClose,
 }) {
   const [tab, setTab] = useState("registro");
+  // Recolectores esperando aprobación: los que ya verificaron su cuenta
+  // (los del registro exprés que todavía no la verificaron no aparecen).
   const recolectoresPendientes = usuarios.filter(
-    (u) => u.rol === "recolector" && u.estado_cuenta === ESTADO_CUENTA_PENDIENTE
+    (u) =>
+      u.rol === "recolector" && u.estado_cuenta === ESTADO_CUENTA_PENDIENTE && u.estado_verificacion !== ESTADO_VERIFICACION_TEMPORAL
   );
   const pendientesCount = conductores.filter(esPendienteDeRevision).length + recolectoresPendientes.length;
 

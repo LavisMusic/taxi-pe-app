@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { LogIn, LogOut, Car, Users, MessageCircle, X, Loader2, MapPin } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { useConductoresPublicos } from "../hooks/useConductoresPublicos";
-import { useCrearRecolectorPendiente } from "../hooks/useCrearRecolectorPendiente";
 import { useAnuncioActivo } from "../hooks/useAnuncioActivo";
 import { useLocalidades } from "../hooks/useLocalidades";
 import { useBienvenidaNeon } from "../hooks/useBienvenidaNeon";
@@ -61,7 +60,6 @@ export default function HomePage() {
   // no la mera existencia de sesión.
   const esPasajero = usuario?.rol === TIPO_USUARIO_PASAJERO;
   const { conductores, categorias, loading, error } = useConductoresPublicos();
-  const { crear: crearRecolectorPendiente } = useCrearRecolectorPendiente();
   // Pop-up de marketing — ver useAnuncioActivo.js para la lógica de
   // vigencia (fecha_inicio/fecha_fin) + frecuencia (localStorage). Se
   // muestra a CUALQUIER visitante de la Home, con o sin sesión de
@@ -510,7 +508,6 @@ export default function HomePage() {
 
       {accesoRecolectorOpen && (
         <AccesoRecolectorModal
-          crearRecolector={crearRecolectorPendiente}
           onClose={() => setAccesoRecolectorOpen(false)}
           onCreated={() =>
             avisarPeticionEnviada(

@@ -19,14 +19,17 @@ import {
 export function useConductorTemporal() {
   const [loading, setLoading] = useState(false);
 
-  const registrarTemporal = useCallback(async ({ nombre, telefono }) => {
+  // `rol`: 'conductor' (default) o 'recolector' — mismo registro exprés
+  // (nombre y teléfono); el recolector queda pendiente hasta verificar su
+  // cuenta y que el Admin la apruebe.
+  const registrarTemporal = useCallback(async ({ nombre, telefono, rol = "conductor" }) => {
     setLoading(true);
     // La cuenta la crea la base (taxi_registrar_temporal), que además
     // devuelve el ticket de la sesión.
     let resultado;
     try {
       resultado = await registrarTemporalBase({
-        rol: "conductor",
+        rol,
         telefono,
         nombre,
         expiraEn: fechaExpiracionCuentaTemporal(),
@@ -84,24 +87,25 @@ export function useConductorTemporal() {
         return { error: new Error("duplicado"), message: "Ya existe una cuenta con ese DNI." };
       }
 
-      // Datos primero (como siempre) y el PIN en la base (taxi_crear_pin):
-      // el PIN no se escribe desde la app.
-      const { error: datosError } = await supabase
-        .from("usuarios")
-        .update({ apellido, edad, sexo, dni, estado_verificacion: ESTADO_VERIFICACION_EN_REVISION })
-        .eq("id", usuarioId);
+      // Datos + PIN en UNA operación de la base (taxi_crear_pin): funciona
+      // aunque todavía no tenga sesión (primer ingreso, sin PIN) y abre la
+      // sesión al terminar.
       let resultadoPin = null;
-      if (!datosError) {
-        try {
-          resultadoPin = await crearPin(usuarioId, pin);
-        } catch {
-          resultadoPin = null;
-        }
+      try {
+        resultadoPin = await crearPin(usuarioId, pin, {
+          apellido,
+          edad,
+          sexo,
+          dni,
+          estado_verificacion: ESTADO_VERIFICACION_EN_REVISION,
+        });
+      } catch {
+        resultadoPin = null;
       }
       const usuario = resultadoPin?.usuario;
-      if (datosError || resultadoPin?.estado !== "ok" || !usuario) {
+      if (resultadoPin?.estado !== "ok" || !usuario) {
         setLoading(false);
-        return { error: datosError || new Error("pin"), message: "No se pudo guardar tu verificación. Intenta de nuevo." };
+        return { error: new Error(resultadoPin?.estado || "pin"), message: "No se pudo guardar tu verificación. Intenta de nuevo." };
       }
 
       // Un rechazo previo (ver useConductores.js `rechazar`) deja la fila
