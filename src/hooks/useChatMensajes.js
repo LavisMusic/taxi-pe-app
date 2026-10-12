@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { ESTADO_CONDUCTOR_ACTIVO, ESTADO_CONDUCTOR_OCUPADO } from "../lib/taxiEnums";
 
 export const REMITENTE_PASAJERO = "pasajero";
 export const REMITENTE_CONDUCTOR = "conductor";
@@ -73,40 +72,10 @@ export const ESTADO_OFERTA_FINALIZADO = "finalizado";
 // número correcto de pasajeros a bordo/reservados.
 async function sincronizarAsientosYEstado(conductorId) {
   if (!conductorId) return;
-  try {
-    const [{ data: ofertasActivas, error: ofertasError }, { data: filaConductor, error: conductorFetchError }] =
-      await Promise.all([
-        supabase
-          .from("chat_mensajes")
-          .select("pasajero_id")
-          .eq("conductor_id", conductorId)
-          .eq("tipo", TIPO_MENSAJE_OFERTA)
-          .in("estado_oferta", [ESTADO_OFERTA_ACEPTADA, ESTADO_OFERTA_EN_TRANSITO]),
-        supabase.from("conductores").select("asientos_totales, estado").eq("id", conductorId).single(),
-      ]);
-    if (ofertasError || conductorFetchError) {
-      console.error("No se pudo recalcular asientos/estado del conductor:", ofertasError || conductorFetchError);
-      return;
-    }
-
-    const totales = filaConductor?.asientos_totales ?? 4;
-    const ocupados = Math.min(new Set((ofertasActivas ?? []).map((o) => o.pasajero_id)).size, totales);
-    // Aislamiento real: el conductor solo vuelve a 'activo' (libre de
-    // verdad) cuando NINGÚN pasajero le queda a bordo/reservado — con
-    // uno solo que siga (`ocupados > 0`), se queda 'ocupado' aunque el
-    // que acaba de cancelar/finalizar haya sido otro. Si ya estaba
-    // 'desconectado'/'pendiente'/'rechazado' (estados que no son de
-    // radar), no lo tocamos — esto solo gestiona el switch activo/ocupado.
-    const estadoActual = filaConductor?.estado;
-    const patch = { asientos_ocupados: ocupados };
-    if (estadoActual === ESTADO_CONDUCTOR_ACTIVO || estadoActual === ESTADO_CONDUCTOR_OCUPADO) {
-      patch.estado = ocupados > 0 ? ESTADO_CONDUCTOR_OCUPADO : ESTADO_CONDUCTOR_ACTIVO;
-    }
-    const { error: updateError } = await supabase.from("conductores").update(patch).eq("id", conductorId);
-    if (updateError) console.error("No se pudo sincronizar asientos/estado del conductor:", updateError);
-  } catch (err) {
-    console.error("Error al sincronizar asientos/estado del conductor:", err);
-  }
+  // La base hace el cálculo (taxi_sincronizar_asientos): el pasajero no
+  // puede escribir en la fila del conductor.
+  const { error } = await supabase.rpc("taxi_sincronizar_asientos", { p_conductor_id: conductorId });
+  if (error) console.error("No se pudo sincronizar asientos/estado del conductor:", error);
 }
 
 // Cuánto dura visible el indicador de "escribiendo…" después del

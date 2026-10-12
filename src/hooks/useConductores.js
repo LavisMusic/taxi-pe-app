@@ -45,11 +45,11 @@ export function useConductores() {
   const refresh = useCallback(async () => {
     if (!yaCargoUnaVez.current) setLoading(true);
     setError("");
-    const [conductoresRes, categoriasRes, subgruposRes] = await Promise.all([
+    const [conductoresRes, categoriasRes, subgruposRes, privadosRes] = await Promise.all([
       supabase
         .from("conductores")
         .select(
-          "id, nombre, placa, telefono, dni, localidad, foto_url, foto_portada_url, descripcion, estado, creditos, vencimiento_suscripcion, categoria_id, subgrupo_id, nivel_servicio, aprobado, foto_general_url, foto_interior_url, foto_conductor_dni_url, asientos_totales, asientos_ocupados, membresia_paquete_id, created_at"
+          "id, nombre, placa, telefono, localidad, foto_url, foto_portada_url, descripcion, estado, creditos, vencimiento_suscripcion, categoria_id, subgrupo_id, nivel_servicio, aprobado, asientos_totales, asientos_ocupados, membresia_paquete_id, created_at"
         )
         .order("created_at", { ascending: false }),
       supabase.from("categorias").select("id, nombre, orden, icono_url").order("orden", { ascending: true }),
@@ -57,12 +57,27 @@ export function useConductores() {
       // useCategorias.js (usado por CategoriasModal). Esto es para
       // poblar los desplegables de Directorio/Registro de conductor.
       supabase.from("subgrupos").select("id, categoria_id, nombre, orden").order("orden", { ascending: true }),
+      // DNI y fotos de verificación: no se leen directo de la tabla; la
+      // base se los da al Admin (al recolector, solo el DNI).
+      supabase.rpc("taxi_conductores_privados"),
     ]);
 
     if (conductoresRes.error || categoriasRes.error || subgruposRes.error) {
       setError("No se pudo cargar el directorio de conductores.");
     } else {
-      setConductores(conductoresRes.data ?? []);
+      const privados = new Map((privadosRes.data ?? []).map((p) => [p.id, p]));
+      setConductores(
+        (conductoresRes.data ?? []).map((c) => {
+          const p = privados.get(c.id);
+          return {
+            ...c,
+            dni: p?.dni ?? null,
+            foto_general_url: p?.foto_general_url ?? null,
+            foto_interior_url: p?.foto_interior_url ?? null,
+            foto_conductor_dni_url: p?.foto_conductor_dni_url ?? null,
+          };
+        })
+      );
       setCategorias(categoriasRes.data ?? []);
       setSubgrupos(subgruposRes.data ?? []);
     }
@@ -91,7 +106,7 @@ export function useConductores() {
         .from("conductores")
         .update(patch)
         .eq("id", id)
-        .select();
+        .select("id");
       if (updateError) return { error: updateError };
       if (!data || data.length === 0) {
         return { error: new Error("No se guardó ningún cambio (0 filas afectadas).") };

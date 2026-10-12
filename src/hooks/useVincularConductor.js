@@ -28,17 +28,23 @@ export function useVincularConductor() {
   // valor viejo, de ANTES de esta llamada.
   const buscarPreRegistro = useCallback(async (telefono) => {
     setError("");
-    const { data, error: fetchError } = await supabase
-      .from("conductores")
-      .select("id, nombre, placa, estado")
-      .eq("telefono", telefono)
-      .maybeSingle();
+    // Sin sesión no se lee 'conductores': la base responde solo por un
+    // pre-registro que todavía no tiene cuenta (taxi_buscar_preregistro).
+    const { data: resultado, error: fetchError } = await supabase.rpc("taxi_buscar_preregistro", {
+      p_telefono: telefono,
+    });
 
     if (fetchError) {
       const message = "No se pudo buscar tu registro. Intenta de nuevo.";
       setError(message);
       return { conductor: null, message };
     }
+    if (resultado?.estado === "ya_vinculado") {
+      const message = "Ese teléfono ya tiene una cuenta. Inicia sesión con tu teléfono y PIN.";
+      setError(message);
+      return { conductor: null, message };
+    }
+    const data = resultado?.estado === "ok" ? resultado.conductor : null;
     if (!data) {
       const message =
         "No encontramos un conductor con ese teléfono. Pide a un recolector que te registre primero.";
