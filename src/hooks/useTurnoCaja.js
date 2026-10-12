@@ -4,7 +4,8 @@ import { supabase } from "../supabaseClient";
 // Turno de caja de quien tiene la sesión (Admin o recolector), según la
 // base (taxi_estado_caja, migración 20261012110000): empieza al cerrar el
 // anterior y debe cerrarse a las 00:00 (hora de Perú); se puede extender
-// de 30 en 30 minutos. `vencido` se recalcula solo cada 30 s para que el
+// de 30 en 30 minutos (el recolector hasta 3 veces, el Admin hasta 5;
+// agotadas, `obligatorio`: solo queda cerrar el turno). `vencido` se recalcula solo cada 30 s para que el
 // aviso salga a la hora, y el estado se vuelve a pedir cada minuto y al
 // volver a la pestaña.
 export function useTurnoCaja() {
@@ -36,6 +37,7 @@ export function useTurnoCaja() {
 
   const extender = useCallback(async () => {
     const { data, error } = await supabase.rpc("taxi_extender_turno");
+    if (data?.estado === "limite") setEstado(data);
     if (error || data?.estado !== "ok") return { error: error || new Error(data?.estado || "error") };
     setEstado(data);
     setAhora(Date.now());
@@ -46,6 +48,19 @@ export function useTurnoCaja() {
     ? Math.max(new Date(estado.vence).getTime(), estado.extendido_hasta ? new Date(estado.extendido_hasta).getTime() : 0)
     : null;
   const vencido = limite != null && ahora >= limite;
+  const extensiones = estado?.extensiones ?? 0;
+  const maxExtensiones = estado?.max_extensiones ?? 0;
+  const obligatorio = vencido && extensiones >= maxExtensiones;
 
-  return { estado, desde: estado?.desde ?? null, limite, vencido, refresh, extender };
+  return {
+    estado,
+    desde: estado?.desde ?? null,
+    limite,
+    vencido,
+    extensiones,
+    maxExtensiones,
+    obligatorio,
+    refresh,
+    extender,
+  };
 }

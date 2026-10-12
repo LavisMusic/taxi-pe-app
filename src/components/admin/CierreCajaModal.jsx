@@ -48,6 +48,11 @@ export default function CierreCajaModal({
   // extenderlo 30 minutos.
   vencido = false,
   onExtender,
+  // Extensiones usadas / permitidas en este turno; `obligatorio` (agotadas
+  // y vencido): sin X ni "Extender", solo se puede cerrar el turno.
+  extensiones = 0,
+  maxExtensiones = 0,
+  obligatorio = false,
 }) {
   const [confirmando, setConfirmando] = useState(false);
   const [cerrando, setCerrando] = useState(false);
@@ -158,7 +163,10 @@ export default function CierreCajaModal({
     setCierreError("");
     const { error } = (await onExtender?.()) || {};
     setExtendiendo(false);
-    if (error) setCierreError("No se pudo extender el turno.");
+    if (error)
+      setCierreError(
+        error.message === "limite" ? "Ya usaste todas tus extensiones: cierra el turno." : "No se pudo extender el turno."
+      );
     else onClose();
   };
 
@@ -212,11 +220,13 @@ export default function CierreCajaModal({
   };
 
   return (
-    <div className="tz-modal-backdrop">
+    <div className={`tz-modal-backdrop ${obligatorio ? "tz-cierre-obligatorio" : ""}`}>
       <div className="tz-modal tz-modal-wide" onClick={(e) => e.stopPropagation()}>
-        <button className="tz-modal-close" onClick={onClose} aria-label="Cerrar">
-          <X size={18} />
-        </button>
+        {!obligatorio && (
+          <button className="tz-modal-close" onClick={onClose} aria-label="Cerrar">
+            <X size={18} />
+          </button>
+        )}
         <div className="tz-payment-modal">
           <h2>
             <Receipt size={17} /> Cierre de Caja
@@ -225,10 +235,17 @@ export default function CierreCajaModal({
           {vencido && (
             <div className="tz-cierre-vencido">
               <p className="tz-cierre-warning" style={{ margin: 0 }}>
-                <Clock size={14} /> Tu turno ya terminó. Cuenta tu efectivo y cierra la caja, o extiende el turno 30
-                minutos.
+                <Clock size={14} />{" "}
+                {obligatorio
+                  ? "Tu turno terminó y ya usaste todas tus extensiones. Cuenta tu efectivo y cierra el turno para seguir."
+                  : "Tu turno ya terminó. Cuenta tu efectivo y cierra la caja, o extiende el turno 30 minutos."}
               </p>
-              {onExtender && (
+              {maxExtensiones > 0 && (
+                <p className="tz-cierre-extensiones">
+                  Extensiones usadas: {extensiones} de {maxExtensiones}
+                </p>
+              )}
+              {onExtender && !obligatorio && (
                 <button type="button" className="tz-camera-cancel" onClick={extender} disabled={extendiendo}>
                   {extendiendo ? <Loader2 size={15} className="tz-spin" /> : <Clock size={15} />} Extender 30 min
                 </button>

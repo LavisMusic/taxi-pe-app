@@ -221,10 +221,20 @@ export default function AdminDashboardPage() {
   // su último cierre. A las 00:00 (hora de Perú) el cierre se abre solo
   // para contar el efectivo y cerrar, o extender el turno 30 minutos. El
   // Admin no ve ni gestiona los cierres de los recolectores.
-  const { desde: turnoDesde, vencido: turnoVencido, extender: extenderTurno, refresh: refreshTurno } = useTurnoCaja();
+  const {
+    desde: turnoDesde,
+    vencido: turnoVencido,
+    extensiones: turnoExtensiones,
+    maxExtensiones: turnoMaxExtensiones,
+    obligatorio: turnoObligatorio,
+    extender: extenderTurno,
+    refresh: refreshTurno,
+  } = useTurnoCaja();
   useEffect(() => {
     if (turnoVencido) setCierreOpen(true);
   }, [turnoVencido]);
+  // Sin extensiones: el cierre queda encima y no se puede cerrar.
+  const cierreVisible = cierreOpen || turnoObligatorio;
   const inicioTurno = turnoDesde ? new Date(turnoDesde) : null;
   const enTurno = (fecha) => !inicioTurno || (fecha && new Date(fecha) > inicioTurno);
   const ventasTurnoAdmin = ventasVigentes.filter((v) => !v.recolector_id && enTurno(v.created_at));
@@ -567,7 +577,7 @@ export default function AdminDashboardPage() {
           onClose={() => setHistorialOpen(false)}
         />
       )}
-      {cierreOpen && (
+      {cierreVisible && (
         <CierreCajaModal
           ventasHoy={ventasTurnoAdmin}
           gastosHoy={gastosTurnoAdmin}
@@ -579,6 +589,9 @@ export default function AdminDashboardPage() {
           onClose={() => setCierreOpen(false)}
           onCerrado={refreshTurno}
           vencido={turnoVencido}
+          extensiones={turnoExtensiones}
+          maxExtensiones={turnoMaxExtensiones}
+          obligatorio={turnoObligatorio}
           onExtender={extenderTurno}
           conductores={conductores}
           usuarios={usuarios}

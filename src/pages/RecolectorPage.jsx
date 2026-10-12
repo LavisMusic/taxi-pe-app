@@ -102,11 +102,21 @@ export default function RecolectorPage() {
   // anterior y debe cerrarse a las 00:00 (hora de Perú). Si ya venció, el
   // cierre se abre solo (y vuelve a abrirse mientras siga vencido) para
   // contar el efectivo y cerrar, o extender el turno 30 minutos.
-  const { desde: turnoDesde, vencido: turnoVencido, extender: extenderTurno, refresh: refreshTurno } = useTurnoCaja();
+  const {
+    desde: turnoDesde,
+    vencido: turnoVencido,
+    extensiones: turnoExtensiones,
+    maxExtensiones: turnoMaxExtensiones,
+    obligatorio: turnoObligatorio,
+    extender: extenderTurno,
+    refresh: refreshTurno,
+  } = useTurnoCaja();
   const turnoInicio = turnoDesde ?? startOfTodayISO();
   useEffect(() => {
     if (turnoVencido) setCierreOpen(true);
   }, [turnoVencido]);
+  // Sin extensiones: el cierre queda encima y no se puede cerrar.
+  const cierreVisible = cierreOpen || turnoObligatorio;
 
   // Base `ventasVigentes` (todo lo no-anulado, sin importar el día) en
   // vez de `ventasHoy` — un turno puede haber arrancado ayer (turno
@@ -284,7 +294,7 @@ export default function RecolectorPage() {
         />
       )}
 
-      {cierreOpen && (
+      {cierreVisible && (
         <CierreCajaModal
           ventasHoy={ventasDelTurno}
           gastosHoy={gastosDelTurno}
@@ -296,6 +306,9 @@ export default function RecolectorPage() {
           onClose={() => setCierreOpen(false)}
           onCerrado={refreshTurno}
           vencido={turnoVencido}
+          extensiones={turnoExtensiones}
+          maxExtensiones={turnoMaxExtensiones}
+          obligatorio={turnoObligatorio}
           onExtender={extenderTurno}
           telefonoDestino={usuario?.telefono}
           conductores={conductores}
