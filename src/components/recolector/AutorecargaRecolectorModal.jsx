@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Wallet, X, Loader2, Camera, RotateCcw } from "lucide-react";
 import ComprobanteScannerModal from "./ComprobanteScannerModal";
 import { formatSoles } from "../../utils/format";
-import { METODOS_PAGO, METODO_PAGO_EFECTIVO, TIPO_ITEM_CREDITOS, TIPO_ITEM_MEMBRESIA } from "../../lib/taxiEnums";
+import { METODOS_PAGO, METODO_PAGO_EFECTIVO, TIPO_ITEM_CREDITOS } from "../../lib/taxiEnums";
 
 const METODOS_AUTORECARGA = METODOS_PAGO.filter((m) => m.key !== METODO_PAGO_EFECTIVO);
 
@@ -16,7 +16,9 @@ const METODOS_AUTORECARGA = METODOS_PAGO.filter((m) => m.key !== METODO_PAGO_EFE
 // (Yape/Plin/Otros/Fiado) — a diferencia de Recarga Rápida, donde solo
 // Yape/Plin/Otros lo piden.
 export default function AutorecargaRecolectorModal({ recolector, paquetes, glowPaquetes = false, crearPeticion, onClose }) {
-  const [tipoItem, setTipoItem] = useState(TIPO_ITEM_MEMBRESIA);
+  // Los recolectores solo compran paquetes de créditos (son su
+  // mercadería: vender una membresía de N días le cuesta N créditos).
+  const tipoItem = TIPO_ITEM_CREDITOS;
   const [paqueteId, setPaqueteId] = useState("");
   const [metodoPago, setMetodoPago] = useState("");
   const [comprobante, setComprobante] = useState(null);
@@ -84,33 +86,7 @@ export default function AutorecargaRecolectorModal({ recolector, paquetes, glowP
             <Wallet size={17} /> Recargar mi saldo
           </h2>
 
-          <label className="tz-field-label">Tipo</label>
-          <div className="tz-gasto-tipo-buttons">
-            <button
-              type="button"
-              className={`tz-gasto-tipo-btn ${tipoItem === TIPO_ITEM_MEMBRESIA ? "tz-gasto-tipo-active" : ""}`}
-              onClick={() => {
-                setTipoItem(TIPO_ITEM_MEMBRESIA);
-                setPaqueteId("");
-              }}
-            >
-              Membresía
-            </button>
-            <button
-              type="button"
-              className={`tz-gasto-tipo-btn ${tipoItem === TIPO_ITEM_CREDITOS ? "tz-gasto-tipo-active" : ""}`}
-              onClick={() => {
-                setTipoItem(TIPO_ITEM_CREDITOS);
-                setPaqueteId("");
-              }}
-            >
-              Paquete de Créditos
-            </button>
-          </div>
-
-          <label className="tz-field-label" style={{ marginTop: 12 }}>
-            {tipoItem === TIPO_ITEM_MEMBRESIA ? "Membresía" : "Paquete de créditos"}
-          </label>
+          <label className="tz-field-label">Paquete de créditos</label>
           <select
             className={`tz-text-input ${glowPaquetes ? "tz-select-glow-neon" : ""}`}
             value={paqueteId}

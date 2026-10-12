@@ -78,8 +78,7 @@ export default function RecargaRapidaForm({
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [conductorId, setConductorId] = useState(lockedConductor?.id ?? "");
-  // Un recolector sin membresía solo puede vender créditos.
-  const [tipoItem, setTipoItem] = useState(saldoRecolector && !recolectorConMembresia ? TIPO_ITEM_CREDITOS : TIPO_ITEM_MEMBRESIA);
+  const [tipoItem, setTipoItem] = useState(TIPO_ITEM_MEMBRESIA);
   const [duracion, setDuracion] = useState("mensual");
   const [paqueteId, setPaqueteId] = useState("");
   const [metodoPago, setMetodoPago] = useState("");
@@ -162,7 +161,7 @@ export default function RecargaRapidaForm({
   const resetForm = () => {
     setSearch("");
     setConductorId(lockedConductor?.id ?? "");
-    setTipoItem(saldoRecolector && !recolectorConMembresia ? TIPO_ITEM_CREDITOS : TIPO_ITEM_MEMBRESIA);
+    setTipoItem(TIPO_ITEM_MEMBRESIA);
     setPaqueteId("");
     setMetodoPago("");
     setComprobante(null);
@@ -186,14 +185,19 @@ export default function RecargaRapidaForm({
   const bloqueadoPorMembresiaVigente = tipoItem === TIPO_ITEM_MEMBRESIA && membresiaActivaVigente;
 
   // Reglas de saldo (la base las vuelve a validar): con membresía vigente
-  // el conductor no compra créditos; el recolector sin membresía no vende
-  // membresías y gasta 1 crédito suyo por cada crédito que vende.
+  // el conductor no compra créditos; el recolector sin membresía gasta 1
+  // crédito suyo por cada crédito que vende y, por una membresía, 1
+  // crédito por cada día (30 días = 30 créditos).
+  const costoRecolector = paquete
+    ? tipoItem === TIPO_ITEM_MEMBRESIA
+      ? Number(paquete.dias_membresia || 0)
+      : Number(paquete.creditos || 0)
+    : 0;
   const bloqueoSaldo = (() => {
     if (saldoRecolector && !recolectorConMembresia) {
-      if (creditosRecolector <= 0) return "Necesitas créditos o una membresía activa para recargar.";
-      if (tipoItem === TIPO_ITEM_MEMBRESIA) return "Necesitas una membresía activa para vender membresías.";
-      if (paquete && Number(paquete.creditos || 0) > creditosRecolector) {
-        return `Te faltan créditos: tienes ${creditosRecolector} y este paquete necesita ${paquete.creditos}.`;
+      if (creditosRecolector <= 0) return "Necesitas créditos para recargar.";
+      if (paquete && costoRecolector > creditosRecolector) {
+        return `Te faltan créditos: tienes ${creditosRecolector} y este paquete necesita ${costoRecolector}.`;
       }
     }
     if (tipoItem === TIPO_ITEM_CREDITOS && membresiaActivaVigente) {

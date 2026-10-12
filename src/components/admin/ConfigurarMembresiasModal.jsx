@@ -189,8 +189,11 @@ export default function ConfigurarMembresiasModal({ catalogos, onClose }) {
 
   const catalogo = catalogos.find((c) => c.key === audiencia) ?? catalogos[0];
   const { paquetes, loading, error, crearPaquete, actualizarPaquete, eliminarPaquete, reordenarPaquetes } = catalogo;
+  // Algunos catálogos (recolectores) solo venden paquetes de créditos.
+  const tiposCatalogo = catalogo.soloCreditos ? TIPOS.filter((t) => t.value === TIPO_ITEM_CREDITOS) : TIPOS;
+  const tabActivo = tiposCatalogo.some((t) => t.value === tab) ? tab : tiposCatalogo[0].value;
 
-  const paquetesDelTab = paquetes.filter((p) => p.tipo_item === tab);
+  const paquetesDelTab = paquetes.filter((p) => p.tipo_item === tabActivo);
 
   const crear = async (patch) => {
     setSaving(true);
@@ -249,11 +252,11 @@ export default function ConfigurarMembresiasModal({ catalogos, onClose }) {
 
           {/* Tab de tipo — Membresía vs Paquete de Créditos, dentro del catálogo elegido */}
           <div className="tz-gasto-tipo-buttons" style={{ marginBottom: 10 }}>
-            {TIPOS.map((t) => (
+            {tiposCatalogo.map((t) => (
               <button
                 key={t.value}
                 type="button"
-                className={`tz-gasto-tipo-btn ${tab === t.value ? "tz-gasto-tipo-active" : ""}`}
+                className={`tz-gasto-tipo-btn ${tabActivo === t.value ? "tz-gasto-tipo-active" : ""}`}
                 onClick={() => {
                   setTab(t.value);
                   setAddOpen(false);
@@ -274,7 +277,7 @@ export default function ConfigurarMembresiasModal({ catalogos, onClose }) {
               {saveError && <p className="tz-error">{saveError}</p>}
               <PaqueteForm
                 key={audiencia}
-                initial={{ tipo_item: tab }}
+                initial={{ tipo_item: tabActivo }}
                 onGuardar={crear}
                 onCancelar={() => {
                   setAddOpen(false);
@@ -298,7 +301,7 @@ export default function ConfigurarMembresiasModal({ catalogos, onClose }) {
               // interno al cambiar de catálogo o de tab — sin esto, el
               // contexto de arrastre podía quedar mezclado un instante
               // entre dos listas completamente distintas.
-              key={`${audiencia}-${tab}`}
+              key={`${audiencia}-${tabActivo}`}
               items={paquetesDelTab}
               onReordenar={reordenarPaquetes}
               vacio={<p className="tz-method-history-empty">No hay paquetes configurados todavía.</p>}

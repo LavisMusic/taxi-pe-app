@@ -22,8 +22,6 @@ function mensajeRecarga(r) {
       return `Ya tiene una membresía activa hasta el ${fecha} — no se puede recargar otra hasta que esta termine.`;
     case "conductor_con_membresia":
       return `Tiene una membresía activa hasta el ${fecha}: no puede comprar créditos hasta que termine.`;
-    case "recolector_sin_membresia":
-      return "Necesitas una membresía activa para vender membresías.";
     case "recolector_sin_creditos":
       return `Te faltan créditos: tienes ${r.disponibles ?? 0} y este paquete necesita ${r.necesarios ?? 0}.`;
     case "no_aprobado":

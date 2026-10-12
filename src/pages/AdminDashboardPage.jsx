@@ -583,6 +583,7 @@ export default function AdminDashboardPage() {
             {
               key: "recolectores",
               label: "Recolectores",
+              soloCreditos: true,
               paquetes: paquetesRecolectores,
               loading: paquetesRecolectoresLoading,
               error: paquetesRecolectoresError,

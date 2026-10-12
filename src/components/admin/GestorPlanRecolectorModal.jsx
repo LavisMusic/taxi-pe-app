@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { X, Zap, Loader2, CalendarClock, Check, CreditCard, Camera, ImagePlus } from "lucide-react";
+import { X, Zap, Loader2, Check, CreditCard, Camera, ImagePlus } from "lucide-react";
 import { formatSoles, formatDate, formatTime } from "../../utils/format";
 import {
   METODOS_PAGO,
@@ -14,34 +14,25 @@ import {
 import { subirComprobante } from "../../lib/comprobantes";
 
 // Gestor del plan de UN recolector (botón ⚡ de su tarjeta en el
-// Directorio del Admin, categoría "Recolectores") — el mismo diseño y los
-// mismos apartados que el gestor del conductor (GestorRecargaConductorModal):
-//   * Membresía y estado: tarjetas (membresía, vence, créditos, teléfono)
-//     + membresía asignada (sin cobrar).
-//   * Recarga rápida: Membresía / Créditos con los paquetes de
-//     recolectores; comprobante OBLIGATORIO si es digital; vuelto si es
-//     efectivo. Queda como compra aprobada (peticiones_recarga_recolector).
-//     Una membresía no se puede recargar mientras siga activa; los
-//     créditos sí (son la mercadería que revende, no se ponen en 0).
-//   * Corregir vencimiento: fecha y créditos, sin registrar venta.
+// Directorio del Admin, categoría "Recolectores") — el mismo diseño que el
+// gestor del conductor (GestorRecargaConductorModal). Los recolectores
+// solo compran paquetes de CRÉDITOS (su mercadería: vender una membresía
+// de N días le cuesta N créditos); la membresía que ya tuvieran sigue
+// hasta que venza.
+//   * Créditos y estado: tarjetas (membresía, vence, créditos, teléfono).
+//   * Recarga rápida: paquetes de créditos de recolectores; comprobante
+//     OBLIGATORIO si es digital; vuelto si es efectivo. Queda como compra
+//     aprobada (peticiones_recarga_recolector).
+//   * Corregir créditos: sin registrar venta.
 //   * Pagos: sus compras de saldo (solo consulta).
 const APARTADOS = [
-  { id: "estado", label: "Membresía y estado" },
+  { id: "estado", label: "Créditos y estado" },
   { id: "recarga", label: "Recarga rápida" },
-  { id: "vencimiento", label: "Corregir vencimiento" },
+  { id: "vencimiento", label: "Corregir créditos" },
   { id: "pagos", label: "Pagos" },
-];
-const TIPOS = [
-  { id: TIPO_ITEM_MEMBRESIA, label: "Membresía" },
-  { id: TIPO_ITEM_CREDITOS, label: "Créditos" },
 ];
 const CLASE_METODO = { efectivo: "efectivo", yape: "yape", plin: "plin", otros: "otros" };
 const DIAS_AVISO = 7;
-const aFechaInput = (iso) => {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
 const diasHasta = (iso) => (iso ? Math.ceil((new Date(iso) - new Date()) / 86400000) : null);
 
 function estadoMembresia(recolector) {
@@ -63,7 +54,6 @@ function textoVencimiento(recolector) {
 }
 
 function RecargaRapida({ recolector, paquetes, crearPeticion, onHecho }) {
-  const [tipo, setTipo] = useState(TIPO_ITEM_MEMBRESIA);
   const [paqueteId, setPaqueteId] = useState("");
   const [metodo, setMetodo] = useState("");
   const [archivo, setArchivo] = useState(null);
@@ -74,54 +64,13 @@ function RecargaRapida({ recolector, paquetes, crearPeticion, onHecho }) {
 
   useEffect(() => () => preview && URL.revokeObjectURL(preview), [preview]);
 
-  const activos = paquetes.filter((p) => p.activo !== false && p.tipo_item === tipo);
+  const activos = paquetes.filter((p) => p.activo !== false && p.tipo_item === TIPO_ITEM_CREDITOS);
   const paquete = activos.find((p) => String(p.id) === String(paqueteId)) || null;
   const total = Number(paquete?.precio) || 0;
   const esEfectivo = metodo === METODO_PAGO_EFECTIVO;
   const esDigital = METODOS_CON_COMPROBANTE.includes(metodo);
   const recibidoNum = Number(String(recibido).replace(",", "."));
   const vuelto = esEfectivo && Number.isFinite(recibidoNum) && recibido !== "" ? recibidoNum - total : null;
-  const membresiaVigente = (diasHasta(recolector.membresia_vencimiento) ?? -1) >= 0;
-
-  const selectorTipo = (
-    <div className="tz-plan-filtros">
-      {TIPOS.map((t) => (
-        <button
-          key={t.id}
-          type="button"
-          className={`tz-gasto-tipo-btn ${tipo === t.id ? "tz-gasto-tipo-active" : ""}`}
-          onClick={() => {
-            setTipo(t.id);
-            setPaqueteId("");
-            setError("");
-          }}
-        >
-          {t.label}
-        </button>
-      ))}
-    </div>
-  );
-
-  if (tipo === TIPO_ITEM_MEMBRESIA && membresiaVigente) {
-    return (
-      <>
-        {selectorTipo}
-        <div className="tz-renovar-estado">
-          <span className="tz-renovar-estado-icono">
-            <Check size={26} />
-          </span>
-          <h3 className="tz-recarga-bloqueada">
-            Membresía activa
-            <br />
-            hasta el {formatDate(recolector.membresia_vencimiento)}
-          </h3>
-          <p className="tz-stock-editor-sub">
-            No se puede recargar otra membresía mientras esta siga activa. Los créditos sí se pueden recargar.
-          </p>
-        </div>
-      </>
-    );
-  }
 
   const elegirArchivo = (e) => {
     const f = e.target.files?.[0];
@@ -163,21 +112,18 @@ function RecargaRapida({ recolector, paquetes, crearPeticion, onHecho }) {
 
   return (
     <>
-      {selectorTipo}
-      <label className="tz-field-label">Paquete</label>
+      <label className="tz-field-label">Paquete de créditos</label>
       <select className="tz-text-input" value={paqueteId} onChange={(e) => setPaqueteId(e.target.value)}>
-        <option value="">{activos.length === 0 ? "No hay paquetes de este tipo" : "Elige un paquete…"}</option>
+        <option value="">{activos.length === 0 ? "No hay paquetes de créditos" : "Elige un paquete…"}</option>
         {activos.map((p) => (
           <option key={p.id} value={p.id}>
-            {p.nombre} —{" "}
-            {p.tipo_item === TIPO_ITEM_MEMBRESIA ? `${p.dias_membresia} días` : `${p.creditos} créditos`} · {formatSoles(p.precio)}
+            {p.nombre} — {p.creditos} créditos · {formatSoles(p.precio)}
           </option>
         ))}
       </select>
       {paquete && (
         <p className="tz-plan-total" style={{ margin: "8px 0 0" }}>
-          Total: <strong>{formatSoles(total)}</strong> ·{" "}
-          {paquete.tipo_item === TIPO_ITEM_MEMBRESIA ? `${paquete.dias_membresia} días` : `${paquete.creditos} créditos`}
+          Total: <strong>{formatSoles(total)}</strong> · {paquete.creditos} créditos
         </p>
       )}
 
@@ -274,12 +220,10 @@ export default function GestorPlanRecolectorModal({ recolector, paquetes = [], p
   const [aviso, setAviso] = useState("");
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState("");
-  const [fecha, setFecha] = useState(aFechaInput(recolector.membresia_vencimiento));
   const [creditos, setCreditos] = useState(String(recolector.creditos_disponibles ?? 0));
 
   const estado = estadoMembresia(recolector);
   const vigente = (diasHasta(recolector.membresia_vencimiento) ?? -1) >= 0;
-  const membresias = paquetes.filter((p) => p.tipo_item === TIPO_ITEM_MEMBRESIA && p.activo !== false);
   const labelMetodo = (key) => METODOS_PAGO.find((m) => m.key === key)?.label ?? key;
 
   const susCompras = useMemo(
@@ -300,26 +244,10 @@ export default function GestorPlanRecolectorModal({ recolector, paquetes = [], p
     return !err;
   };
 
-  // Membresía asignada sin cobrar: arranca hoy y dura lo que dice el
-  // paquete (vacío = quitarla).
-  const asignarMembresia = async (e) => {
-    const paquete = membresias.find((p) => String(p.id) === e.target.value);
-    const vence = paquete ? new Date(Date.now() + (Number(paquete.dias_membresia) || 30) * 86400000).toISOString() : null;
-    const ok = await actualizar({ membresia_vencimiento: vence }, "membresia");
-    if (ok) setAviso(paquete ? `Membresía "${paquete.nombre}" asignada sin cobrar.` : "Membresía quitada.");
-  };
-
   const corregir = async () => {
     const cred = Number(creditos);
     if (!Number.isInteger(cred) || cred < 0) return setError("Los créditos deben ser un número entero (0 o más).");
-    const ok = await actualizar(
-      {
-        // Fin del día elegido (hora de Perú, UTC-5); vacío = sin membresía.
-        membresia_vencimiento: fecha ? new Date(`${fecha}T23:59:59-05:00`).toISOString() : null,
-        creditos_disponibles: cred,
-      },
-      "fecha"
-    );
+    const ok = await actualizar({ creditos_disponibles: cred }, "creditos");
     if (ok) setAviso("Corrección guardada.");
   };
 
@@ -330,7 +258,7 @@ export default function GestorPlanRecolectorModal({ recolector, paquetes = [], p
           <X size={18} />
         </button>
         <h2>
-          <CreditCard size={17} /> Membresía · {recolector.nombre}
+          <CreditCard size={17} /> Créditos · {recolector.nombre}
         </h2>
         <p className="tz-brand-sub" style={{ marginBottom: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <span className="tz-plan-badge" style={{ "--tz-plan-color": estado.color }}>
@@ -349,10 +277,7 @@ export default function GestorPlanRecolectorModal({ recolector, paquetes = [], p
                 setApartado(a.id);
                 setError("");
                 setAviso("");
-                if (a.id === "vencimiento") {
-                  setFecha(aFechaInput(recolector.membresia_vencimiento));
-                  setCreditos(String(recolector.creditos_disponibles ?? 0));
-                }
+                if (a.id === "vencimiento") setCreditos(String(recolector.creditos_disponibles ?? 0));
               }}
             >
               {a.label}
@@ -380,20 +305,10 @@ export default function GestorPlanRecolectorModal({ recolector, paquetes = [], p
                 <strong>{recolector.telefono || "Sin registrar"}</strong>
               </div>
             </div>
-            <div className="tz-plan-seccion">
-              <label className="tz-plan-campo tz-plan-campo-ancho">
-                <span>Membresía asignada (sin cobrar)</span>
-                <select className="tz-text-input" value="" onChange={asignarMembresia} disabled={guardando === "membresia"}>
-                  <option value="">{vigente ? "Cambiar o quitar…" : "Elige una membresía…"}</option>
-                  {membresias.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nombre} — {p.dias_membresia} días
-                    </option>
-                  ))}
-                  {vigente && <option value="__quitar">Quitar membresía</option>}
-                </select>
-              </label>
-            </div>
+            <p className="tz-stock-editor-sub" style={{ margin: "8px 0 0" }}>
+              Los recolectores solo compran créditos: vender una membresía de N días les cuesta N créditos.
+              {vigente ? " Su membresía actual sigue hasta que venza." : ""}
+            </p>
           </>
         )}
 
@@ -403,10 +318,6 @@ export default function GestorPlanRecolectorModal({ recolector, paquetes = [], p
 
         {apartado === "vencimiento" && (
           <div className="tz-plan-seccion" style={{ alignItems: "flex-end" }}>
-            <label className="tz-plan-campo">
-              <span>Vence el</span>
-              <input type="date" className="tz-text-input" value={fecha} onChange={(e) => setFecha(e.target.value)} />
-            </label>
             <label className="tz-plan-campo">
               <span>Créditos</span>
               <input
@@ -419,11 +330,11 @@ export default function GestorPlanRecolectorModal({ recolector, paquetes = [], p
                 onChange={(e) => setCreditos(e.target.value)}
               />
             </label>
-            <button type="button" className="tz-cliente-action-btn" onClick={corregir} disabled={guardando === "fecha"}>
-              {guardando === "fecha" ? <Loader2 size={13} className="tz-spin" /> : <CalendarClock size={13} />} Guardar fecha
+            <button type="button" className="tz-cliente-action-btn" onClick={corregir} disabled={guardando === "creditos"}>
+              {guardando === "creditos" ? <Loader2 size={13} className="tz-spin" /> : <Check size={13} />} Guardar créditos
             </button>
             <p className="tz-stock-editor-sub" style={{ flexBasis: "100%", margin: 0 }}>
-              Solo para corregir un error: no registra ninguna venta. Deja la fecha vacía para quitarle la membresía.
+              Solo para corregir un error: no registra ninguna venta.
             </p>
           </div>
         )}
