@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { ESTADO_CUENTA_PENDIENTE, TIPO_USUARIO_RECOLECTOR } from "../lib/taxiEnums";
 
 // Auto-registro público de Recolector (botón "Recolectores" del header
 // de la Home) — a diferencia del conductor, un recolector NO tiene fila
@@ -15,39 +14,22 @@ export function useCrearRecolectorPendiente() {
   const crear = useCallback(async ({ nombre, telefono, dni, fotoUrl }) => {
     setSaving(true);
 
-    const { data: existente, error: checkError } = await supabase
-      .from("usuarios")
-      .select("id")
-      .or(`dni.eq.${dni},telefono.eq.${telefono}`)
-      .maybeSingle();
-    if (checkError) {
-      setSaving(false);
-      return { error: checkError, message: "No se pudo verificar tus datos. Intenta de nuevo." };
-    }
-    if (existente) {
-      setSaving(false);
+    // Lo crea la base (taxi_registrar_recolector): sin sesión no se
+    // puede leer ni escribir 'usuarios'.
+    const { data, error: rpcError } = await supabase.rpc("taxi_registrar_recolector", {
+      p_nombre: nombre,
+      p_telefono: telefono,
+      p_dni: dni,
+      p_foto_url: fotoUrl || null,
+    });
+    setSaving(false);
+    if (data?.estado === "duplicado") {
       return { error: new Error("duplicado"), message: "Ya existe una cuenta con ese DNI o teléfono." };
     }
-
-    const { data, error: insertError } = await supabase
-      .from("usuarios")
-      .insert({
-        dni,
-        telefono,
-        pin: null,
-        nombre,
-        rol: TIPO_USUARIO_RECOLECTOR,
-        estado_cuenta: ESTADO_CUENTA_PENDIENTE,
-        foto_url: fotoUrl || null,
-      })
-      .select()
-      .single();
-
-    setSaving(false);
-    if (insertError) {
-      return { error: insertError, message: "No se pudo enviar tu solicitud. Intenta de nuevo." };
+    if (rpcError || data?.estado !== "ok") {
+      return { error: rpcError || new Error("error"), message: "No se pudo enviar tu solicitud. Intenta de nuevo." };
     }
-    return { error: null, usuario: data };
+    return { error: null, usuario: data.usuario };
   }, []);
 
   return { crear, saving };

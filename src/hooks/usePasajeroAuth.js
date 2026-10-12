@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import { supabase } from "../supabaseClient";
 import { loginConPin, crearPin as crearPinBase, registrarTemporal as registrarTemporalBase, MENSAJE_BLOQUEADO } from "../lib/pinAuth";
 import { mirrorCuentaACaja } from "../lib/mirrorCaja";
 import {
@@ -23,21 +22,6 @@ export function usePasajeroAuth() {
 
   const registrarTemporal = useCallback(async ({ nombreUsuario, telefono }) => {
     setLoading(true);
-    const { data: existente, error: checkError } = await supabase
-      .from("usuarios")
-      .select("id")
-      .or(`nombre_usuario.eq.${nombreUsuario},telefono.eq.${telefono}`)
-      .maybeSingle();
-
-    if (checkError) {
-      setLoading(false);
-      return { error: checkError, message: "No se pudo verificar tus datos. Intenta de nuevo." };
-    }
-    if (existente) {
-      setLoading(false);
-      return { error: new Error("duplicado"), message: "Ya existe una cuenta con ese usuario o teléfono." };
-    }
-
     // La cuenta la crea la base (taxi_registrar_temporal), que además
     // devuelve el ticket de la sesión.
     let resultado;

@@ -21,21 +21,6 @@ export function useConductorTemporal() {
 
   const registrarTemporal = useCallback(async ({ nombre, telefono }) => {
     setLoading(true);
-    const { data: existente, error: checkError } = await supabase
-      .from("usuarios")
-      .select("id")
-      .eq("telefono", telefono)
-      .maybeSingle();
-
-    if (checkError) {
-      setLoading(false);
-      return { error: checkError, message: "No se pudo verificar tus datos. Intenta de nuevo." };
-    }
-    if (existente) {
-      setLoading(false);
-      return { error: new Error("duplicado"), message: "Ya existe una cuenta con ese teléfono." };
-    }
-
     // La cuenta la crea la base (taxi_registrar_temporal), que además
     // devuelve el ticket de la sesión.
     let resultado;
@@ -85,12 +70,11 @@ export function useConductorTemporal() {
     }) => {
       setLoading(true);
 
-      const { data: dniExistente, error: dniCheckError } = await supabase
-        .from("usuarios")
-        .select("id")
-        .eq("dni", dni)
-        .neq("id", usuarioId)
-        .maybeSingle();
+      // ¿Otro usuario ya tiene ese DNI? (la base responde solo sí o no).
+      const { data: dniExistente, error: dniCheckError } = await supabase.rpc("taxi_existe_cuenta", {
+        p_dni: dni,
+        p_excluir: usuarioId,
+      });
       if (dniCheckError) {
         setLoading(false);
         return { error: dniCheckError, message: "No se pudo verificar tu DNI. Intenta de nuevo." };

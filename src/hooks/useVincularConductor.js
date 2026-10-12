@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { crearPin } from "../lib/pinAuth";
+import { registrarConductorVinculado } from "../lib/pinAuth";
 import { ESTADOS_CONDUCTOR_OPERATIVOS } from "../lib/taxiEnums";
 
 // El puente final: un conductor pre-registrado por un Recolector tiene
@@ -49,53 +49,30 @@ export function useVincularConductor() {
     return { conductor: data, yaOperativo: estadoValido };
   }, []);
 
+  // La base crea la cuenta (taxi_registrar_conductor_vinculado): revisa
+  // duplicados, que exista el pre-registro, guarda el PIN y abre la
+  // sesión.
   const crearCuenta = useCallback(async ({ dni, telefono, pin, nombre }) => {
     setLoading(true);
     setError("");
-
-    // Evita duplicados: ya hay una cuenta con ese DNI o ese teléfono.
-    const { data: existente, error: checkError } = await supabase
-      .from("usuarios")
-      .select("id")
-      .or(`dni.eq.${dni},telefono.eq.${telefono}`)
-      .maybeSingle();
-
-    if (checkError) {
-      const message = "No se pudo verificar tus datos. Intenta de nuevo.";
-      setError(message);
-      setLoading(false);
-      return { error: checkError, message };
+    let resultado;
+    try {
+      resultado = await registrarConductorVinculado({ dni, telefono, nombre, pin });
+    } catch {
+      resultado = null;
     }
-    if (existente) {
-      const message = "Ya existe una cuenta con ese DNI o teléfono.";
-      setError(message);
-      setLoading(false);
-      return { error: new Error("duplicado"), message };
-    }
-
-    // La cuenta nace sin PIN y el PIN se fija en la base (taxi_crear_pin):
-    // el PIN no se escribe desde la app.
-    const { data: nuevo, error: insertError } = await supabase
-      .from("usuarios")
-      .insert({ dni, telefono, nombre, rol: "conductor" })
-      .select("id")
-      .single();
-    let resultadoPin = null;
-    if (!insertError) {
-      try {
-        resultadoPin = await crearPin(nuevo.id, pin);
-      } catch {
-        resultadoPin = null;
-      }
-    }
-
     setLoading(false);
-    if (insertError || resultadoPin?.estado !== "ok") {
-      const message = "No se pudo crear tu cuenta. Intenta de nuevo.";
+    if (resultado?.estado !== "ok") {
+      const message =
+        resultado?.estado === "duplicado"
+          ? "Ya existe una cuenta con ese DNI o teléfono."
+          : resultado?.estado === "sin_preregistro"
+            ? "No encontramos un conductor con ese teléfono. Pide a un recolector que te registre primero."
+            : "No se pudo crear tu cuenta. Intenta de nuevo.";
       setError(message);
-      return { error: insertError || new Error("pin"), message };
+      return { error: new Error(resultado?.estado || "error"), message };
     }
-    return { usuario: resultadoPin.usuario, error: null };
+    return { usuario: resultado.usuario, error: null };
   }, []);
 
   return { buscarPreRegistro, crearCuenta, loading, error };

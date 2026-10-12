@@ -95,7 +95,7 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
     let cancelado = false;
     (async () => {
       try {
-        const { data, error } = await supabase.from("usuarios").select("id, nombre").in("id", ids);
+        const { data, error } = await supabase.from("usuarios_publicos").select("id, nombre").in("id", ids);
         if (cancelado || error) return;
         const map = {};
         (data ?? []).forEach((u) => {

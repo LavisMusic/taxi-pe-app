@@ -64,6 +64,21 @@ export async function registrarTemporal({ rol, telefono, nombre = null, nombreUs
   return conSesion(data);
 }
 
+// Conductor que reclama el pre-registro que le hizo un recolector
+// (/registro-conductor): la base crea su cuenta con su PIN y devuelve el
+// ticket de la sesión. Devuelve { estado, usuario }: 'ok' | 'duplicado' |
+// 'sin_preregistro'.
+export async function registrarConductorVinculado({ dni, telefono, nombre, pin }) {
+  const { data, error } = await supabase.rpc("taxi_registrar_conductor_vinculado", {
+    p_dni: dni,
+    p_telefono: telefono,
+    p_nombre: nombre,
+    p_pin: pin,
+  });
+  if (error) throw error;
+  return conSesion(data);
+}
+
 // El Admin sobrescribe el PIN de alguien (pide su sesión de Admin).
 export async function adminFijarPin(usuarioId, pin) {
   const { data, error } = await supabase.rpc("taxi_admin_fijar_pin", {
