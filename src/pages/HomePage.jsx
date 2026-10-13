@@ -392,15 +392,10 @@ export default function HomePage() {
            centrados (ver .tz-radar-bar en Styles.jsx) — antes vivía
            suelto más abajo, entre las pestañas y la lista. */}
         <div className="tz-radar-bar">
-          {/* Pasajero con sesión: sus créditos a la izquierda (centrados en
-             su mitad) y el filtro de localidad a la derecha. */}
+          {/* Pasajero con sesión: el filtro de localidad a la izquierda y
+             sus créditos a la derecha (centrados en su mitad). */}
           {(localidades.length > 0 || (esPasajero && misCreditos != null)) && (
             <div className={esPasajero && misCreditos != null ? "tz-fila-saldo-localidad" : "tz-fila-localidad"}>
-              {esPasajero && misCreditos != null && (
-                <div className="tz-fila-saldo">
-                  <ContadorCreditos valor={misCreditos} clave={`tz-creditos-visto-${usuario.id}`} />
-                </div>
-              )}
               {localidades.length > 0 && (
                 <div className="tz-localidad-filtro-wrap">
                   <Dropdown
@@ -409,6 +404,11 @@ export default function HomePage() {
                     options={[{ value: "", label: "Todas las localidades" }, ...localidades.map((l) => ({ value: l.nombre, label: l.nombre }))]}
                     ariaLabel="Filtrar por localidad"
                   />
+                </div>
+              )}
+              {esPasajero && misCreditos != null && (
+                <div className="tz-fila-saldo">
+                  <ContadorCreditos valor={misCreditos} clave={`tz-creditos-visto-${usuario.id}`} />
                 </div>
               )}
             </div>

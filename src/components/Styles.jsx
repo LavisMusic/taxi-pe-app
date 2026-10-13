@@ -5443,8 +5443,8 @@ export default function Styles() {
         color: var(--text-dim);
       }
       /* Contador de créditos del pasajero (ContadorCreditos.jsx). */
-      /* Fila del pasajero: créditos a la izquierda, centrados en su mitad,
-         y el filtro de localidad a la derecha (con aire al borde). Dos
+      /* Fila del pasajero: filtro de localidad a la izquierda y créditos a
+         la derecha, centrados en su mitad (con aire a los bordes). Dos
          columnas iguales: simétrico. Sin sesión, el filtro solo y
          centrado como siempre. */
       .tz-fila-localidad { width: 100%; display: flex; justify-content: center; }
@@ -5459,6 +5459,8 @@ export default function Styles() {
       }
       .tz-fila-saldo { display: flex; justify-content: center; align-items: center; min-width: 0; }
       .tz-fila-saldo .tz-cc { top: 0; }
+      /* Sin localidades cargadas: los créditos solos, centrados. */
+      .tz-fila-saldo:only-child { grid-column: 1 / -1; }
       .tz-fila-saldo-localidad .tz-localidad-filtro-wrap { max-width: none; min-width: 0; }
       /* Panel del conductor / recolector con la cuenta sin verificar. */
       .tz-cuenta-temporal {
