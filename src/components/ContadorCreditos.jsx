@@ -17,6 +17,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "re
 const CAPAS_ENCIMA = ".tz-modal-backdrop, .tz-exito-overlay, .tz-neon-bienvenida-overlay";
 const ALTO_DIGITO = 1.2; // em
 const GOTAS = 12;
+const ANCHO_CIFRA = 0.86; // em
 
 function leerVisto(clave) {
   try {
@@ -137,40 +138,68 @@ function Gotas({ semilla }) {
 }
 
 function Diamante() {
-  // Ids propios por contador: la tienda pinta el contador en dos lugares
-  // (uno oculto según el ancho) y un degradado dentro de un SVG oculto
-  // dejaría sin pintar al otro.
+  // Gema en rombo vertical (como la foto de referencia): mesa interior en
+  // rombo, facetas en estrella y brillos blancos. Ids propios por
+  // contador: la tienda pinta el contador en dos lugares (uno oculto
+  // según el ancho) y un degradado dentro de un SVG oculto dejaría sin
+  // pintar al otro.
   const base = useId().replace(/[^a-zA-Z0-9_-]/g, "");
-  const gema = `tz-cc-g-${base}`;
+  const borde = `tz-cc-g-${base}`;
+  const mesa = `tz-cc-m-${base}`;
   const brillo = `tz-cc-b-${base}`;
   const recorte = `tz-cc-c-${base}`;
+  const contorno = "M12 0.8 23.2 14.6 12 33.2 0.8 14.6Z";
   return (
     <span className="tz-cc-diamante" aria-hidden="true">
       <span className="tz-cc-aura" />
-      <svg viewBox="0 0 32 28" className="tz-cc-gema">
+      <svg viewBox="0 0 24 34" className="tz-cc-gema">
         <defs>
-          <linearGradient id={gema} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#f2feff" />
-            <stop offset="0.45" stopColor="currentColor" />
-            <stop offset="1" stopColor="#8f7bff" />
+          <linearGradient id={borde} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#9eeeff" />
+            <stop offset="0.35" stopColor="currentColor" />
+            <stop offset="0.72" stopColor="#1689f5" />
+            <stop offset="1" stopColor="#0a4bbf" />
           </linearGradient>
+          <radialGradient id={mesa} cx="0.45" cy="0.4" r="0.7">
+            <stop offset="0" stopColor="#ffffff" />
+            <stop offset="0.45" stopColor="#b8f5ff" />
+            <stop offset="1" stopColor="#35c4ff" />
+          </radialGradient>
           <linearGradient id={brillo} x1="0" y1="0" x2="1" y2="0">
             <stop offset="0" stopColor="#fff" stopOpacity="0" />
             <stop offset="0.5" stopColor="#fff" stopOpacity="0.85" />
             <stop offset="1" stopColor="#fff" stopOpacity="0" />
           </linearGradient>
           <clipPath id={recorte}>
-            <path d="M8 1h16l7 8.5L16 27 1 9.5z" />
+            <path d={contorno} />
           </clipPath>
         </defs>
-        <path d="M8 1h16l7 8.5L16 27 1 9.5z" fill={`url(#${gema})`} opacity="0.92" />
-        <g fill="none" stroke="#fff" strokeOpacity="0.55" strokeWidth="0.8" strokeLinejoin="round">
-          <path d="M1 9.5h30M8 1l4 8.5L16 1l4 8.5L24 1M12 9.5 16 27l4-17.5" />
+        {/* Corona y pabellón */}
+        <path d={contorno} fill={`url(#${borde})`} />
+        {/* Facetas con luz y sombra */}
+        <path d="M12 0.8 6.4 7.7 12 6.6Z" fill="#fff" opacity="0.75" />
+        <path d="M0.8 14.6 6.4 7.7 6.2 14.6Z" fill="#fff" opacity="0.6" />
+        <path d="M0.8 14.6 6.2 14.6 6.3 21.4Z" fill="#fff" opacity="0.28" />
+        <path d="M23.2 14.6 17.8 14.6 17.7 21.4Z" fill="#08307d" opacity="0.6" />
+        <path d="M12 33.2 17.7 21.4 12 26Z" fill="#08307d" opacity="0.65" />
+        <path d="M23.2 14.6 17.7 21.4 12 33.2Z" fill="#08307d" opacity="0.35" />
+        <path d="M17.6 7.7 12 0.8 12 6.6Z" fill="#0b4fc4" opacity="0.35" />
+        <path d="M23.2 14.6 17.6 7.7 17.8 14.6Z" fill="#fff" opacity="0.32" />
+        <path d="M6.3 21.4 12 26 12 33.2Z" fill="#fff" opacity="0.18" />
+        {/* Mesa interior */}
+        <path d="M12 6.6 17.8 14.6 12 26 6.2 14.6Z" fill={`url(#${mesa})`} />
+        <path d="M12 6.6 12 26M6.2 14.6H17.8" stroke="#fff" strokeOpacity="0.45" strokeWidth="0.5" />
+        <path d="M12 6.6 14.4 14.6 12 26 9.6 14.6Z" fill="#fff" opacity="0.35" />
+        {/* Aristas */}
+        <g fill="none" stroke="#e8fdff" strokeOpacity="0.7" strokeWidth="0.55" strokeLinejoin="round">
+          <path d="M12 0.8 12 6.6M23.2 14.6H17.8M12 33.2V26M0.8 14.6H6.2" />
+          <path d="M6.4 7.7 12 6.6 17.6 7.7M6.4 7.7 6.2 14.6 6.3 21.4 12 26 17.7 21.4 17.8 14.6 17.6 7.7" />
+          <path d="M12 6.6 17.8 14.6 12 26 6.2 14.6Z" />
         </g>
         <g clipPath={`url(#${recorte})`}>
-          <rect className="tz-cc-destello" x="-14" y="0" width="10" height="28" fill={`url(#${brillo})`} />
+          <rect className="tz-cc-destello" x="-12" y="0" width="8" height="34" fill={`url(#${brillo})`} />
         </g>
-        <path d="M8 1h16l7 8.5L16 27 1 9.5z" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+        <path d={contorno} fill="none" stroke="currentColor" strokeWidth="0.9" strokeLinejoin="round" />
       </svg>
       <span className="tz-cc-chispa" />
     </span>
@@ -192,6 +221,9 @@ export default function ContadorCreditos({ valor, clave, titulo = "Créditos" })
   const [arrancado, setArrancado] = useState(false);
   const [gotas, setGotas] = useState(0);
   const claveRef = useRef(clave);
+  // Espacio reservado para todas las cifras que va a tener (también las
+  // que todavía no se animaron): el número no se corre al empezar el giro.
+  const cifras = Math.max(String(mostrado).length, String(actual).length, giro ? giro.rodillos.length : 0);
 
   // Otro usuario en el mismo navegador: empieza desde lo que él vio.
   useEffect(() => {
@@ -240,7 +272,7 @@ export default function ContadorCreditos({ valor, clave, titulo = "Créditos" })
     <span className="tz-cc" title={`${titulo}: ${giro ? giro.hasta : mostrado}`} aria-label={`${titulo}: ${actual}`}>
       <style>{ESTILO}</style>
       <Diamante />
-      <span className="tz-cc-numero">
+      <span className="tz-cc-numero" style={{ minWidth: `${cifras * ANCHO_CIFRA}em` }}>
         {giro ? (
           giro.rodillos.map((r, i) => {
             const pasos = r.tira.length - 1;
@@ -284,6 +316,7 @@ const ESTILO = `
 .tz-cc {
   --tz-cc-color: var(--cyan, #2be8ff);
   position: relative;
+  top: 6px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -298,8 +331,8 @@ const ESTILO = `
 .tz-cc-diamante {
   position: relative;
   display: inline-flex;
-  width: 26px;
-  height: 23px;
+  width: 18px;
+  height: 26px;
   flex-shrink: 0;
   color: var(--tz-cc-color);
 }
@@ -307,7 +340,8 @@ const ESTILO = `
   position: relative;
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 0 4px var(--tz-cc-color)) drop-shadow(0 0 9px rgba(143, 123, 255, 0.55));
+  overflow: visible;
+  filter: drop-shadow(0 0 3px var(--tz-cc-color)) drop-shadow(0 0 8px rgba(43, 140, 255, 0.65));
   animation: tz-cc-flotar 3.6s ease-in-out infinite;
 }
 .tz-cc-aura {
@@ -321,13 +355,12 @@ const ESTILO = `
 .tz-cc-destello { animation: tz-cc-destello 4.2s ease-in-out infinite; }
 .tz-cc-chispa {
   position: absolute;
-  top: -3px;
-  right: -3px;
-  width: 7px;
-  height: 7px;
-  background:
-    linear-gradient(#fff, #fff) center / 1.5px 100% no-repeat,
-    linear-gradient(#fff, #fff) center / 100% 1.5px no-repeat;
+  top: -2px;
+  right: -5px;
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
   filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 5px var(--tz-cc-color));
   animation: tz-cc-chispa 2.8s ease-in-out infinite;
   pointer-events: none;
@@ -335,6 +368,8 @@ const ESTILO = `
 .tz-cc-numero {
   position: relative;
   display: inline-flex;
+  justify-content: flex-end;
+  transition: min-width 0.35s ease;
   height: ${ALTO_DIGITO}em;
   align-items: flex-start;
   overflow: visible;
@@ -353,7 +388,7 @@ const ESTILO = `
 /* Mismo ancho para cada cifra (quieta o girando): sin saltos al terminar. */
 .tz-cc-celda,
 .tz-cc-rodillo {
-  width: 0.86em;
+  width: ${ANCHO_CIFRA}em;
   text-align: center;
 }
 .tz-cc-celda { display: inline-block; height: ${ALTO_DIGITO}em; }
@@ -392,8 +427,8 @@ const ESTILO = `
   100% { opacity: 0; transform: translate(var(--dx), var(--caida)) scale(0.6); }
 }
 @keyframes tz-cc-flotar {
-  0%, 100% { transform: translateY(0) rotate(-3deg); }
-  50% { transform: translateY(-2px) rotate(3deg); }
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-2px) rotate(2deg); }
 }
 @keyframes tz-cc-aura {
   0%, 100% { opacity: 0.55; transform: scale(0.9); }
@@ -401,11 +436,11 @@ const ESTILO = `
 }
 @keyframes tz-cc-destello {
   0%, 55% { transform: translateX(0); }
-  85%, 100% { transform: translateX(46px); }
+  85%, 100% { transform: translateX(34px); }
 }
 @keyframes tz-cc-chispa {
-  0%, 60%, 100% { opacity: 0; transform: scale(0.3) rotate(0deg); }
-  72% { opacity: 1; transform: scale(1) rotate(45deg); }
-  86% { opacity: 0; transform: scale(0.5) rotate(90deg); }
+  0%, 60%, 100% { opacity: 0; transform: scale(0.3) rotate(-20deg); }
+  72% { opacity: 1; transform: scale(1) rotate(0deg); }
+  86% { opacity: 0; transform: scale(0.5) rotate(20deg); }
 }
 `;

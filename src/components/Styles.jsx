@@ -1971,6 +1971,14 @@ export default function Styles() {
         display: flex;
         flex-direction: column;
       }
+      /* La X va por encima del mapa (Leaflet pinta sus capas con z-index
+         400+) y con fondo propio para que se vea sobre cualquier zona. */
+      .tz-ruta-preview-card > .tz-modal-close {
+        z-index: 1200;
+        background: rgba(10, 7, 22, 0.85);
+        border-color: rgba(43, 232, 255, 0.6);
+        box-shadow: 0 0 12px rgba(43, 232, 255, 0.45);
+      }
       .tz-ruta-preview-map { flex: 1 1 auto; width: 100%; }
       .tz-ruta-preview-map .leaflet-container { background: #10141c; }
       .tz-ruta-preview-caption {
