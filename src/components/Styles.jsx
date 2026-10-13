@@ -3574,8 +3574,13 @@ export default function Styles() {
            recorta cualquier cosa que se salga de esta caja, glow
            incluido — sin aire alrededor, el box-shadow de
            .tz-chat-senas-btn se veía cortado en vez de difuminarse. */
-        padding: 8px 4px;
-        width: 100%;
+        /* 14px de aire alrededor (con margen negativo para no mover el
+           resto del layout): el glow de los chips ya no se recorta
+           arriba, abajo ni en los chips de las puntas. */
+        padding: 14px;
+        margin: -6px -10px;
+        width: calc(100% + 20px);
+        box-sizing: border-box;
         scrollbar-width: none;
       }
       .tz-chat-quickrow::-webkit-scrollbar { display: none; }
@@ -3600,7 +3605,7 @@ export default function Styles() {
       }
       .tz-chat-quickreply-btn:hover:not(:disabled) { background: rgba(43,232,255,0.2); box-shadow: 0 0 12px rgba(43,232,255,0.3); }
       .tz-chat-quickreply-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-      /* "Tonazo" (Pasajero, ChatWindow.jsx) — solo el logo, circular;
+      /* "Tonazo" (Pasajero, ChatWindow.jsx) — solo el logo, en píldora;
          el contador de restantes vive en el atributo title (tooltip),
          acá abajo solo se muestra el cooldown mientras está activo. */
       .tz-chat-tonazo-row {
@@ -3614,11 +3619,11 @@ export default function Styles() {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 42px;
-        height: 42px;
+        width: 72px;
+        height: 45px;
         padding: 0;
         flex-shrink: 0;
-        border-radius: 50%;
+        border-radius: 999px;
         border: 1px solid rgba(255,47,158,0.4);
         background: rgba(255,47,158,0.1);
         color: var(--pink);
@@ -3632,7 +3637,7 @@ export default function Styles() {
          se ve apagado igual, pero sigue recibiendo el click para poder
          mostrar el toast de aviso. */
       .tz-chat-tonazo-btn-bloqueado { opacity: 0.5; cursor: pointer; }
-      .tz-chat-tonazo-logo { width: 20px; height: 20px; object-fit: contain; border-radius: 4px; }
+      .tz-chat-tonazo-logo { width: 44px; height: 28px; object-fit: contain; border-radius: 4px; }
       .tz-chat-tonazo-cooldown {
         font-family: 'Rajdhani', sans-serif;
         font-size: 11px;
