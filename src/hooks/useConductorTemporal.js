@@ -18,13 +18,34 @@ import {
 // DIAS_EXPIRACION_CUENTA_TEMPORAL días para completar el resto — ver
 // `verificarCuenta`, que dispara StaffLoginForm cuando encuentra una
 // cuenta 'temporal' con `pin: null`.
+// Datos de la cuenta al verificarse. Sin PIN todavía (cuenta exprés
+// antigua): van junto con el PIN nuevo en taxi_crear_pin, que abre la
+// sesión. Con PIN (ya tiene sesión, o reenvía tras un rechazo): se
+// actualiza su propia fila. Devuelve { usuario, error }.
+export async function guardarDatosVerificacion(usuarioId, pin, datos) {
+  if (pin) {
+    try {
+      const resultado = await crearPin(usuarioId, pin, datos);
+      if (resultado?.estado !== "ok") return { usuario: null, error: new Error(resultado?.estado || "pin") };
+      return { usuario: resultado.usuario, error: null };
+    } catch (err) {
+      return { usuario: null, error: err };
+    }
+  }
+  const { data, error } = await supabase.from("usuarios").update(datos).eq("id", usuarioId).select().maybeSingle();
+  if (error || !data) return { usuario: null, error: error || new Error("sin_cambios") };
+  return { usuario: data, error: null };
+}
+
 export function useConductorTemporal() {
   const [loading, setLoading] = useState(false);
 
   // `rol`: 'conductor' (default) o 'recolector' — mismo registro exprés
   // (nombre y teléfono); los dos entran de una a la app (el recolector con
   // sus créditos de bienvenida) y verifican su cuenta dentro de 7 días.
-  const registrarTemporal = useCallback(async ({ nombre, telefono, rol = "conductor" }) => {
+  // `pin`: el de acceso (se crea acá, así entra después con teléfono y PIN
+  // aunque no se haya verificado); `localidad`: solo el conductor.
+  const registrarTemporal = useCallback(async ({ nombre, telefono, rol = "conductor", pin, localidad = null }) => {
     setLoading(true);
     // La cuenta la crea la base (taxi_registrar_temporal), que además
     // devuelve el ticket de la sesión.
@@ -35,6 +56,8 @@ export function useConductorTemporal() {
         telefono,
         nombre,
         expiraEn: fechaExpiracionCuentaTemporal(),
+        pin,
+        localidad,
       });
     } catch (rpcError) {
       setLoading(false);
@@ -42,6 +65,9 @@ export function useConductorTemporal() {
     }
 
     setLoading(false);
+    if (resultado?.estado === "pin_invalido") {
+      return { error: new Error("pin_invalido"), message: "El PIN debe tener 6 dígitos." };
+    }
     if (resultado?.estado === "duplicado") {
       return { error: new Error("duplicado"), message: "Ya existe una cuenta con ese teléfono." };
     }
@@ -94,21 +120,11 @@ export function useConductorTemporal() {
         return { error: new Error("duplicado"), message: "Ya existe una cuenta con ese DNI." };
       }
 
-      let resultadoPin = null;
-      try {
-        resultadoPin = await crearPin(usuarioId, pin, {
-          edad,
-          sexo,
-          dni,
-          estado_verificacion: ESTADO_VERIFICACION_EN_REVISION,
-        });
-      } catch {
-        resultadoPin = null;
-      }
-      const usuario = resultadoPin?.usuario;
-      if (resultadoPin?.estado !== "ok" || !usuario) {
+      const datosCuenta = { edad, sexo, dni, estado_verificacion: ESTADO_VERIFICACION_EN_REVISION };
+      const { usuario, error: cuentaError } = await guardarDatosVerificacion(usuarioId, pin, datosCuenta);
+      if (cuentaError || !usuario) {
         setLoading(false);
-        return { error: new Error(resultadoPin?.estado || "pin"), message: "No se pudo guardar tu verificación. Intenta de nuevo." };
+        return { error: cuentaError || new Error("cuenta"), message: "No se pudo guardar tu verificación. Intenta de nuevo." };
       }
 
       const { data: conductorExistente } = await supabase
@@ -121,7 +137,7 @@ export function useConductorTemporal() {
         placa,
         dni,
         asientos_totales: asientosTotales,
-        localidad,
+        ...(localidad ? { localidad } : {}),
         categoria_id: categoriaId,
         subgrupo_id: subgrupoId,
         nivel_servicio_solicitado: nivelServicioSolicitado,

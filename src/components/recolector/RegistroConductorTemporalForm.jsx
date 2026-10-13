@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { UserPlus } from "lucide-react";
 import { useTaxiAuth } from "../../contexts/TaxiAuthContext";
 import { useConductorTemporal } from "../../hooks/useConductorTemporal";
+import { useLocalidades } from "../../hooks/useLocalidades";
+import Dropdown from "../Dropdown";
 import { esNombreCompletoValido, esTelefonoValido } from "../../lib/taxiEnums";
 
 // Bug reportado: mismo aviso chico que el resto de logins — este
@@ -28,8 +30,12 @@ export default function RegistroConductorTemporalForm({ onSuccess, rol = "conduc
   const navigate = useNavigate();
   const [nombre, setNombre] = useState("");
   const [telefono, setTelefono] = useState("");
+  const [localidad, setLocalidad] = useState("");
+  const [pin, setPin] = useState("");
+  const [confirmarPin, setConfirmarPin] = useState("");
   const [error, setError] = useState("");
   const esRecolector = rol === "recolector";
+  const { localidades } = useLocalidades();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -43,8 +49,26 @@ export default function RegistroConductorTemporalForm({ onSuccess, rol = "conduc
       setError("Ingresa un celular válido: 9 dígitos, empieza con 9 (ej. 987654321).");
       return;
     }
+    if (!esRecolector && !localidad) {
+      setError("Selecciona tu localidad.");
+      return;
+    }
+    if (!/^\d{6}$/.test(pin)) {
+      setError("El PIN debe tener 6 dígitos.");
+      return;
+    }
+    if (pin !== confirmarPin) {
+      setError("Los PIN no coinciden.");
+      return;
+    }
 
-    const { usuario, message } = await registrarTemporal({ nombre: nombre.trim(), telefono: telefonoTrim, rol });
+    const { usuario, message } = await registrarTemporal({
+      nombre: nombre.trim(),
+      telefono: telefonoTrim,
+      rol,
+      pin,
+      localidad: esRecolector ? null : localidad,
+    });
     if (!usuario) {
       setError(message);
       return;
@@ -60,8 +84,8 @@ export default function RegistroConductorTemporalForm({ onSuccess, rol = "conduc
     <form onSubmit={handleSubmit}>
       <p className="tz-stock-editor-sub">
         {esRecolector
-          ? "Ingresa ya mismo con tus créditos de bienvenida — dentro de la app verificas tu cuenta (DNI, foto y PIN). Si no la verificas en 7 días, se eliminará."
-          : "Ingresa ya mismo con tu mes de membresía de bienvenida — dentro de la app eliges tu vehículo y verificas tu cuenta (DNI, placa, fotos y PIN). Si no la verificas en 7 días, se eliminará."}
+          ? "Ingresa ya mismo con tus créditos de bienvenida — dentro de la app verificas tu cuenta (DNI y foto); podrás recargar cuando el Admin la apruebe. Si no la verificas en 7 días, se eliminará."
+          : "Ingresa ya mismo con tu mes de membresía de bienvenida — dentro de la app eliges tu vehículo y verificas tu cuenta (DNI, placa y fotos). Si no la verificas en 7 días, se eliminará."}
       </p>
       <label className="tz-field-label" htmlFor="cond-temp-nombre">
         Nombre completo
@@ -89,6 +113,50 @@ export default function RegistroConductorTemporalForm({ onSuccess, rol = "conduc
         value={telefono}
         onChange={(e) => setTelefono(e.target.value)}
       />
+
+      {!esRecolector && (
+        <>
+          <label className="tz-field-label">Localidad</label>
+          <Dropdown
+            value={localidad}
+            onChange={setLocalidad}
+            options={localidades.map((loc) => ({ value: loc.nombre, label: loc.nombre }))}
+            placeholder={localidades.length === 0 ? "Sin localidades creadas" : "¿Dónde trabajas?"}
+            disabled={localidades.length === 0}
+            ariaLabel="Localidad"
+          />
+        </>
+      )}
+
+      <label className="tz-field-label" htmlFor="cond-temp-pin">
+        Crea tu PIN (6 dígitos)
+      </label>
+      <input
+        id="cond-temp-pin"
+        type="password"
+        inputMode="numeric"
+        maxLength={6}
+        className="tz-text-input"
+        placeholder="••••••"
+        value={pin}
+        onChange={(e) => setPin(e.target.value)}
+      />
+      <label className="tz-field-label" htmlFor="cond-temp-pin-confirm">
+        Confirma tu PIN
+      </label>
+      <input
+        id="cond-temp-pin-confirm"
+        type="password"
+        inputMode="numeric"
+        maxLength={6}
+        className="tz-text-input"
+        placeholder="••••••"
+        value={confirmarPin}
+        onChange={(e) => setConfirmarPin(e.target.value)}
+      />
+      <p className="tz-camera-note" style={{ margin: "2px 0 0" }}>
+        Con tu teléfono y este PIN vuelves a entrar cuando quieras.
+      </p>
 
       {error && <p className="tz-error">{error}</p>}
       <button type="submit" className="tz-scan-btn tz-payment-save" disabled={loading} style={{ marginTop: 10 }}>

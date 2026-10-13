@@ -9,17 +9,18 @@ import {
 // Qué cae en la pestaña "Registro" del Centro de Peticiones (y en el
 // número del botón del Admin). Mismo criterio en los dos lugares.
 
-// Conductores por aprobar: sin aprobar, no rechazados y que ya mandaron su
-// verificación — una cuenta del registro exprés que todavía es 'temporal'
-// ya tiene su fila de conductor (puede trabajar), pero no es una petición.
+// Conductores por aprobar: sin aprobar, no rechazados y con una cuenta de
+// conductor que ya mandó su verificación. Una cuenta exprés que todavía es
+// 'temporal' ya tiene su fila (puede trabajar) pero no es una petición, y
+// una fila sin cuenta (o cuya cuenta todavía no llegó al panel) tampoco.
 export function conductoresPorRevisar(conductores, usuarios) {
-  const temporales = new Set(
+  const enviadas = new Set(
     usuarios
-      .filter((u) => u.rol === "conductor" && u.estado_verificacion === ESTADO_VERIFICACION_TEMPORAL)
+      .filter((u) => u.rol === "conductor" && u.estado_verificacion !== ESTADO_VERIFICACION_TEMPORAL)
       .map((u) => u.telefono)
   );
   return conductores.filter(
-    (c) => !c.aprobado && c.estado !== ESTADO_CONDUCTOR_RECHAZADO && !temporales.has(c.telefono)
+    (c) => !c.aprobado && c.estado !== ESTADO_CONDUCTOR_RECHAZADO && enviadas.has(c.telefono)
   );
 }
 

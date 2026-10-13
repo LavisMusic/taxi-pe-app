@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LogOut, Pencil, Zap, Car, Ban, CreditCard, CalendarClock, MessageCircle, Save, Loader2 } from "lucide-react";
+import { LogOut, Pencil, Zap, Car, Ban, CreditCard, CalendarClock, MessageCircle, Save, Loader2, X } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useConductorSesion } from "../hooks/useConductorSesion";
 import { useHilosChatConductor } from "../hooks/useChatMensajes";
@@ -134,6 +134,9 @@ export default function ConductorPage() {
   // Admin rechazó su verificación, no se conecta hasta reenviarla.
   const sinVehiculo = !!conductor && !conductor.categoria_id;
   const rechazado = conductor?.estado === ESTADO_CONDUCTOR_RECHAZADO;
+  // La fila del conductor manda: si el Admin lo rechazó, la sesión puede
+  // seguir creyendo que la cuenta está 'en_revision'.
+  const enRevision = !rechazado && usuario?.estado_verificacion === ESTADO_VERIFICACION_EN_REVISION;
   const [guardandoVehiculo, setGuardandoVehiculo] = useState(false);
   const elegirVehiculo = async (categoriaId) => {
     if (!conductor || !categoriaId) return;
@@ -340,12 +343,13 @@ export default function ConductorPage() {
         ) : (
           <>
             {!conductor.aprobado && (
-              <div className="tz-cuenta-temporal">
+              <div className={`tz-cuenta-temporal ${rechazado ? "tz-cuenta-rechazada" : ""}`}>
                 {rechazado ? (
                   <p>
-                    El Admin rechazó tu verificación. Revisa tus datos y vuelve a enviarla para poder conectarte.
+                    <strong>El Admin rechazó tu verificación.</strong> Revisa tus datos y envíala de nuevo antes de que
+                    pasen los 7 días, o tu cuenta se eliminará. Hasta entonces no puedes conectarte.
                   </p>
-                ) : usuario?.estado_verificacion === ESTADO_VERIFICACION_EN_REVISION ? (
+                ) : enRevision ? (
                   <p>Tu verificación está en revisión del Admin. Mientras tanto trabajas como Económico.</p>
                 ) : (
                   <p>
@@ -353,9 +357,13 @@ export default function ConductorPage() {
                     membresía de bienvenida. Mientras tanto trabajas como Económico.
                   </p>
                 )}
-                {usuario?.estado_verificacion !== ESTADO_VERIFICACION_EN_REVISION && (
-                  <button type="button" className="tz-scan-btn tz-payment-save" onClick={() => setMostrandoVerificacion(true)}>
-                    {rechazado ? "Reenviar mi verificación" : "Verificar mi cuenta"}
+                {(rechazado || !enRevision) && (
+                  <button
+                    type="button"
+                    className={`tz-scan-btn ${rechazado ? "tz-btn-reenviar" : "tz-payment-save"}`}
+                    onClick={() => setMostrandoVerificacion(true)}
+                  >
+                    {rechazado ? "Enviar mi verificación de nuevo" : "Verificar mi cuenta"}
                   </button>
                 )}
                 <label className="tz-field-label">Tu vehículo</label>
@@ -590,6 +598,9 @@ export default function ConductorPage() {
       {mostrandoVerificacion && (
         <div className="tz-modal-backdrop">
           <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="tz-modal-close" onClick={() => setMostrandoVerificacion(false)} aria-label="Cerrar">
+              <X size={18} />
+            </button>
             <VerificarConductorForm
               usuario={usuario}
               conductor={conductor}

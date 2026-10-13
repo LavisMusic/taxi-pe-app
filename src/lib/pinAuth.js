@@ -52,13 +52,23 @@ export async function fijarPinRecuperacion(peticionId, dni, pin) {
 // Registro exprés (pasajero o conductor temporal, sin PIN todavía): la
 // base crea la cuenta y devuelve el ticket de la sesión. Devuelve
 // { estado, usuario }: 'ok' | 'duplicado'.
-export async function registrarTemporal({ rol, telefono, nombre = null, nombreUsuario = null, expiraEn = null }) {
+export async function registrarTemporal({
+  rol,
+  telefono,
+  nombre = null,
+  nombreUsuario = null,
+  expiraEn = null,
+  pin = null,
+  localidad = null,
+}) {
   const { data, error } = await supabase.rpc("taxi_registrar_temporal", {
     p_rol: rol,
     p_telefono: telefono,
     p_nombre: nombre,
     p_nombre_usuario: nombreUsuario,
     p_expira_en: expiraEn,
+    p_pin: pin,
+    p_localidad: localidad,
   });
   if (error) throw error;
   return conSesion(data);

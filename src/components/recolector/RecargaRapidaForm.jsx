@@ -9,6 +9,7 @@ import {
   TIPO_ITEM_MEMBRESIA,
   NIVELES_SERVICIO,
   NIVEL_SERVICIO_ECONOMICO,
+  ESTADO_VERIFICACION_PERMANENTE,
 } from "../../lib/taxiEnums";
 import { NIVEL_COLOR } from "../../lib/nivelServicio";
 import { PAQUETES_DEMO } from "../../lib/paquetesDemo";
@@ -194,6 +195,10 @@ export default function RecargaRapidaForm({
       : Number(paquete.creditos || 0)
     : 0;
   const bloqueoSaldo = (() => {
+    // Recolector sin aprobar (cuenta temporal o en revisión): no recarga.
+    if (saldoRecolector?.estado_verificacion && saldoRecolector.estado_verificacion !== ESTADO_VERIFICACION_PERMANENTE) {
+      return "Tu cuenta debe estar aprobada por el Admin para registrar recargas.";
+    }
     if (saldoRecolector && !recolectorConMembresia) {
       if (creditosRecolector <= 0) return "Necesitas créditos para recargar.";
       if (paquete && costoRecolector > creditosRecolector) {

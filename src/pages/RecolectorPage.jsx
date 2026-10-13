@@ -148,6 +148,8 @@ export default function RecolectorPage() {
   // quedado desactualizado desde el login) — mismo criterio que
   // ConductorPage con useConductorSesion.
   const miPerfil = usuarios.find((u) => u.id === usuario?.id) ?? usuario;
+  // Verificación: la fila de la base (se actualiza sola) antes que la sesión.
+  const estadoVerificacion = miPerfil?.estado_verificacion ?? usuario?.estado_verificacion;
   const diasMembresiaRestantes = miPerfil?.membresia_vencimiento
     ? Math.ceil((new Date(miPerfil.membresia_vencimiento) - new Date()) / 86400000)
     : null;
@@ -202,20 +204,20 @@ export default function RecolectorPage() {
           </div>
         ) : (
           <>
-            {usuario?.estado_verificacion === ESTADO_VERIFICACION_TEMPORAL && (
+            {estadoVerificacion === ESTADO_VERIFICACION_TEMPORAL && (
               <div className="tz-cuenta-temporal">
                 <p>
-                  Tu cuenta es temporal: verifícala dentro de los 7 días desde tu registro o se eliminará. Mientras
-                  tanto puedes usar la app con normalidad.
+                  Tu cuenta es temporal: verifícala dentro de los 7 días desde tu registro o se eliminará. Podrás
+                  registrar recargas cuando el Admin la apruebe.
                 </p>
                 <button type="button" className="tz-scan-btn tz-payment-save" onClick={() => setVerificandoCuenta(true)}>
                   Verificar mi cuenta
                 </button>
               </div>
             )}
-            {usuario?.estado_verificacion === ESTADO_VERIFICACION_EN_REVISION && (
+            {estadoVerificacion === ESTADO_VERIFICACION_EN_REVISION && (
               <div className="tz-cuenta-temporal">
-                <p>Tu verificación está en revisión del Admin. Puedes seguir usando la app mientras tanto.</p>
+                <p>Tu verificación está en revisión del Admin. Podrás registrar recargas cuando la apruebe.</p>
               </div>
             )}
             <section className="tz-stats" style={{ gridTemplateColumns: "repeat(2, 1fr)", marginBottom: 20 }}>

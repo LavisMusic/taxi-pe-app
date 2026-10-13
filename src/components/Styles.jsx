@@ -5302,6 +5302,18 @@ export default function Styles() {
         border: 1px solid rgba(215, 255, 59, 0.45);
         background: rgba(215, 255, 59, 0.06);
       }
+      .tz-cuenta-temporal.tz-cuenta-rechazada {
+        border-color: rgba(255, 77, 109, 0.6);
+        background: rgba(255, 77, 109, 0.1);
+      }
+      .tz-cuenta-rechazada strong {
+        color: var(--danger);
+      }
+      .tz-btn-reenviar {
+        background: var(--danger);
+        color: #fff;
+        border-color: var(--danger);
+      }
       .tz-cuenta-temporal p {
         margin: 0;
         font-size: 13px;

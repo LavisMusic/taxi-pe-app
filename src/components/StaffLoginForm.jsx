@@ -4,10 +4,8 @@ import { LogIn, ShieldCheck, KeyRound } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useAvisoTop } from "../hooks/useAvisoTop";
 import AvisoTop from "./AvisoTop";
-import VerificarConductorForm from "./VerificarConductorForm";
-import VerificarRecolectorForm from "./VerificarRecolectorForm";
 import { loginConPin, crearPin, MENSAJE_BLOQUEADO } from "../lib/pinAuth";
-import { esTelefonoValido, ESTADO_CUENTA_PENDIENTE, ESTADO_VERIFICACION_TEMPORAL } from "../lib/taxiEnums";
+import { esTelefonoValido, ESTADO_CUENTA_PENDIENTE } from "../lib/taxiEnums";
 import { routeForRole } from "../lib/taxiAuth";
 
 // Bug reportado: mismo aviso chico arriba de la pantalla que
@@ -23,15 +21,10 @@ const ENTRAR_DELAY_MS = 700;
 // el mismo: entra a donde le corresponde de verdad. Reusado en
 // AccesoConductorModal.jsx, AccesoRecolectorModal.jsx y en /login.
 //
-// Primer login sin PIN: `usuarios.pin` puede nacer NULL por dos
-// caminos distintos, que se distinguen por `estado_verificacion`:
-//   - 'temporal' (solo Conductor, ver RegistroConductorTemporalForm.jsx
-//     y useConductorTemporal.js): registro exprés, todavía sin DNI/
-//     placa/fotos — acá se pide el formulario de verificación completo
-//     (VerificarConductorForm.jsx) en vez de solo el PIN.
-//   - 'permanente' (alta manual del Admin/Recolector, ver
-//     useCrearConductorConUsuario.js / registro exprés):
-//     ya tiene todos sus datos, solo falta el PIN — flujo de siempre.
+// Primer login sin PIN (alta manual del Admin/Recolector, o una cuenta
+// exprés de antes de que el registro pidiera PIN): solo se crea el PIN y
+// entra. La verificación de una cuenta temporal se hace desde su panel,
+// nunca para poder entrar.
 export default function StaffLoginForm({ onSuccess }) {
   const { loginUsuario } = useTaxiAuth();
   const navigate = useNavigate();
@@ -145,30 +138,6 @@ export default function StaffLoginForm({ onSuccess }) {
         <button type="button" className="tz-camera-cancel" style={{ width: "100%" }} onClick={() => setEnRevision(false)}>
           Volver
         </button>
-      </>
-    );
-  }
-
-  // Primer ingreso de un recolector del registro exprés: verifica su cuenta
-  // (sin placa: foto y RUC opcional) y queda en revisión.
-  if (usuarioSinPin?.rol === "recolector" && usuarioSinPin.estado_verificacion === ESTADO_VERIFICACION_TEMPORAL) {
-    return (
-      <>
-        <AvisoTop aviso={aviso} />
-        <VerificarRecolectorForm usuario={usuarioSinPin} onVerificado={(usuario) => entrar(usuario)} />
-      </>
-    );
-  }
-
-  if (usuarioSinPin?.rol === "conductor" && usuarioSinPin.estado_verificacion === ESTADO_VERIFICACION_TEMPORAL) {
-    return (
-      <>
-        <AvisoTop aviso={aviso} />
-        <VerificarConductorForm
-          usuario={usuarioSinPin}
-          submitLabel="Enviar verificación e ingresar"
-          onVerificado={(usuario) => entrar(usuario, "✓ Verificación enviada — queda pendiente de revisión del Admin")}
-        />
       </>
     );
   }

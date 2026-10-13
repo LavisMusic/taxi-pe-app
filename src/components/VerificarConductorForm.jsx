@@ -50,8 +50,11 @@ export default function VerificarConductorForm({ usuario, conductor = null, onVe
   const [confirmarNuevoPin, setConfirmarNuevoPin] = useState("");
   const [error, setError] = useState("");
 
-  // El vehículo ya elegido en su panel no se vuelve a preguntar.
+  // Lo que ya dio (vehículo en su panel, localidad en el registro) no se
+  // vuelve a preguntar; el PIN solo si la cuenta todavía no tiene uno.
   const vehiculoElegido = !!conductor?.categoria_id;
+  const localidadElegida = !!conductor?.localidad;
+  const tienePin = !!usuario.pin;
   const subgruposDeLaCategoria = subgrupos.filter((s) => String(s.categoria_id) === String(categoriaId));
   useEffect(() => {
     setSubgrupoId("");
@@ -74,8 +77,10 @@ export default function VerificarConductorForm({ usuario, conductor = null, onVe
     if (!categoriaId) return setError("Elige tu vehículo.");
     if (!fotoPerfilUrl) return setError("La foto de perfil es obligatoria.");
     if (faltanFotos) return setError("Las 3 fotos de verificación (general, interior y tú con tu DNI) son obligatorias.");
-    if (!/^\d{6}$/.test(nuevoPin)) return setError("El PIN debe tener 6 dígitos.");
-    if (nuevoPin !== confirmarNuevoPin) return setError("Los PIN no coinciden.");
+    if (!tienePin) {
+      if (!/^\d{6}$/.test(nuevoPin)) return setError("El PIN debe tener 6 dígitos.");
+      if (nuevoPin !== confirmarNuevoPin) return setError("Los PIN no coinciden.");
+    }
 
     const { usuario: actualizado, message } = await verificarCuenta({
       usuarioId: usuario.id,
@@ -92,7 +97,7 @@ export default function VerificarConductorForm({ usuario, conductor = null, onVe
       nivelServicioSolicitado: nivelServicio,
       fotoUrl: fotoPerfilUrl,
       ...fotos,
-      pin: nuevoPin,
+      pin: tienePin ? null : nuevoPin,
     });
     if (!actualizado) {
       setError(message);
@@ -173,15 +178,19 @@ export default function VerificarConductorForm({ usuario, conductor = null, onVe
           Cuántos pasajeros puede llevar a la vez tu vehículo (sin contarte a ti).
         </p>
 
-        <label className="tz-field-label">Localidad</label>
-        <Dropdown
-          value={localidad}
-          onChange={setLocalidad}
-          options={localidades.map((loc) => ({ value: loc.nombre, label: loc.nombre }))}
-          placeholder={localidades.length === 0 ? "Sin localidades creadas" : "Selecciona una localidad"}
-          disabled={localidades.length === 0}
-          ariaLabel="Localidad"
-        />
+        {!localidadElegida && (
+          <>
+            <label className="tz-field-label">Localidad</label>
+            <Dropdown
+              value={localidad}
+              onChange={setLocalidad}
+              options={localidades.map((loc) => ({ value: loc.nombre, label: loc.nombre }))}
+              placeholder={localidades.length === 0 ? "Sin localidades creadas" : "Selecciona una localidad"}
+              disabled={localidades.length === 0}
+              ariaLabel="Localidad"
+            />
+          </>
+        )}
 
         {!vehiculoElegido && (
           <>
@@ -263,33 +272,37 @@ export default function VerificarConductorForm({ usuario, conductor = null, onVe
           ))}
         </div>
 
-        <label className="tz-field-label" htmlFor="verif-pin">
-          Crea tu PIN (6 dígitos)
-        </label>
-        <input
-          id="verif-pin"
-          type="password"
-          inputMode="numeric"
-          maxLength={6}
-          className="tz-text-input"
-          value={nuevoPin}
-          onChange={(e) => setNuevoPin(e.target.value)}
-          placeholder="••••••"
-        />
+        {!tienePin && (
+          <>
+            <label className="tz-field-label" htmlFor="verif-pin">
+              Crea tu PIN (6 dígitos)
+            </label>
+            <input
+              id="verif-pin"
+              type="password"
+              inputMode="numeric"
+              maxLength={6}
+              className="tz-text-input"
+              value={nuevoPin}
+              onChange={(e) => setNuevoPin(e.target.value)}
+              placeholder="••••••"
+            />
 
-        <label className="tz-field-label" htmlFor="verif-pin-confirm">
-          Confirma tu PIN
-        </label>
-        <input
-          id="verif-pin-confirm"
-          type="password"
-          inputMode="numeric"
-          maxLength={6}
-          className="tz-text-input"
-          value={confirmarNuevoPin}
-          onChange={(e) => setConfirmarNuevoPin(e.target.value)}
-          placeholder="••••••"
-        />
+            <label className="tz-field-label" htmlFor="verif-pin-confirm">
+              Confirma tu PIN
+            </label>
+            <input
+              id="verif-pin-confirm"
+              type="password"
+              inputMode="numeric"
+              maxLength={6}
+              className="tz-text-input"
+              value={confirmarNuevoPin}
+              onChange={(e) => setConfirmarNuevoPin(e.target.value)}
+              placeholder="••••••"
+            />
+          </>
+        )}
 
         {error && <p className="tz-error">{error}</p>}
         <button type="submit" className="tz-scan-btn tz-payment-save" disabled={loading} style={{ marginTop: 10 }}>
