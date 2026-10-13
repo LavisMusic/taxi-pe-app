@@ -213,7 +213,6 @@ export default function HomePage() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [accesoConductorOpen, setAccesoConductorOpen] = useState(false);
   const [accesoRecolectorOpen, setAccesoRecolectorOpen] = useState(false);
-  const [avisoPeticion, setAvisoPeticion] = useState("");
   // Se guarda solo el ID, no una copia del objeto — `conductores` ya
   // está suscrito a Realtime (useConductoresPublicos.js), así que
   // derivar el conductor actual de ahí en cada render (en vez de
@@ -309,11 +308,6 @@ export default function HomePage() {
     (c) => c.categoria_id === activeTab && (!localidad || c.localidad === localidad)
   );
   const grupos = agruparPorNivel(conductoresDeLaTab);
-
-  const avisarPeticionEnviada = (mensaje) => {
-    setAvisoPeticion(mensaje);
-    setTimeout(() => setAvisoPeticion(""), 6000);
-  };
 
   return (
     <div className="tz-root">
@@ -507,14 +501,7 @@ export default function HomePage() {
       {accesoConductorOpen && <AccesoConductorModal onClose={() => setAccesoConductorOpen(false)} />}
 
       {accesoRecolectorOpen && (
-        <AccesoRecolectorModal
-          onClose={() => setAccesoRecolectorOpen(false)}
-          onCreated={() =>
-            avisarPeticionEnviada(
-              "Tu solicitud de recolector fue enviada. El Admin la va a revisar en el Centro de Peticiones."
-            )
-          }
-        />
+        <AccesoRecolectorModal onClose={() => setAccesoRecolectorOpen(false)} />
       )}
 
       {chatConductor && esPasajero && (
@@ -599,19 +586,6 @@ export default function HomePage() {
       {anuncio && <AnuncioPopupModal anuncio={anuncio} onClose={cerrarAnuncio} />}
 
       {avisoDestino && <div className="tz-toast-flotante">{avisoDestino}</div>}
-
-      {avisoPeticion && (
-        <div className="tz-modal-backdrop">
-          <div className="tz-modal" onClick={(e) => e.stopPropagation()} style={{ textAlign: "center" }}>
-            <button className="tz-modal-close" onClick={() => setAvisoPeticion("")} aria-label="Cerrar">
-              <X size={18} />
-            </button>
-            <p className="tz-success" style={{ margin: "20px 0 0" }}>
-              {avisoPeticion}
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { useCategorias } from "../hooks/useCategorias";
 import { useFiadosConductores } from "../hooks/useFiadosConductores";
 import { useGastosOperativos } from "../hooks/useGastosOperativos";
 import { useTurnoCaja } from "../hooks/useTurnoCaja";
+import { conductoresPorRevisar, recolectoresPorRevisar } from "../lib/peticiones";
 import { useAnularVenta } from "../hooks/useAnularVenta";
 import { usePaquetes } from "../hooks/usePaquetes";
 import { useCrearConductorConUsuario } from "../hooks/useCrearConductorConUsuario";
@@ -20,8 +21,6 @@ import { useCierresCaja } from "../hooks/useCierresCaja";
 import { useAnuncios } from "../hooks/useAnuncios";
 import { useDescripciones } from "../hooks/useDescripciones";
 import {
-  ESTADO_CONDUCTOR_RECHAZADO,
-  ESTADO_CUENTA_PENDIENTE,
   METODOS_PAGO,
   METODOS_CON_COMPROBANTE,
   METODO_PAGO_EFECTIVO,
@@ -283,8 +282,8 @@ export default function AdminDashboardPage() {
   // "conductor fantasma" (contar por `estado` podía no coincidir con
   // ningún caso real y dejar el badge en 0 con peticiones de verdad).
   const totalPeticiones =
-    conductores.filter((c) => !c.aprobado && c.estado !== ESTADO_CONDUCTOR_RECHAZADO).length +
-    usuarios.filter((u) => u.rol === "recolector" && u.estado_cuenta === ESTADO_CUENTA_PENDIENTE).length +
+    conductoresPorRevisar(conductores, usuarios).length +
+    recolectoresPorRevisar(usuarios).length +
     peticionesPin.length +
     recargasRecolectorPendientes.length;
 
@@ -675,6 +674,7 @@ export default function AdminDashboardPage() {
         <PeticionesModal
           conductores={conductores}
           categorias={categorias}
+          subgrupos={subgrupos}
           onAprobar={aprobar}
           onRechazar={rechazar}
           usuarios={usuarios}

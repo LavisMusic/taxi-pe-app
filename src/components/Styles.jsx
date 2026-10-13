@@ -5274,6 +5274,42 @@ export default function Styles() {
       .tz-modal-backdrop.tz-cierre-obligatorio {
         z-index: 450;
       }
+      /* Peticiones: datos del conductor que el Admin confirma al aprobar. */
+      .tz-peticion-datos {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px 8px;
+        margin-top: 6px;
+      }
+      .tz-peticion-datos label {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+      .tz-peticion-datos label > span {
+        font-size: 11px;
+        color: var(--text-dim);
+      }
+      /* Panel del conductor / recolector con la cuenta sin verificar. */
+      .tz-cuenta-temporal {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin: 0 0 12px;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(215, 255, 59, 0.45);
+        background: rgba(215, 255, 59, 0.06);
+      }
+      .tz-cuenta-temporal p {
+        margin: 0;
+        font-size: 13px;
+        color: var(--text);
+      }
+      .tz-cuenta-temporal .tz-field-label {
+        margin: 2px 0 0;
+      }
       .tz-cierre-extensiones {
         margin: 0;
         font-size: 12px;

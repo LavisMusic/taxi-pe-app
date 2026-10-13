@@ -5,14 +5,11 @@ import { ESTADO_CONDUCTOR_ACTIVO, ESTADO_CONDUCTOR_OCUPADO } from "../lib/taxiEn
 
 // Fetch público (sin sesión) para la Home del pasajero.
 //
-// Tres filtros, todos hechos en la query — no en el render:
+// Filtros hechos en la query — no en el render:
 //   1) .in("estado", [activo, ocupado]) — un conductor 'desconectado'
 //      (o 'pendiente'/'rechazado') nunca sale del servidor.
-//   2) .eq("aprobado", true) — un conductor recién auto-registrado
-//      (self-registro en /login) puede tocar su propio toggle de
-//      estado en /conductor ANTES de que el Admin lo revise; sin este
-//      filtro se colaría en la Home pública con solo marcarse "Activo",
-//      saltándose el Centro de Peticiones por completo.
+//   2) Sin filtro de `aprobado`: un conductor con la cuenta temporal o en
+//      revisión también trabaja (como Económico) y sale en la Home.
 //   3) select() explícito SIN `creditos` ni `vencimiento_suscripcion`
 //      — privacidad real, esos campos ni siquiera llegan al navegador,
 //      no es solo "no mostrarlos" en la tarjeta.
@@ -37,7 +34,6 @@ export function useConductoresPublicos() {
         .select(
           "id, nombre, placa, telefono, foto_url, foto_portada_url, descripcion, estado, categoria_id, localidad, nivel_servicio, subgrupo_id, asientos_totales, asientos_ocupados, ultima_actualizacion"
         )
-        .eq("aprobado", true)
         .in("estado", [ESTADO_CONDUCTOR_ACTIVO, ESTADO_CONDUCTOR_OCUPADO]),
       supabase.from("categorias").select("id, nombre, orden, icono_url").order("orden", { ascending: true }),
     ]);

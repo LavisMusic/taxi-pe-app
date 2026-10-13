@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { crearPin, registrarTemporal as registrarTemporalBase } from "../lib/pinAuth";
 import {
+  ESTADO_CONDUCTOR_RECHAZADO,
   ESTADO_VERIFICACION_EN_REVISION,
   ESTADO_VERIFICACION_TEMPORAL,
   fechaExpiracionCuentaTemporal,
@@ -12,7 +13,8 @@ import {
 // haya pre-registrado en persona (ese camino sigue intacto en
 // useVincularConductor.js/RegistroConductorPage.jsx). Acá el conductor
 // entra con SOLO nombre+teléfono (estado_verificacion='temporal',
-// pin:null, sin fila en `conductores` todavía) y tiene
+// pin:null; la base le crea su fila en `conductores` con el mes de
+// membresía de bienvenida) y tiene
 // DIAS_EXPIRACION_CUENTA_TEMPORAL días para completar el resto — ver
 // `verificarCuenta`, que dispara StaffLoginForm cuando encuentra una
 // cuenta 'temporal' con `pin: null`.
@@ -20,8 +22,8 @@ export function useConductorTemporal() {
   const [loading, setLoading] = useState(false);
 
   // `rol`: 'conductor' (default) o 'recolector' — mismo registro exprés
-  // (nombre y teléfono); el recolector queda pendiente hasta verificar su
-  // cuenta y que el Admin la apruebe.
+  // (nombre y teléfono); los dos entran de una a la app (el recolector con
+  // sus créditos de bienvenida) y verifican su cuenta dentro de 7 días.
   const registrarTemporal = useCallback(async ({ nombre, telefono, rol = "conductor" }) => {
     setLoading(true);
     // La cuenta la crea la base (taxi_registrar_temporal), que además
@@ -49,23 +51,28 @@ export function useConductorTemporal() {
     return { usuario: resultado.usuario, error: null };
   }, []);
 
-  // Segundo paso: completa apellido/edad/sexo/DNI/placa/fotos/PIN. A
-  // diferencia de Pasajero, acá NO pasa a 'permanente' de una — cae en
-  // 'en_revision' y espera al Admin en el Centro de Peticiones de
-  // siempre (misma cola que ya usa `conductores.aprobado`, ver
-  // ConductoresDirectorio.jsx/PeticionesModal.jsx) — `aprobar`/
-  // `rechazar` en useConductores.js son quienes deciden si esta cuenta
-  // termina en 'permanente' o vuelve a 'temporal'.
+  // Segundo paso: la verificación. Datos personales + PIN van a la cuenta
+  // (taxi_crear_pin, que además abre la sesión) y los del vehículo a su
+  // fila de conductor — la crea el registro exprés; si es una cuenta vieja
+  // sin fila, se crea acá. Cae en 'en_revision' y espera al Admin en el
+  // Centro de Peticiones; mientras tanto sigue usando la app. `aprobar`/
+  // `rechazar` en useConductores.js deciden si termina en 'permanente' o
+  // vuelve a 'temporal'.
   const verificarCuenta = useCallback(
     async ({
       usuarioId,
       telefono,
       nombre,
-      apellido,
       edad,
       sexo,
       dni,
       placa,
+      asientosTotales,
+      localidad,
+      categoriaId,
+      subgrupoId,
+      nivelServicioSolicitado,
+      fotoUrl,
       fotoGeneralUrl,
       fotoInteriorUrl,
       fotoConductorDniUrl,
@@ -87,13 +94,9 @@ export function useConductorTemporal() {
         return { error: new Error("duplicado"), message: "Ya existe una cuenta con ese DNI." };
       }
 
-      // Datos + PIN en UNA operación de la base (taxi_crear_pin): funciona
-      // aunque todavía no tenga sesión (primer ingreso, sin PIN) y abre la
-      // sesión al terminar.
       let resultadoPin = null;
       try {
         resultadoPin = await crearPin(usuarioId, pin, {
-          apellido,
           edad,
           sexo,
           dni,
@@ -108,39 +111,35 @@ export function useConductorTemporal() {
         return { error: new Error(resultadoPin?.estado || "pin"), message: "No se pudo guardar tu verificación. Intenta de nuevo." };
       }
 
-      // Un rechazo previo (ver useConductores.js `rechazar`) deja la fila
-      // vieja en `conductores` con estado='rechazado' — si el conductor
-      // vuelve a mandar su verificación, se actualiza esa MISMA fila en
-      // vez de insertar una nueva (teléfono es único de hecho, un INSERT
-      // chocaría). `estado: null` la vuelve a poner en la cola de
-      // pendientes de revisión.
       const { data: conductorExistente } = await supabase
         .from("conductores")
-        .select("id")
+        .select("id, estado")
         .eq("telefono", telefono)
         .maybeSingle();
 
       const conductorPayload = {
-        nombre: `${nombre} ${apellido}`.trim(),
         placa,
-        telefono,
         dni,
+        asientos_totales: asientosTotales,
+        localidad,
+        categoria_id: categoriaId,
+        subgrupo_id: subgrupoId,
+        nivel_servicio_solicitado: nivelServicioSolicitado,
+        foto_url: fotoUrl,
         foto_general_url: fotoGeneralUrl || null,
         foto_interior_url: fotoInteriorUrl || null,
         foto_conductor_dni_url: fotoConductorDniUrl || null,
-        aprobado: false,
-        estado: null,
       };
+      // Rechazado antes: reenviar la verificación lo saca de 'rechazado'.
+      if (conductorExistente?.estado === ESTADO_CONDUCTOR_RECHAZADO) conductorPayload.estado = null;
 
       const { error: conductorError } = conductorExistente
         ? await supabase.from("conductores").update(conductorPayload).eq("id", conductorExistente.id)
-        : await supabase.from("conductores").insert(conductorPayload);
+        : await supabase.from("conductores").insert({ ...conductorPayload, nombre, telefono });
 
       if (conductorError) {
-        // Best-effort: no hay transacciones desde el cliente anon (mismo
-        // criterio que useCrearConductorConUsuario.js) — se revierte el
-        // estado de revisión para que no quede una cuenta 'en_revision'
-        // sin fila en `conductores` detrás.
+        // Se revierte el estado de revisión para que no quede una cuenta
+        // 'en_revision' sin sus datos de conductor detrás.
         await supabase
           .from("usuarios")
           .update({ estado_verificacion: ESTADO_VERIFICACION_TEMPORAL })

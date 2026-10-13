@@ -13,14 +13,15 @@ import {
   ExternalLink,
 } from "lucide-react";
 import {
-  ESTADO_CONDUCTOR_RECHAZADO,
-  ESTADO_CUENTA_PENDIENTE,
-  ESTADO_VERIFICACION_TEMPORAL,
+  NIVELES_SERVICIO,
+  NIVEL_SERVICIO_ECONOMICO,
   TIPOS_USUARIO,
   ESTADO_PETICION_VERIFICADO,
   TIPO_ITEM_MEMBRESIA,
 } from "../../lib/taxiEnums";
 import { buildWhatsappLink } from "../../lib/whatsapp";
+import { conductoresPorRevisar, recolectoresPorRevisar } from "../../lib/peticiones";
+import { useLocalidades } from "../../hooks/useLocalidades";
 import { formatTelefono, formatSoles, formatDate } from "../../utils/format";
 
 const FOTOS = [
@@ -29,25 +30,27 @@ const FOTOS = [
   { key: "foto_conductor_dni_url", label: "Conductor + DNI" },
 ];
 
-// "Pendiente de revisión" = aprobado:false Y no rechazado todavía. Se
-// filtra por `aprobado`, NO por `estado` — `estado` puede traer
-// cualquier valor por default de columna que no controlamos del todo,
-// mientras que `aprobado` lo insertamos siempre a mano en el create
-// (ver useCrearConductorConUsuario.js). Filtrar por estado era la
-// causa del bug "conductor fantasma": un alta desde Recolector podía
-// quedar con un `estado` que esConductorPendiente() no reconocía como
-// pendiente, y la fila nunca aparecía acá aunque sí en la base.
-function esPendienteDeRevision(conductor) {
-  return !conductor.aprobado && conductor.estado !== ESTADO_CONDUCTOR_RECHAZADO;
+// "Pendiente de revisión": ver src/lib/peticiones.js (mismo criterio que
+// el número del botón del Admin).
+function etiquetaNivel(valor) {
+  return NIVELES_SERVICIO.find((n) => n.value === valor)?.label ?? valor;
 }
 
-// Tarjeta de un conductor pendiente dentro de la pestaña "Registro":
-// sus 3 fotos obligatorias en miniatura + categoría a confirmar +
-// Aprobar/Rechazar (mismas acciones que ya existían en el Directorio,
-// solo que ahora viven acá).
-function ConductorPendienteRow({ conductor, categorias, onAprobar, onRechazar }) {
-  const [categoriaId, setCategoriaId] = useState(conductor.categoria_id ?? categorias[0]?.id ?? "");
+// Tarjeta de un conductor pendiente dentro de la pestaña "Registro": sus
+// 3 fotos obligatorias en miniatura y lo que mandó en su verificación
+// (categoría, subgrupo, localidad, asientos y el nivel de servicio que
+// pide) — el Admin puede corregir todo antes de aprobar; el nivel lo
+// confirma él. Aprobar/Rechazar.
+function ConductorPendienteRow({ conductor, categorias, subgrupos, localidades, onAprobar, onRechazar }) {
+  const [categoriaId, setCategoriaId] = useState(String(conductor.categoria_id ?? categorias[0]?.id ?? ""));
+  const [subgrupoId, setSubgrupoId] = useState(conductor.subgrupo_id ? String(conductor.subgrupo_id) : "");
+  const [localidad, setLocalidad] = useState(conductor.localidad ?? "");
+  const [asientos, setAsientos] = useState(conductor.asientos_totales ?? 4);
+  const [nivel, setNivel] = useState(conductor.nivel_servicio_solicitado ?? conductor.nivel_servicio ?? NIVEL_SERVICIO_ECONOMICO);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const subgruposDeLaCategoria = subgrupos.filter((sg) => String(sg.categoria_id) === String(categoriaId));
+  const selectStyle = { padding: "7px 8px", fontSize: 12 };
 
   return (
     <li className="tz-history-row">
@@ -56,7 +59,8 @@ function ConductorPendienteRow({ conductor, categorias, onAprobar, onRechazar })
           <div>
             <strong style={{ color: "var(--text)" }}>{conductor.nombre}</strong>
             <p style={{ margin: "2px 0", color: "var(--text-dim)", fontSize: 13 }}>
-              Placa {conductor.placa}
+              Placa {conductor.placa || "—"}
+              {conductor.dni ? ` · DNI ${conductor.dni}` : ""}
               {conductor.telefono ? ` · ${formatTelefono(conductor.telefono)}` : ""}
             </p>
           </div>
@@ -77,27 +81,97 @@ function ConductorPendienteRow({ conductor, categorias, onAprobar, onRechazar })
           ))}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-          <select
-            className="tz-text-input"
-            style={{ padding: "7px 8px", fontSize: 12, flex: 1 }}
-            value={categoriaId}
-            onChange={(e) => setCategoriaId(e.target.value)}
-          >
-            {categorias.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.nombre}
-              </option>
-            ))}
-          </select>
+        <div className="tz-peticion-datos">
+          <label>
+            <span>Categoría</span>
+            <select
+              className="tz-text-input"
+              style={selectStyle}
+              value={categoriaId}
+              onChange={(e) => {
+                setCategoriaId(e.target.value);
+                setSubgrupoId("");
+              }}
+            >
+              {categorias.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Subgrupo</span>
+            <select className="tz-text-input" style={selectStyle} value={subgrupoId} onChange={(e) => setSubgrupoId(e.target.value)}>
+              <option value="">Sin subgrupo</option>
+              {subgruposDeLaCategoria.map((sg) => (
+                <option key={sg.id} value={sg.id}>
+                  {sg.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Localidad</span>
+            <select className="tz-text-input" style={selectStyle} value={localidad} onChange={(e) => setLocalidad(e.target.value)}>
+              <option value="">Sin localidad</option>
+              {localidades.map((loc) => (
+                <option key={loc.id ?? loc.nombre} value={loc.nombre}>
+                  {loc.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Asientos</span>
+            <input
+              type="number"
+              min={1}
+              max={65}
+              className="tz-text-input"
+              style={selectStyle}
+              value={asientos}
+              onChange={(e) => setAsientos(e.target.value)}
+            />
+          </label>
+          <label>
+            <span>
+              Nivel de servicio
+              {conductor.nivel_servicio_solicitado ? " (pidió " + etiquetaNivel(conductor.nivel_servicio_solicitado) + ")" : ""}
+            </span>
+            <select className="tz-text-input" style={selectStyle} value={nivel} onChange={(e) => setNivel(e.target.value)}>
+              {NIVELES_SERVICIO.map((n) => (
+                <option key={n.value} value={n.value}>
+                  {n.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {error && <p className="tz-error" style={{ margin: "4px 0 0" }}>{error}</p>}
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, marginTop: 6 }}>
           <button
             type="button"
             className="tz-vis-approve-btn"
             disabled={busy || !categoriaId}
             onClick={async () => {
+              const n = Number(asientos);
+              if (!Number.isInteger(n) || n < 1 || n > 65) {
+                setError("Los asientos deben ser un número entero entre 1 y 65.");
+                return;
+              }
+              setError("");
               setBusy(true);
-              const { error } = await onAprobar(conductor.id, categoriaId);
+              const { error } = await onAprobar(conductor.id, {
+                categoriaId,
+                subgrupoId: subgrupoId || null,
+                localidad: localidad || null,
+                asientosTotales: n,
+                nivelServicio: nivel,
+              });
               setBusy(false);
+              if (error) setError("No se pudo aprobar. Intenta de nuevo.");
               // Pedido: avisarle al conductor por WhatsApp apenas se
               // aprueba su registro, con el mismo número que ÉL puso en
               // su formulario — solo si la aprobación salió bien de
@@ -206,8 +280,10 @@ function RecolectorPendienteRow({ usuario, onAprobar, onRechazar }) {
 }
 
 function RegistroTab({
-  conductores,
+  conductoresPendientes,
   categorias,
+  subgrupos,
+  localidades,
   onAprobar,
   onRechazar,
   recolectoresPendientes,
@@ -216,9 +292,9 @@ function RegistroTab({
 }) {
   // Filtro: Todas / Conductores / Recolectores.
   const [filtro, setFiltro] = useState("todas");
-  const pendientes = filtro === "recolectores" ? [] : conductores.filter(esPendienteDeRevision);
+  const pendientes = filtro === "recolectores" ? [] : conductoresPendientes;
   const recolectores = filtro === "conductores" ? [] : recolectoresPendientes;
-  const totalConductores = conductores.filter(esPendienteDeRevision).length;
+  const totalConductores = conductoresPendientes.length;
 
   const filtros = (
     <div className="tz-gasto-tipo-buttons" style={{ marginBottom: 10 }}>
@@ -260,6 +336,8 @@ function RegistroTab({
                 key={c.id}
                 conductor={c}
                 categorias={categorias}
+                subgrupos={subgrupos}
+                localidades={localidades}
                 onAprobar={onAprobar}
                 onRechazar={onRechazar}
               />
@@ -482,6 +560,7 @@ function RecuperacionPinTab({ peticiones, onVerificar, onDescartar }) {
 export default function PeticionesModal({
   conductores,
   categorias,
+  subgrupos = [],
   onAprobar,
   onRechazar,
   usuarios,
@@ -496,13 +575,10 @@ export default function PeticionesModal({
   onClose,
 }) {
   const [tab, setTab] = useState("registro");
-  // Recolectores esperando aprobación: los que ya verificaron su cuenta
-  // (los del registro exprés que todavía no la verificaron no aparecen).
-  const recolectoresPendientes = usuarios.filter(
-    (u) =>
-      u.rol === "recolector" && u.estado_cuenta === ESTADO_CUENTA_PENDIENTE && u.estado_verificacion !== ESTADO_VERIFICACION_TEMPORAL
-  );
-  const pendientesCount = conductores.filter(esPendienteDeRevision).length + recolectoresPendientes.length;
+  const { localidades } = useLocalidades();
+  const conductoresPendientes = conductoresPorRevisar(conductores, usuarios);
+  const recolectoresPendientes = recolectoresPorRevisar(usuarios);
+  const pendientesCount = conductoresPendientes.length + recolectoresPendientes.length;
 
   return (
     <div className="tz-modal-backdrop">
@@ -543,8 +619,10 @@ export default function PeticionesModal({
 
           {tab === "registro" ? (
             <RegistroTab
-              conductores={conductores}
+              conductoresPendientes={conductoresPendientes}
               categorias={categorias}
+              subgrupos={subgrupos}
+              localidades={localidades}
               onAprobar={onAprobar}
               onRechazar={onRechazar}
               recolectoresPendientes={recolectoresPendientes}

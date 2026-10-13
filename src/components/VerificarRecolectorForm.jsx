@@ -10,7 +10,7 @@ import { esEdadValida, SEXOS, ESTADO_VERIFICACION_EN_REVISION } from "../lib/tax
 // (VerificarConductorForm.jsx) pero sin placa ni fotos del vehículo — solo
 // su foto de perfil y, opcional, su RUC. Todo va en UNA operación de la
 // base (taxi_crear_pin con los datos) y la cuenta queda 'en_revision':
-// no puede usar la app hasta que el Admin la apruebe en el Centro de
+// sigue usando la app mientras el Admin la revisa en el Centro de
 // Peticiones. Llama a `onVerificado(usuario)` al terminar.
 export default function VerificarRecolectorForm({ usuario, onVerificado, submitLabel = "Enviar verificación" }) {
   const [apellido, setApellido] = useState("");
@@ -70,8 +70,8 @@ export default function VerificarRecolectorForm({ usuario, onVerificado, submitL
     <>
       <form onSubmit={handleSubmit}>
         <p className="tz-stock-editor-sub">
-          Hola, {usuario.nombre} — completa esto para verificar tu cuenta. Podrás usar la app cuando el Admin la
-          apruebe. Si no verificas tu cuenta en 7 días, se eliminará.
+          Hola, {usuario.nombre} — completa esto para verificar tu cuenta. Puedes seguir usando la app mientras el
+          Admin la revisa. Si no verificas tu cuenta en 7 días, se eliminará.
         </p>
         <label className="tz-field-label" htmlFor="verif-rec-apellido">
           Apellido

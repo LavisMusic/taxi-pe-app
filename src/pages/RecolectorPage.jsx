@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LogOut, UserPlus, Wallet, Receipt, CreditCard, CalendarClock, Loader2 } from "lucide-react";
+import { LogOut, UserPlus, Wallet, Receipt, CreditCard, CalendarClock, Loader2, X } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useVentas } from "../hooks/useVentas";
 import TextoMaquina from "../components/TextoMaquina";
@@ -15,7 +15,13 @@ import { useAnularVenta } from "../hooks/useAnularVenta";
 import { useCierresCaja } from "../hooks/useCierresCaja";
 import { useTurnoCaja } from "../hooks/useTurnoCaja";
 import { useBienvenidaNeon } from "../hooks/useBienvenidaNeon";
-import { ESTADO_RECARGA_APROBADO, startOfTodayISO } from "../lib/taxiEnums";
+import {
+  ESTADO_RECARGA_APROBADO,
+  ESTADO_VERIFICACION_EN_REVISION,
+  ESTADO_VERIFICACION_TEMPORAL,
+  startOfTodayISO,
+} from "../lib/taxiEnums";
+import VerificarRecolectorForm from "../components/VerificarRecolectorForm";
 import { formatSoles, formatDate } from "../utils/format";
 import Styles from "../components/Styles";
 import RecargaRapidaForm from "../components/recolector/RecargaRapidaForm";
@@ -38,7 +44,8 @@ import BotonSoporte from "../components/BotonSoporte";
 // Historial): el recolector es quien de verdad cierra su turno en la
 // calle, tiene sentido que vea lo mismo que el Admin ve de sus ventas.
 export default function RecolectorPage() {
-  const { usuario, logout } = useTaxiAuth();
+  const { usuario, logout, updateUsuario } = useTaxiAuth();
+  const [verificandoCuenta, setVerificandoCuenta] = useState(false);
   const { ventas, ventasVigentes, loading: ventasLoading, refresh: refreshVentas } = useVentas();
   // Texto bajo el logo: el nombre y después las descripciones del Admin
   // (primero las de "Todos", luego las de recolectores).
@@ -195,6 +202,22 @@ export default function RecolectorPage() {
           </div>
         ) : (
           <>
+            {usuario?.estado_verificacion === ESTADO_VERIFICACION_TEMPORAL && (
+              <div className="tz-cuenta-temporal">
+                <p>
+                  Tu cuenta es temporal: verifícala dentro de los 7 días desde tu registro o se eliminará. Mientras
+                  tanto puedes usar la app con normalidad.
+                </p>
+                <button type="button" className="tz-scan-btn tz-payment-save" onClick={() => setVerificandoCuenta(true)}>
+                  Verificar mi cuenta
+                </button>
+              </div>
+            )}
+            {usuario?.estado_verificacion === ESTADO_VERIFICACION_EN_REVISION && (
+              <div className="tz-cuenta-temporal">
+                <p>Tu verificación está en revisión del Admin. Puedes seguir usando la app mientras tanto.</p>
+              </div>
+            )}
             <section className="tz-stats" style={{ gridTemplateColumns: "repeat(2, 1fr)", marginBottom: 20 }}>
               <div className="tz-stat-chip tz-stat-chip-green" style={{ textAlign: "center", padding: "22px" }}>
                 <span className="tz-stat-label" style={{ justifyContent: "center" }}>
@@ -292,6 +315,23 @@ export default function RecolectorPage() {
             setTimeout(() => setRegistroMsg(""), 4000);
           }}
         />
+      )}
+
+      {verificandoCuenta && (
+        <div className="tz-modal-backdrop">
+          <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="tz-modal-close" onClick={() => setVerificandoCuenta(false)} aria-label="Cerrar">
+              <X size={18} />
+            </button>
+            <VerificarRecolectorForm
+              usuario={usuario}
+              onVerificado={(actualizado) => {
+                updateUsuario(actualizado);
+                setVerificandoCuenta(false);
+              }}
+            />
+          </div>
+        </div>
       )}
 
       {cierreVisible && (

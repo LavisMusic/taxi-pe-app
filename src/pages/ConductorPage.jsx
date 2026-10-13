@@ -15,6 +15,7 @@ import {
   ESTADO_CONDUCTOR_OCUPADO,
   ESTADO_CONDUCTOR_DESCONECTADO,
   ESTADO_CONDUCTOR_INHABILITADO,
+  ESTADO_CONDUCTOR_RECHAZADO,
   ESTADO_VERIFICACION_TEMPORAL,
   ESTADO_VERIFICACION_EN_REVISION,
 } from "../lib/taxiEnums";
@@ -26,6 +27,7 @@ import ConductorChatInboxModal from "../components/ConductorChatInboxModal";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import AnimacionExitoNeon from "../components/AnimacionExitoNeon";
 import VerificarConductorForm from "../components/VerificarConductorForm";
+import Dropdown from "../components/Dropdown";
 import EntregasRepartidorPanel from "../components/repartidor/EntregasRepartidorPanel";
 import logo from "../assets/logo.webp";
 import BotonSoporte from "../components/BotonSoporte";
@@ -127,6 +129,18 @@ export default function ConductorPage() {
   // del "sin saldo" de abajo, esto NO se levanta solo al recargar, hace
   // falta que el Admin lo vuelva a cambiar de estado a mano.
   const inhabilitadoPorAdmin = conductor?.estado === ESTADO_CONDUCTOR_INHABILITADO;
+  // Cuenta sin aprobar (temporal o en revisión): trabaja igual, pero
+  // primero elige su vehículo (sale con ese ícono en el radar). Si el
+  // Admin rechazó su verificación, no se conecta hasta reenviarla.
+  const sinVehiculo = !!conductor && !conductor.categoria_id;
+  const rechazado = conductor?.estado === ESTADO_CONDUCTOR_RECHAZADO;
+  const [guardandoVehiculo, setGuardandoVehiculo] = useState(false);
+  const elegirVehiculo = async (categoriaId) => {
+    if (!conductor || !categoriaId) return;
+    setGuardandoVehiculo(true);
+    await actualizar(conductor.id, { categoria_id: categoriaId });
+    setGuardandoVehiculo(false);
+  };
   const tieneAcceso = !inhabilitadoPorAdmin && (tieneMembresiaVigente || (conductor?.creditos ?? 0) > 0);
 
   // Fase 3 — transmite el GPS del conductor mientras tenga sesión, sin
@@ -326,10 +340,34 @@ export default function ConductorPage() {
         ) : (
           <>
             {!conductor.aprobado && (
-              <p className="tz-error" style={{ textAlign: "center" }}>
-                Tu registro está pendiente de aprobación — el Admin lo va a revisar en el Centro de
-                Peticiones. Mientras tanto no aparecés en la búsqueda pública de pasajeros.
-              </p>
+              <div className="tz-cuenta-temporal">
+                {rechazado ? (
+                  <p>
+                    El Admin rechazó tu verificación. Revisa tus datos y vuelve a enviarla para poder conectarte.
+                  </p>
+                ) : usuario?.estado_verificacion === ESTADO_VERIFICACION_EN_REVISION ? (
+                  <p>Tu verificación está en revisión del Admin. Mientras tanto trabajas como Económico.</p>
+                ) : (
+                  <p>
+                    Tu cuenta es temporal: verifícala dentro de los 7 días desde tu registro o se eliminará junto con tu
+                    membresía de bienvenida. Mientras tanto trabajas como Económico.
+                  </p>
+                )}
+                {usuario?.estado_verificacion !== ESTADO_VERIFICACION_EN_REVISION && (
+                  <button type="button" className="tz-scan-btn tz-payment-save" onClick={() => setMostrandoVerificacion(true)}>
+                    {rechazado ? "Reenviar mi verificación" : "Verificar mi cuenta"}
+                  </button>
+                )}
+                <label className="tz-field-label">Tu vehículo</label>
+                <Dropdown
+                  value={conductor.categoria_id ?? ""}
+                  onChange={elegirVehiculo}
+                  options={categoriasPublicas.map((cat) => ({ value: cat.id, label: cat.nombre }))}
+                  placeholder="¿Qué vehículo manejas?"
+                  disabled={guardandoVehiculo}
+                  ariaLabel="Tu vehículo"
+                />
+              </div>
             )}
             <section className="tz-stats" style={{ gridTemplateColumns: "repeat(2, 1fr)", marginBottom: 4 }}>
               <div className="tz-stat-chip">
@@ -362,7 +400,7 @@ export default function ConductorPage() {
               className={`tz-estado-toggle ${!tieneAcceso ? "tz-estado-toggle-bloqueado" : ""}`}
               data-estado={conductor.estado}
               onClick={handleToggle}
-              disabled={toggling || !tieneAcceso}
+              disabled={toggling || !tieneAcceso || sinVehiculo || rechazado}
               aria-label={
                 inhabilitadoPorAdmin
                   ? "Inhabilitado por el administrador"
@@ -407,7 +445,11 @@ export default function ConductorPage() {
                   ? "Tu cuenta fue inhabilitada por el administrador"
                   : !tieneAcceso
                     ? "Recarga tu membresía o tus créditos"
-                    : `Toca para pasar a ${estadoActivo ? "Ocupado" : "Activo"}`}
+                    : rechazado
+                      ? "Reenvía tu verificación para conectarte"
+                      : sinVehiculo
+                        ? "Elige tu vehículo para conectarte"
+                        : `Toca para pasar a ${estadoActivo ? "Ocupado" : "Activo"}`}
               </span>
             </button>
 
@@ -550,6 +592,7 @@ export default function ConductorPage() {
           <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
             <VerificarConductorForm
               usuario={usuario}
+              conductor={conductor}
               submitLabel="Enviar verificación"
               onVerificado={(usuarioActualizado) => {
                 updateUsuario(usuarioActualizado);

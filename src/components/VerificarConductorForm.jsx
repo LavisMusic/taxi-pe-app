@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ShieldCheck, Camera, Check } from "lucide-react";
 import Dropdown from "./Dropdown";
 import GestionImagenModal from "./admin/GestionImagenModal";
 import { useConductorTemporal } from "../hooks/useConductorTemporal";
-import { esEdadValida, SEXOS } from "../lib/taxiEnums";
+import { useCategoriasPublicas } from "../hooks/useCategoriasPublicas";
+import { useLocalidades } from "../hooks/useLocalidades";
+import { esEdadValida, SEXOS, NIVELES_SERVICIO, NIVEL_SERVICIO_ECONOMICO } from "../lib/taxiEnums";
 
 // Las mismas 3 fotos obligatorias que RegistroConductorForm.jsx (mismo
 // criterio: sin "Mejorar con IA", son evidencia que revisa el Admin).
@@ -15,24 +17,32 @@ const FOTOS_REQUERIDAS = [
     slug: "general",
   },
   { key: "fotoInteriorUrl", label: "Toma del Interior", ayuda: "", slug: "interior" },
-  { key: "fotoConductorDniUrl", label: "Foto tuya", ayuda: "", slug: "conductor" },
+  { key: "fotoConductorDniUrl", label: "Conductor sosteniendo su DNI", ayuda: "", slug: "conductor-dni" },
 ];
 
-// Paso 2 del registro exprés de Conductor: completa apellido/edad/sexo/
-// DNI/placa/fotos/PIN de la cuenta 'temporal' (nombre+teléfono nomás)
-// creada por RegistroConductorTemporalForm.jsx. Reusado en dos
-// lugares: StaffLoginForm.jsx (lo ve quien todavía no inició sesión,
-// al loguearse por teléfono) y ConductorPage.jsx (lo ve quien ya está
-// adentro con la cuenta temporal y quiere completar sus datos sin
-// tener que cerrar sesión primero) — por eso no asume login propio,
-// solo llama a `onVerificado(usuario)` cuando termina.
-export default function VerificarConductorForm({ usuario, onVerificado, submitLabel = "Enviar verificación" }) {
+// Verificación de la cuenta temporal del conductor (registro exprés:
+// nombre completo + teléfono). Mismos datos que el formulario del Admin
+// para añadir un conductor (RegistroConductorForm.jsx) menos el nombre —
+// placa, DNI, asientos, localidad, subgrupo, nivel de servicio (lo que
+// pide: el Admin lo confirma al aprobar), foto de perfil y las 3 fotos —
+// más edad, sexo y PIN. El vehículo (categoría) lo elige en su panel; si
+// todavía no lo eligió (o llega desde el login, sin poder leer su fila),
+// se le pregunta acá. Reusado en StaffLoginForm.jsx y ConductorPage.jsx:
+// solo llama a `onVerificado(usuario)` al terminar.
+export default function VerificarConductorForm({ usuario, conductor = null, onVerificado, submitLabel = "Enviar verificación" }) {
   const { verificarCuenta, loading } = useConductorTemporal();
-  const [apellido, setApellido] = useState("");
+  const { categorias, subgrupos } = useCategoriasPublicas();
+  const { localidades } = useLocalidades();
   const [edad, setEdad] = useState("");
   const [sexo, setSexo] = useState("");
   const [dni, setDni] = useState("");
   const [placa, setPlaca] = useState("");
+  const [asientosTotales, setAsientosTotales] = useState(conductor?.asientos_totales ?? 4);
+  const [localidad, setLocalidad] = useState(conductor?.localidad ?? "");
+  const [categoriaId, setCategoriaId] = useState(conductor?.categoria_id ?? "");
+  const [subgrupoId, setSubgrupoId] = useState("");
+  const [nivelServicio, setNivelServicio] = useState(NIVEL_SERVICIO_ECONOMICO);
+  const [fotoPerfilUrl, setFotoPerfilUrl] = useState(conductor?.foto_url ?? "");
   const [fotos, setFotos] = useState({ fotoGeneralUrl: "", fotoInteriorUrl: "", fotoConductorDniUrl: "" });
   const [gestionandoFoto, setGestionandoFoto] = useState(null);
   const [fotoKey] = useState(() => `conductor-${Date.now()}-${Math.round(Math.random() * 1e6)}`);
@@ -40,53 +50,47 @@ export default function VerificarConductorForm({ usuario, onVerificado, submitLa
   const [confirmarNuevoPin, setConfirmarNuevoPin] = useState("");
   const [error, setError] = useState("");
 
+  // El vehículo ya elegido en su panel no se vuelve a preguntar.
+  const vehiculoElegido = !!conductor?.categoria_id;
+  const subgruposDeLaCategoria = subgrupos.filter((s) => String(s.categoria_id) === String(categoriaId));
+  useEffect(() => {
+    setSubgrupoId("");
+  }, [categoriaId]);
+
   const faltanFotos = FOTOS_REQUERIDAS.some((f) => !fotos[f.key]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (!apellido.trim()) {
-      setError("Ingresa tu apellido.");
-      return;
+    if (!esEdadValida(edad)) return setError("Ingresa una edad válida (18 a 90 años).");
+    if (!sexo) return setError("Selecciona tu sexo.");
+    if (!/^\d{8}$/.test(dni.trim())) return setError("El DNI debe tener 8 dígitos.");
+    if (!placa.trim()) return setError("La placa es obligatoria.");
+    const asientos = Number(asientosTotales);
+    if (!Number.isInteger(asientos) || asientos < 1 || asientos > 65) {
+      return setError("La capacidad de asientos debe ser un número entero entre 1 y 65.");
     }
-    if (!esEdadValida(edad)) {
-      setError("Ingresa una edad válida (18 a 90 años).");
-      return;
-    }
-    if (!sexo) {
-      setError("Selecciona tu sexo.");
-      return;
-    }
-    if (!/^\d{8}$/.test(dni.trim())) {
-      setError("El DNI debe tener 8 dígitos.");
-      return;
-    }
-    if (!placa.trim()) {
-      setError("La placa es obligatoria.");
-      return;
-    }
-    if (faltanFotos) {
-      setError("Las 3 fotos (vehículo por fuera, por dentro y una tuya) son obligatorias.");
-      return;
-    }
-    if (!/^\d{6}$/.test(nuevoPin)) {
-      setError("El PIN debe tener 6 dígitos.");
-      return;
-    }
-    if (nuevoPin !== confirmarNuevoPin) {
-      setError("Los PIN no coinciden.");
-      return;
-    }
+    if (!localidad) return setError("Selecciona tu localidad.");
+    if (!categoriaId) return setError("Elige tu vehículo.");
+    if (!fotoPerfilUrl) return setError("La foto de perfil es obligatoria.");
+    if (faltanFotos) return setError("Las 3 fotos de verificación (general, interior y tú con tu DNI) son obligatorias.");
+    if (!/^\d{6}$/.test(nuevoPin)) return setError("El PIN debe tener 6 dígitos.");
+    if (nuevoPin !== confirmarNuevoPin) return setError("Los PIN no coinciden.");
 
     const { usuario: actualizado, message } = await verificarCuenta({
       usuarioId: usuario.id,
       telefono: usuario.telefono,
       nombre: usuario.nombre,
-      apellido: apellido.trim(),
       edad: Number(edad),
       sexo,
       dni: dni.trim(),
       placa: placa.trim().toUpperCase(),
+      asientosTotales: asientos,
+      localidad,
+      categoriaId,
+      subgrupoId: subgrupoId || null,
+      nivelServicioSolicitado: nivelServicio,
+      fotoUrl: fotoPerfilUrl,
       ...fotos,
       pin: nuevoPin,
     });
@@ -101,21 +105,9 @@ export default function VerificarConductorForm({ usuario, onVerificado, submitLa
     <>
       <form onSubmit={handleSubmit}>
         <p className="tz-stock-editor-sub">
-          Hola, {usuario.nombre} — completa esto para que tu cuenta deje de ser temporal (queda pendiente de
-          revisión del Admin).
+          Hola, {usuario.nombre} — completa esto para que tu cuenta deje de ser temporal. El Admin la revisa en el
+          Centro de Peticiones; mientras tanto puedes seguir usando la app.
         </p>
-        <label className="tz-field-label" htmlFor="verif-apellido">
-          Apellido
-        </label>
-        <input
-          id="verif-apellido"
-          type="text"
-          autoFocus
-          className="tz-text-input"
-          value={apellido}
-          onChange={(e) => setApellido(e.target.value)}
-          placeholder="Apellido"
-        />
 
         <label className="tz-field-label" htmlFor="verif-edad">
           Edad
@@ -126,6 +118,7 @@ export default function VerificarConductorForm({ usuario, onVerificado, submitLa
           inputMode="numeric"
           min={18}
           max={90}
+          autoFocus
           className="tz-text-input"
           value={edad}
           onChange={(e) => setEdad(e.target.value)}
@@ -161,7 +154,87 @@ export default function VerificarConductorForm({ usuario, onVerificado, submitLa
           placeholder="ABC-123"
         />
 
-        <label className="tz-field-label">Fotos (obligatorias, sin editar)</label>
+        <label className="tz-field-label" htmlFor="verif-asientos">
+          Capacidad de pasajeros (asientos)
+        </label>
+        <input
+          id="verif-asientos"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={65}
+          step={1}
+          className="tz-text-input"
+          placeholder="4"
+          value={asientosTotales}
+          onChange={(e) => setAsientosTotales(e.target.value)}
+        />
+        <p className="tz-camera-note" style={{ margin: "2px 0 0" }}>
+          Cuántos pasajeros puede llevar a la vez tu vehículo (sin contarte a ti).
+        </p>
+
+        <label className="tz-field-label">Localidad</label>
+        <Dropdown
+          value={localidad}
+          onChange={setLocalidad}
+          options={localidades.map((loc) => ({ value: loc.nombre, label: loc.nombre }))}
+          placeholder={localidades.length === 0 ? "Sin localidades creadas" : "Selecciona una localidad"}
+          disabled={localidades.length === 0}
+          ariaLabel="Localidad"
+        />
+
+        {!vehiculoElegido && (
+          <>
+            <label className="tz-field-label">Vehículo</label>
+            <Dropdown
+              value={categoriaId}
+              onChange={setCategoriaId}
+              options={categorias.map((cat) => ({ value: cat.id, label: cat.nombre }))}
+              placeholder="¿Qué vehículo manejas?"
+              ariaLabel="Vehículo"
+            />
+          </>
+        )}
+
+        <label className="tz-field-label">Subgrupo (empresa/flota)</label>
+        <Dropdown
+          value={subgrupoId}
+          onChange={setSubgrupoId}
+          options={[
+            { value: "", label: subgruposDeLaCategoria.length === 0 ? "Sin subgrupos en esta categoría" : "Sin subgrupo" },
+            ...subgruposDeLaCategoria.map((s) => ({ value: s.id, label: s.nombre })),
+          ]}
+          disabled={subgruposDeLaCategoria.length === 0}
+          ariaLabel="Subgrupo"
+        />
+
+        <label className="tz-field-label">Nivel de servicio</label>
+        <Dropdown
+          value={nivelServicio}
+          onChange={setNivelServicio}
+          options={NIVELES_SERVICIO.map((n) => ({ value: n.value, label: n.label }))}
+          ariaLabel="Nivel de servicio"
+        />
+        <p className="tz-camera-note" style={{ margin: "2px 0 0" }}>
+          El Admin lo confirma al aprobar tu cuenta; hasta entonces trabajas como Económico.
+        </p>
+
+        <label className="tz-field-label">Foto de Perfil (obligatoria)</label>
+        <button
+          type="button"
+          className="tz-camera-cancel"
+          style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center", width: "100%" }}
+          onClick={() => setGestionandoFoto({ key: "perfil", label: "Foto de Perfil", slug: "perfil", isProfilePic: true })}
+        >
+          {fotoPerfilUrl ? (
+            <img src={fotoPerfilUrl} alt="Foto de perfil elegida" style={{ width: 22, height: 22, borderRadius: 6, objectFit: "cover" }} />
+          ) : (
+            <Camera size={15} />
+          )}
+          {fotoPerfilUrl ? "Cambiar foto de perfil" : "Gestionar foto de perfil"}
+        </button>
+
+        <label className="tz-field-label">Fotos de verificación (obligatorias, sin editar)</label>
         <div className="tz-vis-accordion" style={{ gap: 6 }}>
           {FOTOS_REQUERIDAS.map((f) => (
             <div key={f.key}>
@@ -173,11 +246,7 @@ export default function VerificarConductorForm({ usuario, onVerificado, submitLa
               >
                 <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   {fotos[f.key] ? (
-                    <img
-                      src={fotos[f.key]}
-                      alt={f.label}
-                      style={{ width: 22, height: 22, borderRadius: 6, objectFit: "cover" }}
-                    />
+                    <img src={fotos[f.key]} alt={f.label} style={{ width: 22, height: 22, borderRadius: 6, objectFit: "cover" }} />
                   ) : (
                     <Camera size={15} />
                   )}
@@ -232,10 +301,14 @@ export default function VerificarConductorForm({ usuario, onVerificado, submitLa
       {gestionandoFoto && (
         <GestionImagenModal
           nombre={`${usuario.nombre} — ${gestionandoFoto.label}`}
-          fotoUrl={fotos[gestionandoFoto.key]}
+          fotoUrl={gestionandoFoto.key === "perfil" ? fotoPerfilUrl : fotos[gestionandoFoto.key]}
           storageKey={`${fotoKey}-${gestionandoFoto.slug}`}
-          isProfilePic={false}
-          onFotoUrlChange={(url) => setFotos((prev) => ({ ...prev, [gestionandoFoto.key]: url }))}
+          isProfilePic={!!gestionandoFoto.isProfilePic}
+          onFotoUrlChange={(url) =>
+            gestionandoFoto.key === "perfil"
+              ? setFotoPerfilUrl(url)
+              : setFotos((prev) => ({ ...prev, [gestionandoFoto.key]: url }))
+          }
           onClose={() => setGestionandoFoto(null)}
         />
       )}

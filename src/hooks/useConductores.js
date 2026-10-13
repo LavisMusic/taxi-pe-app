@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { subscribeTable } from "../lib/realtime";
 import {
+  ESTADO_CONDUCTOR_ACTIVO,
   ESTADO_CONDUCTOR_DESCONECTADO,
+  ESTADO_CONDUCTOR_OCUPADO,
   ESTADO_CONDUCTOR_RECHAZADO,
   ESTADO_VERIFICACION_PERMANENTE,
   ESTADO_VERIFICACION_TEMPORAL,
@@ -49,7 +51,7 @@ export function useConductores() {
       supabase
         .from("conductores")
         .select(
-          "id, nombre, placa, telefono, localidad, foto_url, foto_portada_url, descripcion, estado, creditos, vencimiento_suscripcion, categoria_id, subgrupo_id, nivel_servicio, aprobado, asientos_totales, asientos_ocupados, membresia_paquete_id, created_at"
+          "id, nombre, placa, telefono, localidad, foto_url, foto_portada_url, descripcion, estado, creditos, vencimiento_suscripcion, categoria_id, subgrupo_id, nivel_servicio, aprobado, asientos_totales, asientos_ocupados, membresia_paquete_id, nivel_servicio_solicitado, created_at"
         )
         .order("created_at", { ascending: false }),
       supabase.from("categorias").select("id, nombre, orden, icono_url").order("orden", { ascending: true }),
@@ -137,12 +139,22 @@ export function useConductores() {
   // registro exprés vence a los 7 días o no, y solo el Admin (acá) puede
   // sacarla de 'en_revision'. Best-effort: si esto falla no se revierte
   // la aprobación/rechazo del conductor, que ya quedó guardada.
+  //
+  // `datos`: lo que el Admin confirmó en Peticiones (categoría, subgrupo,
+  // localidad, asientos y nivel de servicio). Si el conductor ya estaba
+  // trabajando (cuenta temporal en Activo/Ocupado) no se lo desconecta.
   const aprobar = useCallback(
-    async (id, categoriaId) => {
+    async (id, datos) => {
       const conductor = conductores.find((c) => c.id === id);
+      const trabajando =
+        conductor?.estado === ESTADO_CONDUCTOR_ACTIVO || conductor?.estado === ESTADO_CONDUCTOR_OCUPADO;
       const resultado = await updateConductor(id, {
-        estado: ESTADO_CONDUCTOR_DESCONECTADO,
-        categoria_id: categoriaId,
+        estado: trabajando ? conductor.estado : ESTADO_CONDUCTOR_DESCONECTADO,
+        categoria_id: datos.categoriaId,
+        subgrupo_id: datos.subgrupoId,
+        localidad: datos.localidad,
+        asientos_totales: datos.asientosTotales,
+        nivel_servicio: datos.nivelServicio,
         aprobado: true,
       });
       if (!resultado.error && conductor?.telefono) {
