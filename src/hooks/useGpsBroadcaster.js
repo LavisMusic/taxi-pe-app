@@ -66,6 +66,9 @@ export function useGpsBroadcaster({
   asientosOcupados = 0,
   asientosTotales = 4,
   tieneAcceso = true,
+  // Modo delivery encendido: la posición se guarda en su fila aunque esté
+  // desconectado como taxi (así lo encuentran los negocios para repartos).
+  modoDelivery = false,
 }) {
   const ultimaEscrituraDbRef = useRef(0);
   // Clave estable (ids ordenados y unidos) en vez del array crudo como
@@ -85,7 +88,7 @@ export function useGpsBroadcaster({
     const vaAlPublico = tieneAcceso && hayLugar && (estado === ESTADO_CONDUCTOR_ACTIVO || estado === ESTADO_CONDUCTOR_OCUPADO);
     const vaAlPrivado = estado === ESTADO_CONDUCTOR_OCUPADO && idsActuales.length > 0;
 
-    if (!vaAlPublico && !vaAlPrivado) return undefined;
+    if (!vaAlPublico && !vaAlPrivado && !modoDelivery) return undefined;
 
     const canalPublico = vaAlPublico ? supabase.channel(CANAL_RADAR_PUBLICO) : null;
     canalPublico?.subscribe();
@@ -123,7 +126,7 @@ export function useGpsBroadcaster({
         // que el pasajero se suscribió. Solo mientras haya lugar
         // público (mismo criterio que decide si se transmite o no) y
         // con throttle — no hace falta un UPDATE por cada tick del GPS.
-        if (vaAlPublico) {
+        if (vaAlPublico || modoDelivery) {
           const ahora = Date.now();
           if (ahora - ultimaEscrituraDbRef.current > DB_WRITE_THROTTLE_MS) {
             ultimaEscrituraDbRef.current = ahora;
@@ -162,5 +165,5 @@ export function useGpsBroadcaster({
     // el comentario de arriba — es la identidad real que debe reiniciar
     // este efecto, no una referencia nueva con el mismo contenido.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conductorId, estado, pasajerosKey, asientosOcupados, asientosTotales, tieneAcceso]);
+  }, [conductorId, estado, pasajerosKey, asientosOcupados, asientosTotales, tieneAcceso, modoDelivery]);
 }

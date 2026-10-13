@@ -2384,6 +2384,176 @@ export default function Styles() {
       .tz-pink-cell { color: var(--pink); font-weight: 700; }
       .tz-dim-cell { color: var(--text-dim); }
 
+      /* ---------- PANELES DEL CONDUCTOR (Viajes / Delivery en cubo 3D) ---------- */
+      .tz-paneles-wrap { width: 100%; }
+      .tz-paneles-tabs {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin: 0 auto 14px;
+      }
+      .tz-paneles-tabs button {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid var(--border-soft);
+        background: transparent;
+        color: var(--text-dim);
+        border-radius: 999px;
+        padding: 6px 14px;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 700;
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+      .tz-paneles-tabs button::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: currentColor;
+        opacity: 0.6;
+      }
+      .tz-paneles-tabs button.is-activa {
+        color: var(--cyan);
+        border-color: var(--cyan);
+        box-shadow: 0 0 12px rgba(43,232,255,0.35);
+      }
+      .tz-paneles-tabs button.is-activa::before { opacity: 1; box-shadow: 0 0 8px currentColor; }
+      /* touch-action: pan-y — el scroll vertical sigue siendo del navegador;
+         el horizontal llega como pointer events y gira el cubo. */
+      .tz-paneles {
+        perspective: 1100px;
+        touch-action: pan-y;
+      }
+      .tz-paneles-cubo {
+        display: grid;
+        transform-style: preserve-3d;
+        will-change: transform;
+      }
+      .tz-panel-cara {
+        grid-area: 1 / 1;
+        min-width: 0;
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+      }
+      /* Pie de página del conductor: fijo abajo (no se mueve al deslizar
+         ni salta cuando cambia el alto del panel). .tz-main le deja su
+         espacio con --tz-footer-h. */
+      .tz-root-conductor { --tz-footer-h: 64px; }
+      .tz-page-footer.tz-footer-conductor {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 40;
+        max-width: none;
+        flex-wrap: nowrap;
+        gap: 8px;
+        padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+        background: rgba(8, 5, 18, 0.9);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+      .tz-footer-conductor .tz-footer-btn {
+        flex: 1 1 0;
+        min-width: 0;
+        max-width: 160px;
+        padding: 11px 6px;
+        font-size: 10px;
+        gap: 5px;
+      }
+      .tz-delivery-toggle.is-on {
+        border-color: var(--green);
+        animation: tz-estado-glow-activo 2.2s ease-in-out infinite;
+      }
+      .tz-delivery-toggle.is-on .tz-estado-toggle-label { color: var(--green); }
+      .tz-delivery-toggle .tz-estado-toggle-label { font-size: 19px; text-align: center; }
+
+      /* ---------- TURNOS Y ESTADÍSTICAS DEL CONDUCTOR ---------- */
+      .tz-turno-ver-detalle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 6px auto 4px;
+        border: none;
+        background: transparent;
+        color: var(--cyan);
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .tz-turno-ver-detalle svg { transition: transform 0.2s ease; }
+      .tz-turno-detalle {
+        list-style: none;
+        margin: 4px 0 10px;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .tz-turno-detalle li {
+        display: grid;
+        grid-template-columns: auto auto 1fr auto;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.04);
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 13px;
+      }
+      .tz-turno-detalle li svg { color: var(--cyan); }
+      .tz-turno-detalle-hora { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+      .tz-turno-detalle-texto { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .tz-turno-detalle li strong { color: var(--green); }
+      .tz-estad-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 10px;
+        margin-top: 8px;
+      }
+      .tz-estad-card {
+        border: 1px solid var(--border-soft);
+        border-radius: 14px;
+        padding: 10px 12px;
+        background: rgba(255,255,255,0.03);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .tz-estad-periodos {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+      }
+      .tz-estad-periodo {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        padding: 6px 4px;
+        border-radius: 10px;
+        background: rgba(43,232,255,0.06);
+      }
+      .tz-estad-periodo span {
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 11px;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .tz-estad-periodo strong {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 13px;
+        color: var(--cyan);
+        white-space: nowrap;
+      }
+
       /* ---------- PIE DE PÁGINA (Cerrar Caja / Gastos / Editar Stock) ---------- */
       /* Flujo normal del documento (NO fixed): así nunca puede tapar el
          formulario de checkout, sin importar cuánto crezca. */

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LogOut, Pencil, Zap, Car, Ban, CalendarClock, MessageCircle, Save, Loader2, X } from "lucide-react";
+import { LogOut, Pencil, Zap, Car, Ban, CalendarClock, MessageCircle, Save, Loader2, X, Receipt, History, BarChart3 } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useConductorSesion } from "../hooks/useConductorSesion";
 import { useHilosChatConductor } from "../hooks/useChatMensajes";
@@ -30,7 +30,10 @@ import { useViajeFinalizadoAviso } from "../hooks/useViajeFinalizadoAviso";
 import VerificarConductorForm from "../components/VerificarConductorForm";
 import Dropdown from "../components/Dropdown";
 import ContadorCreditos from "../components/ContadorCreditos";
-import EntregasRepartidorPanel from "../components/repartidor/EntregasRepartidorPanel";
+import PanelesConductor from "../components/conductor/PanelesConductor";
+import PanelDelivery from "../components/conductor/PanelDelivery";
+import { CerrarTurnoModal, HistorialTurnosModal, EstadisticasModal } from "../components/conductor/TurnoConductorModales";
+import { useTurnoConductor, useEstadisticasConductor } from "../hooks/useTurnoConductor";
 import logo from "../assets/logo.webp";
 import BotonSoporte from "../components/BotonSoporte";
 import TextoMaquina from "../components/TextoMaquina";
@@ -163,6 +166,9 @@ export default function ConductorPage() {
     asientosOcupados: conductor?.asientos_ocupados,
     asientosTotales: conductor?.asientos_totales,
     tieneAcceso,
+    // Modo delivery: comparte su ubicación con los negocios de Caja
+    // Tonazo aunque esté en el panel de Viajes o Desconectado como taxi.
+    modoDelivery: !!conductor?.modo_delivery && tieneMembresiaVigente && !inhabilitadoPorAdmin,
   });
 
   // Fix Seguridad (Auto-Apagado): si se detecta que ya no tiene acceso
@@ -209,8 +215,33 @@ export default function ConductorPage() {
   // (Activo/Ocupado) — cubre viajes y repartos, para que el GPS no se
   // suspenda al apagarse la pantalla. Ver useWakeLock.js.
   useWakeLock(
-    conductor?.estado === ESTADO_CONDUCTOR_ACTIVO || conductor?.estado === ESTADO_CONDUCTOR_OCUPADO
+    conductor?.estado === ESTADO_CONDUCTOR_ACTIVO ||
+      conductor?.estado === ESTADO_CONDUCTOR_OCUPADO ||
+      !!conductor?.modo_delivery
   );
+
+  // Dos paneles (Viajes / Delivery) y el pie de página del turno.
+  const [panel, setPanel] = useState("viajes");
+  const [cambiandoDelivery, setCambiandoDelivery] = useState(false);
+  const [deliveryError, setDeliveryError] = useState("");
+  const [modalTurno, setModalTurno] = useState(null); // "cerrar" | "historial" | "estadisticas"
+  const turno = useTurnoConductor(conductor?.id);
+  const { estadisticas, refrescar: refrescarEstadisticas } = useEstadisticasConductor(conductor?.id);
+
+  const handleToggleDelivery = async () => {
+    if (!conductor || cambiandoDelivery) return;
+    setCambiandoDelivery(true);
+    setDeliveryError("");
+    const { error: errDelivery } = await actualizar(conductor.id, { modo_delivery: !conductor.modo_delivery });
+    setCambiandoDelivery(false);
+    if (errDelivery) {
+      setDeliveryError(
+        /membres/i.test(errDelivery.message || "")
+          ? "El modo delivery requiere una membresía vigente (con créditos solo puedes hacer viajes)."
+          : "No se pudo cambiar el modo delivery. Intenta de nuevo."
+      );
+    }
+  };
 
   const handleToggle = async () => {
     if (!conductor || toggling) return;
@@ -230,7 +261,7 @@ export default function ConductorPage() {
   };
 
   return (
-    <div className="tz-root">
+    <div className={`tz-root ${conductor ? "tz-root-conductor" : ""}`}>
       <Styles />
       {mostrarBienvenida ? (
         <AnimacionNeonBienvenida
@@ -357,6 +388,24 @@ export default function ConductorPage() {
             </p>
           </div>
         ) : (
+          <PanelesConductor
+            panel={panel}
+            onCambiar={setPanel}
+            delivery={
+              <PanelDelivery
+                conductor={conductor}
+                estadisticas={estadisticas}
+                tieneMembresia={tieneMembresiaVigente && !inhabilitadoPorAdmin}
+                cambiando={cambiandoDelivery}
+                error={deliveryError}
+                onToggle={handleToggleDelivery}
+                onEntregado={() => {
+                  setExitoEntrega(true);
+                  refrescarEstadisticas();
+                }}
+              />
+            }
+            viajes={
           <>
             {!conductor.aprobado && (
               <div className={`tz-cuenta-temporal ${rechazado ? "tz-cuenta-rechazada" : ""}`}>
@@ -485,8 +534,6 @@ export default function ConductorPage() {
 
             {toggleError && <p className="tz-error" style={{ textAlign: "center" }}>{toggleError}</p>}
 
-            {conductor.aprobado && <EntregasRepartidorPanel conductorId={conductor.id} onEntregado={() => setExitoEntrega(true)} />}
-
             <div className="tz-method-history" style={{ marginTop: 18 }}>
               <span className="tz-method-history-label">Mi perfil de chat</span>
               <p className="tz-camera-note" style={{ margin: "0 0 8px" }}>
@@ -550,8 +597,49 @@ export default function ConductorPage() {
               <ConductorPublicCard conductor={conductor} isLoggedIn />
             </div>
           </>
+            }
+          />
         )}
       </main>
+
+      {/* Pie de página del turno — fuera del cubo: no gira al deslizar. */}
+      {conductor && (
+        <footer className="tz-page-footer tz-footer-conductor">
+          <button className="tz-footer-btn tz-footer-btn-cierre" onClick={() => setModalTurno("cerrar")}>
+            <Receipt size={14} /> Cerrar turno
+          </button>
+          <button className="tz-footer-btn tz-footer-btn-misventas" onClick={() => setModalTurno("historial")}>
+            <History size={14} /> Historial
+          </button>
+          <button className="tz-footer-btn tz-footer-btn-stock" onClick={() => setModalTurno("estadisticas")}>
+            <BarChart3 size={14} /> Estadísticas
+          </button>
+        </footer>
+      )}
+
+      {modalTurno === "cerrar" && conductor && (
+        <CerrarTurnoModal
+          turnoActual={turno.turnoActual}
+          cerrarTurno={turno.cerrarTurno}
+          onCerrado={() => {
+            turno.refrescarHistorial();
+            refrescarEstadisticas();
+          }}
+          onClose={() => setModalTurno(null)}
+        />
+      )}
+      {modalTurno === "historial" && conductor && (
+        <HistorialTurnosModal
+          historial={turno.historial}
+          cargando={turno.cargandoHistorial}
+          refrescar={turno.refrescarHistorial}
+          limpiar={turno.limpiarHistorial}
+          onClose={() => setModalTurno(null)}
+        />
+      )}
+      {modalTurno === "estadisticas" && conductor && (
+        <EstadisticasModal conductorId={conductor.id} onClose={() => setModalTurno(null)} />
+      )}
 
       {editandoPerfil && conductor && (
         <GestionImagenModal
