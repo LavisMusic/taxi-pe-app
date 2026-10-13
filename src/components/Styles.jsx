@@ -249,32 +249,18 @@ export default function Styles() {
         pointer-events: none;
       }
       .tz-header-center * { pointer-events: auto; }
-      /* Brillo detrás del logo: halo de degradados (sin filter). Antes
-         era un drop-shadow sobre la imagen, y Safari del iPhone a veces
-         pintaba toda la zona del filtro como un recuadro oscuro al
-         cargar la página. .tz-header-center ya es un contexto de
-         apilamiento (transform), así que el halo queda detrás del logo. */
-      .tz-header-center::before {
-        content: "";
-        position: absolute;
-        left: 50%;
-        top: 42%;
-        width: 165%;
-        height: 140%;
-        transform: translate(-50%, -50%);
-        z-index: -1;
-        pointer-events: none;
-        /* Más sutil: casi sin relleno al centro, un anillo suave que
-           envuelve el borde del logo y se difumina hacia afuera. */
-        background:
-          radial-gradient(closest-side, transparent 38%, rgba(43,232,255,0.15) 60%, rgba(43,232,255,0.07) 76%, transparent 100%),
-          radial-gradient(closest-side at 60% 58%, transparent 45%, rgba(255,47,158,0.09) 70%, transparent 100%);
-      }
+      /* Brillo de siempre (contorno del logo). translateZ(0): lo pinta en
+         su propia capa — evita que Safari del iPhone dibuje la zona del
+         filtro como un recuadro oscuro al cargar (no cambia cómo se ve). */
       .tz-logo {
         max-width: 130px;
         width: 100%;
         height: auto;
         overflow: visible;
+        transform: translateZ(0);
+        filter:
+          drop-shadow(0 0 18px rgba(43,232,255,0.55))
+          drop-shadow(0 0 34px rgba(255,47,158,0.35));
       }
       .tz-subtitle {
         margin: 0;
@@ -787,9 +773,9 @@ export default function Styles() {
         font-size: 13.5px;
       }
       .tz-destino-actual-pill svg { flex-shrink: 0; color: var(--cyan); }
-      /* Destino elegido: 8 px más cerca del filtro de localidad. */
+      /* Destino elegido: 10 px más cerca del filtro de localidad. */
       .tz-fila-saldo-localidad + .tz-destino-actual-pill,
-      .tz-fila-localidad + .tz-destino-actual-pill { margin-top: -8px; }
+      .tz-fila-localidad + .tz-destino-actual-pill { margin-top: -10px; }
       .tz-destino-actual-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .tz-radar-input::placeholder { color: var(--text-dim); }
       .tz-radar-input:focus {
