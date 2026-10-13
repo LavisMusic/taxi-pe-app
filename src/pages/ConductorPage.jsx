@@ -26,6 +26,7 @@ import ConductorPublicCard from "../components/ConductorPublicCard";
 import ConductorChatInboxModal from "../components/ConductorChatInboxModal";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import AnimacionExitoNeon from "../components/AnimacionExitoNeon";
+import { useViajeFinalizadoAviso } from "../hooks/useViajeFinalizadoAviso";
 import VerificarConductorForm from "../components/VerificarConductorForm";
 import Dropdown from "../components/Dropdown";
 import EntregasRepartidorPanel from "../components/repartidor/EntregasRepartidorPanel";
@@ -186,6 +187,13 @@ export default function ConductorPage() {
   const [toggleError, setToggleError] = useState("");
   const [editandoPerfil, setEditandoPerfil] = useState(false);
   const [mensajesOpen, setMensajesOpen] = useState(false);
+  // Viaje finalizado (lo cerró el pasajero) con la bandeja cerrada: se
+  // festeja al volver a la pantalla principal.
+  const viajeFinalizado = useViajeFinalizadoAviso({
+    campo: "conductor_id",
+    valor: conductor?.id ?? null,
+    chatAbierto: mensajesOpen,
+  });
   // Con qué pasajero abrir la bandeja — normalmente null (arranca en la
   // lista de hilos); si el conductor tocó "Ver Chat" desde la alerta de
   // "Hacer Señas", entra directo a esa conversación.
@@ -247,6 +255,13 @@ export default function ConductorPage() {
           onTerminar={marcarCompraCreditosVista}
         />
       ) : null}
+      {viajeFinalizado.festejar && !exitoEntrega && (
+        <AnimacionExitoNeon
+          titulo="¡Viaje finalizado!"
+          descripcion="Carrera completada. ¡Buen trabajo!"
+          onTerminar={viajeFinalizado.cerrar}
+        />
+      )}
       {exitoEntrega && (
         <AnimacionExitoNeon
           titulo="¡Entrega confirmada!"

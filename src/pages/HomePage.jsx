@@ -26,9 +26,13 @@ import AccesoRecolectorModal from "../components/AccesoRecolectorModal";
 import ChatModal from "../components/ChatModal";
 import AnuncioPopupModal from "../components/AnuncioPopupModal";
 import TextoMaquina from "../components/TextoMaquina";
+import ContadorCreditos from "../components/ContadorCreditos";
+import { useMisCreditos } from "../hooks/useMisCreditos";
 import { useDescripcionesPublico } from "../hooks/useDescripciones";
 import RadarGlobal from "../components/RadarGlobal";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
+import AnimacionExitoNeon from "../components/AnimacionExitoNeon";
+import { useViajeFinalizadoAviso } from "../hooks/useViajeFinalizadoAviso";
 import logo from "../assets/logo.webp";
 import BotonSoporte from "../components/BotonSoporte";
 
@@ -59,6 +63,9 @@ export default function HomePage() {
   // navegador también tiene `usuario` truthy. El gate real es el ROL,
   // no la mera existencia de sesión.
   const esPasajero = usuario?.rol === TIPO_USUARIO_PASAJERO;
+  // Créditos del pasajero (puntos por sus compras en Caja Tonazo): el
+  // contador con diamante arriba de la pantalla principal.
+  const misCreditos = useMisCreditos(esPasajero ? usuario?.id : null);
   const { conductores, categorias, loading, error } = useConductoresPublicos();
   // Pop-up de marketing — ver useAnuncioActivo.js para la lógica de
   // vigencia (fecha_inicio/fecha_fin) + frecuencia (localStorage). Se
@@ -221,6 +228,13 @@ export default function HomePage() {
   // ChatConductorHeader se actualice sola — sin esto quedaba una foto
   // fija del momento en que se abrió el chat, ver ChatModal.jsx.
   const [chatConductorId, setChatConductorId] = useState(null);
+  // Viaje finalizado con el chat cerrado (o la app cerrada): se festeja al
+  // volver a la pantalla principal.
+  const viajeFinalizado = useViajeFinalizadoAviso({
+    campo: "pasajero_id",
+    valor: esPasajero ? usuario?.id : null,
+    chatAbierto: !!chatConductorId,
+  });
   const chatConductor = chatConductorId ? conductores.find((c) => c.id === chatConductorId) ?? null : null;
 
   // Persistencia de sesión (recuperación ante recargas o apagados): sin
@@ -312,6 +326,13 @@ export default function HomePage() {
   return (
     <div className="tz-root">
       <Styles />
+      {!mostrarBienvenida && viajeFinalizado.festejar && (
+        <AnimacionExitoNeon
+          titulo="¡Viaje finalizado!"
+          descripcion="Gracias por viajar con Taxi-PE."
+          onTerminar={viajeFinalizado.cerrar}
+        />
+      )}
       {mostrarBienvenida && (
         <AnimacionNeonBienvenida
           eyebrow="✦ Bienvenido a TaxiPE ✦"
@@ -366,6 +387,11 @@ export default function HomePage() {
       </header>
 
       <main className="tz-main">
+        {esPasajero && misCreditos != null && (
+          <div className="tz-creditos-pasajero">
+            <ContadorCreditos valor={misCreditos} clave={`tz-creditos-visto-${usuario.id}`} />
+          </div>
+        )}
         {/* Restauración de layout: el filtro de localidad vuelve a la
            pantalla principal, encima del botón de Radar, los dos
            centrados (ver .tz-radar-bar en Styles.jsx) — antes vivía

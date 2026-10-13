@@ -5418,6 +5418,12 @@ export default function Styles() {
         font-size: 11px;
         color: var(--text-dim);
       }
+      /* Contador de créditos del pasajero (ContadorCreditos.jsx). */
+      .tz-creditos-pasajero {
+        display: flex;
+        justify-content: center;
+        margin: 2px 0 12px;
+      }
       /* Panel del conductor / recolector con la cuenta sin verificar. */
       .tz-cuenta-temporal {
         display: flex;
