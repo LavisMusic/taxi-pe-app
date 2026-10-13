@@ -13,11 +13,15 @@ import RecuperarPinPage from './pages/RecuperarPinPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import RecolectorPage from './pages/RecolectorPage'
 import ConductorPage from './pages/ConductorPage'
+import { instalarDespliegueBotones } from './lib/despliegueBotones'
 
 // Router de TaxiP. El árbol viejo (AuthProvider + CatalogPage + App.jsx
 // "caja registradora") queda intacto en el repo sin importarse desde
 // acá — sirve de referencia para migrar piezas del dashboard de admin
 // en el siguiente paso, pero ya no es parte del flujo de rutas.
+// Botones de la cabecera: en el celular se despliegan manteniendo presionado.
+instalarDespliegueBotones()
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <TaxiAuthProvider>

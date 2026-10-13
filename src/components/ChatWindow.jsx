@@ -1277,11 +1277,15 @@ export default function ChatWindow({
           document.body
         )}
       <div className="tz-chat-window">
-      {toastCancelacion && (
-        <div className="tz-chat-toast" role="status">
-          ⚠️ {toastCancelacion}
-        </div>
-      )}
+      {toastCancelacion &&
+        createPortal(
+          <div className="tz-root tz-chat-toast-capa">
+            <div className="tz-chat-toast" role="status">
+              ⚠️ {toastCancelacion}
+            </div>
+          </div>,
+          document.body
+        )}
       {/* mostrarPanelViaje ya excluye viajeCerrado (ver más arriba) —
          el mapa/panel se apaga solo en cuanto el viaje termina, el
          cierre queda como burbuja celeste neón en el historial. */}

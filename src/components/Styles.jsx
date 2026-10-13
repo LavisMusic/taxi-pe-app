@@ -338,10 +338,17 @@ export default function Styles() {
       .tz-header-btn {
         flex: 0 0 auto;
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         align-items: center;
         justify-content: center;
-        gap: 3px;
+        gap: 0;
+        position: relative;
+        /* Celular: mantener presionado + deslizar (lib/despliegueBotones)
+           sin que la página se desplace ni salga el menú del navegador. */
+        touch-action: none;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
         background: rgba(255,149,0,0.06);
         border: 1px solid rgba(255,149,0,0.45);
         color: var(--orange);
@@ -378,13 +385,33 @@ export default function Styles() {
         background: rgba(255,149,0,0.16);
         box-shadow: 0 0 16px rgba(255,149,0,0.4);
       }
+      /* Botones de la cabecera: solo el ícono; el nombre se DESPLIEGA
+         (el botón se estira con animación). PC: al pasar el cursor.
+         Celular: manteniendo presionado (y deslizando por los demás) —
+         clase .tz-hbtn-abierto, ver lib/despliegueBotones.js. Los de la
+         izquierda se abren a la derecha y los de la derecha a la
+         izquierda, por encima del logo. */
       .tz-header-btn-label {
-        display: none;
-        font-size: 9px;
+        display: inline-block;
+        max-width: 0;
+        opacity: 0;
+        overflow: hidden;
+        margin-left: 0;
+        vertical-align: middle;
+        font-size: 10px;
         letter-spacing: 0.04em;
         text-transform: uppercase;
         font-weight: 700;
         white-space: nowrap;
+        transition: max-width 0.28s ease, opacity 0.2s ease, margin-left 0.28s ease;
+      }
+      .tz-header-btn.tz-hbtn-abierto,
+      .tz-header-btn:focus-visible { z-index: 30; }
+      .tz-header-btn.tz-hbtn-abierto .tz-header-btn-label,
+      .tz-header-btn:focus-visible .tz-header-btn-label { max-width: 220px; opacity: 1; margin-left: 7px; }
+      @media (hover: hover) and (pointer: fine) {
+        .tz-header-btn:hover { z-index: 30; }
+        .tz-header-btn:hover .tz-header-btn-label { max-width: 220px; opacity: 1; margin-left: 7px; }
       }
 
       .tz-header-payment-wrap { position: relative; flex: 0 0 auto; }
@@ -3102,12 +3129,28 @@ export default function Styles() {
       /* Aviso de cancelación remota (ChatWindow.jsx) — flota arriba de
          todo lo demás del chat un momento antes de que el modal se
          cierre solo, para que no sea un cierre sorpresivo. */
+      /* Aviso de viaje cancelado: va a document.body (portal) y queda por
+         encima de todo — modales, mapa y avisos. La capa .tz-root solo
+         aporta los colores del tema (sin fondo ni alto propios). */
+      .tz-root.tz-chat-toast-capa {
+        min-height: 0;
+        width: 0;
+        height: 0;
+        background: none;
+        overflow: visible;
+      }
+      .tz-chat-toast-capa .tz-chat-toast {
+        background: rgba(40, 8, 18, 0.94);
+        box-shadow: 0 0 18px rgba(255, 84, 112, 0.55);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+      }
       .tz-chat-toast {
-        position: absolute;
-        top: 8px;
+        position: fixed;
+        top: max(16px, env(safe-area-inset-top));
         left: 50%;
         transform: translateX(-50%);
-        z-index: 30;
+        z-index: 100000;
         max-width: 92%;
         padding: 8px 16px;
         border-radius: 999px;
@@ -5876,11 +5919,8 @@ export default function Styles() {
           max-width: 700px;
           margin: 0 auto;
         }
-        .tz-header-btn {
-          flex-direction: row;
-          padding: 9px 14px;
-        }
-        .tz-header-btn-label { display: inline; font-size: 11px; }
+        .tz-header-btn { padding: 9px 12px; }
+        .tz-header-btn-label { font-size: 11px; }
         .tz-main {
           max-width: 700px;
           margin: 0 auto;
