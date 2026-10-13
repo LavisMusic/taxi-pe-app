@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ShieldCheck, Camera, Check, Loader2 } from "lucide-react";
 import Dropdown from "./Dropdown";
 import GestionImagenModal from "./admin/GestionImagenModal";
+import ImagenGuardada from "./ImagenGuardada";
 import { supabase } from "../supabaseClient";
 import { guardarDatosVerificacion } from "../hooks/useConductorTemporal";
 import { esEdadValida, SEXOS, ESTADO_VERIFICACION_EN_REVISION } from "../lib/taxiEnums";
@@ -17,8 +18,11 @@ export default function VerificarRecolectorForm({ usuario, onVerificado, submitL
   const [sexo, setSexo] = useState("");
   const [dni, setDni] = useState("");
   const [ruc, setRuc] = useState("");
-  const [fotoUrl, setFotoUrl] = useState("");
-  const [gestionandoFoto, setGestionandoFoto] = useState(false);
+  // Foto con el DNI: privada (solo la ve el Admin). Foto de perfil:
+  // opcional y pública (la ven pasajeros y conductores).
+  const [fotoDniUrl, setFotoDniUrl] = useState("");
+  const [fotoPerfilUrl, setFotoPerfilUrl] = useState(usuario.foto_url ?? "");
+  const [gestionandoFoto, setGestionandoFoto] = useState(null);
   const [fotoKey] = useState(() => `recolector-${Date.now()}-${Math.round(Math.random() * 1e6)}`);
   const [nuevoPin, setNuevoPin] = useState("");
   const [confirmarNuevoPin, setConfirmarNuevoPin] = useState("");
@@ -34,7 +38,7 @@ export default function VerificarRecolectorForm({ usuario, onVerificado, submitL
     if (!sexo) return setError("Selecciona tu sexo.");
     if (!/^\d{8}$/.test(dni.trim())) return setError("El DNI debe tener 8 dígitos.");
     if (ruc.trim() && !/^\d{11}$/.test(ruc.trim())) return setError("El RUC debe tener 11 dígitos (o déjalo vacío).");
-    if (!fotoUrl) return setError("La foto sosteniendo tu DNI es obligatoria.");
+    if (!fotoDniUrl) return setError("La foto sosteniendo tu DNI es obligatoria.");
     if (!tienePin) {
       if (!/^\d{6}$/.test(nuevoPin)) return setError("El PIN debe tener 6 dígitos.");
       if (nuevoPin !== confirmarNuevoPin) return setError("Los PIN no coinciden.");
@@ -51,7 +55,8 @@ export default function VerificarRecolectorForm({ usuario, onVerificado, submitL
       sexo,
       dni: dni.trim(),
       ruc: ruc.trim() || null,
-      foto_url: fotoUrl,
+      foto_dni_url: fotoDniUrl,
+      ...(fotoPerfilUrl ? { foto_url: fotoPerfilUrl } : {}),
       estado_verificacion: ESTADO_VERIFICACION_EN_REVISION,
     });
     setEnviando(false);
@@ -126,17 +131,40 @@ export default function VerificarRecolectorForm({ usuario, onVerificado, submitL
           type="button"
           className="tz-camera-cancel"
           style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center", width: "100%" }}
-          onClick={() => setGestionandoFoto(true)}
+          onClick={() => setGestionandoFoto("dni")}
         >
-          {fotoUrl ? (
+          {fotoDniUrl ? (
             <>
-              <img src={fotoUrl} alt="Tu foto con tu DNI" style={{ width: 22, height: 22, borderRadius: 6, objectFit: "cover" }} />
+              <ImagenGuardada src={fotoDniUrl} alt="Tu foto con tu DNI" style={{ width: 22, height: 22, borderRadius: 6, objectFit: "cover" }} />
               Cambiar foto
               <Check size={15} color="var(--green)" />
             </>
           ) : (
             <>
               <Camera size={15} /> Tomar o subir tu foto con tu DNI
+            </>
+          )}
+        </button>
+        <p className="tz-camera-note" style={{ margin: "2px 0 0" }}>
+          Solo la ve el Admin para verificar tu cuenta.
+        </p>
+
+        <label className="tz-field-label">Foto de perfil (opcional)</label>
+        <button
+          type="button"
+          className="tz-camera-cancel"
+          style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center", width: "100%" }}
+          onClick={() => setGestionandoFoto("perfil")}
+        >
+          {fotoPerfilUrl ? (
+            <>
+              <ImagenGuardada src={fotoPerfilUrl} alt="Tu foto de perfil" style={{ width: 22, height: 22, borderRadius: 6, objectFit: "cover" }} />
+              Cambiar foto de perfil
+              <Check size={15} color="var(--green)" />
+            </>
+          ) : (
+            <>
+              <Camera size={15} /> Tomar o subir tu foto de perfil
             </>
           )}
         </button>
@@ -182,12 +210,13 @@ export default function VerificarRecolectorForm({ usuario, onVerificado, submitL
 
       {gestionandoFoto && (
         <GestionImagenModal
-          nombre={`${usuario.nombre} — Foto con su DNI`}
-          fotoUrl={fotoUrl}
-          storageKey={fotoKey}
-          isProfilePic
-          onFotoUrlChange={(url) => setFotoUrl(url)}
-          onClose={() => setGestionandoFoto(false)}
+          nombre={`${usuario.nombre} — ${gestionandoFoto === "dni" ? "Foto con su DNI" : "Foto de perfil"}`}
+          fotoUrl={gestionandoFoto === "dni" ? fotoDniUrl : fotoPerfilUrl}
+          storageKey={`${fotoKey}-${gestionandoFoto}`}
+          isProfilePic={gestionandoFoto === "perfil"}
+          privado={gestionandoFoto === "dni"}
+          onFotoUrlChange={(url) => (gestionandoFoto === "dni" ? setFotoDniUrl(url) : setFotoPerfilUrl(url))}
+          onClose={() => setGestionandoFoto(null)}
         />
       )}
     </>

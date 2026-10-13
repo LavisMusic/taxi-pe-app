@@ -22,6 +22,7 @@ import {
 import { buildWhatsappLink } from "../../lib/whatsapp";
 import { conductoresPorRevisar, recolectoresPorRevisar } from "../../lib/peticiones";
 import { useLocalidades } from "../../hooks/useLocalidades";
+import ImagenGuardada from "../ImagenGuardada";
 import { formatTelefono, formatSoles, formatDate } from "../../utils/format";
 
 const FOTOS = [
@@ -70,7 +71,7 @@ function ConductorPendienteRow({ conductor, categorias, subgrupos, localidades, 
           {FOTOS.map((f) => (
             <div key={f.key} className="tz-peticion-foto">
               {conductor[f.key] ? (
-                <img src={conductor[f.key]} alt={f.label} />
+                <ImagenGuardada src={conductor[f.key]} alt={f.label} />
               ) : (
                 <div className="tz-peticion-foto-placeholder">
                   <ImageIcon size={18} />
@@ -221,9 +222,9 @@ function RecolectorPendienteRow({ usuario, onAprobar, onRechazar }) {
       <div className="tz-history-row-detail" style={{ padding: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {usuario.foto_url ? (
-              <img
-                src={usuario.foto_url}
+            {usuario.foto_dni_url || usuario.foto_url ? (
+              <ImagenGuardada
+                src={usuario.foto_dni_url || usuario.foto_url}
                 alt={usuario.nombre}
                 style={{ width: 40, height: 40, borderRadius: 10, objectFit: "cover" }}
               />

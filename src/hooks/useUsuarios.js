@@ -26,7 +26,7 @@ export function useUsuarios() {
     const { data, error: fetchError } = await supabase
       .from("usuarios")
       .select(
-        "id, dni, ruc, telefono, pin, nombre, apellido, rol, estado_cuenta, estado_verificacion, foto_url, creditos_disponibles, membresia_vencimiento, created_at"
+        "id, dni, ruc, telefono, pin, nombre, apellido, rol, estado_cuenta, estado_verificacion, foto_url, foto_dni_url, creditos_disponibles, membresia_vencimiento, created_at"
       )
       .order("created_at", { ascending: false });
 

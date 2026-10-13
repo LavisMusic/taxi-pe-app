@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ShieldCheck, Camera, Check } from "lucide-react";
 import Dropdown from "./Dropdown";
+import ImagenGuardada from "./ImagenGuardada";
 import GestionImagenModal from "./admin/GestionImagenModal";
 import { useConductorTemporal } from "../hooks/useConductorTemporal";
 import { useCategoriasPublicas } from "../hooks/useCategoriasPublicas";
@@ -255,7 +256,7 @@ export default function VerificarConductorForm({ usuario, conductor = null, onVe
               >
                 <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   {fotos[f.key] ? (
-                    <img src={fotos[f.key]} alt={f.label} style={{ width: 22, height: 22, borderRadius: 6, objectFit: "cover" }} />
+                    <ImagenGuardada src={fotos[f.key]} alt={f.label} style={{ width: 22, height: 22, borderRadius: 6, objectFit: "cover" }} />
                   ) : (
                     <Camera size={15} />
                   )}
@@ -317,6 +318,7 @@ export default function VerificarConductorForm({ usuario, conductor = null, onVe
           fotoUrl={gestionandoFoto.key === "perfil" ? fotoPerfilUrl : fotos[gestionandoFoto.key]}
           storageKey={`${fotoKey}-${gestionandoFoto.slug}`}
           isProfilePic={!!gestionandoFoto.isProfilePic}
+          privado={!gestionandoFoto.isProfilePic}
           onFotoUrlChange={(url) =>
             gestionandoFoto.key === "perfil"
               ? setFotoPerfilUrl(url)
