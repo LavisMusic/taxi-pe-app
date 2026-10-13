@@ -395,7 +395,7 @@ export default function ConductorPage() {
             )}
             <section className="tz-stats tz-stats-centrados" style={{ gridTemplateColumns: "repeat(2, 1fr)", marginBottom: 4 }}>
               <div className="tz-stat-chip">
-                <span className="tz-stat-label">Gemas</span>
+                <span className="tz-stat-label tz-stat-label-gemas-verde">Gemas</span>
                 <span className="tz-stat-value">
                   <ContadorCreditos
                     valor={conductor.creditos ?? 0}

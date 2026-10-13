@@ -259,14 +259,16 @@ export default function Styles() {
         position: absolute;
         left: 50%;
         top: 42%;
-        width: 150%;
-        height: 125%;
+        width: 165%;
+        height: 140%;
         transform: translate(-50%, -50%);
         z-index: -1;
         pointer-events: none;
+        /* Más sutil: casi sin relleno al centro, un anillo suave que
+           envuelve el borde del logo y se difumina hacia afuera. */
         background:
-          radial-gradient(closest-side, rgba(43,232,255,0.34), rgba(43,232,255,0.12) 55%, transparent 100%),
-          radial-gradient(closest-side at 62% 58%, rgba(255,47,158,0.22), transparent 100%);
+          radial-gradient(closest-side, transparent 38%, rgba(43,232,255,0.15) 60%, rgba(43,232,255,0.07) 76%, transparent 100%),
+          radial-gradient(closest-side at 60% 58%, transparent 45%, rgba(255,47,158,0.09) 70%, transparent 100%);
       }
       .tz-logo {
         max-width: 130px;
@@ -785,6 +787,9 @@ export default function Styles() {
         font-size: 13.5px;
       }
       .tz-destino-actual-pill svg { flex-shrink: 0; color: var(--cyan); }
+      /* Destino elegido: 5 px más cerca del filtro de localidad. */
+      .tz-fila-saldo-localidad + .tz-destino-actual-pill,
+      .tz-fila-localidad + .tz-destino-actual-pill { margin-top: -5px; }
       .tz-destino-actual-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .tz-radar-input::placeholder { color: var(--text-dim); }
       .tz-radar-input:focus {
@@ -5463,16 +5468,20 @@ export default function Styles() {
       /* Gemas (créditos): la palabra centrada encima de la gema y el
          número, sin recuadro. */
       .tz-gemas { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+      /* La palabra va del color de las gemas que representa (cliente:
+         celeste; conductor: verde). */
       .tz-gemas-label {
         font-size: 9.5px;
         font-weight: 700;
         letter-spacing: 0.12em;
         text-transform: uppercase;
-        color: var(--text-dim);
+        color: var(--cyan);
+        text-shadow: 0 0 6px rgba(43, 232, 255, 0.45);
       }
       /* Recuadros del conductor (Gemas / Vigencia) con todo centrado. */
       .tz-stats-centrados .tz-stat-chip { align-items: center; text-align: center; }
       .tz-stats-centrados .tz-stat-label { justify-content: center; }
+      .tz-stat-label-gemas-verde { color: var(--green); text-shadow: 0 0 6px rgba(57, 255, 176, 0.4); }
       /* Sin localidades cargadas: los créditos solos, centrados. */
       .tz-fila-saldo:only-child { grid-column: 1 / -1; }
       .tz-fila-saldo-localidad .tz-localidad-filtro-wrap { max-width: none; min-width: 0; }
