@@ -5326,6 +5326,38 @@ export default function Styles() {
       .tz-modal-backdrop.tz-cierre-obligatorio {
         z-index: 450;
       }
+      /* Historial de verificaciones (Centro de Peticiones). */
+      .tz-historial-verif-buscar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+        color: var(--text-dim);
+      }
+      .tz-historial-verif-buscar .tz-text-input { flex: 1 1 auto; }
+      .tz-historial-verif-cabecera {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .tz-historial-verif-rol {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 999px;
+        color: var(--cyan);
+        border: 1px solid rgba(43, 232, 255, 0.4);
+        background: rgba(43, 232, 255, 0.08);
+      }
+      .tz-historial-verif-foto {
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: zoom-in;
+        color: inherit;
+        font: inherit;
+      }
       /* Peticiones: datos del conductor que el Admin confirma al aprobar. */
       .tz-peticion-datos {
         display: grid;

@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import Cropper from "react-easy-crop";
 import { Upload, Camera, Wand2, Check, X, Loader2, Image as ImageIcon, Crop } from "lucide-react";
 import { supabase } from "../../supabaseClient";
-import { getCroppedImageBlob } from "../../lib/cropImage";
+import { getCroppedImageBlob, reducirImagenEvidencia } from "../../lib/cropImage";
 import { BUCKET_PRIVADO, esImagenPrivada, useUrlVisible, valorPrivado } from "../../lib/imagenesPrivadas";
 
 // Restaura el modal "Gestión de Imagen" de la caja registradora vieja
@@ -30,7 +30,9 @@ import { BUCKET_PRIVADO, esImagenPrivada, useUrlVisible, valorPrivado } from "..
 //
 // `privado`: fotos de verificación y con el DNI — se suben al bucket
 // privado 'verificaciones' y al padre le llega 'privado:<archivo>' en vez
-// de un enlace público (ver lib/imagenesPrivadas.js).
+// de un enlace público (ver lib/imagenesPrivadas.js). Son evidencia: no
+// pasan por el recorte cuadrado — se sube la foto completa, reducida a
+// 2560 px como máximo y en JPEG de calidad alta (lib/cropImage.js).
 //
 // "Mejorar con IA" quita el fondo 100% en el navegador
 // (@imgly/background-removal, import dinámico — el modelo pesa varios
@@ -141,10 +143,20 @@ export default function GestionImagenModal({
     }
   };
 
-  const handleFileSelected = (file) => {
+  const handleFileSelected = async (file) => {
     if (!file) return;
     discardAiPreview();
     cerrarRecorte();
+    if (privado) {
+      let blob = file;
+      try {
+        blob = await reducirImagenEvidencia(file);
+      } catch {
+        // Si el navegador no la puede procesar, se sube la original.
+      }
+      await uploadFoto(blob, "jpg", blob.type || "image/jpeg");
+      return;
+    }
     setRawSrc(URL.createObjectURL(file));
   };
 

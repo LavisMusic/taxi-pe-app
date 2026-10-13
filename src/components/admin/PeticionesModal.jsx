@@ -11,6 +11,7 @@ import {
   Trash2,
   Wallet,
   ExternalLink,
+  History,
 } from "lucide-react";
 import {
   NIVELES_SERVICIO,
@@ -23,6 +24,7 @@ import { buildWhatsappLink } from "../../lib/whatsapp";
 import { conductoresPorRevisar, recolectoresPorRevisar } from "../../lib/peticiones";
 import { useLocalidades } from "../../hooks/useLocalidades";
 import ImagenGuardada from "../ImagenGuardada";
+import HistorialVerificacionesTab from "./HistorialVerificacionesTab";
 import { formatTelefono, formatSoles, formatDate } from "../../utils/format";
 
 const FOTOS = [
@@ -616,6 +618,14 @@ export default function PeticionesModal({
               <Wallet size={13} style={{ marginRight: 4, verticalAlign: "-2px" }} />
               Recargas de Recolectores {recargasRecolector.length > 0 ? `(${recargasRecolector.length})` : ""}
             </button>
+            <button
+              type="button"
+              className={`tz-gasto-tipo-btn ${tab === "historial" ? "tz-gasto-tipo-active" : ""}`}
+              onClick={() => setTab("historial")}
+            >
+              <History size={13} style={{ marginRight: 4, verticalAlign: "-2px" }} />
+              Historial de verificaciones
+            </button>
           </div>
 
           {tab === "registro" ? (
@@ -630,6 +640,8 @@ export default function PeticionesModal({
               onAprobarRecolector={onAprobarRecolector}
               onRechazarRecolector={onRechazarRecolector}
             />
+          ) : tab === "historial" ? (
+            <HistorialVerificacionesTab />
           ) : tab === "pin" ? (
             <RecuperacionPinTab peticiones={peticionesPin} onVerificar={onVerificarPin} onDescartar={onDescartarPin} />
           ) : (
