@@ -161,7 +161,7 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
               })}
             </div>
           )}
-          <p className="tz-chat-thread-name" style={{ margin: "0 0 8px" }}>
+          <p className="tz-chat-thread-titulo">
             {nombresPorId[pasajeroAbierto] ?? "Pasajero"}
           </p>
           {/* `key={pasajeroAbierto}` fuerza un remount COMPLETO de

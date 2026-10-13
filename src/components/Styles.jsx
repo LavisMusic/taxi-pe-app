@@ -3076,7 +3076,11 @@ export default function Styles() {
         min-height: 0;
         overflow-y: auto;
         overflow-x: hidden;
-        padding: 4px 6px;
+        padding: 14px 6px;
+        /* Bordes suaves arriba y abajo: los mensajes se desvanecen al
+           entrar y salir del área visible en vez de cortarse en seco. */
+        -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+        mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
         /* #root (index.css, plantilla de Vite) hereda text-align:center
            a todo el árbol — sin este reset, cada burbuja seguía
            parada a la izquierda/derecha por 'align-self' (eso ya
@@ -3539,6 +3543,7 @@ export default function Styles() {
          pase con el alto de los mensajes — es lo que faltaba antes y
          causaba que los chips de tarifa se aplastaran/superpusieran. */
       .tz-chat-footer {
+        position: relative;
         flex-shrink: 0;
         /* Refuerzo Fase 2: redundante con el 'flex:1' de .tz-chat-messages
            (ese ya empuja al footer hasta el fondo en cualquier navegador
@@ -3608,13 +3613,23 @@ export default function Styles() {
       /* "Tonazo" (Pasajero, ChatWindow.jsx) — solo el logo, en píldora;
          el contador de restantes vive en el atributo title (tooltip),
          acá abajo solo se muestra el cooldown mientras está activo. */
+      /* Flota sobre el final del chat (sin franja propia en el footer). */
       .tz-chat-tonazo-row {
+        position: absolute;
+        bottom: calc(100% + 6px);
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2;
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 4px;
-        padding: 0 4px 8px;
+        pointer-events: none;
       }
+      .tz-chat-tonazo-row > * { pointer-events: auto; }
+      /* Espacio al final de los mensajes para que el botón flotante no
+         tape el último. */
+      .tz-chat-messages-con-tonazo { padding-bottom: 66px; }
       .tz-chat-tonazo-btn {
         display: flex;
         align-items: center;
@@ -3626,6 +3641,8 @@ export default function Styles() {
         border-radius: 999px;
         border: 1px solid rgba(255,47,158,0.4);
         background: rgba(255,47,158,0.1);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
         color: var(--pink);
         cursor: pointer;
         transition: background 0.15s, box-shadow 0.15s;
@@ -3637,7 +3654,7 @@ export default function Styles() {
          se ve apagado igual, pero sigue recibiendo el click para poder
          mostrar el toast de aviso. */
       .tz-chat-tonazo-btn-bloqueado { opacity: 0.5; cursor: pointer; }
-      .tz-chat-tonazo-logo { width: 44px; height: 28px; object-fit: contain; border-radius: 4px; }
+      .tz-chat-tonazo-logo { width: 48px; height: 32px; object-fit: contain; border-radius: 4px; }
       .tz-chat-tonazo-cooldown {
         font-family: 'Rajdhani', sans-serif;
         font-size: 11px;
@@ -3753,6 +3770,15 @@ export default function Styles() {
          usa .tz-history-row-method (esa sí lleva uppercase, es correcta
          para lo demás que la usa) para no forzar mayúsculas acá. */
       .tz-chat-thread-name { font-size: 13px; font-weight: 700; color: var(--pink); }
+      /* Nombre del pasajero arriba del chat abierto (Conductor). */
+      .tz-chat-thread-titulo {
+        margin: 0 0 8px;
+        text-align: center;
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--cyan);
+        text-shadow: 0 0 8px rgba(43, 232, 255, 0.75), 0 0 18px rgba(43, 232, 255, 0.45);
+      }
       .tz-chat-thread-preview { color: var(--text-dim); font-weight: 400; }
       /* Fase 5 (Motor de Viajes Simultáneos) — Selector de Hilos: fila
          deslizable de pestañas chicas arriba del chat abierto, para

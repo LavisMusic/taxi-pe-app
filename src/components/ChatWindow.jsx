@@ -790,6 +790,8 @@ export default function ChatWindow({
   // Conductor debe poder proponer una tarifa nueva ahí mismo, sin que el
   // pasajero tenga que volver a llamar.
   const puedeProponerTarifa = enNegociacion && listaMensajes.length > 0;
+  // Botón de hacer señas (Pasajero): flota encima del final del chat.
+  const mostrarBotonTonazo = !loading && remitentePropio === REMITENTE_PASAJERO && !ofertaVigente;
 
   // Ocultamiento estricto del mapa — `<MapaViaje/>` NO se monta en
   // absoluto durante Fase 0 (contacto) ni Fase 1 (negociación): recién
@@ -1444,7 +1446,10 @@ export default function ChatWindow({
         </div>
       )}
 
-      <div className={`tz-chat-messages ${mostrarPanelViaje && remitentePropio === REMITENTE_PASAJERO ? "tz-chat-messages-mini" : ""}`} ref={listRef}>
+      <div
+        className={`tz-chat-messages ${mostrarPanelViaje && remitentePropio === REMITENTE_PASAJERO ? "tz-chat-messages-mini" : ""} ${mostrarBotonTonazo ? "tz-chat-messages-con-tonazo" : ""}`}
+        ref={listRef}
+      >
         {loading ? (
           <p className="tz-method-history-empty">Cargando chat…</p>
         ) : (mensajes ?? []).length === 0 ? (
@@ -1632,7 +1637,7 @@ export default function ChatWindow({
            `ofertaVigente` vale su default "vacío" y este botón podía
            destellar visible en un hilo que en realidad ya está
            cerrado. */}
-        {!loading && remitentePropio === REMITENTE_PASAJERO && !ofertaVigente && (
+        {mostrarBotonTonazo && (
           <div className="tz-chat-tonazo-row">
             <button
               type="button"
