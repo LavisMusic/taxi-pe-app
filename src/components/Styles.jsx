@@ -3579,12 +3579,17 @@ export default function Styles() {
            recorta cualquier cosa que se salga de esta caja, glow
            incluido — sin aire alrededor, el box-shadow de
            .tz-chat-senas-btn se veía cortado en vez de difuminarse. */
-        /* 14px de aire alrededor (con margen negativo para no mover el
-           resto del layout): el glow de los chips ya no se recorta
-           arriba, abajo ni en los chips de las puntas. */
+        /* Flota centrada sobre el final del chat, como el botón de
+           señas del pasajero. 14px de aire alrededor: el glow de los
+           chips no se recorta (por eso 'bottom' descuenta ese aire). */
+        position: absolute;
+        bottom: calc(100% - 3px);
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2;
+        width: max-content;
+        max-width: calc(100% + 20px);
         padding: 14px;
-        margin: -6px -10px;
-        width: calc(100% + 20px);
         box-sizing: border-box;
         scrollbar-width: none;
       }
@@ -3610,13 +3615,29 @@ export default function Styles() {
       }
       .tz-chat-quickreply-btn:hover:not(:disabled) { background: rgba(43,232,255,0.2); box-shadow: 0 0 12px rgba(43,232,255,0.3); }
       .tz-chat-quickreply-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      /* Vibración sutil cada pocos segundos (señas y tarifas rápidas). */
+      @keyframes tz-vibrar-sutil {
+        0%, 82%, 100% { transform: translate(0, 0) rotate(0); }
+        85% { transform: translate(-1px, 0) rotate(-2deg); }
+        88% { transform: translate(1px, 0) rotate(2deg); }
+        91% { transform: translate(-1px, 0) rotate(-1.5deg); }
+        94% { transform: translate(1px, 0) rotate(1deg); }
+        97% { transform: translate(0, 0) rotate(-0.5deg); }
+      }
+      .tz-chat-tonazo-btn:not(:disabled),
+      .tz-chat-quickreply-btn:not(:disabled) {
+        animation: tz-vibrar-sutil 3.2s ease-in-out infinite;
+      }
+      .tz-chat-quickreply-btn:nth-child(2) { animation-delay: 0.15s; }
+      .tz-chat-quickreply-btn:nth-child(3) { animation-delay: 0.3s; }
+      .tz-chat-quickreply-btn:nth-child(4) { animation-delay: 0.45s; }
       /* "Tonazo" (Pasajero, ChatWindow.jsx) — solo el logo, en píldora;
          el contador de restantes vive en el atributo title (tooltip),
          acá abajo solo se muestra el cooldown mientras está activo. */
       /* Flota sobre el final del chat (sin franja propia en el footer). */
       .tz-chat-tonazo-row {
         position: absolute;
-        bottom: calc(100% + 6px);
+        bottom: calc(100% + 11px);
         left: 50%;
         transform: translateX(-50%);
         z-index: 2;

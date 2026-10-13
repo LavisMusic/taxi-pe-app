@@ -792,6 +792,8 @@ export default function ChatWindow({
   const puedeProponerTarifa = enNegociacion && listaMensajes.length > 0;
   // Botón de hacer señas (Pasajero): flota encima del final del chat.
   const mostrarBotonTonazo = !loading && remitentePropio === REMITENTE_PASAJERO && !ofertaVigente;
+  // Tarifas rápidas (Conductor): también flotan, centradas, sobre el chat.
+  const mostrarTarifasRapidas = !loading && remitentePropio === REMITENTE_CONDUCTOR && puedeProponerTarifa;
 
   // Ocultamiento estricto del mapa — `<MapaViaje/>` NO se monta en
   // absoluto durante Fase 0 (contacto) ni Fase 1 (negociación): recién
@@ -1447,7 +1449,7 @@ export default function ChatWindow({
       )}
 
       <div
-        className={`tz-chat-messages ${mostrarPanelViaje && remitentePropio === REMITENTE_PASAJERO ? "tz-chat-messages-mini" : ""} ${mostrarBotonTonazo ? "tz-chat-messages-con-tonazo" : ""}`}
+        className={`tz-chat-messages ${mostrarPanelViaje && remitentePropio === REMITENTE_PASAJERO ? "tz-chat-messages-mini" : ""} ${mostrarBotonTonazo || mostrarTarifasRapidas ? "tz-chat-messages-con-tonazo" : ""}`}
         ref={listRef}
       >
         {loading ? (
@@ -1559,7 +1561,7 @@ export default function ChatWindow({
            chequeo, reabrir un chat ya cerrado mostraba estos botones
            habilitados por una fracción de segundo, la ventana real
            detrás de "el modal se reabre reseteando los bloqueos". */}
-        {!loading && remitentePropio === REMITENTE_CONDUCTOR && puedeProponerTarifa && (
+        {mostrarTarifasRapidas && (
           <>
             <div className="tz-chat-quickrow">
               {TARIFAS_RAPIDAS.map((tarifa) => (
