@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LogOut, Pencil, Zap, Car, Ban, CreditCard, CalendarClock, MessageCircle, Save, Loader2, X } from "lucide-react";
+import { LogOut, Pencil, Zap, Car, Ban, CalendarClock, MessageCircle, Save, Loader2, X } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useConductorSesion } from "../hooks/useConductorSesion";
 import { useHilosChatConductor } from "../hooks/useChatMensajes";
@@ -393,16 +393,15 @@ export default function ConductorPage() {
                 />
               </div>
             )}
-            <section className="tz-stats" style={{ gridTemplateColumns: "repeat(2, 1fr)", marginBottom: 4 }}>
+            <section className="tz-stats tz-stats-centrados" style={{ gridTemplateColumns: "repeat(2, 1fr)", marginBottom: 4 }}>
               <div className="tz-stat-chip">
-                <span className="tz-stat-label">
-                  <CreditCard size={13} /> Créditos
-                </span>
+                <span className="tz-stat-label">Gemas</span>
                 <span className="tz-stat-value">
                   <ContadorCreditos
                     valor={conductor.creditos ?? 0}
                     clave={`tz-creditos-conductor-${conductor.id}`}
                     variante="verde"
+                    titulo="Gemas"
                     className="tz-cc-heredado"
                   />
                 </span>

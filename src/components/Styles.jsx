@@ -5456,10 +5456,23 @@ export default function Styles() {
         align-items: center;
         gap: 10px;
         padding: 0 6px;
-        margin-bottom: 13px;
+        margin-bottom: 12px;
       }
       .tz-fila-saldo { display: flex; justify-content: center; align-items: center; min-width: 0; }
       .tz-fila-saldo .tz-cc { top: 0; }
+      /* Gemas (créditos): la palabra centrada encima de la gema y el
+         número, sin recuadro. */
+      .tz-gemas { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+      .tz-gemas-label {
+        font-size: 9.5px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+      }
+      /* Recuadros del conductor (Gemas / Vigencia) con todo centrado. */
+      .tz-stats-centrados .tz-stat-chip { align-items: center; text-align: center; }
+      .tz-stats-centrados .tz-stat-label { justify-content: center; }
       /* Sin localidades cargadas: los créditos solos, centrados. */
       .tz-fila-saldo:only-child { grid-column: 1 / -1; }
       .tz-fila-saldo-localidad .tz-localidad-filtro-wrap { max-width: none; min-width: 0; }
