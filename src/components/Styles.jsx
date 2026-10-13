@@ -787,9 +787,9 @@ export default function Styles() {
         font-size: 13.5px;
       }
       .tz-destino-actual-pill svg { flex-shrink: 0; color: var(--cyan); }
-      /* Destino elegido: 5 px más cerca del filtro de localidad. */
+      /* Destino elegido: 8 px más cerca del filtro de localidad. */
       .tz-fila-saldo-localidad + .tz-destino-actual-pill,
-      .tz-fila-localidad + .tz-destino-actual-pill { margin-top: -5px; }
+      .tz-fila-localidad + .tz-destino-actual-pill { margin-top: -8px; }
       .tz-destino-actual-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .tz-radar-input::placeholder { color: var(--text-dim); }
       .tz-radar-input:focus {
