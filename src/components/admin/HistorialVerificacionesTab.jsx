@@ -18,7 +18,7 @@ const ETIQUETAS_FOTO = {
   perfil: "Perfil",
 };
 
-function useHistorialVerificaciones(busqueda) {
+function useHistorialVerificaciones(busqueda, rol) {
   const [filas, setFilas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -34,6 +34,7 @@ function useHistorialVerificaciones(busqueda) {
         .order("enviado_at", { ascending: false })
         .limit(50);
       // Sin comas ni paréntesis: rompen el filtro `or` de PostgREST.
+      if (rol) query = query.eq("rol", rol);
       const q = busqueda.trim().replace(/[,()%*]/g, " ").trim();
       if (q) query = query.or(`dni.ilike.%${q}%,telefono.ilike.%${q}%,nombre.ilike.%${q}%,placa.ilike.%${q}%`);
       const { data, error: fetchError } = await query;
@@ -50,7 +51,7 @@ function useHistorialVerificaciones(busqueda) {
       cancelado = true;
       clearTimeout(t);
     };
-  }, [busqueda]);
+  }, [busqueda, rol]);
 
   return { filas, loading, error };
 }
@@ -72,7 +73,9 @@ async function abrirFoto(valor) {
 
 export default function HistorialVerificacionesTab() {
   const [busqueda, setBusqueda] = useState("");
-  const { filas, loading, error } = useHistorialVerificaciones(busqueda);
+  // Filtro: Todos / Conductores / Recolectores.
+  const [rol, setRol] = useState("");
+  const { filas, loading, error } = useHistorialVerificaciones(busqueda, rol);
 
   return (
     <>
@@ -85,6 +88,22 @@ export default function HistorialVerificacionesTab() {
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
         />
+      </div>
+      <div className="tz-gasto-tipo-buttons" style={{ marginBottom: 8 }}>
+        {[
+          { id: "", label: "Todos" },
+          { id: "conductor", label: "Conductores" },
+          { id: "recolector", label: "Recolectores" },
+        ].map((f) => (
+          <button
+            key={f.id || "todos"}
+            type="button"
+            className={`tz-gasto-tipo-btn ${rol === f.id ? "tz-gasto-tipo-active" : ""}`}
+            onClick={() => setRol(f.id)}
+          >
+            {f.label}
+          </button>
+        ))}
       </div>
       <p className="tz-camera-note" style={{ margin: "0 0 10px" }}>
         Cada verificación enviada queda guardada con sus fotos, aunque la cuenta se haya eliminado. Toca una foto
