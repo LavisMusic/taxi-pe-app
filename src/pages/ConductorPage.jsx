@@ -261,7 +261,7 @@ export default function ConductorPage() {
   };
 
   return (
-    <div className={`tz-root ${conductor ? "tz-root-conductor" : ""}`}>
+    <div className="tz-root">
       <Styles />
       {mostrarBienvenida ? (
         <AnimacionNeonBienvenida
@@ -350,7 +350,7 @@ export default function ConductorPage() {
         </div>
       </header>
 
-      <main className="tz-main" style={{ maxWidth: 420, margin: "0 auto" }}>
+      <main className="tz-main">
         {loading ? (
           <div className="tz-loading" style={{ minHeight: "50vh" }}>
             <Loader2 className="tz-spin" size={28} />
@@ -403,6 +403,7 @@ export default function ConductorPage() {
                   setExitoEntrega(true);
                   refrescarEstadisticas();
                 }}
+                onVerPedido={() => setPanel("delivery")}
               />
             }
             viajes={
@@ -604,7 +605,7 @@ export default function ConductorPage() {
 
       {/* Pie de página del turno — fuera del cubo: no gira al deslizar. */}
       {conductor && (
-        <footer className="tz-page-footer tz-footer-conductor">
+        <footer className="tz-page-footer">
           <button className="tz-footer-btn tz-footer-btn-cierre" onClick={() => setModalTurno("cerrar")}>
             <Receipt size={14} /> Cerrar turno
           </button>

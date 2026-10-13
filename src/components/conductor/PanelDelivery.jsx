@@ -8,6 +8,8 @@ import { formatSoles } from "../../utils/format";
 // se hacen viajes) y debajo las solicitudes de reparto. El modo delivery
 // sigue encendido aunque vuelva al panel de Viajes, y mientras lo esté
 // comparte su ubicación con los negocios de Caja Tonazo.
+const MENSAJE_VACIO = "Aquí saldrán tus solicitudes de reparto";
+
 export default function PanelDelivery({
   conductor,
   estadisticas,
@@ -16,6 +18,7 @@ export default function PanelDelivery({
   error,
   onToggle,
   onEntregado,
+  onVerPedido,
 }) {
   const encendido = !!conductor.modo_delivery;
   const bloqueadoPor = !conductor.aprobado
@@ -63,18 +66,21 @@ export default function PanelDelivery({
           {bloqueadoPor && !encendido
             ? bloqueadoPor
             : encendido
-              ? "Los negocios te ven para repartos · toca para apagar"
-              : "Toca para recibir pedidos de reparto"}
+              ? "Los negocios pueden verte"
+              : "Toca para que los negocios te vean"}
         </span>
       </button>
       {error && <p className="tz-error" style={{ textAlign: "center" }}>{error}</p>}
 
       {conductor.aprobado && encendido ? (
-        <EntregasRepartidorPanel conductorId={conductor.id} onEntregado={onEntregado} />
+        <EntregasRepartidorPanel
+          conductorId={conductor.id}
+          onEntregado={onEntregado}
+          onVerPedido={onVerPedido}
+          mensajeVacio={MENSAJE_VACIO}
+        />
       ) : (
-        <p className="tz-method-history-empty" style={{ marginTop: 14 }}>
-          {encendido ? "" : "Enciende el modo delivery para ver las solicitudes de reparto."}
-        </p>
+        <p className="tz-reparto-vacio">{MENSAJE_VACIO}</p>
       )}
     </>
   );

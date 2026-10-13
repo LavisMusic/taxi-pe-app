@@ -2425,46 +2425,48 @@ export default function Styles() {
       .tz-paneles-tabs button.is-activa::before { opacity: 1; box-shadow: 0 0 8px currentColor; }
       /* touch-action: pan-y — el scroll vertical sigue siendo del navegador;
          el horizontal llega como pointer events y gira el cubo. */
-      .tz-paneles {
-        perspective: 1100px;
-        touch-action: pan-y;
-      }
+      .tz-paneles { touch-action: pan-y; }
+      /* El 3D solo mientras gira (ver PanelesConductor.jsx): quieto no debe
+         haber perspective / preserve-3d / transform, o los avisos fixed de
+         adentro quedan encerrados en la columna. */
+      .tz-paneles.is-3d { perspective: 1100px; }
       .tz-paneles-cubo {
+        position: relative;
         display: grid;
-        transform-style: preserve-3d;
-        will-change: transform;
       }
+      .tz-paneles.is-3d .tz-paneles-cubo { transform-style: preserve-3d; }
       .tz-panel-cara {
         grid-area: 1 / 1;
         min-width: 0;
+      }
+      .tz-paneles.is-3d .tz-panel-cara {
         backface-visibility: hidden;
         -webkit-backface-visibility: hidden;
       }
-      /* Pie de página del conductor: fijo abajo (no se mueve al deslizar
-         ni salta cuando cambia el alto del panel). .tz-main le deja su
-         espacio con --tz-footer-h. */
-      .tz-root-conductor { --tz-footer-h: 64px; }
-      .tz-page-footer.tz-footer-conductor {
-        position: fixed;
+      .tz-panel-cara.is-oculta {
+        position: absolute;
+        top: 0;
         left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 40;
-        max-width: none;
-        flex-wrap: nowrap;
-        gap: 8px;
-        padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px));
-        background: rgba(8, 5, 18, 0.9);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
+        width: 100%;
+        height: 0;
+        overflow: hidden;
+        visibility: hidden;
+        pointer-events: none;
       }
-      .tz-footer-conductor .tz-footer-btn {
-        flex: 1 1 0;
-        min-width: 0;
-        max-width: 160px;
-        padding: 11px 6px;
-        font-size: 10px;
-        gap: 5px;
+      .tz-panel-cara.is-oculta .tz-modal-backdrop {
+        visibility: visible;
+        pointer-events: auto;
+      }
+      .tz-reparto-vacio {
+        margin: 18px 0 6px;
+        padding: 22px 12px;
+        border: 1px dashed var(--border-soft);
+        border-radius: 14px;
+        text-align: center;
+        color: var(--text-dim);
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 600;
+        font-size: 14px;
       }
       .tz-delivery-toggle.is-on {
         border-color: var(--green);

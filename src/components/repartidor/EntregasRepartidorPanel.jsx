@@ -91,7 +91,7 @@ function AjustarVistaPreview({ puntos }) {
   return null;
 }
 
-export default function EntregasRepartidorPanel({ conductorId, onEntregado }) {
+export default function EntregasRepartidorPanel({ conductorId, onEntregado, onVerPedido, mensajeVacio }) {
   const { ofertas, entregasActivas, tieneEnRuta, loading, error, aceptar, rechazar, expirarOferta, avanzar, finalizar } =
     useEntregasRepartidor(conductorId);
   const [abiertaId, setAbiertaId] = useState(null);
@@ -174,9 +174,12 @@ export default function EntregasRepartidorPanel({ conductorId, onEntregado }) {
     });
   }, [ahora, ofertas, expirarOferta]);
 
-  if (loading && entregasActivas.length === 0 && ofertas.length === 0) return null;
-  if (error) return null;
-  if (entregasActivas.length === 0 && ofertas.length === 0) return null;
+  // `mensajeVacio`: en el panel Delivery del conductor el espacio queda
+  // reservado con ese aviso en vez de desaparecer.
+  const vacio = mensajeVacio ? <p className="tz-reparto-vacio">{mensajeVacio}</p> : null;
+  if (loading && entregasActivas.length === 0 && ofertas.length === 0) return vacio;
+  if (error) return vacio;
+  if (entregasActivas.length === 0 && ofertas.length === 0) return vacio;
 
   const onAceptar = async (id) => {
     setBusyId(id);
@@ -314,7 +317,10 @@ export default function EntregasRepartidorPanel({ conductorId, onEntregado }) {
             <button
               type="button"
               className="tz-scan-btn tz-senas-alert-btn"
-              onClick={() => setAlertaOferta(false)}
+              onClick={() => {
+                setAlertaOferta(false);
+                onVerPedido?.();
+              }}
             >
               Ver pedido
             </button>
