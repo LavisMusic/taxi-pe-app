@@ -249,14 +249,30 @@ export default function Styles() {
         pointer-events: none;
       }
       .tz-header-center * { pointer-events: auto; }
+      /* Brillo detrás del logo: halo de degradados (sin filter). Antes
+         era un drop-shadow sobre la imagen, y Safari del iPhone a veces
+         pintaba toda la zona del filtro como un recuadro oscuro al
+         cargar la página. .tz-header-center ya es un contexto de
+         apilamiento (transform), así que el halo queda detrás del logo. */
+      .tz-header-center::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 42%;
+        width: 150%;
+        height: 125%;
+        transform: translate(-50%, -50%);
+        z-index: -1;
+        pointer-events: none;
+        background:
+          radial-gradient(closest-side, rgba(43,232,255,0.34), rgba(43,232,255,0.12) 55%, transparent 100%),
+          radial-gradient(closest-side at 62% 58%, rgba(255,47,158,0.22), transparent 100%);
+      }
       .tz-logo {
         max-width: 130px;
         width: 100%;
         height: auto;
         overflow: visible;
-        filter:
-          drop-shadow(0 0 18px rgba(43,232,255,0.55))
-          drop-shadow(0 0 34px rgba(255,47,158,0.35));
       }
       .tz-subtitle {
         margin: 0;
