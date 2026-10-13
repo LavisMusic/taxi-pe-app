@@ -92,9 +92,19 @@ function ChatModalContenido({ conductor, pasajeroId, destino, autoContactar, cat
   // Checks de Lectura (Fase 6): al abrir este chat, todo lo que mandó
   // el conductor queda "leído" — mismo momento exacto en que
   // ConductorChatInboxModal.jsx hace lo simétrico del otro lado.
+  // Y también con el chat ya abierto: cada mensaje nuevo del conductor
+  // se marca leído al llegar (si la pestaña está a la vista), así sus ✓✓
+  // se ponen azules en vivo — antes solo se marcaba al abrir el chat.
+  const hayNoLeidos = (mensajes ?? []).some((m) => m?.remitente === "conductor" && !m?.leido);
   useEffect(() => {
-    marcarLeidoPorPasajero?.();
-  }, [marcarLeidoPorPasajero]);
+    if (!hayNoLeidos && mensajes) return undefined;
+    const marcar = () => {
+      if (document.visibilityState === "visible") marcarLeidoPorPasajero?.();
+    };
+    marcar();
+    document.addEventListener("visibilitychange", marcar);
+    return () => document.removeEventListener("visibilitychange", marcar);
+  }, [marcarLeidoPorPasajero, hayNoLeidos, mensajes]);
 
   // Flujo de Contacto: "Contactar" desde la tarjeta general del
   // directorio (HomePage.jsx, `abrirChat(id, {auto:false})`) NO manda

@@ -155,15 +155,15 @@ function Diamante() {
       <svg viewBox="0 0 24 34" className="tz-cc-gema">
         <defs>
           <linearGradient id={borde} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#9eeeff" />
+            <stop offset="0" style={{ stopColor: "var(--tz-cc-claro)" }} />
             <stop offset="0.35" stopColor="currentColor" />
-            <stop offset="0.72" stopColor="#1689f5" />
-            <stop offset="1" stopColor="#0a4bbf" />
+            <stop offset="0.72" style={{ stopColor: "var(--tz-cc-medio)" }} />
+            <stop offset="1" style={{ stopColor: "var(--tz-cc-oscuro)" }} />
           </linearGradient>
           <radialGradient id={mesa} cx="0.45" cy="0.4" r="0.7">
             <stop offset="0" stopColor="#ffffff" />
-            <stop offset="0.45" stopColor="#b8f5ff" />
-            <stop offset="1" stopColor="#35c4ff" />
+            <stop offset="0.45" style={{ stopColor: "var(--tz-cc-claro)" }} />
+            <stop offset="1" style={{ stopColor: "var(--tz-cc-mesa)" }} />
           </radialGradient>
           <linearGradient id={brillo} x1="0" y1="0" x2="1" y2="0">
             <stop offset="0" stopColor="#fff" stopOpacity="0" />
@@ -180,10 +180,10 @@ function Diamante() {
         <path d="M12 0.8 6.4 7.7 12 6.6Z" fill="#fff" opacity="0.75" />
         <path d="M0.8 14.6 6.4 7.7 6.2 14.6Z" fill="#fff" opacity="0.6" />
         <path d="M0.8 14.6 6.2 14.6 6.3 21.4Z" fill="#fff" opacity="0.28" />
-        <path d="M23.2 14.6 17.8 14.6 17.7 21.4Z" fill="#08307d" opacity="0.6" />
-        <path d="M12 33.2 17.7 21.4 12 26Z" fill="#08307d" opacity="0.65" />
-        <path d="M23.2 14.6 17.7 21.4 12 33.2Z" fill="#08307d" opacity="0.35" />
-        <path d="M17.6 7.7 12 0.8 12 6.6Z" fill="#0b4fc4" opacity="0.35" />
+        <path d="M23.2 14.6 17.8 14.6 17.7 21.4Z" style={{ fill: "var(--tz-cc-sombra)" }} opacity="0.6" />
+        <path d="M12 33.2 17.7 21.4 12 26Z" style={{ fill: "var(--tz-cc-sombra)" }} opacity="0.65" />
+        <path d="M23.2 14.6 17.7 21.4 12 33.2Z" style={{ fill: "var(--tz-cc-sombra)" }} opacity="0.35" />
+        <path d="M17.6 7.7 12 0.8 12 6.6Z" style={{ fill: "var(--tz-cc-oscuro)" }} opacity="0.35" />
         <path d="M23.2 14.6 17.6 7.7 17.8 14.6Z" fill="#fff" opacity="0.32" />
         <path d="M6.3 21.4 12 26 12 33.2Z" fill="#fff" opacity="0.18" />
         {/* Mesa interior */}
@@ -191,7 +191,7 @@ function Diamante() {
         <path d="M12 6.6 12 26M6.2 14.6H17.8" stroke="#fff" strokeOpacity="0.45" strokeWidth="0.5" />
         <path d="M12 6.6 14.4 14.6 12 26 9.6 14.6Z" fill="#fff" opacity="0.35" />
         {/* Aristas */}
-        <g fill="none" stroke="#e8fdff" strokeOpacity="0.7" strokeWidth="0.55" strokeLinejoin="round">
+        <g fill="none" stroke="#ffffff" strokeOpacity="0.7" strokeWidth="0.55" strokeLinejoin="round">
           <path d="M12 0.8 12 6.6M23.2 14.6H17.8M12 33.2V26M0.8 14.6H6.2" />
           <path d="M6.4 7.7 12 6.6 17.6 7.7M6.4 7.7 6.2 14.6 6.3 21.4 12 26 17.7 21.4 17.8 14.6 17.6 7.7" />
           <path d="M12 6.6 17.8 14.6 12 26 6.2 14.6Z" />
@@ -206,7 +206,10 @@ function Diamante() {
   );
 }
 
-export default function ContadorCreditos({ valor, clave, titulo = "Créditos" }) {
+// `variante`: "celeste" (créditos del cliente) o "verde" (créditos del
+// conductor). Toma el tamaño de letra de donde se pone (1em) si se le pasa
+// `className="tz-cc-heredado"` (ej. dentro de un recuadro de saldo).
+export default function ContadorCreditos({ valor, clave, titulo = "Créditos", variante = "celeste", className = "" }) {
   const actual = Math.max(0, Math.round(Number(valor) || 0));
   const visible = useInterfazPrincipalVisible();
   const [mostrado, setMostrado] = useState(() => {
@@ -269,7 +272,7 @@ export default function ContadorCreditos({ valor, clave, titulo = "Créditos" })
   }, [gotas]);
 
   return (
-    <span className="tz-cc" title={`${titulo}: ${giro ? giro.hasta : mostrado}`} aria-label={`${titulo}: ${actual}`}>
+    <span className={`tz-cc tz-cc-${variante} ${className}`} title={`${titulo}: ${giro ? giro.hasta : mostrado}`} aria-label={`${titulo}: ${actual}`}>
       <style>{ESTILO}</style>
       <Diamante />
       <span className="tz-cc-numero" style={{ minWidth: `${cifras * ANCHO_CIFRA}em` }}>
@@ -315,6 +318,15 @@ export default function ContadorCreditos({ valor, clave, titulo = "Créditos" })
 const ESTILO = `
 .tz-cc {
   --tz-cc-color: var(--cyan, #2be8ff);
+  --tz-cc-claro: #9eeeff;
+  --tz-cc-medio: #1689f5;
+  --tz-cc-oscuro: #0a4bbf;
+  --tz-cc-sombra: #08307d;
+  --tz-cc-mesa: #35c4ff;
+  --tz-cc-final: #a08cff;
+  --tz-cc-aura: rgba(43, 232, 255, 0.38);
+  --tz-cc-aura2: rgba(143, 123, 255, 0.18);
+  --tz-cc-brillo: rgba(43, 140, 255, 0.65);
   position: relative;
   top: 6px;
   display: inline-flex;
@@ -328,11 +340,26 @@ const ESTILO = `
   letter-spacing: 0.04em;
   user-select: none;
 }
+/* Créditos del conductor: gema verde (esmeralda). */
+.tz-cc.tz-cc-verde {
+  --tz-cc-color: var(--green, #39ffb0);
+  --tz-cc-claro: #b8ffd9;
+  --tz-cc-medio: #16c25a;
+  --tz-cc-oscuro: #0a7a35;
+  --tz-cc-sombra: #054d21;
+  --tz-cc-mesa: #3be27c;
+  --tz-cc-final: #1fd6a0;
+  --tz-cc-aura: rgba(57, 255, 136, 0.36);
+  --tz-cc-aura2: rgba(31, 214, 160, 0.18);
+  --tz-cc-brillo: rgba(22, 194, 90, 0.65);
+}
+/* Dentro de un recuadro de saldo: mismo tamaño de letra que el valor. */
+.tz-cc.tz-cc-heredado { font-size: 1em; top: 0; letter-spacing: inherit; }
 .tz-cc-diamante {
   position: relative;
   display: inline-flex;
-  width: 18px;
-  height: 26px;
+  width: 0.95em;
+  height: 1.37em;
   flex-shrink: 0;
   color: var(--tz-cc-color);
 }
@@ -341,14 +368,14 @@ const ESTILO = `
   width: 100%;
   height: 100%;
   overflow: visible;
-  filter: drop-shadow(0 0 3px var(--tz-cc-color)) drop-shadow(0 0 8px rgba(43, 140, 255, 0.65));
+  filter: drop-shadow(0 0 3px var(--tz-cc-color)) drop-shadow(0 0 8px var(--tz-cc-brillo));
   animation: tz-cc-flotar 3.6s ease-in-out infinite;
 }
 .tz-cc-aura {
   position: absolute;
   inset: -9px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(43, 232, 255, 0.38), rgba(143, 123, 255, 0.18) 45%, transparent 70%);
+  background: radial-gradient(circle, var(--tz-cc-aura), var(--tz-cc-aura2) 45%, transparent 70%);
   animation: tz-cc-aura 3.6s ease-in-out infinite;
   pointer-events: none;
 }
@@ -379,11 +406,11 @@ const ESTILO = `
   display: block;
   height: ${ALTO_DIGITO}em;
   line-height: ${ALTO_DIGITO}em;
-  background: linear-gradient(180deg, #f2feff 8%, var(--tz-cc-color) 55%, #a08cff 100%);
+  background: linear-gradient(180deg, #f2feff 8%, var(--tz-cc-color) 55%, var(--tz-cc-final) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 5px rgba(43, 232, 255, 0.55));
+  filter: drop-shadow(0 0 5px var(--tz-cc-aura));
 }
 /* Mismo ancho para cada cifra (quieta o girando): sin saltos al terminar. */
 .tz-cc-celda,

@@ -3448,8 +3448,8 @@ export default function Styles() {
          a ser el protagonista visual. Va DESPUÉS de .tz-chat-messages
          en la hoja para poder pisar su 'flex:1 1 auto'. */
       .tz-chat-messages-mini {
-        flex: 0 0 90px;
-        max-height: 90px;
+        flex: 1 1 auto;
+        min-height: 150px;
       }
       @keyframes tzChatBubbleIn {
         from { opacity: 0; transform: translateY(8px); }
@@ -5443,19 +5443,20 @@ export default function Styles() {
         color: var(--text-dim);
       }
       /* Contador de créditos del pasajero (ContadorCreditos.jsx). */
-      /* Fila del pasajero: filtro de localidad a la izquierda y créditos a
-         la derecha, centrados en su mitad (con aire a los bordes). Dos
-         columnas iguales: simétrico. Sin sesión, el filtro solo y
-         centrado como siempre. */
+      /* Fila del pasajero: el filtro de localidad ocupa el 70 % desde la
+         izquierda y los créditos el 30 % restante, centrados ahí. 13 px
+         más de aire antes del botón del Radar. Sin sesión, el filtro solo
+         y centrado como siempre. */
       .tz-fila-localidad { width: 100%; display: flex; justify-content: center; }
       .tz-fila-saldo-localidad {
         width: 100%;
         max-width: 560px;
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 7fr 3fr;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
         padding: 0 6px;
+        margin-bottom: 13px;
       }
       .tz-fila-saldo { display: flex; justify-content: center; align-items: center; min-width: 0; }
       .tz-fila-saldo .tz-cc { top: 0; }

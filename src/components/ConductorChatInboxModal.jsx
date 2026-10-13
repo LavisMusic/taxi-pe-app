@@ -28,9 +28,18 @@ function HiloConversacion({ conductorId, pasajeroId, nivelServicio, iconoCategor
 
   // Al abrir este hilo, todo lo que mandó el pasajero queda "leído" —
   // apaga el punto rojo del botón Mensajes (ver ConductorPage.jsx).
+  // Y también con el chat ya abierto: cada mensaje nuevo del pasajero se
+  // marca leído al llegar (si la pestaña está a la vista).
+  const hayNoLeidos = (mensajes ?? []).some((m) => m?.remitente === "pasajero" && !m?.leido);
   useEffect(() => {
-    marcarLeidoPorConductor?.();
-  }, [marcarLeidoPorConductor]);
+    if (!hayNoLeidos && mensajes) return undefined;
+    const marcar = () => {
+      if (document.visibilityState === "visible") marcarLeidoPorConductor?.();
+    };
+    marcar();
+    document.addEventListener("visibilitychange", marcar);
+    return () => document.removeEventListener("visibilitychange", marcar);
+  }, [marcarLeidoPorConductor, hayNoLeidos, mensajes]);
 
   return (
     <ChatWindow

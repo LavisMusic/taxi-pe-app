@@ -29,6 +29,7 @@ import AnimacionExitoNeon from "../components/AnimacionExitoNeon";
 import { useViajeFinalizadoAviso } from "../hooks/useViajeFinalizadoAviso";
 import VerificarConductorForm from "../components/VerificarConductorForm";
 import Dropdown from "../components/Dropdown";
+import ContadorCreditos from "../components/ContadorCreditos";
 import EntregasRepartidorPanel from "../components/repartidor/EntregasRepartidorPanel";
 import logo from "../assets/logo.webp";
 import BotonSoporte from "../components/BotonSoporte";
@@ -397,7 +398,14 @@ export default function ConductorPage() {
                 <span className="tz-stat-label">
                   <CreditCard size={13} /> Créditos
                 </span>
-                <span className="tz-stat-value tz-cyan">{conductor.creditos ?? 0}</span>
+                <span className="tz-stat-value">
+                  <ContadorCreditos
+                    valor={conductor.creditos ?? 0}
+                    clave={`tz-creditos-conductor-${conductor.id}`}
+                    variante="verde"
+                    className="tz-cc-heredado"
+                  />
+                </span>
               </div>
 
               <div className={`tz-stat-chip ${vencida ? "" : "tz-stat-chip-green"}`}>
