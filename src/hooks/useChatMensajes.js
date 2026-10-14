@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
+import { useEscribiendo } from "./useEscribiendo";
 
 export const REMITENTE_PASAJERO = "pasajero";
 export const REMITENTE_CONDUCTOR = "conductor";
@@ -78,14 +79,6 @@ async function sincronizarAsientosYEstado(conductorId) {
   if (error) console.error("No se pudo sincronizar asientos/estado del conductor:", error);
 }
 
-// Cuánto dura visible el indicador de "escribiendo…" después del
-// último aviso recibido — si no llega uno nuevo en este lapso, se
-// asume que la otra persona paró (no hay evento explícito de "dejé de
-// escribir", solo se infiere por silencio).
-const TYPING_TIMEOUT_MS = 2500;
-// No se manda un broadcast por cada tecla — alcanza con uno cada tanto
-// mientras haya tipeo activo, mucho menos tráfico en el canal.
-const TYPING_THROTTLE_MS = 1500;
 
 // Chat interno de un hilo (conductor, pasajero) — reemplaza al viejo
 // "Contactar" por wa.me: acá el número de ninguno de los dos sale nunca
@@ -102,11 +95,21 @@ export function useChatMensajes(conductorId, pasajeroId) {
   const [mensajes, setMensajes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [otroEscribiendo, setOtroEscribiendo] = useState(false);
+  // "Escribiendo…" por un canal propio con el MISMO nombre en los dos
+  // lados (el de abajo lleva un sufijo por ventana y el aviso nunca le
+  // llegaba al otro).
+  const {
+    escribiendo: rolEscribiendo,
+    avisar: avisarEscribiendo,
+    apagar: apagarEscribiendo,
+  } = useEscribiendo(
+    conductorId && pasajeroId ? supabase : null,
+    conductorId && pasajeroId ? `viaje-${conductorId}-${pasajeroId}` : null,
+    null
+  );
+  const otroEscribiendo = !!rolEscribiendo;
 
   const channelRef = useRef(null);
-  const typingTimeoutRef = useRef(null);
-  const lastTypingSentRef = useRef(0);
   // Sufijo único por INSTANCIA del hook (no por conductorId/pasajeroId)
   // — causa raíz real del crash reportado: ConductorPage (badge de no
   // leídos) y ConductorChatInboxModal (bandeja completa) llaman este
@@ -203,22 +206,14 @@ export function useChatMensajes(conductorId, pasajeroId) {
           setMensajes((prev) => (prev.some((m) => m.id === payload.new.id) ? prev : [...prev, payload.new]));
           // Si llegó un mensaje de verdad, el "escribiendo…" ya cumplió
           // su función — lo apagamos aunque el timeout todavía no venza.
-          clearTimeout(typingTimeoutRef.current);
-          setOtroEscribiendo(false);
+          apagarEscribiendo();
         }
       )
-      .on("broadcast", { event: "typing" }, ({ payload }) => {
-        if (payload?.remitente === undefined) return;
-        setOtroEscribiendo(true);
-        clearTimeout(typingTimeoutRef.current);
-        typingTimeoutRef.current = setTimeout(() => setOtroEscribiendo(false), TYPING_TIMEOUT_MS);
-      })
       .subscribe();
 
     channelRef.current = channel;
 
     return () => {
-      clearTimeout(typingTimeoutRef.current);
       supabase.removeChannel(channel);
       channelRef.current = null;
     };
@@ -467,12 +462,7 @@ export function useChatMensajes(conductorId, pasajeroId) {
   // filtrar del lado del listener si hiciera falta — Supabase Realtime
   // ya no reenvía el broadcast al mismo cliente que lo emitió, pero
   // igual es un dato barato de incluir por si acaso.
-  const notificarEscribiendo = useCallback((remitente) => {
-    const ahora = Date.now();
-    if (ahora - lastTypingSentRef.current < TYPING_THROTTLE_MS) return;
-    lastTypingSentRef.current = ahora;
-    channelRef.current?.send({ type: "broadcast", event: "typing", payload: { remitente } });
-  }, []);
+  const notificarEscribiendo = useCallback(() => avisarEscribiendo(), [avisarEscribiendo]);
 
   // Lo llama SOLO el lado Conductor al abrir este hilo (ver
   // ConductorChatInboxModal.jsx) — marca como leídos los mensajes que
