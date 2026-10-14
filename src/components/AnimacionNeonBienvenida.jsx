@@ -517,6 +517,10 @@ export default function AnimacionNeonBienvenida({
               className="tz-neon-ground-shape"
               d="M0,20 L0,15 Q3,9 6,13 Q9,6 12,12 Q15,8 18,14 Q21,5 24,11 Q27,9 30,15 Q33,7 36,12 Q39,10 42,14 Q45,4 48,10 Q51,9 54,15 Q57,7 60,12 Q63,10 66,14 Q69,5 72,11 Q75,9 78,15 Q81,6 84,12 Q87,9 90,14 Q93,7 96,13 Q99,9 100,15 L100,20 Z"
             />
+            {/* El brillo verde solo sigue el contorno de arriba: el trazo
+               de la figura cerrada también marcaba una línea en el borde
+               inferior de la pantalla y en los costados. */}
+            <path className="tz-neon-ground-line" d="M0,15 Q3,9 6,13 Q9,6 12,12 Q15,8 18,14 Q21,5 24,11 Q27,9 30,15 Q33,7 36,12 Q39,10 42,14 Q45,4 48,10 Q51,9 54,15 Q57,7 60,12 Q63,10 66,14 Q69,5 72,11 Q75,9 78,15 Q81,6 84,12 Q87,9 90,14 Q93,7 96,13 Q99,9 100,15" />
           </svg>
 
           <svg className="tz-neon-svg-defs" aria-hidden="true">
@@ -797,8 +801,9 @@ export default function AnimacionNeonBienvenida({
               max-height: 150px;
               pointer-events: none;
             }
-            .tz-neon-ground-shape {
-              fill: rgba(8,26,18,0.92);
+            .tz-neon-ground-shape { fill: rgba(8,26,18,0.92); stroke: none; }
+            .tz-neon-ground-line {
+              fill: none;
               stroke: var(--tz-neon-green);
               /* Mismo motivo que .tz-neon-line: con non-scaling-stroke
                  este número ya es "píxeles de pantalla", no unidades
