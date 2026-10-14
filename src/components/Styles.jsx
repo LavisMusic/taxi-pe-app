@@ -187,12 +187,11 @@ export default function Styles() {
         box-sizing: border-box;
         overflow: visible;
         padding: 20px 14px 22px;
-        /* Borde inferior tipo láser (igual que Caja Tonazo): 1.5 px, 2 px sobre el borde,
+        /* Borde inferior tipo láser (igual que Caja Tonazo): 1.5 px,
            brillante al centro y que se desvanece en punta hacia los
-           costados, con un resplandor suave encima. */
+           costados. */
         background:
-          linear-gradient(90deg, transparent 0%, rgba(43,232,255,0.22) 14%, rgba(43,232,255,0.75) 50%, rgba(43,232,255,0.22) 86%, transparent 100%) center bottom 2px / 100% 1.5px no-repeat,
-          linear-gradient(90deg, transparent 8%, rgba(43,232,255,0.08) 35%, rgba(43,232,255,0.14) 50%, rgba(43,232,255,0.08) 65%, transparent 92%) center bottom 2px / 100% 7px no-repeat,
+          linear-gradient(90deg, transparent 0%, rgba(43,232,255,0.22) 14%, rgba(43,232,255,0.75) 50%, rgba(43,232,255,0.22) 86%, transparent 100%) center bottom / 100% 1.5px no-repeat,
           rgba(10, 7, 22, 0.85);
         border-bottom: none;
       }
@@ -2642,6 +2641,14 @@ export default function Styles() {
         display: flex;
         flex-direction: column;
         gap: 8px;
+      }
+      .tz-estad-card > .tz-stat-label {
+        color: var(--cyan);
+        text-shadow: 0 0 8px rgba(43,232,255,0.6);
+      }
+      .tz-estad-card > .tz-stat-label svg {
+        color: var(--cyan);
+        filter: drop-shadow(0 0 4px rgba(43,232,255,0.7));
       }
       /* Hoy y Semana arriba, Mes abajo al centro (triángulo). */
       .tz-estad-periodos {
