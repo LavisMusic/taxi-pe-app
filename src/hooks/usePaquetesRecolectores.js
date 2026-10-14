@@ -51,8 +51,10 @@ export function usePaquetesRecolectores() {
   // que cualquier evento es un cambio del Admin.
   useEffect(
     () =>
-      subscribeTable("paquetes_recolectores", () => {
+      subscribeTable("paquetes_recolectores", (evento) => {
         refresh();
+        // Al reconectar solo se pone al día: no es un cambio del Admin.
+        if (evento?.reconexion) return;
         setGlow(true);
         clearTimeout(glowTimeoutRef.current);
         glowTimeoutRef.current = setTimeout(() => setGlow(false), GLOW_DURACION_MS);

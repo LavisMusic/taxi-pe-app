@@ -12,6 +12,7 @@ import {
 } from "../../lib/taxiEnums";
 import { usePaquetes } from "../../hooks/usePaquetes";
 import { useMiRecargaConductor } from "../../hooks/useRecargasConductor";
+import Dropdown from "../Dropdown";
 
 // "Recargar" del pie de página del conductor: pide membresía o gemas por
 // su cuenta (Yape/Plin/Otros + foto del comprobante, obligatoria). La
@@ -134,15 +135,18 @@ export default function RecargarConductorModal({ conductor, onClose }) {
           ))}
         </div>
         <label className="tz-field-label">Paquete</label>
-        <select className="tz-text-input" value={paqueteId} onChange={(e) => setPaqueteId(e.target.value)}>
-          <option value="">{activos.length === 0 ? "No hay paquetes disponibles" : "Elige un paquete…"}</option>
-          {activos.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.nombre} — {p.tipo_item === TIPO_ITEM_MEMBRESIA ? `${p.dias_membresia} días` : `${p.creditos} gemas`} ·{" "}
-              {formatSoles(p.precio)}
-            </option>
-          ))}
-        </select>
+        <Dropdown
+          value={paqueteId}
+          onChange={(v) => setPaqueteId(String(v))}
+          options={activos.map((p) => ({
+            value: String(p.id),
+            label: `${p.nombre} — ${
+              p.tipo_item === TIPO_ITEM_MEMBRESIA ? `${p.dias_membresia} días` : `${p.creditos} gemas`
+            } · ${formatSoles(p.precio)}`,
+          }))}
+          placeholder={activos.length === 0 ? "No hay paquetes disponibles" : "Elige un paquete…"}
+          ariaLabel="Paquete"
+        />
         {paquete?.descripcion && (
           <p className="tz-camera-note" style={{ margin: "6px 0 0" }}>
             {paquete.descripcion}

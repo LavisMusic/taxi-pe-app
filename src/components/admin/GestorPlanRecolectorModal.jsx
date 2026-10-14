@@ -12,6 +12,7 @@ import {
   ESTADO_RECARGA_RECHAZADO,
 } from "../../lib/taxiEnums";
 import { subirComprobante } from "../../lib/comprobantes";
+import Dropdown from "../Dropdown";
 
 // Gestor del plan de UN recolector (botón ⚡ de su tarjeta en el
 // Directorio del Admin, categoría "Recolectores") — el mismo diseño que el
@@ -113,14 +114,16 @@ function RecargaRapida({ recolector, paquetes, crearPeticion, onHecho }) {
   return (
     <>
       <label className="tz-field-label">Paquete de créditos</label>
-      <select className="tz-text-input" value={paqueteId} onChange={(e) => setPaqueteId(e.target.value)}>
-        <option value="">{activos.length === 0 ? "No hay paquetes de créditos" : "Elige un paquete…"}</option>
-        {activos.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.nombre} — {p.creditos} créditos · {formatSoles(p.precio)}
-          </option>
-        ))}
-      </select>
+      <Dropdown
+        value={paqueteId}
+        onChange={(v) => setPaqueteId(String(v))}
+        options={activos.map((p) => ({
+          value: String(p.id),
+          label: `${p.nombre} — ${p.creditos} créditos · ${formatSoles(p.precio)}`,
+        }))}
+        placeholder={activos.length === 0 ? "No hay paquetes de créditos" : "Elige un paquete…"}
+        ariaLabel="Paquete"
+      />
       {paquete && (
         <p className="tz-plan-total" style={{ margin: "8px 0 0" }}>
           Total: <strong>{formatSoles(total)}</strong> · {paquete.creditos} créditos

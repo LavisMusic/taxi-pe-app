@@ -5694,9 +5694,11 @@ export default function Styles() {
       }
       .tz-fila-saldo { display: flex; justify-content: center; align-items: center; min-width: 0; }
       .tz-fila-saldo .tz-cc { top: 0; }
-      /* Gemas (créditos): la palabra centrada encima de la gema y el
-         número, sin recuadro. */
+      /* Gemas (créditos): en su recuadro, la palabra centrada encima de la
+         gema y el número. */
       .tz-gemas { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+      .tz-fila-saldo .tz-stat-chip.tz-gemas { min-width: 80px; padding: 6px 10px; }
+      .tz-fila-saldo .tz-gemas .tz-stat-value { font-size: 15px; }
       /* La palabra va del color de las gemas que representa (cliente:
          celeste; conductor: verde). */
       .tz-gemas-label {
@@ -6771,6 +6773,11 @@ export default function Styles() {
       .tz-select-glow-neon {
         animation: tz-select-glow-neon-pulse 0.55s ease-in-out infinite;
         border-radius: 10px;
+      }
+      /* En el Dropdown propio el parpadeo va en el botón, no en el contenedor. */
+      .tz-dropdown.tz-select-glow-neon { animation: none; }
+      .tz-dropdown.tz-select-glow-neon .tz-dropdown-trigger {
+        animation: tz-select-glow-neon-pulse 0.55s ease-in-out infinite;
       }
       @keyframes tz-select-glow-neon-pulse {
         0%, 100% {

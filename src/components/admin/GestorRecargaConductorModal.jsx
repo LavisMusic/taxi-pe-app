@@ -12,6 +12,7 @@ import {
 } from "../../lib/taxiEnums";
 import { ventaParaPanel } from "../../lib/ventaBoleta";
 import { subirComprobante } from "../../lib/comprobantes";
+import Dropdown from "../Dropdown";
 
 // Gestor de la membresía de UN conductor (botón ⚡ de su tarjeta en el
 // Directorio del Admin) — COMPLETAMENTE igual al gestor del plan de un
@@ -225,15 +226,18 @@ function RecargaRapida({ conductor, paquetes, registrarRecarga, saving, errorExt
         </div>
       )}
       <label className="tz-field-label">Paquete</label>
-      <select className="tz-text-input" value={paqueteId} onChange={(e) => setPaqueteId(e.target.value)}>
-        <option value="">{visibles.length === 0 ? "No hay paquetes en este filtro" : "Elige un paquete…"}</option>
-        {visibles.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.nombre} —{" "}
-            {p.tipo_item === TIPO_ITEM_MEMBRESIA ? `${p.dias_membresia} días` : `${p.creditos} créditos`} · {formatSoles(p.precio)}
-          </option>
-        ))}
-      </select>
+      <Dropdown
+        value={paqueteId}
+        onChange={(v) => setPaqueteId(String(v))}
+        options={visibles.map((p) => ({
+          value: String(p.id),
+          label: `${p.nombre} — ${
+            p.tipo_item === TIPO_ITEM_MEMBRESIA ? `${p.dias_membresia} días` : `${p.creditos} créditos`
+          } · ${formatSoles(p.precio)}`,
+        }))}
+        placeholder={visibles.length === 0 ? "No hay paquetes en este filtro" : "Elige un paquete…"}
+        ariaLabel="Paquete"
+      />
       {paquete && (
         <p className="tz-plan-total" style={{ margin: "8px 0 0" }}>
           Total: <strong>{formatSoles(total)}</strong> ·{" "}
@@ -465,21 +469,22 @@ export default function GestorRecargaConductorModal({
             <div className="tz-plan-seccion">
               <label className="tz-plan-campo tz-plan-campo-ancho">
                 <span>Membresía asignada (sin cobrar)</span>
-                <select
-                  className="tz-text-input"
-                  value={vigente ? conductor.membresia_paquete_id || "" : ""}
-                  onChange={(e) => actualizar({ membresia_paquete_id: e.target.value || null }, "membresia")}
+                <Dropdown
+                  value={vigente ? String(conductor.membresia_paquete_id || "") : ""}
+                  onChange={(v) => actualizar({ membresia_paquete_id: v || null }, "membresia")}
                   disabled={guardando === "membresia" || !vigente}
-                >
-                  <option value="">Sin membresía</option>
-                  {membresias
-                    .filter((p) => p.activo !== false || String(p.id) === String(conductor.membresia_paquete_id))
-                    .map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.nombre} — {p.dias_membresia} días {formatSoles(p.precio)}
-                      </option>
-                    ))}
-                </select>
+                  options={[
+                    { value: "", label: "Sin membresía" },
+                    ...membresias
+                      .filter((p) => p.activo !== false || String(p.id) === String(conductor.membresia_paquete_id))
+                      .map((p) => ({
+                        value: String(p.id),
+                        label: `${p.nombre} — ${p.dias_membresia} días ${formatSoles(p.precio)}`,
+                      })),
+                  ]}
+                  placeholder="Sin membresía"
+                  ariaLabel="Membresía asignada"
+                />
                 {!vigente && (
                   <small className="tz-stock-editor-sub">
                     Sin membresía vigente: al registrar una recarga queda con el paquete que pague.

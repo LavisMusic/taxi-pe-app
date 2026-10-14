@@ -27,7 +27,7 @@ export function useTurnoConductor(conductorId) {
     setCargandoHistorial(true);
     const { data, error } = await supabase
       .from("taxi_conductor_turnos")
-      .select("id, desde, hasta, viajes, ganado_viajes, entregas, ganado_envios, minutos_taxi, minutos_delivery, detalle")
+      .select("id, desde, hasta, viajes, ganado_viajes, entregas, ganado_envios, minutos_taxi, minutos_delivery, detalle, meta")
       .eq("conductor_id", conductorId)
       .eq("oculto", false)
       .order("hasta", { ascending: false })

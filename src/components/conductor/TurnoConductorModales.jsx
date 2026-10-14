@@ -21,6 +21,13 @@ function filasDetalle(detalle) {
   ];
 }
 
+// La meta que tenía el conductor al cerrar el turno, contra lo ganado.
+function textoMeta(total, meta) {
+  const m = Number(meta) || 0;
+  if (!m) return "";
+  return total >= m ? "Cumplida ✓" : `Faltó ${formatSoles(m - total)}`;
+}
+
 function ReciboTurno({ t, titulo, compacto = false }) {
   const total = Number(t.ganado_viajes || 0) + Number(t.ganado_envios || 0);
   return (
@@ -62,6 +69,14 @@ function ReciboTurno({ t, titulo, compacto = false }) {
         <span>GANADO DEL TURNO</span>
         <strong>{formatSoles(total)}</strong>
       </div>
+      {Number(t.meta) > 0 && (
+        <div className="tz-receipt-row">
+          <span>Meta del día ({formatSoles(t.meta)})</span>
+          <strong style={{ color: total >= Number(t.meta) ? "var(--green)" : "var(--orange)" }}>
+            {textoMeta(total, t.meta)}
+          </strong>
+        </div>
+      )}
     </div>
   );
 }
@@ -189,7 +204,7 @@ export function HistorialTurnosModal({ historial, cargando, refrescar, limpiar, 
 
   const exportarTodo = () => {
     const resumen = [
-      ["Inicio", "Fin", "Viajes", "Ganado viajes (S/)", "Repartos", "Ganado envíos (S/)", "Tiempo taxi", "Tiempo delivery", "Total (S/)"],
+      ["Inicio", "Fin", "Viajes", "Ganado viajes (S/)", "Repartos", "Ganado envíos (S/)", "Tiempo taxi", "Tiempo delivery", "Total (S/)", "Meta del día (S/)", "Meta"],
       ...historial.map((t) => [
         `${formatDate(t.desde)} ${formatTime(t.desde)}`,
         `${formatDate(t.hasta)} ${formatTime(t.hasta)}`,
@@ -200,6 +215,8 @@ export function HistorialTurnosModal({ historial, cargando, refrescar, limpiar, 
         formatMinutos(t.minutos_taxi),
         formatMinutos(t.minutos_delivery),
         (Number(t.ganado_viajes) + Number(t.ganado_envios)).toFixed(2),
+        Number(t.meta) > 0 ? Number(t.meta).toFixed(2) : "",
+        textoMeta(Number(t.ganado_viajes) + Number(t.ganado_envios), t.meta),
       ]),
     ];
     const detalle = [["Turno", ...filasDetalle([])[0]]];

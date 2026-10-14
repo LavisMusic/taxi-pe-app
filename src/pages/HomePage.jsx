@@ -408,9 +408,16 @@ export default function HomePage() {
               )}
               {esPasajero && misCreditos != null && (
                 <div className="tz-fila-saldo">
-                  <div className="tz-gemas">
+                  <div className="tz-stat-chip tz-gemas">
                     <span className="tz-gemas-label">Gemas</span>
-                    <ContadorCreditos valor={misCreditos} clave={`tz-creditos-visto-${usuario.id}`} titulo="Gemas" />
+                    <span className="tz-stat-value">
+                      <ContadorCreditos
+                        valor={misCreditos}
+                        clave={`tz-creditos-visto-${usuario.id}`}
+                        titulo="Gemas"
+                        className="tz-cc-heredado"
+                      />
+                    </span>
                   </div>
                 </div>
               )}

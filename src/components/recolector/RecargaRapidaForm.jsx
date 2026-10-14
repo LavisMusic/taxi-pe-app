@@ -16,6 +16,7 @@ import { PAQUETES_DEMO } from "../../lib/paquetesDemo";
 import { formatSoles } from "../../utils/format";
 import RegistroConductorModal from "./RegistroConductorModal";
 import ComprobanteScannerModal from "./ComprobanteScannerModal";
+import Dropdown from "../Dropdown";
 
 const DURACIONES_MEMBRESIA = [
   { id: "mensual", label: "Mensual" },
@@ -466,22 +467,20 @@ export default function RecargaRapidaForm({
         <label className="tz-field-label" style={{ marginTop: 12 }}>
           {tipoItem === TIPO_ITEM_MEMBRESIA ? "Membresía" : "Paquete de créditos"}
         </label>
-        <select
-          className={`tz-text-input ${glowPaquetesActivo ? "tz-select-glow-neon" : ""}`}
+        <Dropdown
+          className={glowPaquetesActivo ? "tz-select-glow-neon" : ""}
           value={paqueteId}
-          onChange={(e) => setPaqueteId(e.target.value)}
+          onChange={(v) => setPaqueteId(String(v))}
           disabled={bloqueadoPorMembresiaVigente}
-        >
-          <option value="">
-            {paquetesDelTipo.length === 0 ? "Ninguna por ahora" : "Elige una opción…"}
-          </option>
-          {paquetesDelTipo.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.nombre} — {formatSoles(p.precio)}
-              {p.tipo_item === TIPO_ITEM_CREDITOS ? ` (${p.creditos} créditos)` : ` (${p.dias_membresia} días)`}
-            </option>
-          ))}
-        </select>
+          options={paquetesDelTipo.map((p) => ({
+            value: String(p.id),
+            label: `${p.nombre} — ${formatSoles(p.precio)}${
+              p.tipo_item === TIPO_ITEM_CREDITOS ? ` (${p.creditos} créditos)` : ` (${p.dias_membresia} días)`
+            }`,
+          }))}
+          placeholder={paquetesDelTipo.length === 0 ? "Ninguna por ahora" : "Elige una opción…"}
+          ariaLabel="Paquete"
+        />
         {glowPaquetesActivo && (
           <p className="tz-camera-note" style={{ margin: "4px 0 0", color: "var(--pink)" }}>
             ✨ El Admin actualizó el catálogo — revisa las opciones.

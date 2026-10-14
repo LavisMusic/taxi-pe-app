@@ -3,6 +3,7 @@ import { Wallet, X, Loader2, Camera, RotateCcw } from "lucide-react";
 import ComprobanteScannerModal from "./ComprobanteScannerModal";
 import { formatSoles } from "../../utils/format";
 import { METODOS_PAGO, METODO_PAGO_EFECTIVO, TIPO_ITEM_CREDITOS } from "../../lib/taxiEnums";
+import Dropdown from "../Dropdown";
 
 const METODOS_AUTORECARGA = METODOS_PAGO.filter((m) => m.key !== METODO_PAGO_EFECTIVO);
 
@@ -87,19 +88,19 @@ export default function AutorecargaRecolectorModal({ recolector, paquetes, glowP
           </h2>
 
           <label className="tz-field-label">Paquete de créditos</label>
-          <select
-            className={`tz-text-input ${glowPaquetes ? "tz-select-glow-neon" : ""}`}
+          <Dropdown
+            className={glowPaquetes ? "tz-select-glow-neon" : ""}
             value={paqueteId}
-            onChange={(e) => setPaqueteId(e.target.value)}
-          >
-            <option value="">{paquetesDelTipo.length === 0 ? "Ninguna configurada" : "Elige una opción…"}</option>
-            {paquetesDelTipo.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nombre} — {formatSoles(p.precio)}
-                {p.tipo_item === TIPO_ITEM_CREDITOS ? ` (${p.creditos} créditos)` : ` (${p.dias_membresia} días)`}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => setPaqueteId(String(v))}
+            options={paquetesDelTipo.map((p) => ({
+              value: String(p.id),
+              label: `${p.nombre} — ${formatSoles(p.precio)}${
+                p.tipo_item === TIPO_ITEM_CREDITOS ? ` (${p.creditos} créditos)` : ` (${p.dias_membresia} días)`
+              }`,
+            }))}
+            placeholder={paquetesDelTipo.length === 0 ? "Ninguna configurada" : "Elige una opción…"}
+            ariaLabel="Paquete de créditos"
+          />
           {glowPaquetes && (
             <p className="tz-camera-note" style={{ margin: "4px 0 0", color: "var(--pink)" }}>
               ✨ El Admin actualizó el catálogo — revisa las opciones.
