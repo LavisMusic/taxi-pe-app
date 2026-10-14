@@ -12,7 +12,14 @@ import {
   ESTADO_OFERTA_ACEPTADA,
   ESTADO_OFERTA_EN_TRANSITO,
 } from "../hooks/useChatMensajes";
-import { TIPO_USUARIO_PASAJERO } from "../lib/taxiEnums";
+import { TIPO_USUARIO_PASAJERO, ESTADO_CONDUCTOR_ACTIVO } from "../lib/taxiEnums";
+import { useActividadChatsPasajero } from "../hooks/useActividadChatsPasajero";
+
+// Chats a la vez con conductores elegidos en el Radar, y cuánto tiempo sin
+// mensajes (de ningún lado) hasta que el conductor deja de estar en
+// contacto: se le quita el botón "Contactar" y vuelve a su lugar en la lista.
+const MAX_CHATS_SIMULTANEOS = 3;
+const INACTIVIDAD_CHAT_MS = 5 * 60 * 1000;
 import { agruparPorNivel } from "../lib/nivelServicio";
 import { reverseGeocode } from "../lib/reverseGeocode";
 import { distanciaMetros } from "../lib/haversine";
@@ -116,6 +123,8 @@ export default function HomePage() {
   // `localidades` se recarga por Realtime mientras la pantalla sigue
   // abierta.
   const geolocalizacionIntentada = useRef(false);
+  // Para ordenar la lista por cercanía (solo en este celular, no se envía).
+  const [pasajeroPos, setPasajeroPos] = useState(null);
   useEffect(() => {
     if (geolocalizacionIntentada.current) return;
     if (localidades.length === 0) return;
@@ -125,6 +134,7 @@ export default function HomePage() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
+        setPasajeroPos({ lat: latitude, lng: longitude });
         const masCercana = localidades.reduce((mejor, l) => {
           const d = distanciaMetros(latitude, longitude, l.lat, l.lon);
           return d < mejor.distancia ? { fila: l, distancia: d } : mejor;
@@ -157,7 +167,24 @@ export default function HomePage() {
   // apaga. Se limpia solo al finalizar o cancelar el viaje (mismo gancho
   // que ya limpia `destinoSeleccionado`, ver `onLimpiarDestino` más
   // abajo — ChatWindow.jsx ya lo dispara en los dos casos).
-  const [conductorActivoId, setConductorActivoId] = useState(null);
+  // Ahora pueden ser hasta MAX_CHATS_SIMULTANEOS conductores en contacto a la
+  // vez: los elegidos en el Radar o con mensajes en los últimos
+  // INACTIVIDAD_CHAT_MS. Apenas el pasajero acepta la oferta de uno, solo
+  // queda ese (los demás pierden el botón).
+  const [seleccionados, setSeleccionados] = useState({}); // { conductorId: ms en que se eligió }
+  const { ultimaActividad, conductorAcordadoId } = useActividadChatsPasajero(esPasajero ? usuario?.id : null);
+  const [ahora, setAhora] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setAhora(Date.now()), 15000);
+    return () => clearInterval(t);
+  }, []);
+  const actividadDe = (id) => Math.max(seleccionados[id] || 0, ultimaActividad[id] || 0);
+  const chatsActivos = conductorAcordadoId
+    ? [conductorAcordadoId]
+    : [...new Set([...Object.keys(seleccionados), ...Object.keys(ultimaActividad)])]
+        .filter((id) => ahora - actividadDe(id) < INACTIVIDAD_CHAT_MS)
+        .sort((a, b) => actividadDe(b) - actividadDe(a))
+        .slice(0, MAX_CHATS_SIMULTANEOS);
 
   // Flujo de Contacto (Fase 0): "Contactar" desde la tarjeta del
   // directorio general NO manda ningún mensaje solo — abre el chat
@@ -188,13 +215,21 @@ export default function HomePage() {
     // hay OTRO en curso; el manual (lista general) nunca fija uno nuevo,
     // solo puede reabrir el que ya está activo.
     if (auto) {
-      if (conductorActivoId && conductorId !== conductorActivoId) {
-        setAvisoDestino("⚠️ Ya tienes una negociación activa con otro conductor");
+      if (conductorAcordadoId && conductorId !== conductorAcordadoId) {
+        setAvisoDestino("⚠️ Ya aceptaste el viaje con otro conductor");
         setTimeout(() => setAvisoDestino(""), 3500);
         return;
       }
-      setConductorActivoId(conductorId);
-    } else if (conductorId !== conductorActivoId) {
+      if (!chatsActivos.includes(conductorId) && chatsActivos.length >= MAX_CHATS_SIMULTANEOS) {
+        setAvisoDestino(
+          `⚠️ Ya hablas con ${MAX_CHATS_SIMULTANEOS} conductores. Espera a que alguno quede inactivo (${INACTIVIDAD_CHAT_MS / 60000} min sin mensajes).`
+        );
+        setTimeout(() => setAvisoDestino(""), 4000);
+        return;
+      }
+      setSeleccionados((prev) => ({ ...prev, [conductorId]: Date.now() }));
+      setAhora(Date.now());
+    } else if (!chatsActivos.includes(conductorId)) {
       // Ningún conductor activo todavía, o es uno DISTINTO al ya activo
       // — la lista general solo puede reabrir el hilo del que ya está
       // en curso, nunca arrancar uno nuevo.
@@ -321,7 +356,31 @@ export default function HomePage() {
   const conductoresDeLaTab = conductores.filter(
     (c) => c.categoria_id === activeTab && (!localidad || c.localidad === localidad)
   );
-  const grupos = agruparPorNivel(conductoresDeLaTab);
+  // Orden dentro de cada nivel: los que están en contacto (el más reciente
+  // primero), libres antes que en carrera, verificados antes que cuentas
+  // temporales y, si el pasajero compartió su ubicación, el más cercano.
+  const distanciaA = (c) =>
+    pasajeroPos && c.ultima_lat != null && c.ultima_lng != null
+      ? distanciaMetros(pasajeroPos.lat, pasajeroPos.lng, Number(c.ultima_lat), Number(c.ultima_lng))
+      : Infinity;
+  const ordenarConductores = (lista) =>
+    lista.slice().sort((a, b) => {
+      const ia = chatsActivos.indexOf(a.id);
+      const ib = chatsActivos.indexOf(b.id);
+      if (ia >= 0 || ib >= 0) {
+        if (ia < 0) return 1;
+        if (ib < 0) return -1;
+        return ia - ib;
+      }
+      const libre = (c) => (c.estado === ESTADO_CONDUCTOR_ACTIVO ? 0 : 1);
+      if (libre(a) !== libre(b)) return libre(a) - libre(b);
+      const verificado = (c) => (c.aprobado ? 0 : 1);
+      if (verificado(a) !== verificado(b)) return verificado(a) - verificado(b);
+      const da = distanciaA(a);
+      const db = distanciaA(b);
+      return da === db ? 0 : da - db;
+    });
+  const grupos = agruparPorNivel(conductoresDeLaTab).map((g) => ({ ...g, conductores: ordenarConductores(g.conductores) }));
 
   return (
     <div className="tz-root">
@@ -506,7 +565,7 @@ export default function HomePage() {
                              mismo hilo. `null`, no un botón deshabilitado
                              — el pasajero no debe ni verlo en el resto de
                              las tarjetas. */}
-                          {c.id === conductorActivoId && (
+                          {chatsActivos.includes(c.id) && (
                             <button
                               type="button"
                               className="tz-scan-btn tz-payment-save"
@@ -573,7 +632,7 @@ export default function HomePage() {
           // no hace falta un callback aparte para esto.
           onLimpiarDestino={() => {
             setDestinoSeleccionado(null);
-            setConductorActivoId(null);
+            setSeleccionados({});
           }}
           onClose={() => setChatConductorId(null)}
         />
