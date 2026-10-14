@@ -9,11 +9,8 @@ import { supabase } from "../supabaseClient";
 // - `ofertas`: entregas en estado 'buscando' que el cajero le ofreció a
 //   ESTE conductor (varias a la vez; gana el primero que acepta).
 // - `entregasActivas`: TODAS sus entregas en curso ('aceptado' o
-//   'en_ruta') — un conductor puede tener varias 'aceptado' sin recoger
-//   todavía, pero apenas una llega a 'en_ruta' (recogió y pagó esa) dejó
-//   de recibir ofertas nuevas (bloqueado del lado del RPC
-//   rpc_conductores_para_reparto/rpc_entrega_aceptar, ver DELIVERY.md §9)
-//   — `tieneEnRuta` es ese chequeo ya resuelto para la UI.
+//   'en_ruta'), de la más antigua a la más reciente — hasta MAX_REPARTOS
+//   a la vez (migración 20261014170000).
 //
 // Polling cada 8 s + al volver el foco a la pestaña (mismo criterio que
 // el resto de la app — ver useConductorSesion.js). Mientras haya
@@ -21,6 +18,8 @@ import { supabase } from "../supabaseClient";
 // DE CADA UNA para refrescar al toque ante cambios de estado / mensajes.
 
 const POLL_MS = 8000;
+// Pedidos de reparto aceptados a la vez (lo valida rpc_entrega_aceptar).
+export const MAX_REPARTOS = 5;
 
 export function canalEntrega(entregaId) {
   return `entrega-${entregaId}`;
@@ -35,8 +34,8 @@ export function useEntregasRepartidor(conductorId) {
 
   const refresh = useCallback(async () => {
     if (!conductorId) {
-      setOfertas([]);
-      setEntregasActivas([]);
+      setOfertas((o) => (o.length ? [] : o));
+      setEntregasActivas((e) => (e.length ? [] : e));
       setLoading(false);
       return;
     }

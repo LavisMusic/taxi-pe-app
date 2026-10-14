@@ -40,7 +40,7 @@ export function useConductorSesion(usuario) {
     const { data, error: fetchError } = await supabase
       .from("conductores")
       .select(
-        "id, nombre, placa, telefono, foto_url, foto_portada_url, descripcion, estado, creditos, vencimiento_suscripcion, ultimo_descuento_creditos, categoria_id, subgrupo_id, localidad, nivel_servicio, aprobado, asientos_totales, asientos_ocupados, membresia_paquete_id, modo_delivery, ultimo_paquete_creditos_nombre, ultimo_paquete_creditos_descripcion, ultima_compra_creditos_at"
+        "id, nombre, placa, telefono, foto_url, foto_portada_url, descripcion, estado, creditos, vencimiento_suscripcion, ultimo_descuento_creditos, categoria_id, subgrupo_id, localidad, nivel_servicio, aprobado, asientos_totales, asientos_ocupados, membresia_paquete_id, modo_delivery, meta_diaria, ultimo_paquete_creditos_nombre, ultimo_paquete_creditos_descripcion, ultima_compra_creditos_at"
       )
       .eq("telefono", usuario.telefono)
       .maybeSingle();

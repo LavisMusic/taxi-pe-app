@@ -1,5 +1,22 @@
 import { useEffect, useState } from "react";
-import { LogOut, Pencil, Zap, Car, Ban, CalendarClock, MessageCircle, Save, Loader2, X, Receipt, History, BarChart3 } from "lucide-react";
+import {
+  LogOut,
+  Pencil,
+  Zap,
+  Car,
+  Ban,
+  Bike,
+  CalendarClock,
+  MessageCircle,
+  Save,
+  Loader2,
+  X,
+  Receipt,
+  History,
+  BarChart3,
+  Wallet,
+  Target,
+} from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useConductorSesion } from "../hooks/useConductorSesion";
 import { useHilosChatConductor } from "../hooks/useChatMensajes";
@@ -19,7 +36,7 @@ import {
   ESTADO_VERIFICACION_TEMPORAL,
   ESTADO_VERIFICACION_EN_REVISION,
 } from "../lib/taxiEnums";
-import { formatDate } from "../utils/format";
+import { formatDate, formatSoles } from "../utils/format";
 import Styles from "../components/Styles";
 import GestionImagenModal from "../components/admin/GestionImagenModal";
 import ConductorPublicCard from "../components/ConductorPublicCard";
@@ -34,6 +51,9 @@ import PanelesConductor from "../components/conductor/PanelesConductor";
 import PanelDelivery from "../components/conductor/PanelDelivery";
 import { CerrarTurnoModal, HistorialTurnosModal, EstadisticasModal } from "../components/conductor/TurnoConductorModales";
 import { useTurnoConductor, useEstadisticasConductor } from "../hooks/useTurnoConductor";
+import { useEntregasRepartidor } from "../hooks/useEntregasRepartidor";
+import RecargarConductorModal from "../components/conductor/RecargarConductorModal";
+import MetaDiaModal, { gananciaHoy } from "../components/conductor/MetaDiaModal";
 import logo from "../assets/logo.webp";
 import BotonSoporte from "../components/BotonSoporte";
 import TextoMaquina from "../components/TextoMaquina";
@@ -151,6 +171,14 @@ export default function ConductorPage() {
   };
   const tieneAcceso = !inhabilitadoPorAdmin && (tieneMembresiaVigente || (conductor?.creditos ?? 0) > 0);
 
+  // En carrera (pasajero con oferta aceptada o en tránsito): el switch de
+  // taxi queda bloqueado y no recibe repartos. Repartiendo (pedidos de
+  // reparto aceptados): no recibe pasajeros (la base además lo pasó a
+  // Desconectado) y no puede apagar el modo delivery hasta entregar todo.
+  const repartos = useEntregasRepartidor(conductor?.aprobado ? conductor.id : null);
+  const enCarrera = (pasajerosEnCarrera?.length ?? 0) > 0;
+  const repartiendo = repartos.entregasActivas.length > 0;
+
   // Fase 3 — transmite el GPS del conductor mientras tenga sesión, sin
   // depender de que tenga algún chat abierto (ver useGpsBroadcaster.js:
   // decide solo si va al radar público o al canal privado de la
@@ -224,7 +252,7 @@ export default function ConductorPage() {
   const [panel, setPanel] = useState("viajes");
   const [cambiandoDelivery, setCambiandoDelivery] = useState(false);
   const [deliveryError, setDeliveryError] = useState("");
-  const [modalTurno, setModalTurno] = useState(null); // "cerrar" | "historial" | "estadisticas"
+  const [modalTurno, setModalTurno] = useState(null); // "cerrar" | "historial" | "estadisticas" | "recargar" | "meta"
   const turno = useTurnoConductor(conductor?.id);
   const { estadisticas, refrescar: refrescarEstadisticas } = useEstadisticasConductor(conductor?.id);
 
@@ -236,15 +264,30 @@ export default function ConductorPage() {
     setCambiandoDelivery(false);
     if (errDelivery) {
       setDeliveryError(
-        /membres/i.test(errDelivery.message || "")
-          ? "El modo delivery requiere una membresía vigente (con créditos solo puedes hacer viajes)."
-          : "No se pudo cambiar el modo delivery. Intenta de nuevo."
+        errDelivery.code === "22023" ? errDelivery.message : "No se pudo cambiar el modo delivery. Intenta de nuevo."
       );
     }
   };
 
+  // Meta del día: festejo una sola vez por día al alcanzarla.
+  const ganadoHoy = gananciaHoy(estadisticas);
+  const metaDiaria = Number(conductor?.meta_diaria) || 0;
+  const [festejarMeta, setFestejarMeta] = useState(false);
+  useEffect(() => {
+    if (!conductor?.id || !metaDiaria || ganadoHoy == null || ganadoHoy < metaDiaria) return;
+    const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Lima" });
+    const clave = `tz-meta-cumplida-${conductor.id}`;
+    try {
+      if (localStorage.getItem(clave) === hoy) return;
+      localStorage.setItem(clave, hoy);
+    } catch {
+      /* sin almacenamiento: se festeja igual */
+    }
+    setFestejarMeta(true);
+  }, [conductor?.id, metaDiaria, ganadoHoy]);
+
   const handleToggle = async () => {
-    if (!conductor || toggling) return;
+    if (!conductor || toggling || enCarrera || repartiendo) return;
     const nuevoEstado = estadoActivo ? ESTADO_CONDUCTOR_OCUPADO : ESTADO_CONDUCTOR_ACTIVO;
     setToggling(true);
     setToggleError("");
@@ -257,7 +300,9 @@ export default function ConductorPage() {
         ? await actualizar(conductor.id, { estado: nuevoEstado, asientos_ocupados: 0 })
         : await setEstado(nuevoEstado);
     setToggling(false);
-    if (setError) setToggleError("No se pudo actualizar tu estado. Intenta de nuevo.");
+    if (setError) {
+      setToggleError(setError.code === "22023" ? setError.message : "No se pudo actualizar tu estado. Intenta de nuevo.");
+    }
   };
 
   return (
@@ -292,6 +337,13 @@ export default function ConductorPage() {
           titulo="¡Viaje finalizado!"
           descripcion="Carrera completada. ¡Buen trabajo!"
           onTerminar={viajeFinalizado.cerrar}
+        />
+      )}
+      {festejarMeta && !exitoEntrega && !viajeFinalizado.festejar && (
+        <AnimacionExitoNeon
+          titulo="¡Meta cumplida!"
+          descripcion={`Hoy ya ganaste ${formatSoles(ganadoHoy)}. ¡Gran trabajo!`}
+          onTerminar={() => setFestejarMeta(false)}
         />
       )}
       {exitoEntrega && (
@@ -396,6 +448,8 @@ export default function ConductorPage() {
                 conductor={conductor}
                 estadisticas={estadisticas}
                 tieneMembresia={tieneMembresiaVigente && !inhabilitadoPorAdmin}
+                repartos={repartos}
+                enCarrera={enCarrera}
                 cambiando={cambiandoDelivery}
                 error={deliveryError}
                 onToggle={handleToggleDelivery}
@@ -477,16 +531,22 @@ export default function ConductorPage() {
               // créditos, ni siquiera importa si estaba Activo/Ocupado
               // antes, el switch entero se ve y se comporta como
               // bloqueado.
-              className={`tz-estado-toggle ${!tieneAcceso ? "tz-estado-toggle-bloqueado" : ""}`}
-              data-estado={conductor.estado}
+              className={`tz-estado-toggle ${!tieneAcceso ? "tz-estado-toggle-bloqueado" : ""} ${
+                tieneAcceso && (enCarrera || repartiendo) ? "tz-estado-toggle-trabajando" : ""
+              }`}
+              data-estado={tieneAcceso && repartiendo ? "repartiendo" : tieneAcceso && enCarrera ? "ocupado" : conductor.estado}
               onClick={handleToggle}
-              disabled={toggling || !tieneAcceso || sinVehiculo || rechazado}
+              disabled={toggling || !tieneAcceso || sinVehiculo || rechazado || enCarrera || repartiendo}
               aria-label={
                 inhabilitadoPorAdmin
                   ? "Inhabilitado por el administrador"
                   : !tieneAcceso
                     ? "Inhabilitado — sin membresía activa ni créditos"
-                    : estadoActivo
+                    : enCarrera
+                      ? "En carrera"
+                      : repartiendo
+                        ? "Repartiendo"
+                        : estadoActivo
                       ? "Pasar a Ocupado"
                       : "Pasar a Activo"
               }
@@ -506,6 +566,10 @@ export default function ConductorPage() {
                 <Loader2 size={40} className="tz-spin" />
               ) : !tieneAcceso ? (
                 <Ban size={44} color="var(--danger)" />
+              ) : repartiendo ? (
+                <Bike size={44} color="var(--cyan)" />
+              ) : enCarrera ? (
+                <Car size={44} color="var(--orange)" />
               ) : estadoActivo ? (
                 <Zap size={44} color="var(--green)" />
               ) : (
@@ -514,7 +578,11 @@ export default function ConductorPage() {
               <span className="tz-estado-toggle-label">
                 {!tieneAcceso
                   ? "🚫 Inhabilitado"
-                  : estadoActivo
+                  : enCarrera
+                    ? "EN CARRERA"
+                    : repartiendo
+                      ? "REPARTIENDO"
+                      : estadoActivo
                     ? "ACTIVO"
                     : conductor.estado === ESTADO_CONDUCTOR_OCUPADO
                       ? "OCUPADO"
@@ -525,7 +593,11 @@ export default function ConductorPage() {
                   ? "Tu cuenta fue inhabilitada por el administrador"
                   : !tieneAcceso
                     ? "Recarga tu membresía o tus créditos"
-                    : rechazado
+                    : enCarrera
+                      ? "Termina el viaje para cambiar tu estado"
+                      : repartiendo
+                        ? "Termina tus repartos para recibir pasajeros"
+                        : rechazado
                       ? "Reenvía tu verificación para conectarte"
                       : sinVehiculo
                         ? "Elige tu vehículo para conectarte"
@@ -615,6 +687,12 @@ export default function ConductorPage() {
           <button className="tz-footer-btn tz-footer-btn-stock" onClick={() => setModalTurno("estadisticas")}>
             <BarChart3 size={14} /> Estadísticas
           </button>
+          <button className="tz-footer-btn tz-footer-btn-catalogo" onClick={() => setModalTurno("recargar")}>
+            <Wallet size={14} /> Recargar
+          </button>
+          <button className="tz-footer-btn tz-footer-btn-localidades" onClick={() => setModalTurno("meta")}>
+            <Target size={14} /> Meta del día
+          </button>
         </footer>
       )}
 
@@ -640,6 +718,17 @@ export default function ConductorPage() {
       )}
       {modalTurno === "estadisticas" && conductor && (
         <EstadisticasModal conductorId={conductor.id} onClose={() => setModalTurno(null)} />
+      )}
+      {modalTurno === "recargar" && conductor && (
+        <RecargarConductorModal conductor={conductor} onClose={() => setModalTurno(null)} />
+      )}
+      {modalTurno === "meta" && conductor && (
+        <MetaDiaModal
+          conductor={conductor}
+          estadisticas={estadisticas}
+          guardar={(monto) => actualizar(conductor.id, { meta_diaria: monto })}
+          onClose={() => setModalTurno(null)}
+        />
       )}
 
       {editandoPerfil && conductor && (

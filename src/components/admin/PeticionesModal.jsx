@@ -25,6 +25,7 @@ import { conductoresPorRevisar, recolectoresPorRevisar } from "../../lib/peticio
 import { useLocalidades } from "../../hooks/useLocalidades";
 import ImagenGuardada from "../ImagenGuardada";
 import HistorialVerificacionesTab from "./HistorialVerificacionesTab";
+import { useUrlVisible } from "../../lib/imagenesPrivadas";
 import { formatTelefono, formatSoles, formatDate } from "../../utils/format";
 
 const FOTOS = [
@@ -293,16 +294,15 @@ function RegistroTab({
   onAprobarRecolector,
   onRechazarRecolector,
 }) {
-  // Filtro: Todas / Conductores / Recolectores.
-  const [filtro, setFiltro] = useState("todas");
-  const pendientes = filtro === "recolectores" ? [] : conductoresPendientes;
-  const recolectores = filtro === "conductores" ? [] : recolectoresPendientes;
+  // Filtro: Conductores / Recolectores.
+  const [filtro, setFiltro] = useState("conductores");
+  const pendientes = filtro === "conductores" ? conductoresPendientes : [];
+  const recolectores = filtro === "recolectores" ? recolectoresPendientes : [];
   const totalConductores = conductoresPendientes.length;
 
   const filtros = (
     <div className="tz-gasto-tipo-buttons" style={{ marginBottom: 10 }}>
       {[
-        { id: "todas", label: "Todas" },
         { id: "conductores", label: `Conductores${totalConductores ? ` (${totalConductores})` : ""}` },
         { id: "recolectores", label: `Recolectores${recolectoresPendientes.length ? ` (${recolectoresPendientes.length})` : ""}` },
       ].map((f) => (
@@ -522,23 +522,158 @@ function RecargaRecolectorRow({ peticion, recolector, onAprobar, onRechazar }) {
   );
 }
 
-function RecargasRecolectorTab({ peticiones, usuarios, onAprobar, onRechazar }) {
-  if (peticiones.length === 0) {
-    return <p className="tz-method-history-empty">No hay solicitudes de recarga de recolectores.</p>;
+// Recarga que pidió el propio conductor (botón "Recargar" de /conductor):
+// el comprobante está en el bucket privado (enlace firmado). Al aprobar se
+// registra la venta y se le da la membresía o las gemas.
+function RecargaConductorRow({ peticion, conductor, onAprobar, onRechazar }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const esMembresia = peticion.tipo_item === TIPO_ITEM_MEMBRESIA;
+  const comprobante = useUrlVisible(peticion.comprobante_url);
+
+  return (
+    <li className="tz-history-row">
+      <div className="tz-history-row-detail" style={{ padding: 12 }}>
+        <div>
+          <strong style={{ color: "var(--text)" }}>{conductor?.nombre ?? "Conductor eliminado"}</strong>
+          <p style={{ margin: "2px 0", color: "var(--text-dim)", fontSize: 13 }}>
+            {conductor?.placa ? `Placa ${conductor.placa}` : ""}
+            {conductor?.telefono ? ` · ${formatTelefono(conductor.telefono)}` : ""}
+          </p>
+        </div>
+
+        <div className="tz-peticion-solicitud">
+          <span className={`tz-tag ${esMembresia ? "tz-tag-warn" : "tz-tag-ok"}`}>{esMembresia ? "Membresía" : "Gemas"}</span>
+          <strong>{peticion.paquete_nombre}</strong>
+          <span className="tz-peticion-solicitud-meta">
+            {esMembresia ? `${peticion.dias_membresia} días` : `${peticion.creditos} gemas`} · {formatSoles(peticion.monto)} ·{" "}
+            {peticion.metodo_pago} · {formatDate(peticion.created_at)}
+          </span>
+        </div>
+
+        {comprobante ? (
+          <a href={comprobante} target="_blank" rel="noreferrer" className="tz-comprobante-preview">
+            <img src={comprobante} alt="Comprobante" />
+            <span>
+              Comprobante · toca para ampliar <ExternalLink size={11} style={{ verticalAlign: "-1px" }} />
+            </span>
+          </a>
+        ) : (
+          <div className="tz-peticion-foto-placeholder" style={{ height: 80 }}>
+            <ImageIcon size={22} />
+          </div>
+        )}
+
+        {error && <p className="tz-error" style={{ marginTop: 8 }}>{error}</p>}
+        <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 10 }}>
+          <button
+            type="button"
+            className="tz-cliente-action-btn tz-cliente-action-pago"
+            disabled={busy || !conductor}
+            onClick={async () => {
+              setBusy(true);
+              setError("");
+              const r = await onAprobar(peticion);
+              setBusy(false);
+              if (r?.error) setError(r.message || "No se pudo aprobar la recarga.");
+            }}
+          >
+            {busy ? <Loader2 size={14} className="tz-spin" /> : <Check size={14} />} Aprobar
+          </button>
+          <button
+            type="button"
+            className="tz-cliente-action-btn tz-cliente-action-delete"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              await onRechazar(peticion.id);
+              setBusy(false);
+            }}
+          >
+            <XCircle size={14} /> Rechazar
+          </button>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+// Pestaña "Recargas": filtro Recolectores / Conductores.
+function RecargasTab({
+  recargasRecolector,
+  usuarios,
+  onAprobarRecolector,
+  onRechazarRecolector,
+  recargasConductor,
+  conductores,
+  onAprobarConductor,
+  onRechazarConductor,
+}) {
+  const [filtro, setFiltro] = useState(() =>
+    recargasRecolector.length === 0 && recargasConductor.length > 0 ? "conductores" : "recolectores"
+  );
+  const filtros = (
+    <div className="tz-gasto-tipo-buttons" style={{ marginBottom: 10 }}>
+      {[
+        { id: "recolectores", label: `Recolectores${recargasRecolector.length ? ` (${recargasRecolector.length})` : ""}` },
+        { id: "conductores", label: `Conductores${recargasConductor.length ? ` (${recargasConductor.length})` : ""}` },
+      ].map((f) => (
+        <button
+          key={f.id}
+          type="button"
+          className={`tz-gasto-tipo-btn ${filtro === f.id ? "tz-gasto-tipo-active" : ""}`}
+          onClick={() => setFiltro(f.id)}
+        >
+          {f.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (filtro === "conductores") {
+    const conductoresById = new Map(conductores.map((c) => [c.id, c]));
+    return (
+      <>
+        {filtros}
+        {recargasConductor.length === 0 ? (
+          <p className="tz-method-history-empty">No hay solicitudes de recarga de conductores.</p>
+        ) : (
+          <ul className="tz-history-rows">
+            {recargasConductor.map((p) => (
+              <RecargaConductorRow
+                key={p.id}
+                peticion={p}
+                conductor={conductoresById.get(p.conductor_id)}
+                onAprobar={onAprobarConductor}
+                onRechazar={onRechazarConductor}
+              />
+            ))}
+          </ul>
+        )}
+      </>
+    );
   }
+
   const usuariosById = new Map(usuarios.map((u) => [u.id, u]));
   return (
-    <ul className="tz-history-rows">
-      {peticiones.map((p) => (
-        <RecargaRecolectorRow
-          key={p.id}
-          peticion={p}
-          recolector={usuariosById.get(p.recolector_id)}
-          onAprobar={onAprobar}
-          onRechazar={onRechazar}
-        />
-      ))}
-    </ul>
+    <>
+      {filtros}
+      {recargasRecolector.length === 0 ? (
+        <p className="tz-method-history-empty">No hay solicitudes de recarga de recolectores.</p>
+      ) : (
+        <ul className="tz-history-rows">
+          {recargasRecolector.map((p) => (
+            <RecargaRecolectorRow
+              key={p.id}
+              peticion={p}
+              recolector={usuariosById.get(p.recolector_id)}
+              onAprobar={onAprobarRecolector}
+              onRechazar={onRechazarRecolector}
+            />
+          ))}
+        </ul>
+      )}
+    </>
   );
 }
 
@@ -575,6 +710,9 @@ export default function PeticionesModal({
   recargasRecolector,
   onAprobarRecargaRecolector,
   onRechazarRecargaRecolector,
+  recargasConductor = [],
+  onAprobarRecargaConductor,
+  onRechazarRecargaConductor,
   onClose,
 }) {
   const [tab, setTab] = useState("registro");
@@ -616,7 +754,10 @@ export default function PeticionesModal({
               onClick={() => setTab("recargas")}
             >
               <Wallet size={13} style={{ marginRight: 4, verticalAlign: "-2px" }} />
-              Recargas de Recolectores {recargasRecolector.length > 0 ? `(${recargasRecolector.length})` : ""}
+              Recargas{" "}
+              {recargasRecolector.length + recargasConductor.length > 0
+                ? `(${recargasRecolector.length + recargasConductor.length})`
+                : ""}
             </button>
             <button
               type="button"
@@ -645,11 +786,15 @@ export default function PeticionesModal({
           ) : tab === "pin" ? (
             <RecuperacionPinTab peticiones={peticionesPin} onVerificar={onVerificarPin} onDescartar={onDescartarPin} />
           ) : (
-            <RecargasRecolectorTab
-              peticiones={recargasRecolector}
+            <RecargasTab
+              recargasRecolector={recargasRecolector}
               usuarios={usuarios}
-              onAprobar={onAprobarRecargaRecolector}
-              onRechazar={onRechazarRecargaRecolector}
+              onAprobarRecolector={onAprobarRecargaRecolector}
+              onRechazarRecolector={onRechazarRecargaRecolector}
+              recargasConductor={recargasConductor}
+              conductores={conductores}
+              onAprobarConductor={onAprobarRecargaConductor}
+              onRechazarConductor={onRechazarRecargaConductor}
             />
           )}
         </div>

@@ -2468,6 +2468,77 @@ export default function Styles() {
         font-weight: 600;
         font-size: 14px;
       }
+      /* Repartiendo / en carrera: el switch se ve encendido pero bloqueado
+         (no se apaga ni cambia hasta terminar). */
+      .tz-estado-toggle[data-estado="repartiendo"],
+      .tz-delivery-toggle.tz-delivery-repartiendo {
+        border-color: var(--cyan);
+        animation: tz-estado-glow-repartiendo 2.2s ease-in-out infinite;
+      }
+      .tz-estado-toggle[data-estado="repartiendo"] .tz-estado-toggle-label,
+      .tz-delivery-toggle.tz-delivery-repartiendo .tz-estado-toggle-label { color: var(--cyan); }
+      @keyframes tz-estado-glow-repartiendo {
+        0%, 100% { box-shadow: 0 0 12px rgba(43,232,255,0.45), 0 0 20px rgba(57,255,176,0.2); }
+        50% { box-shadow: 0 0 20px rgba(43,232,255,0.8), 0 0 32px rgba(57,255,176,0.35); }
+      }
+      .tz-delivery-toggle.tz-delivery-carrera {
+        border-color: var(--orange);
+        animation: tz-estado-glow-ocupado 2.2s ease-in-out infinite;
+      }
+      .tz-delivery-toggle.tz-delivery-carrera .tz-estado-toggle-label { color: var(--orange) !important; }
+      .tz-estado-toggle.tz-estado-toggle-trabajando:disabled,
+      .tz-delivery-toggle.tz-delivery-repartiendo:disabled { opacity: 1; cursor: not-allowed; }
+
+      /* Repartos aceptados: entran desde abajo y, al entregarse, salen
+         deslizándose a la derecha mientras los de abajo suben. */
+      .tz-entrega-item {
+        margin-top: 8px;
+        max-height: 140px;
+        animation: tz-entrega-entra 0.35s ease-out;
+      }
+      .tz-entrega-item.is-saliendo {
+        overflow: hidden;
+        pointer-events: none;
+        animation: tz-entrega-sale 0.65s ease-in forwards;
+      }
+      @keyframes tz-entrega-entra {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: none; }
+      }
+      @keyframes tz-entrega-sale {
+        0% { opacity: 1; transform: none; max-height: 140px; margin-top: 8px; }
+        55% { opacity: 0; transform: translateX(70%); max-height: 140px; margin-top: 8px; }
+        100% { opacity: 0; transform: translateX(70%); max-height: 0; margin-top: 0; }
+      }
+
+      /* Meta del día */
+      .tz-meta-progreso { margin-top: 4px; }
+      .tz-meta-progreso-cifras {
+        display: flex;
+        align-items: baseline;
+        justify-content: center;
+        gap: 8px;
+        font-family: 'Orbitron', sans-serif;
+      }
+      .tz-meta-progreso-cifras strong { font-size: 24px; }
+      .tz-meta-progreso-cifras span { color: var(--text-dim); font-size: 13px; }
+      .tz-meta-track {
+        width: 100%;
+        height: 10px;
+        margin-top: 10px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.1);
+        overflow: hidden;
+      }
+      .tz-meta-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--cyan), var(--green));
+        box-shadow: 0 0 10px rgba(43,232,255,0.6);
+        transition: width 0.6s ease;
+      }
+      .tz-meta-fill.is-cumplida { background: var(--green); box-shadow: 0 0 14px rgba(57,255,176,0.8); }
+
       .tz-delivery-toggle.is-on {
         border-color: var(--green);
         animation: tz-estado-glow-activo 2.2s ease-in-out infinite;

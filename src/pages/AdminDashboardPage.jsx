@@ -17,6 +17,7 @@ import { useRecargas } from "../hooks/useRecargas";
 import { usePeticionesPin } from "../hooks/usePeticionesPin";
 import { usePaquetesRecolectores } from "../hooks/usePaquetesRecolectores";
 import { useRecargasRecolector } from "../hooks/useRecargasRecolector";
+import { useRecargasConductorAdmin } from "../hooks/useRecargasConductor";
 import { useCierresCaja } from "../hooks/useCierresCaja";
 import { useAnuncios } from "../hooks/useAnuncios";
 import { useDescripciones } from "../hooks/useDescripciones";
@@ -194,6 +195,11 @@ export default function AdminDashboardPage() {
     aprobarPeticion: aprobarRecargaRecolector,
     rechazarPeticion: rechazarRecargaRecolector,
   } = useRecargasRecolector();
+  const {
+    pendientes: recargasConductorPendientes,
+    aprobar: aprobarRecargaConductor,
+    rechazar: rechazarRecargaConductor,
+  } = useRecargasConductorAdmin();
   const { cierres, crearCierre } = useCierresCaja();
   // recolectorId null: el Admin no tiene fila propia en `usuarios` (su
   // sesión es el código maestro, no un login) — una recarga registrada
@@ -285,7 +291,8 @@ export default function AdminDashboardPage() {
     conductoresPorRevisar(conductores, usuarios).length +
     recolectoresPorRevisar(usuarios).length +
     peticionesPin.length +
-    recargasRecolectorPendientes.length;
+    recargasRecolectorPendientes.length +
+    recargasConductorPendientes.length;
 
   return (
     <div className="tz-root">
@@ -692,6 +699,15 @@ export default function AdminDashboardPage() {
             });
           }}
           onRechazarRecargaRecolector={rechazarRecargaRecolector}
+          recargasConductor={recargasConductorPendientes}
+          onAprobarRecargaConductor={(peticion) =>
+            aprobarRecargaConductor(
+              peticion,
+              conductores.find((c) => c.id === peticion.conductor_id),
+              registrarRecargaAdmin
+            )
+          }
+          onRechazarRecargaConductor={rechazarRecargaConductor}
           onClose={() => setPeticionesOpen(false)}
         />
       )}
