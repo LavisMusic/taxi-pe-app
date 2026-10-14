@@ -15,6 +15,7 @@ import {
 import { formatSoles, formatDate } from "../../utils/format";
 import { buildWhatsappLink } from "../../lib/whatsapp";
 import PagoFiadoModal from "./PagoFiadoModal";
+import Select from "../Select";
 
 // Fila de un conductor deudor: saldo agregado + los 4 botones de acción
 // que tenía la libreta vieja (Restar Crédito / Cancelar Cuenta /
@@ -276,7 +277,7 @@ export default function LibretaFiadosModal({
           ) : (
             <div className="tz-add-entry">
               <label className="tz-field-label">Conductor</label>
-              <select
+              <Select
                 className="tz-text-input"
                 value={conductorId}
                 onChange={(e) => setConductorId(e.target.value)}
@@ -287,7 +288,7 @@ export default function LibretaFiadosModal({
                     {c.nombre} · {c.placa}
                   </option>
                 ))}
-              </select>
+              </Select>
               <label className="tz-field-label">Concepto</label>
               <input
                 type="text"

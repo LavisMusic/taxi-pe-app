@@ -895,6 +895,44 @@ export default function Styles() {
       }
       .tz-dropdown-item { border-bottom: 1px solid var(--border-soft); }
       .tz-dropdown-item.tz-dropdown-item-activo { background: rgba(43,232,255,0.12); color: var(--cyan); }
+
+      /* Desplegable propio en lugar de un <select> (Select.jsx): el botón
+         toma la clase del select que reemplaza; acá solo el acomodo y la
+         flecha. :where() = sin especificidad, la clase del select manda. */
+      :where(.tz-dropdown-nativo) {
+        font: inherit;
+        color: inherit;
+        background: transparent;
+        border: 1px solid transparent;
+      }
+      .tz-dropdown-nativo {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        width: 100%;
+        box-sizing: border-box;
+        text-align: left;
+        cursor: pointer;
+        background-image: none !important;
+        min-width: 0;
+      }
+      .tz-dropdown .tz-dropdown-nativo { padding-right: 10px; }
+      .tz-dropdown-nativo:disabled { opacity: 0.55; cursor: not-allowed; }
+      .tz-dropdown-nativo .tz-dropdown-chevron { color: currentColor; opacity: 0.75; }
+      .tz-dropdown-nativo .tz-dropdown-valor,
+      .tz-dropdown-nativo .tz-dropdown-placeholder { min-width: 0; }
+      /* La lista flota sobre todo (portal con posición fija): no la recorta
+         el scroll de un modal ni de una tabla. */
+      .tz-dropdown-list.tz-dropdown-flotante {
+        position: fixed;
+        top: auto;
+        right: auto;
+        z-index: 10050;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+      }
+      .tz-dropdown-item:disabled { opacity: 0.45; cursor: not-allowed; }
       .tz-buscador-empty {
         display: flex;
         align-items: center;
@@ -5697,7 +5735,7 @@ export default function Styles() {
       /* Gemas (créditos): en su recuadro, la palabra centrada encima de la
          gema y el número. */
       .tz-gemas { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-      .tz-fila-saldo .tz-stat-chip.tz-gemas { min-width: 80px; padding: 6px 10px; }
+      .tz-fila-saldo .tz-stat-chip.tz-gemas { min-width: 80px; padding: 6px 10px; position: relative; left: -5px; }
       .tz-fila-saldo .tz-gemas .tz-stat-value { font-size: 15px; }
       /* La palabra va del color de las gemas que representa (cliente:
          celeste; conductor: verde). */

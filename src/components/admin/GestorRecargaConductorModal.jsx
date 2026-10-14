@@ -13,6 +13,7 @@ import {
 import { ventaParaPanel } from "../../lib/ventaBoleta";
 import { subirComprobante } from "../../lib/comprobantes";
 import Dropdown from "../Dropdown";
+import Select from "../Select";
 
 // Gestor de la membresía de UN conductor (botón ⚡ de su tarjeta en el
 // Directorio del Admin) — COMPLETAMENTE igual al gestor del plan de un
@@ -493,13 +494,13 @@ export default function GestorRecargaConductorModal({
               </label>
               <label className="tz-plan-campo tz-plan-campo-ancho">
                 <span>Estado</span>
-                <select className="tz-text-input" value={conductor.estado ?? ""} onChange={cambiarEstado} disabled={guardando === "estado"}>
+                <Select className="tz-text-input" value={conductor.estado ?? ""} onChange={cambiarEstado} disabled={guardando === "estado"}>
                   {ESTADOS_CONDUCTOR_OPERATIVOS.map((e) => (
                     <option key={e.value} value={e.value}>
                       {e.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
             </div>
           </>

@@ -27,6 +27,7 @@ import ImagenGuardada from "../ImagenGuardada";
 import HistorialVerificacionesTab from "./HistorialVerificacionesTab";
 import { useUrlVisible } from "../../lib/imagenesPrivadas";
 import { formatTelefono, formatSoles, formatDate } from "../../utils/format";
+import Select from "../Select";
 
 const FOTOS = [
   { key: "foto_general_url", label: "Toma general" },
@@ -88,7 +89,7 @@ function ConductorPendienteRow({ conductor, categorias, subgrupos, localidades, 
         <div className="tz-peticion-datos">
           <label>
             <span>Categoría</span>
-            <select
+            <Select
               className="tz-text-input"
               style={selectStyle}
               value={categoriaId}
@@ -102,29 +103,29 @@ function ConductorPendienteRow({ conductor, categorias, subgrupos, localidades, 
                   {cat.nombre}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <label>
             <span>Subgrupo</span>
-            <select className="tz-text-input" style={selectStyle} value={subgrupoId} onChange={(e) => setSubgrupoId(e.target.value)}>
+            <Select className="tz-text-input" style={selectStyle} value={subgrupoId} onChange={(e) => setSubgrupoId(e.target.value)}>
               <option value="">Sin subgrupo</option>
               {subgruposDeLaCategoria.map((sg) => (
                 <option key={sg.id} value={sg.id}>
                   {sg.nombre}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <label>
             <span>Localidad</span>
-            <select className="tz-text-input" style={selectStyle} value={localidad} onChange={(e) => setLocalidad(e.target.value)}>
+            <Select className="tz-text-input" style={selectStyle} value={localidad} onChange={(e) => setLocalidad(e.target.value)}>
               <option value="">Sin localidad</option>
               {localidades.map((loc) => (
                 <option key={loc.id ?? loc.nombre} value={loc.nombre}>
                   {loc.nombre}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <label>
             <span>Asientos</span>
@@ -143,13 +144,13 @@ function ConductorPendienteRow({ conductor, categorias, subgrupos, localidades, 
               Nivel de servicio
               {conductor.nivel_servicio_solicitado ? " (pidió " + etiquetaNivel(conductor.nivel_servicio_solicitado) + ")" : ""}
             </span>
-            <select className="tz-text-input" style={selectStyle} value={nivel} onChange={(e) => setNivel(e.target.value)}>
+            <Select className="tz-text-input" style={selectStyle} value={nivel} onChange={(e) => setNivel(e.target.value)}>
               {NIVELES_SERVICIO.map((n) => (
                 <option key={n.value} value={n.value}>
                   {n.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         </div>
         {error && <p className="tz-error" style={{ margin: "4px 0 0" }}>{error}</p>}
