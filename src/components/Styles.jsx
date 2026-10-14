@@ -187,8 +187,14 @@ export default function Styles() {
         box-sizing: border-box;
         overflow: visible;
         padding: 20px 14px 22px;
-        background: rgba(10, 7, 22, 0.85);
-        border-bottom: 1px solid rgba(43,232,255,0.15);
+        /* Borde inferior tipo láser (igual que Caja Tonazo): 2 px,
+           brillante al centro y que se desvanece en punta hacia los
+           costados, con un resplandor suave encima. */
+        background:
+          linear-gradient(90deg, transparent 0%, rgba(43,232,255,0.22) 14%, rgba(43,232,255,0.75) 50%, rgba(43,232,255,0.22) 86%, transparent 100%) bottom / 100% 2px no-repeat,
+          linear-gradient(90deg, transparent 8%, rgba(43,232,255,0.08) 35%, rgba(43,232,255,0.14) 50%, rgba(43,232,255,0.08) 65%, transparent 92%) bottom / 100% 7px no-repeat,
+          rgba(10, 7, 22, 0.85);
+        border-bottom: none;
       }
       /* Cabecera INAMOVIBLE: las 3 zonas son 'position:absolute' contra
          '.tz-header-row', que a su vez tiene una altura FIJA
