@@ -5735,7 +5735,7 @@ export default function Styles() {
       /* Gemas (créditos): en su recuadro, la palabra centrada encima de la
          gema y el número. */
       .tz-gemas { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-      .tz-fila-saldo .tz-stat-chip.tz-gemas { min-width: 80px; padding: 6px 10px; position: relative; left: -10px; }
+      .tz-fila-saldo .tz-stat-chip.tz-gemas { min-width: 80px; padding: 6px 10px; position: relative; left: -12px; }
       .tz-fila-saldo .tz-gemas .tz-stat-value { font-size: 15px; }
       /* La palabra va del color de las gemas que representa (cliente:
          celeste; conductor: verde). */
