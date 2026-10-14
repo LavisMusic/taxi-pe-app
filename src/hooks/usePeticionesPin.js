@@ -16,9 +16,8 @@ import { ESTADO_PETICION_RESUELTO } from "../lib/taxiEnums";
 // Bug reportado: acá ANTES también vivía `generarYEnviarPin` — el
 // Admin generaba el PIN nuevo y se lo mandaba él mismo por WhatsApp,
 // como si fuera su contraseña para repartir. Se eliminó: el Admin solo
-// "acepta" (verifica identidad por WhatsApp, `marcarVerificado`), y
-// quien elige el PIN nuevo de verdad es el propio dueño de la cuenta,
-// en /recuperar-pin — ver useCrearPeticionPin.js/fijarNuevoPin.
+// le manda un código de un solo uso (`enviarCodigo`), y quien elige el
+// PIN nuevo es el propio dueño de la cuenta en /restablecer-pin.
 export function usePeticionesPin() {
   const [peticiones, setPeticiones] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +28,7 @@ export function usePeticionesPin() {
     setError("");
     const { data: filas, error: fetchError } = await supabase
       .from("peticiones_pin")
-      .select("id, nombre, dni, placa, tipo_usuario, estado, created_at")
+      .select("id, nombre, dni, placa, tipo_usuario, estado, created_at, codigo_expira")
       .neq("estado", ESTADO_PETICION_RESUELTO)
       .order("created_at", { ascending: false });
 
@@ -64,22 +63,25 @@ export function usePeticionesPin() {
   // el Centro de Peticiones sin F5.
   useEffect(() => subscribeTable("peticiones_pin", () => refresh(), { respaldo: true }), [refresh]);
 
-  // El Admin ya abrió WhatsApp y mandó "¿confirmas que fuiste tú?" —
-  // esto solo mueve el estado a 'verificado', que es lo que le permite
-  // al propio dueño de la cuenta volver a /recuperar-pin con su DNI y
-  // pasar al paso de elegir su PIN nuevo. La confirmación real de
-  // identidad pasa por WhatsApp, no por acá.
-  const marcarVerificado = useCallback(
+  // El Admin genera un código de un solo uso (8 caracteres, vence en 30
+  // min; migración 20261014220000) y lo manda por WhatsApp con el enlace a
+  // /restablecer-pin. Ya NO confirma nada: la petición se resuelve sola
+  // cuando el usuario escribe el código correcto. Reenviar anula el
+  // anterior. Devuelve { error, codigo, telefono, nombre, expira }.
+  const enviarCodigo = useCallback(
     async (id) => {
-      // Solo el Admin (con su sesión) puede marcar 'verificado': la base
-      // rechaza ese cambio si llega directo desde la app.
-      const { data, error: rpcError } = await supabase.rpc("taxi_admin_verificar_peticion", {
-        p_token: leerTokenAdmin(),
+      const { data, error: rpcError } = await supabase.rpc("taxi_admin_codigo_pin", {
         p_peticion_id: String(id),
+        p_token: leerTokenAdmin() || null,
       });
-      const updateError = rpcError || (data?.estado !== "ok" ? new Error("Tu sesión de Admin venció. Vuelve a entrar.") : null);
-      if (!updateError) await refresh();
-      return { error: updateError };
+      if (rpcError || data?.estado !== "ok") {
+        return {
+          error: rpcError || new Error(data?.estado || "error"),
+          message: data?.estado === "sin_sesion" ? "Tu sesión de Admin venció. Vuelve a entrar." : "No se pudo generar el código.",
+        };
+      }
+      await refresh();
+      return { error: null, ...data };
     },
     [refresh]
   );
@@ -101,5 +103,5 @@ export function usePeticionesPin() {
     [refresh]
   );
 
-  return { peticiones, loading, error, refresh, marcarVerificado, descartar };
+  return { peticiones, loading, error, refresh, enviarCodigo, descartar };
 }

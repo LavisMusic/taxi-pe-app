@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { fijarPinRecuperacion } from "../lib/pinAuth";
-import { ESTADO_PETICION_PENDIENTE, ESTADO_PETICION_VERIFICADO } from "../lib/taxiEnums";
+import { ESTADO_PETICION_PENDIENTE, ESTADO_PETICION_VERIFICADO, ESTADO_PETICION_CODIGO_ENVIADO } from "../lib/taxiEnums";
 
 // Lado PÚBLICO del flujo de recuperación de PIN — la página
 // /recuperar-pin (sin sesión, es justo para quien no puede loguearse).
@@ -34,15 +33,18 @@ export function useCrearPeticionPin() {
       return { error: checkError, message: "No se pudo enviar tu solicitud. Intenta de nuevo." };
     }
 
-    if (existente?.estado === ESTADO_PETICION_VERIFICADO) {
+    if (existente?.estado === ESTADO_PETICION_CODIGO_ENVIADO) {
       setLoading(false);
-      return { error: null, peticionVerificada: { id: existente.id, dni } };
+      return {
+        error: new Error("codigo_enviado"),
+        message: "Ya te enviamos un código por WhatsApp: escríbelo en \"Ya tengo mi código\". Si venció, pide al Admin que te lo reenvíe.",
+      };
     }
-    if (existente?.estado === ESTADO_PETICION_PENDIENTE) {
+    if (existente?.estado === ESTADO_PETICION_PENDIENTE || existente?.estado === ESTADO_PETICION_VERIFICADO) {
       setLoading(false);
       return {
         error: new Error("pendiente"),
-        message: "Ya enviaste una solicitud para este DNI — un Admin va a contactarte por WhatsApp para verificar tu identidad antes de dejarte elegir tu PIN nuevo.",
+        message: "Ya enviaste una solicitud para este DNI: un Admin te enviará un código por WhatsApp para que elijas tu PIN nuevo.",
       };
     }
 
@@ -57,31 +59,5 @@ export function useCrearPeticionPin() {
     return { error: null };
   }, []);
 
-  // Paso 2 (self-service): ya verificado por WhatsApp, el propio dueño
-  // de la cuenta elige su PIN nuevo acá — nadie más lo ve ni lo elige
-  // por él. Todo pasa en la base (taxi_fijar_pin_recuperacion): solo
-  // funciona si el Admin marcó la petición como 'verificado' y el DNI
-  // coincide; guarda el PIN, cierra la petición y devuelve el `usuario`
-  // para poder loguearlo directo, igual que ya hace useVincularConductor.js
-  // en /registro-conductor.
-  const fijarNuevoPin = useCallback(async ({ peticionId, dni, nuevoPin }) => {
-    setLoading(true);
-    let resultado;
-    try {
-      resultado = await fijarPinRecuperacion(peticionId, dni, nuevoPin);
-    } catch (rpcError) {
-      setLoading(false);
-      return { error: rpcError, message: "No se pudo guardar tu PIN nuevo. Intenta de nuevo." };
-    }
-    setLoading(false);
-    if (resultado?.estado === "no_existe") {
-      return { error: new Error("sin cuenta"), message: "No se encontró tu cuenta. Contacta a un Admin." };
-    }
-    if (resultado?.estado !== "ok") {
-      return { error: new Error(resultado?.estado || "error"), message: "Tu solicitud todavía no fue verificada por un Admin." };
-    }
-    return { error: null, usuario: resultado.usuario };
-  }, []);
-
-  return { crear, fijarNuevoPin, loading };
+  return { crear, loading };
 }

@@ -10,6 +10,7 @@ import LoginPage from './pages/LoginPage'
 import LoginAdminPage from './pages/LoginAdminPage'
 import RegistroConductorPage from './pages/RegistroConductorPage'
 import RecuperarPinPage from './pages/RecuperarPinPage'
+import RestablecerPinPage from "./pages/RestablecerPinPage";
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import RecolectorPage from './pages/RecolectorPage'
 import ConductorPage from './pages/ConductorPage'
@@ -32,6 +33,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="/login-admin" element={<LoginAdminPage />} />
           <Route path="/registro-conductor" element={<RegistroConductorPage />} />
           <Route path="/recuperar-pin" element={<RecuperarPinPage />} />
+          <Route path="/restablecer-pin" element={<RestablecerPinPage />} />
           <Route
             path="/admin"
             element={

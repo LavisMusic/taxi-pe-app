@@ -17,7 +17,7 @@ import {
   NIVELES_SERVICIO,
   NIVEL_SERVICIO_ECONOMICO,
   TIPOS_USUARIO,
-  ESTADO_PETICION_VERIFICADO,
+  ESTADO_PETICION_CODIGO_ENVIADO,
   TIPO_ITEM_MEMBRESIA,
 } from "../../lib/taxiEnums";
 import { buildWhatsappLink } from "../../lib/whatsapp";
@@ -381,17 +381,39 @@ const TIPO_LABEL = Object.fromEntries(TIPOS_USUARIO.map((t) => [t.value, t.label
 // ahí elige su PIN nuevo (ver RecuperarPinPage.jsx/useCrearPeticionPin.js)
 // — la petición se cierra sola en ese momento, no hace falta ningún
 // botón más acá.
-function PeticionPinRow({ peticion, onVerificar, onDescartar }) {
-  const verificado = peticion.estado === ESTADO_PETICION_VERIFICADO;
+function PeticionPinRow({ peticion, onEnviarCodigo, onDescartar }) {
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState("");
+  const codigoEnviado = peticion.estado === ESTADO_PETICION_CODIGO_ENVIADO;
+  const vence = peticion.codigo_expira ? new Date(peticion.codigo_expira) : null;
+  const vigente = codigoEnviado && vence && vence > new Date();
   const sinTelefono = !peticion.telefono;
 
-  const handleVerificar = () => {
+  // Genera el código (8 caracteres, un solo uso, 30 min) y abre WhatsApp
+  // con el aviso, el código y el enlace. NO confirma la petición: se
+  // resuelve sola cuando el usuario escribe el código correcto.
+  const handleEnviar = async () => {
+    setError("");
+    // La ventana se abre antes del await: si no, el navegador la bloquea.
+    const ventana = window.open("", "_blank");
+    setEnviando(true);
+    const r = await onEnviarCodigo(peticion.id);
+    setEnviando(false);
+    if (r?.error) {
+      ventana?.close();
+      setError(r.message || "No se pudo generar el código.");
+      return;
+    }
+    const enlace = `${window.location.origin}/restablecer-pin`;
     const link = buildWhatsappLink(
-      peticion.telefono,
-      "Hola, recibimos una solicitud de cambio de PIN. ¿Confirmas que fuiste tú? Una vez confirmado, puedes elegir tu PIN nuevo entrando de nuevo a Olvidé mi PIN con tu DNI."
+      r.telefono || peticion.telefono,
+      `Hola ${String(r.nombre || peticion.nombre || "").split(" ")[0]}, recibimos tu solicitud de cambio de PIN de TaxiPE.\n\n` +
+        `Tu código es: ${r.codigo}\n\n` +
+        `Escríbelo aquí para elegir tu PIN nuevo: ${enlace}\n\n` +
+        "Sirve una sola vez y vence en 30 minutos. Si no fuiste tú, ignora este mensaje."
     );
-    if (link) window.open(link, "_blank", "noopener");
-    onVerificar(peticion.id);
+    if (link && ventana) ventana.location.href = link;
+    else ventana?.close();
   };
 
   return (
@@ -420,23 +442,25 @@ function PeticionPinRow({ peticion, onVerificar, onDescartar }) {
           </button>
         </div>
 
-        {verificado ? (
-          <p className="tz-success" style={{ margin: "6px 0 0" }}>
-            Identidad verificada — a la espera de que {peticion.nombre.split(" ")[0]} elija su PIN nuevo en
-            "Olvidé mi PIN".
+        {codigoEnviado && (
+          <p className={vigente ? "tz-success" : "tz-error"} style={{ margin: "6px 0 0" }}>
+            {vigente
+              ? `Código enviado — vence a las ${vence.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. Se confirma solo cuando ${String(peticion.nombre).split(" ")[0]} lo escriba.`
+              : "El código venció sin usarse. Puedes enviar uno nuevo."}
           </p>
-        ) : (
-          <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-            <button
-              type="button"
-              className="tz-camera-cancel tz-scanner-upload-btn"
-              disabled={sinTelefono}
-              onClick={handleVerificar}
-            >
-              <MessageCircle size={14} /> Verificar Identidad
-            </button>
-          </div>
         )}
+        {error && <p className="tz-error" style={{ margin: "6px 0 0" }}>{error}</p>}
+        <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="tz-camera-cancel tz-scanner-upload-btn"
+            disabled={sinTelefono || enviando}
+            onClick={handleEnviar}
+          >
+            {enviando ? <Loader2 size={14} className="tz-spin" /> : <MessageCircle size={14} />}{" "}
+            {codigoEnviado ? "Reenviar código por WhatsApp" : "Enviar código por WhatsApp"}
+          </button>
+        </div>
       </div>
     </li>
   );
@@ -678,14 +702,14 @@ function RecargasTab({
   );
 }
 
-function RecuperacionPinTab({ peticiones, onVerificar, onDescartar }) {
+function RecuperacionPinTab({ peticiones, onEnviarCodigo, onDescartar }) {
   if (peticiones.length === 0) {
     return <p className="tz-method-history-empty">No hay solicitudes de recuperación de PIN.</p>;
   }
   return (
     <ul className="tz-history-rows">
       {peticiones.map((p) => (
-        <PeticionPinRow key={p.id} peticion={p} onVerificar={onVerificar} onDescartar={onDescartar} />
+        <PeticionPinRow key={p.id} peticion={p} onEnviarCodigo={onEnviarCodigo} onDescartar={onDescartar} />
       ))}
     </ul>
   );
@@ -706,7 +730,7 @@ export default function PeticionesModal({
   onAprobarRecolector,
   onRechazarRecolector,
   peticionesPin,
-  onVerificarPin,
+  onEnviarCodigoPin,
   onDescartarPin,
   recargasRecolector,
   onAprobarRecargaRecolector,
@@ -785,7 +809,7 @@ export default function PeticionesModal({
           ) : tab === "historial" ? (
             <HistorialVerificacionesTab />
           ) : tab === "pin" ? (
-            <RecuperacionPinTab peticiones={peticionesPin} onVerificar={onVerificarPin} onDescartar={onDescartarPin} />
+            <RecuperacionPinTab peticiones={peticionesPin} onEnviarCodigo={onEnviarCodigoPin} onDescartar={onDescartarPin} />
           ) : (
             <RecargasTab
               recargasRecolector={recargasRecolector}

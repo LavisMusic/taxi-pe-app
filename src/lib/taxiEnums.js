@@ -160,6 +160,7 @@ export function esTelefonoValido(telefono) {
 // resuelto (PIN ya cambiado y enviado, o descartada).
 export const ESTADO_PETICION_PENDIENTE = "pendiente";
 export const ESTADO_PETICION_VERIFICADO = "verificado";
+export const ESTADO_PETICION_CODIGO_ENVIADO = "codigo_enviado";
 export const ESTADO_PETICION_RESUELTO = "resuelto";
 
 // `conductores.nivel_servicio` — con CHECK constraint en la DB (ver

@@ -152,7 +152,7 @@ export default function AdminDashboardPage() {
     useFiadosConductores();
   const {
     peticiones: peticionesPin,
-    marcarVerificado: marcarPinVerificado,
+    enviarCodigo: enviarCodigoPin,
     descartar: descartarPeticionPin,
   } = usePeticionesPin();
   const { gastos, gastosHoy, totalGastosHoy, agregarGasto, eliminarGasto } = useGastosOperativos();
@@ -688,7 +688,7 @@ export default function AdminDashboardPage() {
           onAprobarRecolector={aprobarUsuario}
           onRechazarRecolector={rechazarUsuario}
           peticionesPin={peticionesPin}
-          onVerificarPin={marcarPinVerificado}
+          onEnviarCodigoPin={enviarCodigoPin}
           onDescartarPin={descartarPeticionPin}
           recargasRecolector={recargasRecolectorPendientes}
           onAprobarRecargaRecolector={(peticion) => {
