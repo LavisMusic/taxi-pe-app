@@ -18,8 +18,9 @@ import { supabase } from "../supabaseClient";
 // DE CADA UNA para refrescar al toque ante cambios de estado / mensajes.
 
 const POLL_MS = 8000;
-// Pedidos de reparto aceptados a la vez (lo valida rpc_entrega_aceptar).
-export const MAX_REPARTOS = 5;
+// Pedidos de reparto aceptados a la vez (lo valida la base con
+// taxi_max_repartos(), migración 20261014200000).
+export const MAX_REPARTOS = 3;
 
 export function canalEntrega(entregaId) {
   return `entrega-${entregaId}`;
@@ -28,6 +29,8 @@ export function canalEntrega(entregaId) {
 export function useEntregasRepartidor(conductorId) {
   const [ofertas, setOfertas] = useState([]);
   const [entregasActivas, setEntregasActivas] = useState([]);
+  // Entregas con un mensaje nuevo de la tienda o del cliente sin abrir.
+  const [mensajesNuevos, setMensajesNuevos] = useState(() => new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const yaCargo = useRef(false);
@@ -81,7 +84,14 @@ export function useEntregasRepartidor(conductorId) {
       supabase
         .channel(canalEntrega(id))
         .on("broadcast", { event: "estado" }, refresh)
-        .on("broadcast", { event: "mensaje" }, refresh)
+        .on("broadcast", { event: "mensaje" }, ({ payload }) => {
+          refresh();
+          // Mensaje de la tienda o del cliente: punto en la tarjeta de esa
+          // entrega (y vibración) hasta que el repartidor abre su chat.
+          if (payload?.rol === "conductor") return;
+          setMensajesNuevos((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
+          navigator.vibrate?.(120);
+        })
         .subscribe()
     );
     return () => {
@@ -90,6 +100,15 @@ export function useEntregasRepartidor(conductorId) {
   }, [idsActivasKey, refresh]);
 
   const tieneEnRuta = entregasActivas.some((e) => e.estado === "en_ruta");
+
+  const marcarMensajesVistos = useCallback((entregaId) => {
+    setMensajesNuevos((prev) => {
+      if (!prev.has(entregaId)) return prev;
+      const s = new Set(prev);
+      s.delete(entregaId);
+      return s;
+    });
+  }, []);
 
   const aceptar = useCallback(
     async (ofertaId) => {
@@ -197,6 +216,8 @@ export function useEntregasRepartidor(conductorId) {
     ofertas,
     entregasActivas,
     tieneEnRuta,
+    mensajesNuevos,
+    marcarMensajesVistos,
     loading,
     error,
     refresh,

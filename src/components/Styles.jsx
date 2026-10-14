@@ -187,12 +187,12 @@ export default function Styles() {
         box-sizing: border-box;
         overflow: visible;
         padding: 20px 14px 22px;
-        /* Borde inferior tipo láser (igual que Caja Tonazo): 2 px,
+        /* Borde inferior tipo láser (igual que Caja Tonazo): 1.5 px, 2 px sobre el borde,
            brillante al centro y que se desvanece en punta hacia los
            costados, con un resplandor suave encima. */
         background:
-          linear-gradient(90deg, transparent 0%, rgba(43,232,255,0.22) 14%, rgba(43,232,255,0.75) 50%, rgba(43,232,255,0.22) 86%, transparent 100%) bottom / 100% 2px no-repeat,
-          linear-gradient(90deg, transparent 8%, rgba(43,232,255,0.08) 35%, rgba(43,232,255,0.14) 50%, rgba(43,232,255,0.08) 65%, transparent 92%) bottom / 100% 7px no-repeat,
+          linear-gradient(90deg, transparent 0%, rgba(43,232,255,0.22) 14%, rgba(43,232,255,0.75) 50%, rgba(43,232,255,0.22) 86%, transparent 100%) center bottom 2px / 100% 1.5px no-repeat,
+          linear-gradient(90deg, transparent 8%, rgba(43,232,255,0.08) 35%, rgba(43,232,255,0.14) 50%, rgba(43,232,255,0.08) 65%, transparent 92%) center bottom 2px / 100% 7px no-repeat,
           rgba(10, 7, 22, 0.85);
         border-bottom: none;
       }
@@ -2643,10 +2643,16 @@ export default function Styles() {
         flex-direction: column;
         gap: 8px;
       }
+      /* Hoy y Semana arriba, Mes abajo al centro (triángulo). */
       .tz-estad-periodos {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(2, 1fr);
         gap: 6px;
+      }
+      .tz-estad-periodo:nth-child(3) {
+        grid-column: 1 / -1;
+        justify-self: center;
+        width: calc(50% - 3px);
       }
       .tz-estad-periodo {
         display: flex;

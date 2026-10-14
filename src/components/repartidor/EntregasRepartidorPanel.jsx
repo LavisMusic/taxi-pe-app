@@ -101,8 +101,19 @@ export default function EntregasRepartidorPanel({
   // `datos`: el mismo useEntregasRepartidor ya abierto por la página (así
   // no hay dos sondeos); sin él, el panel abre el suyo.
   const propio = useEntregasRepartidor(datos ? null : conductorId);
-  const { ofertas, entregasActivas, loading, error, aceptar, rechazar, expirarOferta, avanzar, finalizar } =
-    datos || propio;
+  const {
+    ofertas,
+    entregasActivas,
+    loading,
+    error,
+    aceptar,
+    rechazar,
+    expirarOferta,
+    avanzar,
+    finalizar,
+    mensajesNuevos,
+    marcarMensajesVistos,
+  } = datos || propio;
   const lleno = entregasActivas.length >= MAX_REPARTOS;
   const bloqueado = enCarrera || lleno;
 
@@ -247,10 +258,16 @@ export default function EntregasRepartidorPanel({
         <button
           type="button"
           className="tz-scan-btn tz-payment-save"
-          style={{ width: "100%", justifyContent: "space-between" }}
           disabled={sale}
-          onClick={() => setAbiertaId(entrega.id)}
+          onClick={() => {
+            setAbiertaId(entrega.id);
+            marcarMensajesVistos?.(entrega.id);
+          }}
+          style={{ width: "100%", justifyContent: "space-between", position: "relative" }}
         >
+          {mensajesNuevos?.has(entrega.id) && !sale && (
+            <span className="tz-chat-unread-dot" aria-label="Mensaje nuevo" />
+          )}
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <PackageCheck size={16} /> Entrega en curso · {entrega.cliente_nombre || "Cliente"}
           </span>
