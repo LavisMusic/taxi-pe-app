@@ -2668,7 +2668,8 @@ export default function Styles() {
         gap: 2px;
         padding: 6px 4px;
         border-radius: 10px;
-        background: rgba(43,232,255,0.06);
+        background: rgba(57,255,176,0.08);
+        border: 1px solid rgba(57,255,176,0.28);
       }
       .tz-estad-periodo span {
         font-family: 'Rajdhani', sans-serif;
@@ -2680,7 +2681,8 @@ export default function Styles() {
       .tz-estad-periodo strong {
         font-family: 'Orbitron', sans-serif;
         font-size: 13px;
-        color: var(--cyan);
+        color: var(--green);
+        text-shadow: 0 0 8px rgba(57,255,176,0.45);
         white-space: nowrap;
       }
 
