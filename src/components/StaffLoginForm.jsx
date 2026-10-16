@@ -243,7 +243,7 @@ export default function StaffLoginForm({ onSuccess }) {
         type="button"
         className="tz-metodo-pago-change"
         style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", margin: "10px 0 0" }}
-        onClick={() => navigate("/recuperar-pin")}
+        onClick={() => navigate("/recuperar-pin", { state: { telefono: telefono.trim() } })}
       >
         <KeyRound size={13} /> Olvidé mi PIN
       </button>

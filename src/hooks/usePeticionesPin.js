@@ -5,13 +5,10 @@ import { subscribeTable } from "../lib/realtime";
 import { ESTADO_PETICION_RESUELTO } from "../lib/taxiEnums";
 
 // Lado ADMIN del flujo de recuperación de PIN (Centro de Peticiones,
-// pestaña "Recuperación de PIN"). El formulario público
-// (RecuperarPinPage.jsx) solo pide Nombre+DNI+(Placa) — sin teléfono —
-// así que para poder abrir WhatsApp acá hace falta resolver el
-// teléfono por separado: se hace un segundo SELECT a `usuarios`
-// filtrando por los DNI de las peticiones cargadas y se le pega el
-// `telefono` a cada fila en memoria (`usuarioId` queda ahí también,
-// aunque ya nada de este archivo lo use — ver el bug de abajo).
+// pestaña "Recuperación de PIN"). Desde la migración 20261015100000 la
+// petición ya trae el teléfono y el usuario_id de la cuenta (la base la
+// arma con el celular que dio la persona). Las peticiones de antes, sin
+// teléfono, lo buscan en `usuarios` por DNI como antes.
 //
 // Bug reportado: acá ANTES también vivía `generarYEnviarPin` — el
 // Admin generaba el PIN nuevo y se lo mandaba él mismo por WhatsApp,
@@ -28,7 +25,7 @@ export function usePeticionesPin() {
     setError("");
     const { data: filas, error: fetchError } = await supabase
       .from("peticiones_pin")
-      .select("id, nombre, dni, placa, tipo_usuario, estado, created_at, codigo_expira")
+      .select("id, nombre, dni, placa, tipo_usuario, estado, created_at, codigo_expira, telefono, usuario_id")
       .neq("estado", ESTADO_PETICION_RESUELTO)
       .order("created_at", { ascending: false });
 
@@ -39,7 +36,7 @@ export function usePeticionesPin() {
       return;
     }
 
-    const dnis = [...new Set((filas ?? []).map((p) => p.dni))];
+    const dnis = [...new Set((filas ?? []).filter((p) => !p.telefono && p.dni).map((p) => p.dni))];
     let usuariosPorDni = new Map();
     if (dnis.length > 0) {
       const { data: usuarios } = await supabase.from("usuarios").select("id, dni, telefono, rol").in("dni", dnis);
@@ -49,7 +46,11 @@ export function usePeticionesPin() {
     setPeticiones(
       (filas ?? []).map((p) => {
         const usuario = usuariosPorDni.get(p.dni);
-        return { ...p, usuarioId: usuario?.id ?? null, telefono: usuario?.telefono ?? null };
+        return {
+          ...p,
+          usuarioId: p.usuario_id ?? usuario?.id ?? null,
+          telefono: p.telefono ?? usuario?.telefono ?? null,
+        };
       })
     );
     setLoading(false);
@@ -77,7 +78,12 @@ export function usePeticionesPin() {
       if (rpcError || data?.estado !== "ok") {
         return {
           error: rpcError || new Error(data?.estado || "error"),
-          message: data?.estado === "sin_sesion" ? "Tu sesión de Admin venció. Vuelve a entrar." : "No se pudo generar el código.",
+          message:
+            data?.estado === "sin_sesion"
+              ? "Tu sesión de Admin venció. Vuelve a entrar."
+              : data?.estado === "sin_telefono"
+                ? "Esta cuenta no tiene teléfono registrado."
+                : "No se pudo generar el código.",
         };
       }
       await refresh();

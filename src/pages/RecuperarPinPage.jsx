@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { KeyRound, Send, CheckCircle2, Ticket } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { KeyRound, Send, CheckCircle2, Ticket, Loader2 } from "lucide-react";
 import { useCrearPeticionPin } from "../hooks/useCrearPeticionPin";
-import { TIPOS_USUARIO, TIPO_USUARIO_CONDUCTOR } from "../lib/taxiEnums";
+import { esTelefonoValido } from "../lib/taxiEnums";
 import Styles from "../components/Styles";
 import logo from "../assets/logo.webp";
 
@@ -11,49 +11,51 @@ import logo from "../assets/logo.webp";
 // por WhatsApp un código de un solo uso (vence en 30 min) y el enlace a
 // /restablecer-pin, donde el propio dueño de la cuenta escribe ese código
 // y elige su PIN nuevo (RestablecerPinPage.jsx, migración 20261014220000).
-// Antes, ya verificada la petición, cualquiera que supiera el DNI podía
-// elegir el PIN desde acá.
+//
+// Se identifica solo por el celular: si ya lo escribió en el login, el
+// botón "Olvidé mi PIN" lo trae en el state de la navegación (nunca en la
+// URL) y la solicitud se envía sola, sin formulario. Si no, se le pide
+// acá. La base arma la petición con los datos de la cuenta
+// (useCrearPeticionPin.js, migración 20261015100000).
+const LISTOS = ["enviada", "pendiente", "codigo_enviado"];
+
 export default function RecuperarPinPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { crear, loading } = useCrearPeticionPin();
+  const telefonoLogin = String(location.state?.telefono || "").trim();
+  const automatico = esTelefonoValido(telefonoLogin);
 
-  const [nombre, setNombre] = useState("");
-  const [dni, setDni] = useState("");
-  const [placa, setPlaca] = useState("");
-  const [tipoUsuario, setTipoUsuario] = useState(TIPO_USUARIO_CONDUCTOR);
+  const [telefono, setTelefono] = useState(telefonoLogin);
   const [error, setError] = useState("");
-  const [enviado, setEnviado] = useState(false);
+  // { estado, message } cuando la solicitud ya quedó en manos del Admin.
+  const [resultado, setResultado] = useState(null);
+  const [enviandoAuto, setEnviandoAuto] = useState(automatico);
+  const yaEnviado = useRef(false);
 
-  const esConductor = tipoUsuario === TIPO_USUARIO_CONDUCTOR;
+  const enviar = async (numero) => {
+    setError("");
+    const r = await crear(numero);
+    if (LISTOS.includes(r.estado)) setResultado(r);
+    else setError(r.message);
+  };
+
+  useEffect(() => {
+    if (!automatico || yaEnviado.current) return;
+    yaEnviado.current = true;
+    enviar(telefonoLogin).finally(() => setEnviandoAuto(false));
+    // Solo al entrar con el número del login.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-
-    if (!nombre.trim()) {
-      setError("Ingresa tu nombre.");
+    const numero = telefono.trim();
+    if (!esTelefonoValido(numero)) {
+      setError("Ingresa un celular válido: 9 dígitos, empieza con 9 (ej. 987654321).");
       return;
     }
-    if (!/^\d{8}$/.test(dni.trim())) {
-      setError("El DNI debe tener 8 dígitos.");
-      return;
-    }
-    if (esConductor && !placa.trim()) {
-      setError("Ingresa tu placa.");
-      return;
-    }
-
-    const { message } = await crear({
-      nombre: nombre.trim(),
-      dni: dni.trim(),
-      placa: esConductor ? placa.trim().toUpperCase() : "",
-      tipoUsuario,
-    });
-    if (message) {
-      setError(message);
-      return;
-    }
-    setEnviado(true);
+    await enviar(numero);
   };
 
   const irACodigo = (
@@ -67,6 +69,17 @@ export default function RecuperarPinPage() {
     </button>
   );
 
+  const volverLogin = (
+    <button
+      type="button"
+      className="tz-metodo-pago-change"
+      style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", margin: "8px 0 0" }}
+      onClick={() => navigate("/login")}
+    >
+      <KeyRound size={13} /> Volver al login
+    </button>
+  );
+
   return (
     <div
       className="tz-root"
@@ -77,12 +90,18 @@ export default function RecuperarPinPage() {
         <img src={logo} alt="TaxiP" className="tz-modal-logo" />
         <p className="tz-brand-sub">Olvidé mi PIN</p>
 
-        {enviado ? (
+        {enviandoAuto ? (
+          <div style={{ textAlign: "center", padding: "18px 0" }}>
+            <Loader2 size={32} className="tz-spin" style={{ marginBottom: 10 }} />
+            <p>Enviando tu solicitud al Admin…</p>
+          </div>
+        ) : resultado ? (
           <div style={{ textAlign: "center", padding: "10px 0" }}>
             <CheckCircle2 size={40} color="var(--green)" style={{ marginBottom: 10 }} />
             <p>
-              Solicitud enviada. Un Admin te enviará por WhatsApp un código y el enlace para elegir tu PIN
-              nuevo. El código sirve una sola vez y vence en 30 minutos.
+              {resultado.estado === "enviada"
+                ? "Solicitud enviada. Un Admin te enviará por WhatsApp un código y el enlace para elegir tu PIN nuevo. El código sirve una sola vez y vence en 30 minutos."
+                : resultado.message}
             </p>
             <button
               type="button"
@@ -97,84 +116,34 @@ export default function RecuperarPinPage() {
         ) : (
           <form onSubmit={handleSubmit}>
             <p className="tz-stock-editor-sub">
-              Un Admin te enviará un código por WhatsApp. Con ese código eliges tu PIN nuevo tú mismo.
+              Escribe el celular con el que entras a TaxiPE. Un Admin te enviará un código por WhatsApp para que
+              elijas tu PIN nuevo.
             </p>
 
-            <label className="tz-field-label">Soy</label>
-            <div className="tz-gasto-tipo-buttons" style={{ marginBottom: 14 }}>
-              {TIPOS_USUARIO.map((t) => (
-                <button
-                  key={t.value}
-                  type="button"
-                  className={`tz-gasto-tipo-btn ${tipoUsuario === t.value ? "tz-gasto-tipo-active" : ""}`}
-                  onClick={() => setTipoUsuario(t.value)}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-
             <div className="tz-login-field">
-              <label className="tz-field-label" htmlFor="rec-nombre">
-                Nombre
+              <label className="tz-field-label" htmlFor="rec-telefono">
+                Teléfono
               </label>
               <input
-                id="rec-nombre"
-                type="text"
+                id="rec-telefono"
+                type="tel"
+                inputMode="numeric"
+                maxLength={9}
                 autoFocus
                 className="tz-text-input"
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                placeholder="Nombre completo"
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value.replace(/\D/g, ""))}
+                placeholder="987654321"
               />
             </div>
-
-            <div className="tz-login-field">
-              <label className="tz-field-label" htmlFor="rec-dni">
-                DNI
-              </label>
-              <input
-                id="rec-dni"
-                type="text"
-                inputMode="numeric"
-                maxLength={8}
-                className="tz-text-input"
-                value={dni}
-                onChange={(e) => setDni(e.target.value)}
-                placeholder="12345678"
-              />
-            </div>
-
-            {esConductor && (
-              <div className="tz-login-field">
-                <label className="tz-field-label" htmlFor="rec-placa">
-                  Placa
-                </label>
-                <input
-                  id="rec-placa"
-                  type="text"
-                  className="tz-text-input"
-                  value={placa}
-                  onChange={(e) => setPlaca(e.target.value)}
-                  placeholder="ABC-123"
-                />
-              </div>
-            )}
 
             {error && <p className="tz-error">{error}</p>}
             <button type="submit" className="tz-scan-btn tz-payment-save" disabled={loading}>
-              <Send size={16} />
+              {loading ? <Loader2 size={16} className="tz-spin" /> : <Send size={16} />}
               {loading ? "Enviando…" : "Enviar solicitud"}
             </button>
             {irACodigo}
-            <button
-              type="button"
-              className="tz-metodo-pago-change"
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", margin: "8px 0 0" }}
-              onClick={() => navigate("/login")}
-            >
-              <KeyRound size={13} /> Volver al login
-            </button>
+            {volverLogin}
           </form>
         )}
       </div>

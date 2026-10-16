@@ -372,15 +372,11 @@ function RegistroTab({
 
 const TIPO_LABEL = Object.fromEntries(TIPOS_USUARIO.map((t) => [t.value, t.label]));
 
-// Fila de una petición de PIN: el flujo 2FA manual del Admin termina en
-// "Verificar Identidad" (abre WhatsApp con el mensaje de confirmación Y
-// mueve la petición a 'verificado') — el PIN nuevo en sí YA NO lo
-// genera ni lo manda el Admin (bug reportado: el dueño de la cuenta
-// debe poder elegir su propio PIN, el Admin solo "acepta"). Una vez
-// verificado, el propio interesado vuelve a /recuperar-pin con su DNI y
-// ahí elige su PIN nuevo (ver RecuperarPinPage.jsx/useCrearPeticionPin.js)
-// — la petición se cierra sola en ese momento, no hace falta ningún
-// botón más acá.
+// Fila de una petición de PIN. La persona la pidió dando solo su celular
+// y la base la armó con los datos de su cuenta (DNI y placa si tiene). El
+// Admin le manda un código de un solo uso por WhatsApp; el PIN nuevo lo
+// elige el propio dueño en /restablecer-pin y la petición se cierra sola
+// cuando escribe el código correcto.
 function PeticionPinRow({ peticion, onEnviarCodigo, onDescartar }) {
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
@@ -426,9 +422,13 @@ function PeticionPinRow({ peticion, onEnviarCodigo, onDescartar }) {
             </span>
             <strong style={{ color: "var(--text)" }}>{peticion.nombre}</strong>
             <p style={{ margin: "2px 0", color: "var(--text-dim)", fontSize: 13 }}>
-              DNI {peticion.dni}
-              {peticion.placa ? ` · Placa ${peticion.placa}` : ""}
-              {peticion.telefono ? ` · ${formatTelefono(peticion.telefono)}` : " · Sin teléfono registrado"}
+              {[
+                peticion.telefono ? formatTelefono(peticion.telefono) : "Sin teléfono registrado",
+                peticion.dni ? `DNI ${peticion.dni}` : null,
+                peticion.placa ? `Placa ${peticion.placa}` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
           </div>
           <button
