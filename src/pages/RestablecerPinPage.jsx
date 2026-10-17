@@ -66,7 +66,7 @@ export default function RestablecerPinPage() {
     // El pasajero entra a Caja Tonazo con el mismo PIN: se copia el nuevo
     // (best-effort, mirrorCaja.js; si falla, el cambio acá ya quedó).
     if (data.rol === "pasajero" && data.telefono) {
-      mirrorCuentaACaja({ telefono: data.telefono, pin, nombre: data.nombre });
+      mirrorCuentaACaja({ telefono: data.telefono, pin, nombre: data.nombre, motivo: "cambio_pin" });
     }
     setPaso("listo");
   };

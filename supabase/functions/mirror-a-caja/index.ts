@@ -12,9 +12,20 @@
 // público con un teléfono ajeno y forzar la creación/reset de una
 // cuenta de Caja con un PIN de su elección.
 //
-// Reusa la infra HMAC de WEBHOOKS.md (mismo patrón que
-// entrega-iniciar): WEBHOOK_SECRET_TAXI_TO_CAJA ya configurado para
-// esta dirección, sin secretos nuevos.
+// Reusa la infra HMAC de WEBHOOKS.md. La clave Taxi -> Caja se lee del
+// Vault (webhook_secret_taxi_to_caja, la misma que usan los avisos que
+// salen de la base) con service_role; WEBHOOK_SECRET_TAXI_TO_CAJA como
+// variable de la función queda solo como alternativa. Antes solo se leía
+// la variable, que nunca se configuró en este proyecto: el espejo fallaba
+// siempre con 500.
+//
+// `motivo` ('alta' | 'login' | 'cambio_pin'): Caja solo pisa el PIN de
+// una cuenta que YA existe allá si es un cambio de PIN de verdad, y eso
+// se comprueba acá: el usuario tiene que haber elegido su PIN nuevo con
+// el código del Admin en los últimos 10 minutos (peticiones_pin.
+// restablecido_en, migración 20261017110000). Si no, Caja solo crea la
+// cuenta cuando falta: nadie puede cambiar el PIN de Caja de otro con
+// solo registrarse acá con su número.
 //
 // Deploy: supabase functions deploy mirror-a-caja --no-verify-jwt
 
@@ -22,7 +33,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const WEBHOOK_SECRET = Deno.env.get("WEBHOOK_SECRET_TAXI_TO_CAJA") ?? "";
+const WEBHOOK_SECRET_ENV = Deno.env.get("WEBHOOK_SECRET_TAXI_TO_CAJA") ?? "";
 const CAJA_MIRROR_URL =
   Deno.env.get("CAJA_MIRROR_CUENTA_URL") ||
   "https://xaerfywydzwifohjsvwa.supabase.co/functions/v1/webhook-taxi-mirror-cuenta";
@@ -55,9 +66,7 @@ async function hmacB64(secret: string, msg: string): Promise<string> {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { error: "method not allowed" });
-  if (!WEBHOOK_SECRET) return json(500, { error: "falta WEBHOOK_SECRET_TAXI_TO_CAJA" });
-
-  let body: { telefono?: string; pin?: string; nombre?: string };
+  let body: { telefono?: string; pin?: string; nombre?: string; motivo?: string };
   try {
     body = await req.json();
   } catch {
@@ -70,6 +79,13 @@ Deno.serve(async (req) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
+  let webhookSecret = WEBHOOK_SECRET_ENV;
+  if (!webhookSecret) {
+    const { data: secreto } = await admin.rpc("fn_webhook_secret", { p_nombre: "webhook_secret_taxi_to_caja" });
+    webhookSecret = typeof secreto === "string" ? secreto : "";
+  }
+  if (!webhookSecret) return json(500, { error: "falta la clave webhook_secret_taxi_to_caja" });
+
   // Anti-abuso: el pin en texto plano tiene que coincidir de verdad con
   // el hash que YA está guardado para ese teléfono — si no, no se
   // reenvía nada.
@@ -77,7 +93,7 @@ Deno.serve(async (req) => {
   // la base, ver la migración 20261009100000.)
   const { data: match, error: findErr } = await admin
     .from("usuarios")
-    .select("nombre, pin, creditos_disponibles, membresia_vencimiento")
+    .select("id, nombre, pin, creditos_disponibles, membresia_vencimiento")
     .eq("telefono", telefono)
     .eq("rol", "pasajero")
     .maybeSingle();
@@ -93,6 +109,20 @@ Deno.serve(async (req) => {
   });
   if (verifyErr || valido !== true) {
     return json(403, { error: "pin no coincide" });
+  }
+
+  // Cambio de PIN real: eligió el PIN nuevo con el código del Admin hace
+  // menos de 10 minutos.
+  let sobrescribirPin = false;
+  if (body.motivo === "cambio_pin") {
+    const desde = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { data: restablecido } = await admin
+      .from("peticiones_pin")
+      .select("id")
+      .eq("usuario_id", match.id)
+      .gte("restablecido_en", desde)
+      .limit(1);
+    sobrescribirPin = (restablecido?.length ?? 0) > 0;
   }
 
   const eventId = crypto.randomUUID();
@@ -111,10 +141,11 @@ Deno.serve(async (req) => {
       nombre: body.nombre || match.nombre || null,
       creditos_disponibles: match.creditos_disponibles ?? 0,
       membresia_vencimiento: match.membresia_vencimiento ?? null,
+      sobrescribir_pin: sobrescribirPin,
     },
   });
   const ts = Math.floor(Date.now() / 1000);
-  const sig = await hmacB64(WEBHOOK_SECRET, `${ts}.${sobre}`);
+  const sig = await hmacB64(webhookSecret, `${ts}.${sobre}`);
 
   try {
     const r = await fetch(CAJA_MIRROR_URL, {
