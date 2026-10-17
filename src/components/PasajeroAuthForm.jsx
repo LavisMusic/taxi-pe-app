@@ -11,10 +11,8 @@ import {
   esNombreUsuarioValido,
   esEdadValida,
   ESTADO_VERIFICACION_TEMPORAL,
-  ESTADO_CUENTA_PENDIENTE,
   SEXOS,
 } from "../lib/taxiEnums";
-import { routeForRole } from "../lib/taxiAuth";
 
 // Bug reportado: aviso chico y no-intrusivo arriba de la pantalla al
 // iniciar sesión (éxito o fallido), que se apaga solo — ver
@@ -61,27 +59,17 @@ export default function PasajeroAuthForm({ onSuccess }) {
   const [confirmarNuevoPin, setConfirmarNuevoPin] = useState("");
   const [creandoPin, setCreandoPin] = useState(false);
   const [nombreVerif, setNombreVerif] = useState("");
-  // Recolector que espera la aprobación del Admin (mismo aviso que
-  // StaffLoginForm.jsx): no entra a la app.
-  const [enRevision, setEnRevision] = useState(false);
 
   // `remember` explícito (no siempre el checkbox del login): el
   // registro nunca mostró ese checkbox y siempre recordaba la sesión
   // de una — se mantiene ese comportamiento pasando `true` a mano desde
   // handleRegistro, en vez de depender del estado compartido `rememberMe`.
-  // Este login también acepta conductores y recolectores: cada uno entra
-  // a su panel (`routeForRole`), el pasajero a "/".
   const entrar = (usuario, remember = rememberMe) => {
-    if (usuario.rol === "recolector" && usuario.estado_cuenta === ESTADO_CUENTA_PENDIENTE) {
-      setUsuarioSinPin(null);
-      setEnRevision(true);
-      return;
-    }
     mostrar("✓ Sesión iniciada correctamente", "exito");
     setTimeout(() => {
       loginUsuario(usuario, remember);
       onSuccess?.();
-      navigate(routeForRole(usuario.rol), { replace: true });
+      navigate("/", { replace: true });
     }, ENTRAR_DELAY_MS);
   };
 
@@ -176,24 +164,7 @@ export default function PasajeroAuthForm({ onSuccess }) {
     entrar(usuario);
   };
 
-  if (enRevision) {
-    return (
-      <>
-        <AvisoTop aviso={aviso} />
-        <p className="tz-success">
-          ✓ Tu cuenta de recolector está en revisión. Podrás entrar cuando el Admin la apruebe en el Centro de
-          Peticiones.
-        </p>
-        <button type="button" className="tz-camera-cancel" style={{ width: "100%" }} onClick={() => setEnRevision(false)}>
-          Volver
-        </button>
-      </>
-    );
-  }
-
-  // Los datos de verificación de acá son los del pasajero; un conductor o
-  // recolector sin PIN solo crea su PIN (formulario de abajo).
-  if (usuarioSinPin?.estado_verificacion === ESTADO_VERIFICACION_TEMPORAL && usuarioSinPin.rol === "pasajero") {
+  if (usuarioSinPin?.estado_verificacion === ESTADO_VERIFICACION_TEMPORAL) {
     return (
       <form onSubmit={handleVerificarCuenta}>
         <AvisoTop aviso={aviso} />

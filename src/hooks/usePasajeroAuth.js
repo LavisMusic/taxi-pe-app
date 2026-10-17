@@ -85,14 +85,11 @@ export function usePasajeroAuth() {
   // `usuarioSinPin` para que el form pase al paso de "Crea tu PIN",
   // mismo criterio que StaffLoginForm.jsx usa para conductor/recolector.
   // El PIN se compara en la base (taxi_login): el hash nunca llega acá.
-  // Acepta también conductor y recolector (migración 20261015110000): el
-  // botón "Login" del inicio parece para todos, así que con el PIN
-  // correcto cada uno entra a su panel (el form navega por rol).
   const login = useCallback(async ({ telefono, pin }) => {
     setLoading(true);
     let resultado;
     try {
-      resultado = await loginConPin(telefono, pin, ["pasajero", "conductor", "recolector"]);
+      resultado = await loginConPin(telefono, pin, ["pasajero"]);
     } catch (rpcError) {
       setLoading(false);
       return { error: rpcError, message: "No se pudo verificar tus datos. Intenta de nuevo." };
@@ -128,8 +125,7 @@ export function usePasajeroAuth() {
       return { error: new Error(resultado?.estado || "error"), message: "No se pudo guardar el PIN. Intenta de nuevo." };
     }
     const data = resultado.usuario;
-    // El espejo a Caja es solo de pasajeros.
-    if (data.rol === "pasajero") mirrorCuentaACaja({ telefono: data.telefono, pin: nuevoPin, nombre: data.nombre });
+    mirrorCuentaACaja({ telefono: data.telefono, pin: nuevoPin, nombre: data.nombre });
     return { usuario: data, error: null };
   }, []);
 
