@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { KeyRound, ShieldCheck, CheckCircle2, Loader2, LogIn } from "lucide-react";
 import { supabase } from "../supabaseClient";
+import { mirrorCuentaACaja } from "../lib/mirrorCaja";
 import Styles from "../components/Styles";
 import logo from "../assets/logo.webp";
 
@@ -62,6 +63,11 @@ export default function RestablecerPinPage() {
       return setError("Pasaron más de 15 minutos. Pide un código nuevo al Admin para cambiar tu PIN.");
     }
     if (data?.estado !== "ok") return setError("No encontramos tu cuenta. Contacta a un Admin.");
+    // El pasajero entra a Caja Tonazo con el mismo PIN: se copia el nuevo
+    // (best-effort, mirrorCaja.js; si falla, el cambio acá ya quedó).
+    if (data.rol === "pasajero" && data.telefono) {
+      mirrorCuentaACaja({ telefono: data.telefono, pin, nombre: data.nombre });
+    }
     setPaso("listo");
   };
 
