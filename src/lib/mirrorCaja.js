@@ -9,10 +9,14 @@ import { supabase } from "../supabaseClient";
 // Best-effort y no bloqueante a propósito: el pasajero YA inició sesión
 // en Taxi-PE con éxito antes de llamar esto — un fallo acá (Caja caída,
 // red, etc.) nunca debe tumbar ni demorar su propio login.
-export async function mirrorCuentaACaja({ telefono, pin, nombre }) {
+// `motivo`: 'alta' (registro o primer PIN), 'login' (ingreso: crea la
+// cuenta de Caja si todavía no existe) o 'cambio_pin' (/restablecer-pin).
+// Caja solo pisa el PIN de una cuenta suya que ya existe en un
+// 'cambio_pin' que mirror-a-caja pueda comprobar.
+export async function mirrorCuentaACaja({ telefono, pin, nombre, motivo = "alta" }) {
   try {
     await supabase.functions.invoke("mirror-a-caja", {
-      body: { telefono, pin, nombre: nombre || null },
+      body: { telefono, pin, nombre: nombre || null, motivo },
     });
   } catch (err) {
     console.error("[mirrorCuentaACaja] no se pudo espejar la cuenta a Caja:", err);

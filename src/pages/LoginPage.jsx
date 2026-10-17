@@ -16,6 +16,9 @@ import logo from "../assets/logo.webp";
 // PIN) se completa después, desde StaffLoginForm.
 function AccesoStaff() {
   const [modo, setModo] = useState("ingresar");
+  // Registro: como conductor o como recolector (mismos datos: nombre y
+  // teléfono); cada uno verifica su cuenta con su propio formulario.
+  const [registroComo, setRegistroComo] = useState("conductor");
 
   return (
     <>
@@ -36,7 +39,29 @@ function AccesoStaff() {
         </button>
       </div>
 
-      {modo === "ingresar" ? <StaffLoginForm /> : <RegistroConductorTemporalForm />}
+      {modo === "ingresar" ? (
+        <StaffLoginForm />
+      ) : (
+        <>
+          <div className="tz-gasto-tipo-buttons" style={{ marginBottom: 14 }}>
+            <button
+              type="button"
+              className={`tz-gasto-tipo-btn ${registroComo === "conductor" ? "tz-gasto-tipo-active" : ""}`}
+              onClick={() => setRegistroComo("conductor")}
+            >
+              Soy conductor
+            </button>
+            <button
+              type="button"
+              className={`tz-gasto-tipo-btn ${registroComo === "recolector" ? "tz-gasto-tipo-active" : ""}`}
+              onClick={() => setRegistroComo("recolector")}
+            >
+              Soy recolector
+            </button>
+          </div>
+          <RegistroConductorTemporalForm key={registroComo} rol={registroComo} />
+        </>
+      )}
     </>
   );
 }

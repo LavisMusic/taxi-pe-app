@@ -5,14 +5,11 @@ import { ESTADO_CONDUCTOR_ACTIVO, ESTADO_CONDUCTOR_OCUPADO } from "../lib/taxiEn
 
 // Fetch público (sin sesión) para la Home del pasajero.
 //
-// Tres filtros, todos hechos en la query — no en el render:
+// Filtros hechos en la query — no en el render:
 //   1) .in("estado", [activo, ocupado]) — un conductor 'desconectado'
 //      (o 'pendiente'/'rechazado') nunca sale del servidor.
-//   2) .eq("aprobado", true) — un conductor recién auto-registrado
-//      (self-registro en /login) puede tocar su propio toggle de
-//      estado en /conductor ANTES de que el Admin lo revise; sin este
-//      filtro se colaría en la Home pública con solo marcarse "Activo",
-//      saltándose el Centro de Peticiones por completo.
+//   2) Sin filtro de `aprobado`: un conductor con la cuenta temporal o en
+//      revisión también trabaja (como Económico) y sale en la Home.
 //   3) select() explícito SIN `creditos` ni `vencimiento_suscripcion`
 //      — privacidad real, esos campos ni siquiera llegan al navegador,
 //      no es solo "no mostrarlos" en la tarjeta.
@@ -35,9 +32,8 @@ export function useConductoresPublicos() {
       supabase
         .from("conductores")
         .select(
-          "id, nombre, placa, telefono, foto_url, foto_portada_url, descripcion, estado, categoria_id, localidad, nivel_servicio, subgrupo_id, asientos_totales, asientos_ocupados, ultima_actualizacion"
+          "id, nombre, placa, telefono, foto_url, foto_portada_url, descripcion, estado, categoria_id, localidad, nivel_servicio, subgrupo_id, asientos_totales, asientos_ocupados, ultima_actualizacion, ultima_lat, ultima_lng, aprobado"
         )
-        .eq("aprobado", true)
         .in("estado", [ESTADO_CONDUCTOR_ACTIVO, ESTADO_CONDUCTOR_OCUPADO]),
       supabase.from("categorias").select("id, nombre, orden, icono_url").order("orden", { ascending: true }),
     ]);
@@ -71,6 +67,18 @@ export function useConductoresPublicos() {
   // en vivo, sin F5 — mismo canal que useConductores.js, esta vez del
   // lado público.
   useEffect(() => subscribeTable("conductores", () => refresh()), [refresh]);
+
+  // Cuando un conductor se DESCONECTA su fila deja de ser pública y
+  // Realtime ya no avisa (tanda 3b) — la base manda además un aviso
+  // propio por este canal (solo el id) y con eso se vuelve a pedir la
+  // lista. Ver migración 20261013110000_aviso_publico_conductores.sql.
+  useEffect(() => {
+    const channel = supabase
+      .channel("conductores-publico")
+      .on("broadcast", { event: "cambio" }, () => refresh())
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [refresh]);
 
   // Fix Contador Congelado (Fase 5): la publicación de Realtime de
   // `conductores` ya está confirmada activa — el "stale" reportado

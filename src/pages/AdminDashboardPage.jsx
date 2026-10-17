@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, CreditCard, Megaphone, MapPin, X, Loader2, Trash2, MessageSquareText } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, CreditCard, Megaphone, MapPin, Loader2, Trash2, MessageSquareText } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useLocalidades } from "../hooks/useLocalidades";
 import { useVentas } from "../hooks/useVentas";
@@ -8,20 +8,20 @@ import { useConductores } from "../hooks/useConductores";
 import { useCategorias } from "../hooks/useCategorias";
 import { useFiadosConductores } from "../hooks/useFiadosConductores";
 import { useGastosOperativos } from "../hooks/useGastosOperativos";
+import { useTurnoCaja } from "../hooks/useTurnoCaja";
+import { conductoresPorRevisar, recolectoresPorRevisar } from "../lib/peticiones";
 import { useAnularVenta } from "../hooks/useAnularVenta";
 import { usePaquetes } from "../hooks/usePaquetes";
 import { useCrearConductorConUsuario } from "../hooks/useCrearConductorConUsuario";
 import { useRecargas } from "../hooks/useRecargas";
 import { usePeticionesPin } from "../hooks/usePeticionesPin";
 import { usePaquetesRecolectores } from "../hooks/usePaquetesRecolectores";
-import { usePaquetesClientes } from "../hooks/usePaquetesClientes";
 import { useRecargasRecolector } from "../hooks/useRecargasRecolector";
+import { useRecargasConductorAdmin } from "../hooks/useRecargasConductor";
 import { useCierresCaja } from "../hooks/useCierresCaja";
 import { useAnuncios } from "../hooks/useAnuncios";
 import { useDescripciones } from "../hooks/useDescripciones";
 import {
-  ESTADO_CONDUCTOR_RECHAZADO,
-  ESTADO_CUENTA_PENDIENTE,
   METODOS_PAGO,
   METODOS_CON_COMPROBANTE,
   METODO_PAGO_EFECTIVO,
@@ -51,7 +51,7 @@ import PeticionesModal from "../components/admin/PeticionesModal";
 import PagosMetodoModal from "../components/admin/PagosMetodoModal";
 import LimpiarChatsModal from "../components/admin/LimpiarChatsModal";
 import GestorRecargaConductorModal from "../components/admin/GestorRecargaConductorModal";
-import RecargaRapidaRecolectorForm from "../components/admin/RecargaRapidaRecolectorForm";
+import GestorPlanRecolectorModal from "../components/admin/GestorPlanRecolectorModal";
 import logo from "../assets/logo.webp";
 
 // Opciones del dropdown "Pagos" del header: Efectivo/Yape/Plin/Otros
@@ -97,10 +97,6 @@ export default function AdminDashboardPage() {
     rechazarUsuario,
     refresh: refreshUsuarios,
   } = useUsuarios();
-  // Recarga a clientes (unificación pasajero/cliente) desde el Admin —
-  // mismo `usuarios` ya cargado para el Directorio/ranking, filtrado a
-  // rol pasajero.
-  const usuariosClientes = usuarios.filter((u) => u.rol === "pasajero");
   const {
     conductores,
     categorias,
@@ -156,7 +152,7 @@ export default function AdminDashboardPage() {
     useFiadosConductores();
   const {
     peticiones: peticionesPin,
-    marcarVerificado: marcarPinVerificado,
+    enviarCodigo: enviarCodigoPin,
     descartar: descartarPeticionPin,
   } = usePeticionesPin();
   const { gastos, gastosHoy, totalGastosHoy, agregarGasto, eliminarGasto } = useGastosOperativos();
@@ -193,20 +189,17 @@ export default function AdminDashboardPage() {
     reordenarPaquetes: reordenarPaquetesRecolector,
   } = usePaquetesRecolectores();
   const {
-    paquetes: paquetesClientes,
-    loading: paquetesClientesLoading,
-    error: paquetesClientesError,
-    crearPaquete: crearPaqueteCliente,
-    actualizarPaquete: actualizarPaqueteCliente,
-    eliminarPaquete: eliminarPaqueteCliente,
-    reordenarPaquetes: reordenarPaquetesCliente,
-  } = usePaquetesClientes();
-  const {
+    peticiones: peticionesRecargaRecolector,
     pendientes: recargasRecolectorPendientes,
     crearPeticion: crearRecargaRecolector,
     aprobarPeticion: aprobarRecargaRecolector,
     rechazarPeticion: rechazarRecargaRecolector,
   } = useRecargasRecolector();
+  const {
+    pendientes: recargasConductorPendientes,
+    aprobar: aprobarRecargaConductor,
+    rechazar: rechazarRecargaConductor,
+  } = useRecargasConductorAdmin();
   const { cierres, crearCierre } = useCierresCaja();
   // recolectorId null: el Admin no tiene fila propia en `usuarios` (su
   // sesión es el código maestro, no un login) — una recarga registrada
@@ -228,6 +221,30 @@ export default function AdminDashboardPage() {
   const [gastosOpen, setGastosOpen] = useState(false);
   const [historialOpen, setHistorialOpen] = useState(false);
   const [cierreOpen, setCierreOpen] = useState(false);
+  // Turno de caja del Admin (en la base, ver useTurnoCaja): sus propias
+  // ventas (las que no hizo un recolector) y los gastos operativos desde
+  // su último cierre. A las 00:00 (hora de Perú) el cierre se abre solo
+  // para contar el efectivo y cerrar, o extender el turno 30 minutos. El
+  // Admin no ve ni gestiona los cierres de los recolectores.
+  const {
+    desde: turnoDesde,
+    vencido: turnoVencido,
+    extensiones: turnoExtensiones,
+    maxExtensiones: turnoMaxExtensiones,
+    obligatorio: turnoObligatorio,
+    extender: extenderTurno,
+    refresh: refreshTurno,
+  } = useTurnoCaja();
+  useEffect(() => {
+    if (turnoVencido) setCierreOpen(true);
+  }, [turnoVencido]);
+  // Sin extensiones: el cierre queda encima y no se puede cerrar.
+  const cierreVisible = cierreOpen || turnoObligatorio;
+  const inicioTurno = turnoDesde ? new Date(turnoDesde) : null;
+  const enTurno = (fecha) => !inicioTurno || (fecha && new Date(fecha) > inicioTurno);
+  const ventasTurnoAdmin = ventasVigentes.filter((v) => !v.recolector_id && enTurno(v.created_at));
+  const gastosTurnoAdmin = gastos.filter((g) => enTurno(g.created_at));
+  const totalGastosTurnoAdmin = gastosTurnoAdmin.reduce((sum, g) => sum + Number(g.monto || 0), 0);
   const [membresiasOpen, setMembresiasOpen] = useState(false);
   const [usuariosOpen, setUsuariosOpen] = useState(false);
   const [categoriasOpen, setCategoriasOpen] = useState(false);
@@ -271,10 +288,11 @@ export default function AdminDashboardPage() {
   // "conductor fantasma" (contar por `estado` podía no coincidir con
   // ningún caso real y dejar el badge en 0 con peticiones de verdad).
   const totalPeticiones =
-    conductores.filter((c) => !c.aprobado && c.estado !== ESTADO_CONDUCTOR_RECHAZADO).length +
-    usuarios.filter((u) => u.rol === "recolector" && u.estado_cuenta === ESTADO_CUENTA_PENDIENTE).length +
+    conductoresPorRevisar(conductores, usuarios).length +
+    recolectoresPorRevisar(usuarios).length +
     peticionesPin.length +
-    recargasRecolectorPendientes.length;
+    recargasRecolectorPendientes.length +
+    recargasConductorPendientes.length;
 
   return (
     <div className="tz-root">
@@ -426,7 +444,7 @@ export default function AdminDashboardPage() {
          porque esa clase la comparten RecolectorPage.jsx y el App.jsx
          viejo — no se toca su layout flex original. */}
       <footer className="tz-page-footer tz-page-footer-admin-grid">
-        <button className="tz-footer-btn tz-footer-btn-cierre" onClick={() => setCierreOpen(true)}>
+        <button className={`tz-footer-btn tz-footer-btn-cierre ${turnoVencido ? "tz-btn-aviso" : ""}`} onClick={() => setCierreOpen(true)}>
           <Receipt size={18} />
           Cerrar Caja
         </button>
@@ -478,16 +496,13 @@ export default function AdminDashboardPage() {
           busyId={anulandoId}
           recargaProps={{
             conductores,
-            usuariosClientes,
             categorias,
             subgrupos,
-            recolectorId: null,
             registrarRecarga: registrarRecargaAdmin,
             crearConductorConUsuario,
             saving: savingRecargaAdmin,
             error: errorRecargaAdmin,
             paquetes,
-            paquetesClientes,
           }}
           onClose={() => {
             setRecargaOpen(false);
@@ -497,26 +512,21 @@ export default function AdminDashboardPage() {
       )}
 
       {recargaRecolectorOpen && (
-        <div className="tz-modal-backdrop">
-          <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
-            <button
-              className="tz-modal-close"
-              onClick={() => {
-                setRecargaRecolectorOpen(false);
-                setRecargaRecolector(null);
-              }}
-              aria-label="Cerrar"
-            >
-              <X size={18} />
-            </button>
-            <RecargaRapidaRecolectorForm
-              recolector={recargaRecolector}
-              paquetes={paquetesRecolectores}
-              crearPeticion={crearRecargaRecolector}
-              onDone={refreshUsuarios}
-            />
-          </div>
-        </div>
+        <GestorPlanRecolectorModal
+          recolector={usuarios.find((u) => u.id === recargaRecolector.id) || recargaRecolector}
+          paquetes={paquetesRecolectores}
+          peticiones={peticionesRecargaRecolector}
+          crearPeticion={async (args) => {
+            const r = await crearRecargaRecolector(args);
+            if (!r.error) await refreshUsuarios();
+            return r;
+          }}
+          onUpdate={actualizarUsuario}
+          onClose={() => {
+            setRecargaRecolectorOpen(false);
+            setRecargaRecolector(null);
+          }}
+        />
       )}
 
       {topOpen && <TopUsuariosModal ranking={ranking} onClose={() => setTopOpen(false)} />}
@@ -573,16 +583,22 @@ export default function AdminDashboardPage() {
           onClose={() => setHistorialOpen(false)}
         />
       )}
-      {cierreOpen && (
+      {cierreVisible && (
         <CierreCajaModal
-          ventasHoy={ventasHoy}
-          gastosHoy={gastosHoy}
-          totalGastosHoy={totalGastosHoy}
+          ventasHoy={ventasTurnoAdmin}
+          gastosHoy={gastosTurnoAdmin}
+          totalGastosHoy={totalGastosTurnoAdmin}
           cierres={cierres}
           crearCierre={crearCierre}
           esAdmin
           cajeroNombre="Admin"
           onClose={() => setCierreOpen(false)}
+          onCerrado={refreshTurno}
+          vencido={turnoVencido}
+          extensiones={turnoExtensiones}
+          maxExtensiones={turnoMaxExtensiones}
+          obligatorio={turnoObligatorio}
+          onExtender={extenderTurno}
           conductores={conductores}
           usuarios={usuarios}
         />
@@ -604,6 +620,7 @@ export default function AdminDashboardPage() {
             {
               key: "recolectores",
               label: "Recolectores",
+              soloCreditos: true,
               paquetes: paquetesRecolectores,
               loading: paquetesRecolectoresLoading,
               error: paquetesRecolectoresError,
@@ -611,17 +628,6 @@ export default function AdminDashboardPage() {
               actualizarPaquete: actualizarPaqueteRecolector,
               eliminarPaquete: eliminarPaqueteRecolector,
               reordenarPaquetes: reordenarPaquetesRecolector,
-            },
-            {
-              key: "clientes",
-              label: "Clientes",
-              paquetes: paquetesClientes,
-              loading: paquetesClientesLoading,
-              error: paquetesClientesError,
-              crearPaquete: crearPaqueteCliente,
-              actualizarPaquete: actualizarPaqueteCliente,
-              eliminarPaquete: eliminarPaqueteCliente,
-              reordenarPaquetes: reordenarPaquetesCliente,
             },
           ]}
           onClose={() => setMembresiasOpen(false)}
@@ -675,13 +681,14 @@ export default function AdminDashboardPage() {
         <PeticionesModal
           conductores={conductores}
           categorias={categorias}
+          subgrupos={subgrupos}
           onAprobar={aprobar}
           onRechazar={rechazar}
           usuarios={usuarios}
           onAprobarRecolector={aprobarUsuario}
           onRechazarRecolector={rechazarUsuario}
           peticionesPin={peticionesPin}
-          onVerificarPin={marcarPinVerificado}
+          onEnviarCodigoPin={enviarCodigoPin}
           onDescartarPin={descartarPeticionPin}
           recargasRecolector={recargasRecolectorPendientes}
           onAprobarRecargaRecolector={(peticion) => {
@@ -692,6 +699,15 @@ export default function AdminDashboardPage() {
             });
           }}
           onRechazarRecargaRecolector={rechazarRecargaRecolector}
+          recargasConductor={recargasConductorPendientes}
+          onAprobarRecargaConductor={(peticion) =>
+            aprobarRecargaConductor(
+              peticion,
+              conductores.find((c) => c.id === peticion.conductor_id),
+              registrarRecargaAdmin
+            )
+          }
+          onRechazarRecargaConductor={rechazarRecargaConductor}
           onClose={() => setPeticionesOpen(false)}
         />
       )}

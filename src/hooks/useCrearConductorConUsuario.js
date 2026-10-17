@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { ESTADO_CONDUCTOR_DESCONECTADO, ESTADO_CUENTA_ACTIVO, NIVEL_SERVICIO_ECONOMICO } from "../lib/taxiEnums";
+import { NIVEL_SERVICIO_ECONOMICO } from "../lib/taxiEnums";
 
 // Alta completa (login + perfil) — el ÚNICO camino que crea una fila en
 // `conductores` CON `usuarios` incluido, usado por los 4 contextos que
@@ -29,9 +29,9 @@ import { ESTADO_CONDUCTOR_DESCONECTADO, ESTADO_CUENTA_ACTIVO, NIVEL_SERVICIO_ECO
 // StaffLoginForm.jsx: detecta pin=null y deja crear+guardar el PIN con
 // bcrypt ahí mismo, sin pedir DNI de nuevo).
 //
-// No hay transacciones multi-tabla desde el cliente anon — si el
-// segundo insert falla, se borra el primero a mano para no dejar un
-// login "fantasma" sin conductor operativo detrás.
+// Las dos filas las crea la base juntas (taxi_crear_conductor, migración
+// 20261012120000): si algo falla no queda un login "fantasma" sin
+// conductor operativo detrás.
 export function useCrearConductorConUsuario({ onDone } = {}) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -56,43 +56,15 @@ export function useCrearConductorConUsuario({ onDone } = {}) {
       setSaving(true);
       setError("");
 
-      const { data: existente, error: checkError } = await supabase
-        .from("usuarios")
-        .select("id")
-        .or(`dni.eq.${dni},telefono.eq.${telefono}`)
-        .maybeSingle();
-      if (checkError) {
-        const message = "No se pudo verificar los datos.";
-        setError(message);
-        setSaving(false);
-        return { error: checkError, message };
-      }
-      if (existente) {
-        const message = "Ya existe una cuenta con ese DNI o teléfono.";
-        setError(message);
-        setSaving(false);
-        return { error: new Error(message), message };
-      }
-
-      const { data: usuario, error: usuarioError } = await supabase
-        .from("usuarios")
-        .insert({ dni, telefono, pin: null, nombre, rol: "conductor", estado_cuenta: ESTADO_CUENTA_ACTIVO })
-        .select()
-        .single();
-      if (usuarioError) {
-        const message = "No se pudo crear la cuenta de acceso.";
-        setError(message);
-        setSaving(false);
-        return { error: usuarioError, message };
-      }
-
-      const { data: conductor, error: conductorError } = await supabase
-        .from("conductores")
-        .insert({
-          nombre,
+      // Cuenta + fila de conductor en UNA operación de la base
+      // (taxi_crear_conductor): valida duplicados y solo el Admin puede
+      // crearlo ya aprobado.
+      const { data, error: rpcError } = await supabase.rpc("taxi_crear_conductor", {
+        p_dni: dni,
+        p_telefono: telefono,
+        p_nombre: nombre,
+        p_conductor: {
           placa,
-          telefono,
-          dni,
           localidad: localidad || null,
           categoria_id: categoriaId || null,
           subgrupo_id: subgrupoId || null,
@@ -104,18 +76,21 @@ export function useCrearConductorConUsuario({ onDone } = {}) {
           foto_general_url: fotoGeneralUrl || null,
           foto_interior_url: fotoInteriorUrl || null,
           foto_conductor_dni_url: fotoConductorDniUrl || null,
-          aprobado,
-          estado: aprobado ? ESTADO_CONDUCTOR_DESCONECTADO : null,
-        })
-        .select()
-        .single();
-      if (conductorError) {
-        await supabase.from("usuarios").delete().eq("id", usuario.id);
-        const message = "No se pudo crear el perfil de conductor; se deshizo la cuenta de acceso.";
+        },
+        p_aprobado: aprobado,
+      });
+      if (rpcError || data?.estado !== "ok") {
+        const message =
+          data?.estado === "duplicado"
+            ? "Ya existe una cuenta con ese DNI o teléfono."
+            : data?.estado === "sin_permiso"
+              ? "Tu sesión no permite crear conductores. Vuelve a entrar."
+              : "No se pudo crear el conductor.";
         setError(message);
         setSaving(false);
-        return { error: conductorError, message };
+        return { error: rpcError || new Error(message), message };
       }
+      const { usuario, conductor } = data;
 
       setSaving(false);
       onDone?.();

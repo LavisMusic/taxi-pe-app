@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { subscribeTable } from "../lib/realtime";
 import {
+  ESTADO_CONDUCTOR_ACTIVO,
   ESTADO_CONDUCTOR_DESCONECTADO,
+  ESTADO_CONDUCTOR_OCUPADO,
   ESTADO_CONDUCTOR_RECHAZADO,
   ESTADO_VERIFICACION_PERMANENTE,
   ESTADO_VERIFICACION_TEMPORAL,
@@ -45,11 +47,11 @@ export function useConductores() {
   const refresh = useCallback(async () => {
     if (!yaCargoUnaVez.current) setLoading(true);
     setError("");
-    const [conductoresRes, categoriasRes, subgruposRes] = await Promise.all([
+    const [conductoresRes, categoriasRes, subgruposRes, privadosRes] = await Promise.all([
       supabase
         .from("conductores")
         .select(
-          "id, nombre, placa, telefono, dni, localidad, foto_url, foto_portada_url, descripcion, estado, creditos, vencimiento_suscripcion, categoria_id, subgrupo_id, nivel_servicio, aprobado, foto_general_url, foto_interior_url, foto_conductor_dni_url, asientos_totales, asientos_ocupados, membresia_paquete_id, created_at"
+          "id, nombre, placa, telefono, localidad, foto_url, foto_portada_url, descripcion, estado, creditos, vencimiento_suscripcion, categoria_id, subgrupo_id, nivel_servicio, aprobado, asientos_totales, asientos_ocupados, membresia_paquete_id, nivel_servicio_solicitado, created_at"
         )
         .order("created_at", { ascending: false }),
       supabase.from("categorias").select("id, nombre, orden, icono_url").order("orden", { ascending: true }),
@@ -57,12 +59,27 @@ export function useConductores() {
       // useCategorias.js (usado por CategoriasModal). Esto es para
       // poblar los desplegables de Directorio/Registro de conductor.
       supabase.from("subgrupos").select("id, categoria_id, nombre, orden").order("orden", { ascending: true }),
+      // DNI y fotos de verificación: no se leen directo de la tabla; la
+      // base se los da al Admin (al recolector, solo el DNI).
+      supabase.rpc("taxi_conductores_privados"),
     ]);
 
     if (conductoresRes.error || categoriasRes.error || subgruposRes.error) {
       setError("No se pudo cargar el directorio de conductores.");
     } else {
-      setConductores(conductoresRes.data ?? []);
+      const privados = new Map((privadosRes.data ?? []).map((p) => [p.id, p]));
+      setConductores(
+        (conductoresRes.data ?? []).map((c) => {
+          const p = privados.get(c.id);
+          return {
+            ...c,
+            dni: p?.dni ?? null,
+            foto_general_url: p?.foto_general_url ?? null,
+            foto_interior_url: p?.foto_interior_url ?? null,
+            foto_conductor_dni_url: p?.foto_conductor_dni_url ?? null,
+          };
+        })
+      );
       setCategorias(categoriasRes.data ?? []);
       setSubgrupos(subgruposRes.data ?? []);
     }
@@ -78,7 +95,7 @@ export function useConductores() {
   // un conductor nuevo pendiente — todo eso son filas de `conductores`,
   // así que un solo canal cubre el Directorio Y el badge del Centro de
   // Peticiones sin que el Admin tenga que darle F5.
-  useEffect(() => subscribeTable("conductores", () => refresh()), [refresh]);
+  useEffect(() => subscribeTable("conductores", () => refresh(), { respaldo: true }), [refresh]);
 
   // .select() después del update + chequear que volvió al menos 1 fila:
   // sin esto, un UPDATE bloqueado en silencio por RLS (0 filas
@@ -91,7 +108,7 @@ export function useConductores() {
         .from("conductores")
         .update(patch)
         .eq("id", id)
-        .select();
+        .select("id");
       if (updateError) return { error: updateError };
       if (!data || data.length === 0) {
         return { error: new Error("No se guardó ningún cambio (0 filas afectadas).") };
@@ -122,12 +139,22 @@ export function useConductores() {
   // registro exprés vence a los 7 días o no, y solo el Admin (acá) puede
   // sacarla de 'en_revision'. Best-effort: si esto falla no se revierte
   // la aprobación/rechazo del conductor, que ya quedó guardada.
+  //
+  // `datos`: lo que el Admin confirmó en Peticiones (categoría, subgrupo,
+  // localidad, asientos y nivel de servicio). Si el conductor ya estaba
+  // trabajando (cuenta temporal en Activo/Ocupado) no se lo desconecta.
   const aprobar = useCallback(
-    async (id, categoriaId) => {
+    async (id, datos) => {
       const conductor = conductores.find((c) => c.id === id);
+      const trabajando =
+        conductor?.estado === ESTADO_CONDUCTOR_ACTIVO || conductor?.estado === ESTADO_CONDUCTOR_OCUPADO;
       const resultado = await updateConductor(id, {
-        estado: ESTADO_CONDUCTOR_DESCONECTADO,
-        categoria_id: categoriaId,
+        estado: trabajando ? conductor.estado : ESTADO_CONDUCTOR_DESCONECTADO,
+        categoria_id: datos.categoriaId,
+        subgrupo_id: datos.subgrupoId,
+        localidad: datos.localidad,
+        asientos_totales: datos.asientosTotales,
+        nivel_servicio: datos.nivelServicio,
         aprobado: true,
       });
       if (!resultado.error && conductor?.telefono) {

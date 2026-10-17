@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { MessageSquareText, Plus, Save, Pencil, Trash2, X, Loader2, ArrowUp, ArrowDown, Eye, EyeOff } from "lucide-react";
-import { PUBLICOS, PUBLICO_TODOS, etiquetaPublico, DESCRIPCION_MAX } from "../../lib/taxiEnums";
+import { PUBLICOS_DESCRIPCION, PUBLICO_TODOS, etiquetaPublico, DESCRIPCION_MAX } from "../../lib/taxiEnums";
 
 // "Gestor de Descripciones" (Admin): los mensajes que se escriben solos
 // debajo del logo, después de la frase de siempre ("Tu taxi, al toque"
-// en el pasajero, el nombre en el conductor). Cada una va a pasajeros, a
-// conductores o a ambos; se pueden pausar y ordenar. Mismo diseño que el
-// Gestor de Anuncios.
-const FILTROS = [{ value: "todas", label: "Todas" }, ...PUBLICOS.filter((p) => p.value !== PUBLICO_TODOS)];
+// en el pasajero, el nombre en el conductor y el recolector). Cada una va
+// a pasajeros, conductores, recolectores o a todos; se pueden pausar y
+// ordenar. Mismo diseño que el Gestor de Anuncios.
+const FILTROS = [{ value: "todas", label: "Todas" }, ...PUBLICOS_DESCRIPCION.filter((p) => p.value !== PUBLICO_TODOS)];
 
 function DescripcionForm({ initial, onGuardar, onCancelar, saving }) {
   const [texto, setTexto] = useState(initial?.texto ?? "");
@@ -39,7 +39,7 @@ function DescripcionForm({ initial, onGuardar, onCancelar, saving }) {
 
       <label className="tz-field-label">Mostrar a</label>
       <div className="tz-gasto-tipo-buttons">
-        {PUBLICOS.map((p) => (
+        {PUBLICOS_DESCRIPCION.map((p) => (
           <button
             key={p.value}
             type="button"
@@ -103,7 +103,7 @@ function DescripcionRow({ d, arriba, abajo, onActualizar, onEliminar, onIntercam
         <span style={{ minWidth: 0 }}>
           <strong style={{ color: "var(--text)", overflowWrap: "anywhere" }}>{d.texto}</strong>
           <p style={{ margin: "2px 0", color: "var(--text-dim)", fontSize: 12 }}>
-            {etiquetaPublico(d.publico)} · {d.activo ? "Activa" : "Pausada"}
+            {etiquetaPublico(d.publico, PUBLICOS_DESCRIPCION)} · {d.activo ? "Activa" : "Pausada"}
           </p>
           {error && <p className="tz-error" style={{ margin: 0 }}>{error}</p>}
         </span>
@@ -166,7 +166,7 @@ export default function GestorDescripcionesModal({ descripciones, loading, error
             <MessageSquareText size={17} /> Gestor de Descripciones
           </h2>
           <p className="tz-stock-editor-sub">
-            Mensajes que se escriben solos debajo del logo, después de "Tu taxi, al toque" (pasajeros) o del nombre (conductores). Máximo{" "}
+            Mensajes que se escriben solos debajo del logo, después de "Tu taxi, al toque" (pasajeros) o del nombre (conductores y recolectores). Primero salen las de "Todos". Máximo{" "}
             {DESCRIPCION_MAX} caracteres.
           </p>
 

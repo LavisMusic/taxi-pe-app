@@ -1,5 +1,22 @@
 import { useEffect, useState } from "react";
-import { LogOut, Pencil, Zap, Car, Ban, CreditCard, CalendarClock, MessageCircle, Save, Loader2 } from "lucide-react";
+import {
+  LogOut,
+  Pencil,
+  Zap,
+  Car,
+  Ban,
+  Bike,
+  CalendarClock,
+  MessageCircle,
+  Save,
+  Loader2,
+  X,
+  Receipt,
+  History,
+  BarChart3,
+  Wallet,
+  Target,
+} from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useConductorSesion } from "../hooks/useConductorSesion";
 import { useHilosChatConductor } from "../hooks/useChatMensajes";
@@ -15,18 +32,28 @@ import {
   ESTADO_CONDUCTOR_OCUPADO,
   ESTADO_CONDUCTOR_DESCONECTADO,
   ESTADO_CONDUCTOR_INHABILITADO,
+  ESTADO_CONDUCTOR_RECHAZADO,
   ESTADO_VERIFICACION_TEMPORAL,
   ESTADO_VERIFICACION_EN_REVISION,
 } from "../lib/taxiEnums";
-import { formatDate } from "../utils/format";
+import { formatDate, formatSoles } from "../utils/format";
 import Styles from "../components/Styles";
 import GestionImagenModal from "../components/admin/GestionImagenModal";
 import ConductorPublicCard from "../components/ConductorPublicCard";
 import ConductorChatInboxModal from "../components/ConductorChatInboxModal";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import AnimacionExitoNeon from "../components/AnimacionExitoNeon";
+import { useViajeFinalizadoAviso } from "../hooks/useViajeFinalizadoAviso";
 import VerificarConductorForm from "../components/VerificarConductorForm";
-import EntregasRepartidorPanel from "../components/repartidor/EntregasRepartidorPanel";
+import Dropdown from "../components/Dropdown";
+import ContadorCreditos from "../components/ContadorCreditos";
+import PanelesConductor from "../components/conductor/PanelesConductor";
+import PanelDelivery from "../components/conductor/PanelDelivery";
+import { CerrarTurnoModal, HistorialTurnosModal, EstadisticasModal } from "../components/conductor/TurnoConductorModales";
+import { useTurnoConductor, useEstadisticasConductor } from "../hooks/useTurnoConductor";
+import { useEntregasRepartidor } from "../hooks/useEntregasRepartidor";
+import RecargarConductorModal from "../components/conductor/RecargarConductorModal";
+import MetaDiaModal, { gananciaHoy } from "../components/conductor/MetaDiaModal";
 import logo from "../assets/logo.webp";
 import BotonSoporte from "../components/BotonSoporte";
 import TextoMaquina from "../components/TextoMaquina";
@@ -127,7 +154,30 @@ export default function ConductorPage() {
   // del "sin saldo" de abajo, esto NO se levanta solo al recargar, hace
   // falta que el Admin lo vuelva a cambiar de estado a mano.
   const inhabilitadoPorAdmin = conductor?.estado === ESTADO_CONDUCTOR_INHABILITADO;
+  // Cuenta sin aprobar (temporal o en revisión): trabaja igual, pero
+  // primero elige su vehículo (sale con ese ícono en el radar). Si el
+  // Admin rechazó su verificación, no se conecta hasta reenviarla.
+  const sinVehiculo = !!conductor && !conductor.categoria_id;
+  const rechazado = conductor?.estado === ESTADO_CONDUCTOR_RECHAZADO;
+  // La fila del conductor manda: si el Admin lo rechazó, la sesión puede
+  // seguir creyendo que la cuenta está 'en_revision'.
+  const enRevision = !rechazado && usuario?.estado_verificacion === ESTADO_VERIFICACION_EN_REVISION;
+  const [guardandoVehiculo, setGuardandoVehiculo] = useState(false);
+  const elegirVehiculo = async (categoriaId) => {
+    if (!conductor || !categoriaId) return;
+    setGuardandoVehiculo(true);
+    await actualizar(conductor.id, { categoria_id: categoriaId });
+    setGuardandoVehiculo(false);
+  };
   const tieneAcceso = !inhabilitadoPorAdmin && (tieneMembresiaVigente || (conductor?.creditos ?? 0) > 0);
+
+  // En carrera (pasajero con oferta aceptada o en tránsito): el switch de
+  // taxi queda bloqueado y no recibe repartos. Repartiendo (pedidos de
+  // reparto aceptados): no recibe pasajeros (la base además lo pasó a
+  // Desconectado) y no puede apagar el modo delivery hasta entregar todo.
+  const repartos = useEntregasRepartidor(conductor?.aprobado ? conductor.id : null);
+  const enCarrera = (pasajerosEnCarrera?.length ?? 0) > 0;
+  const repartiendo = repartos.entregasActivas.length > 0;
 
   // Fase 3 — transmite el GPS del conductor mientras tenga sesión, sin
   // depender de que tenga algún chat abierto (ver useGpsBroadcaster.js:
@@ -144,6 +194,9 @@ export default function ConductorPage() {
     asientosOcupados: conductor?.asientos_ocupados,
     asientosTotales: conductor?.asientos_totales,
     tieneAcceso,
+    // Modo delivery: comparte su ubicación con los negocios de Caja
+    // Tonazo aunque esté en el panel de Viajes o Desconectado como taxi.
+    modoDelivery: !!conductor?.modo_delivery && tieneMembresiaVigente && !inhabilitadoPorAdmin,
   });
 
   // Fix Seguridad (Auto-Apagado): si se detecta que ya no tiene acceso
@@ -169,6 +222,13 @@ export default function ConductorPage() {
   const [toggleError, setToggleError] = useState("");
   const [editandoPerfil, setEditandoPerfil] = useState(false);
   const [mensajesOpen, setMensajesOpen] = useState(false);
+  // Viaje finalizado (lo cerró el pasajero) con la bandeja cerrada: se
+  // festeja al volver a la pantalla principal.
+  const viajeFinalizado = useViajeFinalizadoAviso({
+    campo: "conductor_id",
+    valor: conductor?.id ?? null,
+    chatAbierto: mensajesOpen,
+  });
   // Con qué pasajero abrir la bandeja — normalmente null (arranca en la
   // lista de hilos); si el conductor tocó "Ver Chat" desde la alerta de
   // "Hacer Señas", entra directo a esa conversación.
@@ -183,11 +243,51 @@ export default function ConductorPage() {
   // (Activo/Ocupado) — cubre viajes y repartos, para que el GPS no se
   // suspenda al apagarse la pantalla. Ver useWakeLock.js.
   useWakeLock(
-    conductor?.estado === ESTADO_CONDUCTOR_ACTIVO || conductor?.estado === ESTADO_CONDUCTOR_OCUPADO
+    conductor?.estado === ESTADO_CONDUCTOR_ACTIVO ||
+      conductor?.estado === ESTADO_CONDUCTOR_OCUPADO ||
+      !!conductor?.modo_delivery
   );
 
+  // Dos paneles (Viajes / Delivery) y el pie de página del turno.
+  const [panel, setPanel] = useState("viajes");
+  const [cambiandoDelivery, setCambiandoDelivery] = useState(false);
+  const [deliveryError, setDeliveryError] = useState("");
+  const [modalTurno, setModalTurno] = useState(null); // "cerrar" | "historial" | "estadisticas" | "recargar" | "meta"
+  const turno = useTurnoConductor(conductor?.id);
+  const { estadisticas, refrescar: refrescarEstadisticas } = useEstadisticasConductor(conductor?.id);
+
+  const handleToggleDelivery = async () => {
+    if (!conductor || cambiandoDelivery) return;
+    setCambiandoDelivery(true);
+    setDeliveryError("");
+    const { error: errDelivery } = await actualizar(conductor.id, { modo_delivery: !conductor.modo_delivery });
+    setCambiandoDelivery(false);
+    if (errDelivery) {
+      setDeliveryError(
+        errDelivery.code === "22023" ? errDelivery.message : "No se pudo cambiar el modo delivery. Intenta de nuevo."
+      );
+    }
+  };
+
+  // Meta del día: festejo una sola vez por día al alcanzarla.
+  const ganadoHoy = gananciaHoy(estadisticas);
+  const metaDiaria = Number(conductor?.meta_diaria) || 0;
+  const [festejarMeta, setFestejarMeta] = useState(false);
+  useEffect(() => {
+    if (!conductor?.id || !metaDiaria || ganadoHoy == null || ganadoHoy < metaDiaria) return;
+    const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Lima" });
+    const clave = `tz-meta-cumplida-${conductor.id}`;
+    try {
+      if (localStorage.getItem(clave) === hoy) return;
+      localStorage.setItem(clave, hoy);
+    } catch {
+      /* sin almacenamiento: se festeja igual */
+    }
+    setFestejarMeta(true);
+  }, [conductor?.id, metaDiaria, ganadoHoy]);
+
   const handleToggle = async () => {
-    if (!conductor || toggling) return;
+    if (!conductor || toggling || enCarrera || repartiendo) return;
     const nuevoEstado = estadoActivo ? ESTADO_CONDUCTOR_OCUPADO : ESTADO_CONDUCTOR_ACTIVO;
     setToggling(true);
     setToggleError("");
@@ -200,7 +300,9 @@ export default function ConductorPage() {
         ? await actualizar(conductor.id, { estado: nuevoEstado, asientos_ocupados: 0 })
         : await setEstado(nuevoEstado);
     setToggling(false);
-    if (setError) setToggleError("No se pudo actualizar tu estado. Intenta de nuevo.");
+    if (setError) {
+      setToggleError(setError.code === "22023" ? setError.message : "No se pudo actualizar tu estado. Intenta de nuevo.");
+    }
   };
 
   return (
@@ -230,6 +332,20 @@ export default function ConductorPage() {
           onTerminar={marcarCompraCreditosVista}
         />
       ) : null}
+      {viajeFinalizado.festejar && !exitoEntrega && (
+        <AnimacionExitoNeon
+          titulo="¡Viaje finalizado!"
+          descripcion="Carrera completada. ¡Buen trabajo!"
+          onTerminar={viajeFinalizado.cerrar}
+        />
+      )}
+      {festejarMeta && !exitoEntrega && !viajeFinalizado.festejar && (
+        <AnimacionExitoNeon
+          titulo="¡Meta cumplida!"
+          descripcion={`Hoy ya ganaste ${formatSoles(ganadoHoy)}. ¡Gran trabajo!`}
+          onTerminar={() => setFestejarMeta(false)}
+        />
+      )}
       {exitoEntrega && (
         <AnimacionExitoNeon
           titulo="¡Entrega confirmada!"
@@ -286,7 +402,7 @@ export default function ConductorPage() {
         </div>
       </header>
 
-      <main className="tz-main" style={{ maxWidth: 420, margin: "0 auto" }}>
+      <main className="tz-main">
         {loading ? (
           <div className="tz-loading" style={{ minHeight: "50vh" }}>
             <Loader2 className="tz-spin" size={28} />
@@ -324,19 +440,75 @@ export default function ConductorPage() {
             </p>
           </div>
         ) : (
+          <PanelesConductor
+            panel={panel}
+            onCambiar={setPanel}
+            delivery={
+              <PanelDelivery
+                conductor={conductor}
+                estadisticas={estadisticas}
+                tieneMembresia={tieneMembresiaVigente && !inhabilitadoPorAdmin}
+                repartos={repartos}
+                enCarrera={enCarrera}
+                cambiando={cambiandoDelivery}
+                error={deliveryError}
+                onToggle={handleToggleDelivery}
+                onEntregado={() => {
+                  setExitoEntrega(true);
+                  refrescarEstadisticas();
+                }}
+                onVerPedido={() => setPanel("delivery")}
+              />
+            }
+            viajes={
           <>
             {!conductor.aprobado && (
-              <p className="tz-error" style={{ textAlign: "center" }}>
-                Tu registro está pendiente de aprobación — el Admin lo va a revisar en el Centro de
-                Peticiones. Mientras tanto no aparecés en la búsqueda pública de pasajeros.
-              </p>
+              <div className={`tz-cuenta-temporal ${rechazado ? "tz-cuenta-rechazada" : ""}`}>
+                {rechazado ? (
+                  <p>
+                    <strong>El Admin rechazó tu verificación.</strong> Revisa tus datos y envíala de nuevo antes de que
+                    pasen los 7 días, o tu cuenta se eliminará. Hasta entonces no puedes conectarte.
+                  </p>
+                ) : enRevision ? (
+                  <p>Tu verificación está en revisión del Admin. Mientras tanto trabajas como Económico.</p>
+                ) : (
+                  <p>
+                    Tu cuenta es temporal: verifícala dentro de los 7 días desde tu registro o se eliminará junto con tu
+                    membresía de bienvenida. Mientras tanto trabajas como Económico.
+                  </p>
+                )}
+                {(rechazado || !enRevision) && (
+                  <button
+                    type="button"
+                    className={`tz-scan-btn ${rechazado ? "tz-btn-reenviar" : "tz-payment-save"}`}
+                    onClick={() => setMostrandoVerificacion(true)}
+                  >
+                    {rechazado ? "Enviar mi verificación de nuevo" : "Verificar mi cuenta"}
+                  </button>
+                )}
+                <label className="tz-field-label">Tu vehículo</label>
+                <Dropdown
+                  value={conductor.categoria_id ?? ""}
+                  onChange={elegirVehiculo}
+                  options={categoriasPublicas.map((cat) => ({ value: cat.id, label: cat.nombre }))}
+                  placeholder="¿Qué vehículo manejas?"
+                  disabled={guardandoVehiculo}
+                  ariaLabel="Tu vehículo"
+                />
+              </div>
             )}
-            <section className="tz-stats" style={{ gridTemplateColumns: "repeat(2, 1fr)", marginBottom: 4 }}>
+            <section className="tz-stats tz-stats-centrados" style={{ gridTemplateColumns: "repeat(2, 1fr)", marginBottom: 4 }}>
               <div className="tz-stat-chip">
-                <span className="tz-stat-label">
-                  <CreditCard size={13} /> Créditos
+                <span className="tz-stat-label tz-stat-label-gemas-verde">Gemas</span>
+                <span className="tz-stat-value">
+                  <ContadorCreditos
+                    valor={conductor.creditos ?? 0}
+                    clave={`tz-creditos-conductor-${conductor.id}`}
+                    variante="verde"
+                    titulo="Gemas"
+                    className="tz-cc-heredado"
+                  />
                 </span>
-                <span className="tz-stat-value tz-cyan">{conductor.creditos ?? 0}</span>
               </div>
 
               <div className={`tz-stat-chip ${vencida ? "" : "tz-stat-chip-green"}`}>
@@ -359,16 +531,22 @@ export default function ConductorPage() {
               // créditos, ni siquiera importa si estaba Activo/Ocupado
               // antes, el switch entero se ve y se comporta como
               // bloqueado.
-              className={`tz-estado-toggle ${!tieneAcceso ? "tz-estado-toggle-bloqueado" : ""}`}
-              data-estado={conductor.estado}
+              className={`tz-estado-toggle ${!tieneAcceso ? "tz-estado-toggle-bloqueado" : ""} ${
+                tieneAcceso && (enCarrera || repartiendo) ? "tz-estado-toggle-trabajando" : ""
+              }`}
+              data-estado={tieneAcceso && repartiendo ? "repartiendo" : tieneAcceso && enCarrera ? "ocupado" : conductor.estado}
               onClick={handleToggle}
-              disabled={toggling || !tieneAcceso}
+              disabled={toggling || !tieneAcceso || sinVehiculo || rechazado || enCarrera || repartiendo}
               aria-label={
                 inhabilitadoPorAdmin
                   ? "Inhabilitado por el administrador"
                   : !tieneAcceso
                     ? "Inhabilitado — sin membresía activa ni créditos"
-                    : estadoActivo
+                    : enCarrera
+                      ? "En carrera"
+                      : repartiendo
+                        ? "Repartiendo"
+                        : estadoActivo
                       ? "Pasar a Ocupado"
                       : "Pasar a Activo"
               }
@@ -388,26 +566,46 @@ export default function ConductorPage() {
                 <Loader2 size={40} className="tz-spin" />
               ) : !tieneAcceso ? (
                 <Ban size={44} color="var(--danger)" />
+              ) : repartiendo ? (
+                <Bike size={44} color="var(--cyan)" />
+              ) : enCarrera ? (
+                <Car size={44} color="var(--orange)" />
               ) : estadoActivo ? (
                 <Zap size={44} color="var(--green)" />
               ) : (
                 <Car size={44} color="var(--orange)" />
               )}
               <span className="tz-estado-toggle-label">
-                {!tieneAcceso ? "🚫 Inhabilitado" : estadoActivo ? "ACTIVO" : "OCUPADO"}
+                {!tieneAcceso
+                  ? "🚫 Inhabilitado"
+                  : enCarrera
+                    ? "EN CARRERA"
+                    : repartiendo
+                      ? "REPARTIENDO"
+                      : estadoActivo
+                    ? "ACTIVO"
+                    : conductor.estado === ESTADO_CONDUCTOR_OCUPADO
+                      ? "OCUPADO"
+                      : "DESCONECTADO"}
               </span>
               <span className="tz-estado-toggle-hint">
                 {inhabilitadoPorAdmin
                   ? "Tu cuenta fue inhabilitada por el administrador"
                   : !tieneAcceso
                     ? "Recarga tu membresía o tus créditos"
-                    : `Toca para pasar a ${estadoActivo ? "Ocupado" : "Activo"}`}
+                    : enCarrera
+                      ? "Termina el viaje para cambiar tu estado"
+                      : repartiendo
+                        ? "Termina tus repartos para recibir pasajeros"
+                        : rechazado
+                      ? "Reenvía tu verificación para conectarte"
+                      : sinVehiculo
+                        ? "Elige tu vehículo para conectarte"
+                        : `Toca para pasar a ${estadoActivo ? "Ocupado" : "Activo"}`}
               </span>
             </button>
 
             {toggleError && <p className="tz-error" style={{ textAlign: "center" }}>{toggleError}</p>}
-
-            {conductor.aprobado && <EntregasRepartidorPanel conductorId={conductor.id} onEntregado={() => setExitoEntrega(true)} />}
 
             <div className="tz-method-history" style={{ marginTop: 18 }}>
               <span className="tz-method-history-label">Mi perfil de chat</span>
@@ -472,8 +670,66 @@ export default function ConductorPage() {
               <ConductorPublicCard conductor={conductor} isLoggedIn />
             </div>
           </>
+            }
+          />
         )}
       </main>
+
+      {/* Pie de página del turno — fuera del cubo: no gira al deslizar. */}
+      {conductor && (
+        <footer className="tz-page-footer">
+          <button className="tz-footer-btn tz-footer-btn-cierre" onClick={() => setModalTurno("cerrar")}>
+            <Receipt size={14} /> Cerrar turno
+          </button>
+          <button className="tz-footer-btn tz-footer-btn-misventas" onClick={() => setModalTurno("historial")}>
+            <History size={14} /> Historial
+          </button>
+          <button className="tz-footer-btn tz-footer-btn-stock" onClick={() => setModalTurno("estadisticas")}>
+            <BarChart3 size={14} /> Estadísticas
+          </button>
+          <button className="tz-footer-btn tz-footer-btn-catalogo" onClick={() => setModalTurno("recargar")}>
+            <Wallet size={14} /> Recargar
+          </button>
+          <button className="tz-footer-btn tz-footer-btn-localidades" onClick={() => setModalTurno("meta")}>
+            <Target size={14} /> Meta del día
+          </button>
+        </footer>
+      )}
+
+      {modalTurno === "cerrar" && conductor && (
+        <CerrarTurnoModal
+          turnoActual={turno.turnoActual}
+          cerrarTurno={turno.cerrarTurno}
+          onCerrado={() => {
+            turno.refrescarHistorial();
+            refrescarEstadisticas();
+          }}
+          onClose={() => setModalTurno(null)}
+        />
+      )}
+      {modalTurno === "historial" && conductor && (
+        <HistorialTurnosModal
+          historial={turno.historial}
+          cargando={turno.cargandoHistorial}
+          refrescar={turno.refrescarHistorial}
+          limpiar={turno.limpiarHistorial}
+          onClose={() => setModalTurno(null)}
+        />
+      )}
+      {modalTurno === "estadisticas" && conductor && (
+        <EstadisticasModal conductorId={conductor.id} onClose={() => setModalTurno(null)} />
+      )}
+      {modalTurno === "recargar" && conductor && (
+        <RecargarConductorModal conductor={conductor} onClose={() => setModalTurno(null)} />
+      )}
+      {modalTurno === "meta" && conductor && (
+        <MetaDiaModal
+          conductor={conductor}
+          estadisticas={estadisticas}
+          guardar={(monto) => actualizar(conductor.id, { meta_diaria: monto })}
+          onClose={() => setModalTurno(null)}
+        />
+      )}
 
       {editandoPerfil && conductor && (
         <GestionImagenModal
@@ -542,8 +798,12 @@ export default function ConductorPage() {
       {mostrandoVerificacion && (
         <div className="tz-modal-backdrop">
           <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="tz-modal-close" onClick={() => setMostrandoVerificacion(false)} aria-label="Cerrar">
+              <X size={18} />
+            </button>
             <VerificarConductorForm
               usuario={usuario}
+              conductor={conductor}
               submitLabel="Enviar verificación"
               onVerificado={(usuarioActualizado) => {
                 updateUsuario(usuarioActualizado);

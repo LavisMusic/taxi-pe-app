@@ -36,7 +36,18 @@ function CuentaEliminadaOverlay({ onCerrar }) {
             target="_blank"
             rel="noopener noreferrer"
             className="tz-scan-btn tz-payment-save"
-            style={{ marginTop: 16, width: "100%", display: "inline-flex", justifyContent: "center", gap: 8, textDecoration: "none" }}
+            style={{
+              marginTop: 16,
+              width: "100%",
+              boxSizing: "border-box",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              textDecoration: "none",
+              whiteSpace: "normal",
+              textAlign: "center",
+            }}
           >
             <Headset size={16} /> Escribir a soporte
           </a>
@@ -44,7 +55,7 @@ function CuentaEliminadaOverlay({ onCerrar }) {
         <button
           type="button"
           className="tz-scan-btn tz-cuenta-eliminada-salir-btn"
-          style={{ marginTop: 16, width: "100%" }}
+          style={{ marginTop: 12, width: "100%", boxSizing: "border-box" }}
           onClick={() => {
             onCerrar();
             window.location.href = "/";

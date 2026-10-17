@@ -3,7 +3,8 @@ import { createPortal } from "react-dom";
 import Cropper from "react-easy-crop";
 import { Upload, Camera, Wand2, Check, X, Loader2, Image as ImageIcon, Crop } from "lucide-react";
 import { supabase } from "../../supabaseClient";
-import { getCroppedImageBlob } from "../../lib/cropImage";
+import { getCroppedImageBlob, reducirImagenEvidencia } from "../../lib/cropImage";
+import { BUCKET_PRIVADO, esImagenPrivada, useUrlVisible, valorPrivado } from "../../lib/imagenesPrivadas";
 
 // Restaura el modal "Gestión de Imagen" de la caja registradora vieja
 // (mismas clases tz-image-manager-*/tz-ai-*). Sube directo a Storage y
@@ -27,6 +28,12 @@ import { getCroppedImageBlob } from "../../lib/cropImage";
 // Interior/Conductor+DNI) tienen que quedar crudas, son evidencia para
 // que el Admin las revise, no una foto de producto.
 //
+// `privado`: fotos de verificación y con el DNI — se suben al bucket
+// privado 'verificaciones' y al padre le llega 'privado:<archivo>' en vez
+// de un enlace público (ver lib/imagenesPrivadas.js). Son evidencia: no
+// pasan por el recorte cuadrado — se sube la foto completa, reducida a
+// 2560 px como máximo y en JPEG de calidad alta (lib/cropImage.js).
+//
 // "Mejorar con IA" quita el fondo 100% en el navegador
 // (@imgly/background-removal, import dinámico — el modelo pesa varios
 // MB, no tiene sentido cargarlo si nadie toca el botón) y deja el
@@ -49,10 +56,15 @@ export default function GestionImagenModal({
   fotoUrl,
   storageKey,
   isProfilePic = false,
+  privado = false,
   onFotoUrlChange,
   onClose,
 }) {
-  const [imagenUrl, setImagenUrl] = useState(fotoUrl || "");
+  // Lo que se muestra: el enlace público, o el firmado de una privada; tras
+  // subir una privada, la vista previa local del archivo.
+  const urlGuardada = useUrlVisible(fotoUrl || "");
+  const [vistaLocal, setVistaLocal] = useState("");
+  const imagenUrl = vistaLocal || urlGuardada;
   const [lastUploadedBlob, setLastUploadedBlob] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -95,19 +107,26 @@ export default function GestionImagenModal({
     try {
       const ext = forcedExt || (file.name ? (file.name.split(".").pop() || "jpg").toLowerCase() : "jpg");
       const fileName = `${storageKey}-${Date.now()}.${ext}`;
+      const bucket = privado ? BUCKET_PRIVADO : "conductores-fotos";
       const { error: storageError } = await supabase.storage
-        .from("conductores-fotos")
+        .from(bucket)
         .upload(fileName, file, {
           contentType: forcedType || file.type || "image/jpeg",
           upsert: false,
         });
       if (storageError) throw storageError;
 
-      const { data } = supabase.storage.from("conductores-fotos").getPublicUrl(fileName);
+      if (privado) {
+        if (vistaLocal) URL.revokeObjectURL(vistaLocal);
+        setVistaLocal(URL.createObjectURL(file));
+        onFotoUrlChange(valorPrivado(fileName));
+        return;
+      }
+      const { data } = supabase.storage.from(bucket).getPublicUrl(fileName);
       const url = data?.publicUrl;
       if (!url) throw new Error("No se pudo obtener la URL pública de la imagen.");
 
-      setImagenUrl(url);
+      setVistaLocal(url);
       onFotoUrlChange(url);
     } catch (err) {
       const rawMessage = err?.message || String(err || "");
@@ -124,10 +143,20 @@ export default function GestionImagenModal({
     }
   };
 
-  const handleFileSelected = (file) => {
+  const handleFileSelected = async (file) => {
     if (!file) return;
     discardAiPreview();
     cerrarRecorte();
+    if (privado) {
+      let blob = file;
+      try {
+        blob = await reducirImagenEvidencia(file);
+      } catch {
+        // Si el navegador no la puede procesar, se sube la original.
+      }
+      await uploadFoto(blob, "jpg", blob.type || "image/jpeg");
+      return;
+    }
     setRawSrc(URL.createObjectURL(file));
   };
 
@@ -153,7 +182,7 @@ export default function GestionImagenModal({
     try {
       let source = lastUploadedBlob;
       if (!source) {
-        if (!imagenUrl) throw new Error("Primero sube o toma una foto para poder mejorarla.");
+        if (!imagenUrl || esImagenPrivada(fotoUrl)) throw new Error("Primero sube o toma una foto para poder mejorarla.");
         const res = await fetch(imagenUrl);
         if (!res.ok) throw new Error("No se pudo cargar la imagen actual para procesarla.");
         source = await res.blob();

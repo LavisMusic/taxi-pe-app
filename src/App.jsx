@@ -62,6 +62,7 @@ import ColorPicker from "./components/ColorPicker";
 import TicketBoleta from "./components/TicketBoleta";
 
 import logo from "./assets/logo.webp";
+import Select from "./components/Select";
 
 /* ------------------------------------------------------------------ */
 /* CATALOGO DINAMICO: la carga (categorias/productos/stock desde       */
@@ -5931,7 +5932,7 @@ export default function App() {
                     {checkoutMetodo === "FIADO" && (
                       <div className="tz-checkout-fiado">
                         {clientes.length > 0 && !checkoutFiadoAddingNew && (
-                          <select
+                          <Select
                             className="tz-text-input"
                             value={checkoutFiadoClienteId || ""}
                             onChange={(e) => setCheckoutFiadoClienteId(e.target.value || null)}
@@ -5942,7 +5943,7 @@ export default function App() {
                                 {c.nombre}
                               </option>
                             ))}
-                          </select>
+                          </Select>
                         )}
 
                         {!checkoutFiadoAddingNew ? (

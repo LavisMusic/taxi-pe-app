@@ -8,11 +8,11 @@ import { METODOS_PAGO, TIPO_ITEM_MEMBRESIA } from "../../lib/taxiEnums";
 // mes (sin anuladas), y cada venta con su código de operación
 // (TX-000001…, automático), cliente/conductor, membresía o créditos,
 // método, comprobante y recolector.
-// Anular (con confirmación de 2 pasos) revierte el saldo — ver
-// useAnularVenta; si era Fiado anula la deuda vinculada y, si no la
-// encuentra (datos viejos), avisa para ajustarla a mano.
-// `puedeAnular` (default true): RecolectorPage.jsx lo pasa en false —
-// el recolector no puede borrar sus propias ventas.
+// Anular (con confirmación de 2 pasos) revierte el saldo y devuelve al
+// recolector los créditos que gastó — ver useAnularVenta; si era Fiado
+// anula la deuda vinculada y, si no la encuentra (datos viejos), avisa
+// para ajustarla a mano. El recolector solo ve (y anula) sus propias
+// ventas. `puedeAnular` (default true) permite ocultar el botón.
 // Filtro Todas / Registradas / Anuladas y buscador (código, nombre,
 // detalle, método). Lo anulado desde el gestor ⚡ de un conductor se ve
 // acá al instante (misma lista de ventas en tiempo real).
@@ -74,9 +74,11 @@ export default function HistorialVentasModal({ ventas, conductores, usuarios, an
   const handleAnular = async (venta) => {
     const conductor = conductoresById.get(venta.conductor_id);
     const cliente = usuariosById.get(venta.cliente_id);
-    const { error, eraFiado, fiadoEncontrado } = await anular(venta, conductor, cliente);
+    const { error, message, eraFiado, fiadoEncontrado } = await anular(venta, conductor, cliente);
     setConfirmandoId(null);
-    if (!error && eraFiado && !fiadoEncontrado) {
+    if (error) {
+      setAviso(message || "No se pudo anular la venta.");
+    } else if (eraFiado && !fiadoEncontrado) {
       setAviso(
         `Esta venta era Fiado pero no encontramos la deuda vinculada — revisa la Libreta de Fiados de ${
           conductor?.nombre ?? "este conductor"

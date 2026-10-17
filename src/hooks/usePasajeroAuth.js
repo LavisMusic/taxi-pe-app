@@ -1,43 +1,23 @@
 import { useCallback, useState } from "react";
-import { supabase } from "../supabaseClient";
 import { loginConPin, crearPin as crearPinBase, registrarTemporal as registrarTemporalBase, MENSAJE_BLOQUEADO } from "../lib/pinAuth";
 import { mirrorCuentaACaja } from "../lib/mirrorCaja";
-import {
-  ESTADO_VERIFICACION_PERMANENTE,
-  fechaExpiracionCuentaTemporal,
-} from "../lib/taxiEnums";
+import { ESTADO_VERIFICACION_PERMANENTE } from "../lib/taxiEnums";
 
-// Registro/Login específico de Pasajero. Registro exprés (bug/pedido:
-// nadie quiere llenar un formulario completo solo para pedir un taxi):
-// `registrarTemporal` pide SOLO nombre de usuario + teléfono, deja
-// entrar de una (estado_verificacion='temporal', sin PIN todavía) y da
-// 7 días para completar los datos reales antes de que el cron la borre
-// (ver migración cuentas_temporales.sql). `verificarCuenta` es ese
-// segundo paso — lo dispara PasajeroAuthForm cuando el login encuentra
-// una cuenta con `pin: null` Y `estado_verificacion: 'temporal'` (ver
-// `login` más abajo): ahí sí se piden nombre/apellido reales, edad,
-// sexo y el PIN, y la cuenta pasa directo a 'permanente' (Pasajero no
-// tiene gate de Admin, a diferencia de Conductor).
+// Registro/Login específico de Pasajero. Registro exprés: nombre,
+// celular y PIN, igual que el registro de cliente de Caja Tonazo (las
+// dos cuentas comparten credenciales). `verificarCuenta` queda para las
+// cuentas temporales de antes (sin PIN): lo dispara PasajeroAuthForm
+// cuando el login encuentra `pin: null` Y `estado_verificacion:
+// 'temporal'`, pide nombre/apellido, edad, sexo y el PIN, y la cuenta
+// pasa a 'permanente'.
 export function usePasajeroAuth() {
   const [loading, setLoading] = useState(false);
 
-  const registrarTemporal = useCallback(async ({ nombreUsuario, telefono }) => {
+  // Registro exprés = el de cliente en Caja Tonazo: nombre, celular y
+  // PIN. La cuenta nace permanente (migración 20261017110000) y el mismo
+  // celular+PIN sirve para entrar a Caja (se copia allá al terminar).
+  const registrarTemporal = useCallback(async ({ nombre, telefono, pin }) => {
     setLoading(true);
-    const { data: existente, error: checkError } = await supabase
-      .from("usuarios")
-      .select("id")
-      .or(`nombre_usuario.eq.${nombreUsuario},telefono.eq.${telefono}`)
-      .maybeSingle();
-
-    if (checkError) {
-      setLoading(false);
-      return { error: checkError, message: "No se pudo verificar tus datos. Intenta de nuevo." };
-    }
-    if (existente) {
-      setLoading(false);
-      return { error: new Error("duplicado"), message: "Ya existe una cuenta con ese usuario o teléfono." };
-    }
-
     // La cuenta la crea la base (taxi_registrar_temporal), que además
     // devuelve el ticket de la sesión.
     let resultado;
@@ -45,8 +25,8 @@ export function usePasajeroAuth() {
       resultado = await registrarTemporalBase({
         rol: "pasajero",
         telefono,
-        nombreUsuario,
-        expiraEn: fechaExpiracionCuentaTemporal(),
+        nombre,
+        pin,
       });
     } catch (rpcError) {
       setLoading(false);
@@ -55,11 +35,15 @@ export function usePasajeroAuth() {
 
     setLoading(false);
     if (resultado?.estado === "duplicado") {
-      return { error: new Error("duplicado"), message: "Ya existe una cuenta con ese usuario o teléfono." };
+      return {
+        error: new Error("duplicado"),
+        message: "Ya existe una cuenta con ese celular. Ingresa con tu PIN (sirve el mismo de Caja Tonazo).",
+      };
     }
     if (resultado?.estado !== "ok") {
       return { error: new Error(resultado?.estado || "error"), message: "No se pudo crear tu cuenta. Intenta de nuevo." };
     }
+    mirrorCuentaACaja({ telefono, pin, nombre, motivo: "alta" });
     return { usuario: resultado.usuario, error: null };
   }, []);
 
@@ -121,6 +105,9 @@ export function usePasajeroAuth() {
     if (resultado?.estado !== "ok") {
       return { error: new Error("pin incorrecto"), message: "Teléfono o PIN incorrectos." };
     }
+    // Crea su cuenta de Caja Tonazo si todavía no la tiene (no pisa el PIN
+    // de una que ya existe; ver mirror-a-caja).
+    mirrorCuentaACaja({ telefono, pin, nombre: resultado.usuario.nombre, motivo: "login" });
     return { usuario: resultado.usuario, error: null };
   }, []);
 

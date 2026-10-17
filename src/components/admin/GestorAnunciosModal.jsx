@@ -4,6 +4,7 @@ import { supabase } from "../../supabaseClient";
 import { formatDate } from "../../utils/format";
 import { FRECUENCIAS_ANUNCIO, FRECUENCIA_UNA_VEZ_DIA, FRECUENCIA_UNA_VEZ_TOTAL, PUBLICOS, PUBLICO_PASAJEROS, PUBLICO_TODOS, etiquetaPublico } from "../../lib/taxiEnums";
 import { toYoutubeEmbedUrl } from "../../lib/youtube";
+import Select from "../Select";
 
 // input datetime-local necesita "YYYY-MM-DDTHH:mm" en hora LOCAL — ni
 // el timestamptz crudo de la base (UTC, con offset) ni un ISO con "Z"
@@ -281,13 +282,13 @@ function AnuncioForm({ initial, onGuardar, onCancelar, saving }) {
       </div>
 
       <label className="tz-field-label">Frecuencia</label>
-      <select className="tz-text-input" value={frecuencia} onChange={(e) => setFrecuencia(e.target.value)}>
+      <Select className="tz-text-input" value={frecuencia} onChange={(e) => setFrecuencia(e.target.value)}>
         {FRECUENCIAS_ANUNCIO.map((f) => (
           <option key={f.value} value={f.value}>
             {f.label}
           </option>
         ))}
-      </select>
+      </Select>
 
       {frecuencia === FRECUENCIA_UNA_VEZ_DIA && (
         <>

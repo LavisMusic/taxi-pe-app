@@ -8,7 +8,6 @@ import AvisoTop from "./AvisoTop";
 import Dropdown from "./Dropdown";
 import {
   esTelefonoValido,
-  esNombreUsuarioValido,
   esEdadValida,
   ESTADO_VERIFICACION_TEMPORAL,
   SEXOS,
@@ -39,7 +38,9 @@ export default function PasajeroAuthForm({ onSuccess }) {
   const { aviso, mostrar } = useAvisoTop();
   const [modo, setModo] = useState("ingresar");
 
-  const [nombreUsuario, setNombreUsuario] = useState("");
+  const [nombreRegistro, setNombreRegistro] = useState("");
+  const [pinRegistro, setPinRegistro] = useState("");
+  const [pinRegistroConfirm, setPinRegistroConfirm] = useState("");
   const [telefono, setTelefono] = useState("");
   const [pin, setPin] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
@@ -313,8 +314,8 @@ export default function PasajeroAuthForm({ onSuccess }) {
   const handleRegistroTemporal = async (e) => {
     e.preventDefault();
     setError("");
-    if (!esNombreUsuarioValido(nombreUsuario)) {
-      setError("El usuario debe tener 3 a 20 caracteres: letras, números y guion bajo, sin espacios.");
+    if (!nombreRegistro.trim()) {
+      setError("Ingresa tu nombre.");
       return;
     }
     const telefonoTrim = telefono.trim();
@@ -322,9 +323,18 @@ export default function PasajeroAuthForm({ onSuccess }) {
       setError("Ingresa un celular válido: 9 dígitos, empieza con 9 (ej. 987654321).");
       return;
     }
+    if (!/^\d{6}$/.test(pinRegistro)) {
+      setError("El PIN debe tener 6 dígitos.");
+      return;
+    }
+    if (pinRegistro !== pinRegistroConfirm) {
+      setError("Los dos PIN no coinciden.");
+      return;
+    }
     const { usuario, message } = await registrarTemporal({
-      nombreUsuario: nombreUsuario.trim(),
+      nombre: nombreRegistro.trim(),
       telefono: telefonoTrim,
+      pin: pinRegistro,
     });
     if (!usuario) {
       setError(message);
@@ -409,7 +419,7 @@ export default function PasajeroAuthForm({ onSuccess }) {
             type="button"
             className="tz-metodo-pago-change"
             style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", margin: "10px 0 0" }}
-            onClick={() => navigate("/recuperar-pin")}
+            onClick={() => navigate("/recuperar-pin", { state: { telefono: telefono.trim() } })}
           >
             <KeyRound size={13} /> Olvidé mi PIN
           </button>
@@ -417,24 +427,21 @@ export default function PasajeroAuthForm({ onSuccess }) {
       ) : (
         <form onSubmit={handleRegistroTemporal}>
           <p className="tz-stock-editor-sub">
-            Ingresa ya mismo — más adelante te pedimos completar tus datos.
+            Regístrate con tu nombre, celular y un PIN. Con los mismos datos entras también a Caja Tonazo.
           </p>
           <div className="tz-login-field">
-            <label className="tz-field-label" htmlFor="pax-nombre-usuario">
-              Nombre de usuario
+            <label className="tz-field-label" htmlFor="pax-reg-nombre">
+              Nombre
             </label>
             <input
-              id="pax-nombre-usuario"
+              id="pax-reg-nombre"
               type="text"
               autoFocus
               className="tz-text-input"
-              value={nombreUsuario}
-              onChange={(e) => setNombreUsuario(e.target.value)}
-              placeholder="ej. zaph_sr"
+              value={nombreRegistro}
+              onChange={(e) => setNombreRegistro(e.target.value)}
+              placeholder="Tu nombre"
             />
-            <p className="tz-camera-note" style={{ margin: "2px 0 0" }}>
-              3 a 20 caracteres: letras, números y guion bajo, sin espacios.
-            </p>
           </div>
           <div className="tz-login-field">
             <label className="tz-field-label" htmlFor="pax-reg-telefono">
@@ -449,6 +456,38 @@ export default function PasajeroAuthForm({ onSuccess }) {
               value={telefono}
               onChange={(e) => setTelefono(e.target.value)}
               placeholder="987654321"
+            />
+          </div>
+          <div className="tz-login-field">
+            <label className="tz-field-label" htmlFor="pax-reg-pin">
+              PIN (6 dígitos)
+            </label>
+            <input
+              id="pax-reg-pin"
+              type="password"
+              inputMode="numeric"
+              maxLength={6}
+              autoComplete="new-password"
+              className="tz-text-input"
+              value={pinRegistro}
+              onChange={(e) => setPinRegistro(e.target.value.replace(/\D/g, ""))}
+              placeholder="••••••"
+            />
+          </div>
+          <div className="tz-login-field">
+            <label className="tz-field-label" htmlFor="pax-reg-pin-confirm">
+              Confirma tu PIN
+            </label>
+            <input
+              id="pax-reg-pin-confirm"
+              type="password"
+              inputMode="numeric"
+              maxLength={6}
+              autoComplete="new-password"
+              className="tz-text-input"
+              value={pinRegistroConfirm}
+              onChange={(e) => setPinRegistroConfirm(e.target.value.replace(/\D/g, ""))}
+              placeholder="••••••"
             />
           </div>
           {error && <p className="tz-error">{error}</p>}

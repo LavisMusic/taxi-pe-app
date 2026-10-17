@@ -11,16 +11,23 @@ import {
   Trash2,
   Wallet,
   ExternalLink,
+  History,
 } from "lucide-react";
 import {
-  ESTADO_CONDUCTOR_RECHAZADO,
-  ESTADO_CUENTA_PENDIENTE,
+  NIVELES_SERVICIO,
+  NIVEL_SERVICIO_ECONOMICO,
   TIPOS_USUARIO,
-  ESTADO_PETICION_VERIFICADO,
+  ESTADO_PETICION_CODIGO_ENVIADO,
   TIPO_ITEM_MEMBRESIA,
 } from "../../lib/taxiEnums";
 import { buildWhatsappLink } from "../../lib/whatsapp";
+import { conductoresPorRevisar, recolectoresPorRevisar } from "../../lib/peticiones";
+import { useLocalidades } from "../../hooks/useLocalidades";
+import ImagenGuardada from "../ImagenGuardada";
+import HistorialVerificacionesTab from "./HistorialVerificacionesTab";
+import { useUrlVisible } from "../../lib/imagenesPrivadas";
 import { formatTelefono, formatSoles, formatDate } from "../../utils/format";
+import Select from "../Select";
 
 const FOTOS = [
   { key: "foto_general_url", label: "Toma general" },
@@ -28,25 +35,27 @@ const FOTOS = [
   { key: "foto_conductor_dni_url", label: "Conductor + DNI" },
 ];
 
-// "Pendiente de revisión" = aprobado:false Y no rechazado todavía. Se
-// filtra por `aprobado`, NO por `estado` — `estado` puede traer
-// cualquier valor por default de columna que no controlamos del todo,
-// mientras que `aprobado` lo insertamos siempre a mano en el create
-// (ver useCrearConductorConUsuario.js). Filtrar por estado era la
-// causa del bug "conductor fantasma": un alta desde Recolector podía
-// quedar con un `estado` que esConductorPendiente() no reconocía como
-// pendiente, y la fila nunca aparecía acá aunque sí en la base.
-function esPendienteDeRevision(conductor) {
-  return !conductor.aprobado && conductor.estado !== ESTADO_CONDUCTOR_RECHAZADO;
+// "Pendiente de revisión": ver src/lib/peticiones.js (mismo criterio que
+// el número del botón del Admin).
+function etiquetaNivel(valor) {
+  return NIVELES_SERVICIO.find((n) => n.value === valor)?.label ?? valor;
 }
 
-// Tarjeta de un conductor pendiente dentro de la pestaña "Registro":
-// sus 3 fotos obligatorias en miniatura + categoría a confirmar +
-// Aprobar/Rechazar (mismas acciones que ya existían en el Directorio,
-// solo que ahora viven acá).
-function ConductorPendienteRow({ conductor, categorias, onAprobar, onRechazar }) {
-  const [categoriaId, setCategoriaId] = useState(conductor.categoria_id ?? categorias[0]?.id ?? "");
+// Tarjeta de un conductor pendiente dentro de la pestaña "Registro": sus
+// 3 fotos obligatorias en miniatura y lo que mandó en su verificación
+// (categoría, subgrupo, localidad, asientos y el nivel de servicio que
+// pide) — el Admin puede corregir todo antes de aprobar; el nivel lo
+// confirma él. Aprobar/Rechazar.
+function ConductorPendienteRow({ conductor, categorias, subgrupos, localidades, onAprobar, onRechazar }) {
+  const [categoriaId, setCategoriaId] = useState(String(conductor.categoria_id ?? categorias[0]?.id ?? ""));
+  const [subgrupoId, setSubgrupoId] = useState(conductor.subgrupo_id ? String(conductor.subgrupo_id) : "");
+  const [localidad, setLocalidad] = useState(conductor.localidad ?? "");
+  const [asientos, setAsientos] = useState(conductor.asientos_totales ?? 4);
+  const [nivel, setNivel] = useState(conductor.nivel_servicio_solicitado ?? conductor.nivel_servicio ?? NIVEL_SERVICIO_ECONOMICO);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const subgruposDeLaCategoria = subgrupos.filter((sg) => String(sg.categoria_id) === String(categoriaId));
+  const selectStyle = { padding: "7px 8px", fontSize: 12 };
 
   return (
     <li className="tz-history-row">
@@ -55,7 +64,8 @@ function ConductorPendienteRow({ conductor, categorias, onAprobar, onRechazar })
           <div>
             <strong style={{ color: "var(--text)" }}>{conductor.nombre}</strong>
             <p style={{ margin: "2px 0", color: "var(--text-dim)", fontSize: 13 }}>
-              Placa {conductor.placa}
+              Placa {conductor.placa || "—"}
+              {conductor.dni ? ` · DNI ${conductor.dni}` : ""}
               {conductor.telefono ? ` · ${formatTelefono(conductor.telefono)}` : ""}
             </p>
           </div>
@@ -65,7 +75,7 @@ function ConductorPendienteRow({ conductor, categorias, onAprobar, onRechazar })
           {FOTOS.map((f) => (
             <div key={f.key} className="tz-peticion-foto">
               {conductor[f.key] ? (
-                <img src={conductor[f.key]} alt={f.label} />
+                <ImagenGuardada src={conductor[f.key]} alt={f.label} />
               ) : (
                 <div className="tz-peticion-foto-placeholder">
                   <ImageIcon size={18} />
@@ -76,27 +86,97 @@ function ConductorPendienteRow({ conductor, categorias, onAprobar, onRechazar })
           ))}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-          <select
-            className="tz-text-input"
-            style={{ padding: "7px 8px", fontSize: 12, flex: 1 }}
-            value={categoriaId}
-            onChange={(e) => setCategoriaId(e.target.value)}
-          >
-            {categorias.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.nombre}
-              </option>
-            ))}
-          </select>
+        <div className="tz-peticion-datos">
+          <label>
+            <span>Categoría</span>
+            <Select
+              className="tz-text-input"
+              style={selectStyle}
+              value={categoriaId}
+              onChange={(e) => {
+                setCategoriaId(e.target.value);
+                setSubgrupoId("");
+              }}
+            >
+              {categorias.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.nombre}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label>
+            <span>Subgrupo</span>
+            <Select className="tz-text-input" style={selectStyle} value={subgrupoId} onChange={(e) => setSubgrupoId(e.target.value)}>
+              <option value="">Sin subgrupo</option>
+              {subgruposDeLaCategoria.map((sg) => (
+                <option key={sg.id} value={sg.id}>
+                  {sg.nombre}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label>
+            <span>Localidad</span>
+            <Select className="tz-text-input" style={selectStyle} value={localidad} onChange={(e) => setLocalidad(e.target.value)}>
+              <option value="">Sin localidad</option>
+              {localidades.map((loc) => (
+                <option key={loc.id ?? loc.nombre} value={loc.nombre}>
+                  {loc.nombre}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label>
+            <span>Asientos</span>
+            <input
+              type="number"
+              min={1}
+              max={65}
+              className="tz-text-input"
+              style={selectStyle}
+              value={asientos}
+              onChange={(e) => setAsientos(e.target.value)}
+            />
+          </label>
+          <label>
+            <span>
+              Nivel de servicio
+              {conductor.nivel_servicio_solicitado ? " (pidió " + etiquetaNivel(conductor.nivel_servicio_solicitado) + ")" : ""}
+            </span>
+            <Select className="tz-text-input" style={selectStyle} value={nivel} onChange={(e) => setNivel(e.target.value)}>
+              {NIVELES_SERVICIO.map((n) => (
+                <option key={n.value} value={n.value}>
+                  {n.label}
+                </option>
+              ))}
+            </Select>
+          </label>
+        </div>
+        {error && <p className="tz-error" style={{ margin: "4px 0 0" }}>{error}</p>}
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, marginTop: 6 }}>
           <button
             type="button"
             className="tz-vis-approve-btn"
             disabled={busy || !categoriaId}
             onClick={async () => {
+              const n = Number(asientos);
+              if (!Number.isInteger(n) || n < 1 || n > 65) {
+                setError("Los asientos deben ser un número entero entre 1 y 65.");
+                return;
+              }
+              setError("");
               setBusy(true);
-              const { error } = await onAprobar(conductor.id, categoriaId);
+              const { error } = await onAprobar(conductor.id, {
+                categoriaId,
+                subgrupoId: subgrupoId || null,
+                localidad: localidad || null,
+                asientosTotales: n,
+                nivelServicio: nivel,
+              });
               setBusy(false);
+              if (error) setError("No se pudo aprobar. Intenta de nuevo.");
               // Pedido: avisarle al conductor por WhatsApp apenas se
               // aprueba su registro, con el mismo número que ÉL puso en
               // su formulario — solo si la aprobación salió bien de
@@ -146,9 +226,9 @@ function RecolectorPendienteRow({ usuario, onAprobar, onRechazar }) {
       <div className="tz-history-row-detail" style={{ padding: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {usuario.foto_url ? (
-              <img
-                src={usuario.foto_url}
+            {usuario.foto_dni_url || usuario.foto_url ? (
+              <ImagenGuardada
+                src={usuario.foto_dni_url || usuario.foto_url}
                 alt={usuario.nombre}
                 style={{ width: 40, height: 40, borderRadius: 10, objectFit: "cover" }}
               />
@@ -158,9 +238,13 @@ function RecolectorPendienteRow({ usuario, onAprobar, onRechazar }) {
               </div>
             )}
             <div>
-              <strong style={{ color: "var(--text)" }}>{usuario.nombre}</strong>
+              <strong style={{ color: "var(--text)" }}>
+                {usuario.nombre}
+                {usuario.apellido ? ` ${usuario.apellido}` : ""}
+              </strong>
               <p style={{ margin: "2px 0", color: "var(--text-dim)", fontSize: 13 }}>
-                DNI {usuario.dni} · {formatTelefono(usuario.telefono)}
+                DNI {usuario.dni}
+                {usuario.ruc ? ` · RUC ${usuario.ruc}` : ""} · {formatTelefono(usuario.telefono)}
               </p>
             </div>
           </div>
@@ -201,22 +285,52 @@ function RecolectorPendienteRow({ usuario, onAprobar, onRechazar }) {
 }
 
 function RegistroTab({
-  conductores,
+  conductoresPendientes,
   categorias,
+  subgrupos,
+  localidades,
   onAprobar,
   onRechazar,
   recolectoresPendientes,
   onAprobarRecolector,
   onRechazarRecolector,
 }) {
-  const pendientes = conductores.filter(esPendienteDeRevision);
+  // Filtro: Conductores / Recolectores.
+  const [filtro, setFiltro] = useState("conductores");
+  const pendientes = filtro === "conductores" ? conductoresPendientes : [];
+  const recolectores = filtro === "recolectores" ? recolectoresPendientes : [];
+  const totalConductores = conductoresPendientes.length;
 
-  if (pendientes.length === 0 && recolectoresPendientes.length === 0) {
-    return <p className="tz-method-history-empty">No hay registros pendientes de aprobación.</p>;
+  const filtros = (
+    <div className="tz-gasto-tipo-buttons" style={{ marginBottom: 10 }}>
+      {[
+        { id: "conductores", label: `Conductores${totalConductores ? ` (${totalConductores})` : ""}` },
+        { id: "recolectores", label: `Recolectores${recolectoresPendientes.length ? ` (${recolectoresPendientes.length})` : ""}` },
+      ].map((f) => (
+        <button
+          key={f.id}
+          type="button"
+          className={`tz-gasto-tipo-btn ${filtro === f.id ? "tz-gasto-tipo-active" : ""}`}
+          onClick={() => setFiltro(f.id)}
+        >
+          {f.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (pendientes.length === 0 && recolectores.length === 0) {
+    return (
+      <>
+        {filtros}
+        <p className="tz-method-history-empty">No hay registros pendientes de aprobación.</p>
+      </>
+    );
   }
 
   return (
     <>
+      {filtros}
       {pendientes.length > 0 && (
         <>
           <p className="tz-field-label">Conductores</p>
@@ -226,6 +340,8 @@ function RegistroTab({
                 key={c.id}
                 conductor={c}
                 categorias={categorias}
+                subgrupos={subgrupos}
+                localidades={localidades}
                 onAprobar={onAprobar}
                 onRechazar={onRechazar}
               />
@@ -233,13 +349,13 @@ function RegistroTab({
           </ul>
         </>
       )}
-      {recolectoresPendientes.length > 0 && (
+      {recolectores.length > 0 && (
         <>
           <p className="tz-field-label" style={{ marginTop: pendientes.length > 0 ? 14 : 0 }}>
             Recolectores
           </p>
           <ul className="tz-history-rows">
-            {recolectoresPendientes.map((u) => (
+            {recolectores.map((u) => (
               <RecolectorPendienteRow
                 key={u.id}
                 usuario={u}
@@ -256,26 +372,44 @@ function RegistroTab({
 
 const TIPO_LABEL = Object.fromEntries(TIPOS_USUARIO.map((t) => [t.value, t.label]));
 
-// Fila de una petición de PIN: el flujo 2FA manual del Admin termina en
-// "Verificar Identidad" (abre WhatsApp con el mensaje de confirmación Y
-// mueve la petición a 'verificado') — el PIN nuevo en sí YA NO lo
-// genera ni lo manda el Admin (bug reportado: el dueño de la cuenta
-// debe poder elegir su propio PIN, el Admin solo "acepta"). Una vez
-// verificado, el propio interesado vuelve a /recuperar-pin con su DNI y
-// ahí elige su PIN nuevo (ver RecuperarPinPage.jsx/useCrearPeticionPin.js)
-// — la petición se cierra sola en ese momento, no hace falta ningún
-// botón más acá.
-function PeticionPinRow({ peticion, onVerificar, onDescartar }) {
-  const verificado = peticion.estado === ESTADO_PETICION_VERIFICADO;
+// Fila de una petición de PIN. La persona la pidió dando solo su celular
+// y la base la armó con los datos de su cuenta (DNI y placa si tiene). El
+// Admin le manda un código de un solo uso por WhatsApp; el PIN nuevo lo
+// elige el propio dueño en /restablecer-pin y la petición se cierra sola
+// cuando escribe el código correcto.
+function PeticionPinRow({ peticion, onEnviarCodigo, onDescartar }) {
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState("");
+  const codigoEnviado = peticion.estado === ESTADO_PETICION_CODIGO_ENVIADO;
+  const vence = peticion.codigo_expira ? new Date(peticion.codigo_expira) : null;
+  const vigente = codigoEnviado && vence && vence > new Date();
   const sinTelefono = !peticion.telefono;
 
-  const handleVerificar = () => {
+  // Genera el código (8 caracteres, un solo uso, 30 min) y abre WhatsApp
+  // con el aviso, el código y el enlace. NO confirma la petición: se
+  // resuelve sola cuando el usuario escribe el código correcto.
+  const handleEnviar = async () => {
+    setError("");
+    // La ventana se abre antes del await: si no, el navegador la bloquea.
+    const ventana = window.open("", "_blank");
+    setEnviando(true);
+    const r = await onEnviarCodigo(peticion.id);
+    setEnviando(false);
+    if (r?.error) {
+      ventana?.close();
+      setError(r.message || "No se pudo generar el código.");
+      return;
+    }
+    const enlace = `${window.location.origin}/restablecer-pin`;
     const link = buildWhatsappLink(
-      peticion.telefono,
-      "Hola, recibimos una solicitud de cambio de PIN. ¿Confirmas que fuiste tú? Una vez confirmado, puedes elegir tu PIN nuevo entrando de nuevo a Olvidé mi PIN con tu DNI."
+      r.telefono || peticion.telefono,
+      `Hola ${String(r.nombre || peticion.nombre || "").split(" ")[0]}, recibimos tu solicitud de cambio de PIN de TaxiPE.\n\n` +
+        `Tu código es: ${r.codigo}\n\n` +
+        `Escríbelo aquí para elegir tu PIN nuevo: ${enlace}\n\n` +
+        "Sirve una sola vez y vence en 30 minutos. Si no fuiste tú, ignora este mensaje."
     );
-    if (link) window.open(link, "_blank", "noopener");
-    onVerificar(peticion.id);
+    if (link && ventana) ventana.location.href = link;
+    else ventana?.close();
   };
 
   return (
@@ -288,9 +422,13 @@ function PeticionPinRow({ peticion, onVerificar, onDescartar }) {
             </span>
             <strong style={{ color: "var(--text)" }}>{peticion.nombre}</strong>
             <p style={{ margin: "2px 0", color: "var(--text-dim)", fontSize: 13 }}>
-              DNI {peticion.dni}
-              {peticion.placa ? ` · Placa ${peticion.placa}` : ""}
-              {peticion.telefono ? ` · ${formatTelefono(peticion.telefono)}` : " · Sin teléfono registrado"}
+              {[
+                peticion.telefono ? formatTelefono(peticion.telefono) : "Sin teléfono registrado",
+                peticion.dni ? `DNI ${peticion.dni}` : null,
+                peticion.placa ? `Placa ${peticion.placa}` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
           </div>
           <button
@@ -304,23 +442,25 @@ function PeticionPinRow({ peticion, onVerificar, onDescartar }) {
           </button>
         </div>
 
-        {verificado ? (
-          <p className="tz-success" style={{ margin: "6px 0 0" }}>
-            Identidad verificada — a la espera de que {peticion.nombre.split(" ")[0]} elija su PIN nuevo en
-            "Olvidé mi PIN".
+        {codigoEnviado && (
+          <p className={vigente ? "tz-success" : "tz-error"} style={{ margin: "6px 0 0" }}>
+            {vigente
+              ? `Código enviado — vence a las ${vence.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. Se confirma solo cuando ${String(peticion.nombre).split(" ")[0]} lo escriba.`
+              : "El código venció sin usarse. Puedes enviar uno nuevo."}
           </p>
-        ) : (
-          <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-            <button
-              type="button"
-              className="tz-camera-cancel tz-scanner-upload-btn"
-              disabled={sinTelefono}
-              onClick={handleVerificar}
-            >
-              <MessageCircle size={14} /> Verificar Identidad
-            </button>
-          </div>
         )}
+        {error && <p className="tz-error" style={{ margin: "6px 0 0" }}>{error}</p>}
+        <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="tz-camera-cancel tz-scanner-upload-btn"
+            disabled={sinTelefono || enviando}
+            onClick={handleEnviar}
+          >
+            {enviando ? <Loader2 size={14} className="tz-spin" /> : <MessageCircle size={14} />}{" "}
+            {codigoEnviado ? "Reenviar código por WhatsApp" : "Enviar código por WhatsApp"}
+          </button>
+        </div>
       </div>
     </li>
   );
@@ -407,34 +547,169 @@ function RecargaRecolectorRow({ peticion, recolector, onAprobar, onRechazar }) {
   );
 }
 
-function RecargasRecolectorTab({ peticiones, usuarios, onAprobar, onRechazar }) {
-  if (peticiones.length === 0) {
-    return <p className="tz-method-history-empty">No hay solicitudes de recarga de recolectores.</p>;
-  }
-  const usuariosById = new Map(usuarios.map((u) => [u.id, u]));
+// Recarga que pidió el propio conductor (botón "Recargar" de /conductor):
+// el comprobante está en el bucket privado (enlace firmado). Al aprobar se
+// registra la venta y se le da la membresía o las gemas.
+function RecargaConductorRow({ peticion, conductor, onAprobar, onRechazar }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const esMembresia = peticion.tipo_item === TIPO_ITEM_MEMBRESIA;
+  const comprobante = useUrlVisible(peticion.comprobante_url);
+
   return (
-    <ul className="tz-history-rows">
-      {peticiones.map((p) => (
-        <RecargaRecolectorRow
-          key={p.id}
-          peticion={p}
-          recolector={usuariosById.get(p.recolector_id)}
-          onAprobar={onAprobar}
-          onRechazar={onRechazar}
-        />
-      ))}
-    </ul>
+    <li className="tz-history-row">
+      <div className="tz-history-row-detail" style={{ padding: 12 }}>
+        <div>
+          <strong style={{ color: "var(--text)" }}>{conductor?.nombre ?? "Conductor eliminado"}</strong>
+          <p style={{ margin: "2px 0", color: "var(--text-dim)", fontSize: 13 }}>
+            {conductor?.placa ? `Placa ${conductor.placa}` : ""}
+            {conductor?.telefono ? ` · ${formatTelefono(conductor.telefono)}` : ""}
+          </p>
+        </div>
+
+        <div className="tz-peticion-solicitud">
+          <span className={`tz-tag ${esMembresia ? "tz-tag-warn" : "tz-tag-ok"}`}>{esMembresia ? "Membresía" : "Gemas"}</span>
+          <strong>{peticion.paquete_nombre}</strong>
+          <span className="tz-peticion-solicitud-meta">
+            {esMembresia ? `${peticion.dias_membresia} días` : `${peticion.creditos} gemas`} · {formatSoles(peticion.monto)} ·{" "}
+            {peticion.metodo_pago} · {formatDate(peticion.created_at)}
+          </span>
+        </div>
+
+        {comprobante ? (
+          <a href={comprobante} target="_blank" rel="noreferrer" className="tz-comprobante-preview">
+            <img src={comprobante} alt="Comprobante" />
+            <span>
+              Comprobante · toca para ampliar <ExternalLink size={11} style={{ verticalAlign: "-1px" }} />
+            </span>
+          </a>
+        ) : (
+          <div className="tz-peticion-foto-placeholder" style={{ height: 80 }}>
+            <ImageIcon size={22} />
+          </div>
+        )}
+
+        {error && <p className="tz-error" style={{ marginTop: 8 }}>{error}</p>}
+        <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 10 }}>
+          <button
+            type="button"
+            className="tz-cliente-action-btn tz-cliente-action-pago"
+            disabled={busy || !conductor}
+            onClick={async () => {
+              setBusy(true);
+              setError("");
+              const r = await onAprobar(peticion);
+              setBusy(false);
+              if (r?.error) setError(r.message || "No se pudo aprobar la recarga.");
+            }}
+          >
+            {busy ? <Loader2 size={14} className="tz-spin" /> : <Check size={14} />} Aprobar
+          </button>
+          <button
+            type="button"
+            className="tz-cliente-action-btn tz-cliente-action-delete"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              await onRechazar(peticion.id);
+              setBusy(false);
+            }}
+          >
+            <XCircle size={14} /> Rechazar
+          </button>
+        </div>
+      </div>
+    </li>
   );
 }
 
-function RecuperacionPinTab({ peticiones, onVerificar, onDescartar }) {
+// Pestaña "Recargas": filtro Recolectores / Conductores.
+function RecargasTab({
+  recargasRecolector,
+  usuarios,
+  onAprobarRecolector,
+  onRechazarRecolector,
+  recargasConductor,
+  conductores,
+  onAprobarConductor,
+  onRechazarConductor,
+}) {
+  const [filtro, setFiltro] = useState(() =>
+    recargasRecolector.length === 0 && recargasConductor.length > 0 ? "conductores" : "recolectores"
+  );
+  const filtros = (
+    <div className="tz-gasto-tipo-buttons" style={{ marginBottom: 10 }}>
+      {[
+        { id: "recolectores", label: `Recolectores${recargasRecolector.length ? ` (${recargasRecolector.length})` : ""}` },
+        { id: "conductores", label: `Conductores${recargasConductor.length ? ` (${recargasConductor.length})` : ""}` },
+      ].map((f) => (
+        <button
+          key={f.id}
+          type="button"
+          className={`tz-gasto-tipo-btn ${filtro === f.id ? "tz-gasto-tipo-active" : ""}`}
+          onClick={() => setFiltro(f.id)}
+        >
+          {f.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (filtro === "conductores") {
+    const conductoresById = new Map(conductores.map((c) => [c.id, c]));
+    return (
+      <>
+        {filtros}
+        {recargasConductor.length === 0 ? (
+          <p className="tz-method-history-empty">No hay solicitudes de recarga de conductores.</p>
+        ) : (
+          <ul className="tz-history-rows">
+            {recargasConductor.map((p) => (
+              <RecargaConductorRow
+                key={p.id}
+                peticion={p}
+                conductor={conductoresById.get(p.conductor_id)}
+                onAprobar={onAprobarConductor}
+                onRechazar={onRechazarConductor}
+              />
+            ))}
+          </ul>
+        )}
+      </>
+    );
+  }
+
+  const usuariosById = new Map(usuarios.map((u) => [u.id, u]));
+  return (
+    <>
+      {filtros}
+      {recargasRecolector.length === 0 ? (
+        <p className="tz-method-history-empty">No hay solicitudes de recarga de recolectores.</p>
+      ) : (
+        <ul className="tz-history-rows">
+          {recargasRecolector.map((p) => (
+            <RecargaRecolectorRow
+              key={p.id}
+              peticion={p}
+              recolector={usuariosById.get(p.recolector_id)}
+              onAprobar={onAprobarRecolector}
+              onRechazar={onRechazarRecolector}
+            />
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
+function RecuperacionPinTab({ peticiones, onEnviarCodigo, onDescartar }) {
   if (peticiones.length === 0) {
     return <p className="tz-method-history-empty">No hay solicitudes de recuperación de PIN.</p>;
   }
   return (
     <ul className="tz-history-rows">
       {peticiones.map((p) => (
-        <PeticionPinRow key={p.id} peticion={p} onVerificar={onVerificar} onDescartar={onDescartar} />
+        <PeticionPinRow key={p.id} peticion={p} onEnviarCodigo={onEnviarCodigo} onDescartar={onDescartar} />
       ))}
     </ul>
   );
@@ -448,24 +723,28 @@ function RecuperacionPinTab({ peticiones, onVerificar, onDescartar }) {
 export default function PeticionesModal({
   conductores,
   categorias,
+  subgrupos = [],
   onAprobar,
   onRechazar,
   usuarios,
   onAprobarRecolector,
   onRechazarRecolector,
   peticionesPin,
-  onVerificarPin,
+  onEnviarCodigoPin,
   onDescartarPin,
   recargasRecolector,
   onAprobarRecargaRecolector,
   onRechazarRecargaRecolector,
+  recargasConductor = [],
+  onAprobarRecargaConductor,
+  onRechazarRecargaConductor,
   onClose,
 }) {
   const [tab, setTab] = useState("registro");
-  const recolectoresPendientes = usuarios.filter(
-    (u) => u.rol === "recolector" && u.estado_cuenta === ESTADO_CUENTA_PENDIENTE
-  );
-  const pendientesCount = conductores.filter(esPendienteDeRevision).length + recolectoresPendientes.length;
+  const { localidades } = useLocalidades();
+  const conductoresPendientes = conductoresPorRevisar(conductores, usuarios);
+  const recolectoresPendientes = recolectoresPorRevisar(usuarios);
+  const pendientesCount = conductoresPendientes.length + recolectoresPendientes.length;
 
   return (
     <div className="tz-modal-backdrop">
@@ -500,28 +779,47 @@ export default function PeticionesModal({
               onClick={() => setTab("recargas")}
             >
               <Wallet size={13} style={{ marginRight: 4, verticalAlign: "-2px" }} />
-              Recargas de Recolectores {recargasRecolector.length > 0 ? `(${recargasRecolector.length})` : ""}
+              Recargas{" "}
+              {recargasRecolector.length + recargasConductor.length > 0
+                ? `(${recargasRecolector.length + recargasConductor.length})`
+                : ""}
+            </button>
+            <button
+              type="button"
+              className={`tz-gasto-tipo-btn ${tab === "historial" ? "tz-gasto-tipo-active" : ""}`}
+              onClick={() => setTab("historial")}
+            >
+              <History size={13} style={{ marginRight: 4, verticalAlign: "-2px" }} />
+              Historial de verificaciones
             </button>
           </div>
 
           {tab === "registro" ? (
             <RegistroTab
-              conductores={conductores}
+              conductoresPendientes={conductoresPendientes}
               categorias={categorias}
+              subgrupos={subgrupos}
+              localidades={localidades}
               onAprobar={onAprobar}
               onRechazar={onRechazar}
               recolectoresPendientes={recolectoresPendientes}
               onAprobarRecolector={onAprobarRecolector}
               onRechazarRecolector={onRechazarRecolector}
             />
+          ) : tab === "historial" ? (
+            <HistorialVerificacionesTab />
           ) : tab === "pin" ? (
-            <RecuperacionPinTab peticiones={peticionesPin} onVerificar={onVerificarPin} onDescartar={onDescartarPin} />
+            <RecuperacionPinTab peticiones={peticionesPin} onEnviarCodigo={onEnviarCodigoPin} onDescartar={onDescartarPin} />
           ) : (
-            <RecargasRecolectorTab
-              peticiones={recargasRecolector}
+            <RecargasTab
+              recargasRecolector={recargasRecolector}
               usuarios={usuarios}
-              onAprobar={onAprobarRecargaRecolector}
-              onRechazar={onRechazarRecargaRecolector}
+              onAprobarRecolector={onAprobarRecargaRecolector}
+              onRechazarRecolector={onRechazarRecargaRecolector}
+              recargasConductor={recargasConductor}
+              conductores={conductores}
+              onAprobarConductor={onAprobarRecargaConductor}
+              onRechazarConductor={onRechazarRecargaConductor}
             />
           )}
         </div>

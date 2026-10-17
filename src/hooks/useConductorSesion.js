@@ -1,38 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 
-const MS_POR_DIA = 24 * 60 * 60 * 1000;
-
-// Descuento de Créditos (24h) — arquitectura elegida: "catch-up" acá en
-// vez de un cron server-side. Este proyecto es 100% cliente + Supabase
-// (anon key, sin Edge Functions ni backend propio) — pg_cron existe
-// como alternativa (ver el SQL entregado aparte) pero exige que alguien
-// habilite la extensión desde el Dashboard y viva ahí mantenido, para
-// una app que hoy no tiene ningún otro proceso corriendo del lado del
-// servidor. El catch-up además calza bien con CUÁNDO importa de verdad
-// este descuento: un conductor sin la app abierta ni transmitiendo GPS
-// (useGpsBroadcaster.js) ya está invisible en el Radar igual — no hace
-// falta que el descuento corra "en vivo" mientras nadie lo está viendo,
-// alcanza con que esté al día la próxima vez que abra sesión, y ahí
-// coincide exactamente con el momento en que este hook se ejecuta.
-//
-// Recalcula cuántos días de 24hs pasaron desde `ultimo_descuento_creditos`
-// y resta esa cantidad de `creditos` (nunca por debajo de 0) — se avanza
-// el reloj en múltiplos EXACTOS de 24h (no a "ahora") para no acumular
-// corrimiento: si pasaron 2.5 días, se descuentan 2 créditos y el
-// próximo corte queda a mitad del tercer día, no se reinicia a este
-// instante.
-function calcularDescuentoCreditos(fila) {
-  if (!fila?.ultimo_descuento_creditos || Number(fila.creditos || 0) <= 0) return null;
-  const inicio = new Date(fila.ultimo_descuento_creditos).getTime();
-  const diasTranscurridos = Math.floor((Date.now() - inicio) / MS_POR_DIA);
-  if (diasTranscurridos < 1) return null;
-
-  const creditosActuales = Number(fila.creditos || 0);
-  const aDescontar = Math.min(diasTranscurridos, creditosActuales);
-  const nuevoUltimoDescuento = new Date(inicio + diasTranscurridos * MS_POR_DIA).toISOString();
-  return { creditos: creditosActuales - aDescontar, ultimo_descuento_creditos: nuevoUltimoDescuento };
-}
+// El descuento de créditos (1 por cada 24 h) y el apagado de quien se
+// quedó sin saldo los hace la base cada 10 min (taxi_aplicar_saldos,
+// pg_cron) — la app ya no toca `creditos`.
 
 // Puente entre el login (`usuarios`, sin FK propia hacia `conductores`)
 // y la fila operativa del conductor: se busca por `telefono`, el único
@@ -69,7 +40,7 @@ export function useConductorSesion(usuario) {
     const { data, error: fetchError } = await supabase
       .from("conductores")
       .select(
-        "id, nombre, placa, telefono, foto_url, foto_portada_url, descripcion, estado, creditos, vencimiento_suscripcion, ultimo_descuento_creditos, categoria_id, nivel_servicio, aprobado, asientos_totales, asientos_ocupados, membresia_paquete_id, ultimo_paquete_creditos_nombre, ultimo_paquete_creditos_descripcion, ultima_compra_creditos_at"
+        "id, nombre, placa, telefono, foto_url, foto_portada_url, descripcion, estado, creditos, vencimiento_suscripcion, ultimo_descuento_creditos, categoria_id, subgrupo_id, localidad, nivel_servicio, aprobado, asientos_totales, asientos_ocupados, membresia_paquete_id, modo_delivery, meta_diaria, ultimo_paquete_creditos_nombre, ultimo_paquete_creditos_descripcion, ultima_compra_creditos_at"
       )
       .eq("telefono", usuario.telefono)
       .maybeSingle();
@@ -81,24 +52,6 @@ export function useConductorSesion(usuario) {
       return;
     }
 
-    const descuento = data ? calcularDescuentoCreditos(data) : null;
-    if (descuento) {
-      // Best-effort: si el UPDATE falla (RLS, red), se sigue mostrando
-      // el dato viejo tal cual vino — el catch-up simplemente se
-      // reintenta en el próximo refresh, no es un error fatal para
-      // poder usar la app.
-      const { data: actualizado, error: descuentoError } = await supabase
-        .from("conductores")
-        .update(descuento)
-        .eq("id", data.id)
-        .select()
-        .maybeSingle();
-      if (!descuentoError && actualizado) {
-        setConductor(actualizado);
-        setLoading(false);
-        return;
-      }
-    }
     setConductor(data);
     setLoading(false);
   }, [usuario?.telefono]);

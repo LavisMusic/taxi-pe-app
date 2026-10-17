@@ -1,21 +1,21 @@
 import { useState } from "react";
-import { X, Receipt, Download, MessageCircle, AlertTriangle, Loader2, Save, FileSpreadsheet } from "lucide-react";
+import { X, Receipt, Download, MessageCircle, AlertTriangle, Loader2, Save, FileSpreadsheet, Clock } from "lucide-react";
 import { formatSoles, formatDate, formatTime } from "../../utils/format";
-import { METODOS_PAGO, TIPO_ITEM_CREDITOS, TIPO_ITEM_MEMBRESIA } from "../../lib/taxiEnums";
+import { METODOS_PAGO, METODO_PAGO_EFECTIVO, TIPO_ITEM_CREDITOS, TIPO_ITEM_MEMBRESIA } from "../../lib/taxiEnums";
 import { downloadXLSX } from "../../lib/xlsxExport";
 import { buildWhatsappLink } from "../../lib/whatsapp";
 
-// Cierre de Caja: cruza lo recaudado hoy (ventas vigentes, sin
-// anuladas) contra los Gastos Operativos de hoy — Balance Neto = una
-// resta simple, con el desglose por tipo de venta y por método de pago.
+// Cierre de Caja del turno (Admin o recolector): lo recaudado en el
+// turno (ventas vigentes, sin anuladas) contra sus gastos operativos —
+// Balance Neto = una resta simple, con el desglose por tipo de venta y
+// por método de pago. Para el recolector, los gastos son sus compras de
+// créditos del turno; para el Admin, los gastos operativos.
 //
-// "Cerrar turno" (nuevo) guarda una INSTANTÁNEA de estos totales en
-// `cierres_caja` — a diferencia de la caja registradora vieja
-// (App.jsx: tabla `estado_caja` con apertura/fondo inicial/efectivo
-// real/arqueo), acá no hay un ciclo de apertura/cierre de verdad:
-// `ventas`/`gastos_operativos` siguen siendo globales, "Hoy" sigue
-// calculándose igual después de cerrar. Es solo un registro para
-// exportar/compartir, no reinicia ningún contador.
+// "Cerrar turno" lo hace la base (taxi_cerrar_caja, migración
+// 20261012110000): pide el EFECTIVO CONTADO, guarda el cierre con su
+// arqueo (contado vs. esperado = efectivo cobrado − gastos en efectivo) y
+// arranca el turno siguiente. Si el turno ya venció (00:00, hora de Perú)
+// el modal se abre solo y ofrece extenderlo 30 minutos.
 //
 // Excel del cierre (como las cajas de Caja Tonazo): hojas Resumen,
 // Ventas (cada venta con su código TX-…, destinatario, detalle, método)
@@ -44,10 +44,21 @@ export default function CierreCajaModal({
   // Para poner el nombre del conductor/cliente en el Excel (opcional).
   conductores = [],
   usuarios = [],
+  // Turno vencido (ver useTurnoCaja): muestra el aviso y el botón para
+  // extenderlo 30 minutos.
+  vencido = false,
+  onExtender,
+  // Extensiones usadas / permitidas en este turno; `obligatorio` (agotadas
+  // y vencido): sin X ni "Extender", solo se puede cerrar el turno.
+  extensiones = 0,
+  maxExtensiones = 0,
+  obligatorio = false,
 }) {
   const [confirmando, setConfirmando] = useState(false);
   const [cerrando, setCerrando] = useState(false);
+  const [extendiendo, setExtendiendo] = useState(false);
   const [cierreError, setCierreError] = useState("");
+  const [efectivoContado, setEfectivoContado] = useState("");
 
   const recaudadoHoy = ventasHoy.reduce((sum, v) => sum + Number(v.monto || 0), 0);
   const balanceNeto = recaudadoHoy - totalGastosHoy;
@@ -58,6 +69,17 @@ export default function CierreCajaModal({
 
   const totalPorMetodo = (metodo) =>
     ventasHoy.filter((v) => v.metodo_pago === metodo).reduce((sum, v) => sum + Number(v.monto || 0), 0);
+
+  // Arqueo: lo que debería haber en efectivo = cobrado en efectivo −
+  // gastos pagados en efectivo (los gastos sin método cuentan como
+  // efectivo, igual que en la base).
+  const gastosEfectivo = gastosHoy
+    .filter((g) => !g.metodo_pago || g.metodo_pago === METODO_PAGO_EFECTIVO)
+    .reduce((sum, g) => sum + Number(g.monto || 0), 0);
+  const efectivoEsperado = totalPorMetodo(METODO_PAGO_EFECTIVO) - gastosEfectivo;
+  const contadoNum = Number(String(efectivoContado).replace(",", "."));
+  const contadoValido = efectivoContado !== "" && Number.isFinite(contadoNum) && contadoNum >= 0;
+  const diferencia = contadoValido ? contadoNum - efectivoEsperado : null;
 
   const descargarExcelCierre = () => {
     const ahora = Date.now();
@@ -118,24 +140,34 @@ export default function CierreCajaModal({
   };
 
   const ejecutarCierre = async () => {
+    if (!contadoValido) {
+      setCierreError("Ingresa el efectivo que tienes contado (0 si no tienes).");
+      return;
+    }
     setCerrando(true);
     setCierreError("");
-    const { error } = await crearCierre({
-      cajeroNombre,
-      recaudadoTotal: recaudadoHoy,
-      totalGastos: totalGastosHoy,
-      balanceNeto,
-      ventasRegistradas: ventasHoy.length,
-      ticketGeneral,
-    });
+    const { error } = await crearCierre({ efectivoReal: contadoNum });
     setCerrando(false);
     if (error) {
       setCierreError("No se pudo guardar el cierre.");
       return;
     }
     setConfirmando(false);
+    setEfectivoContado("");
     descargarExcelCierre();
     onCerrado?.();
+  };
+
+  const extender = async () => {
+    setExtendiendo(true);
+    setCierreError("");
+    const { error } = (await onExtender?.()) || {};
+    setExtendiendo(false);
+    if (error)
+      setCierreError(
+        error.message === "limite" ? "Ya usaste todas tus extensiones: cierra el turno." : "No se pudo extender el turno."
+      );
+    else onClose();
   };
 
   const exportarHistorialCierresXLSX = () => {
@@ -188,15 +220,38 @@ export default function CierreCajaModal({
   };
 
   return (
-    <div className="tz-modal-backdrop">
+    <div className={`tz-modal-backdrop ${obligatorio ? "tz-cierre-obligatorio" : ""}`}>
       <div className="tz-modal tz-modal-wide" onClick={(e) => e.stopPropagation()}>
-        <button className="tz-modal-close" onClick={onClose} aria-label="Cerrar">
-          <X size={18} />
-        </button>
+        {!obligatorio && (
+          <button className="tz-modal-close" onClick={onClose} aria-label="Cerrar">
+            <X size={18} />
+          </button>
+        )}
         <div className="tz-payment-modal">
           <h2>
             <Receipt size={17} /> Cierre de Caja
           </h2>
+
+          {vencido && (
+            <div className="tz-cierre-vencido">
+              <p className="tz-cierre-warning" style={{ margin: 0 }}>
+                <Clock size={14} />{" "}
+                {obligatorio
+                  ? "Tu turno terminó y ya usaste todas tus extensiones. Cuenta tu efectivo y cierra el turno para seguir."
+                  : "Tu turno ya terminó. Cuenta tu efectivo y cierra la caja, o extiende el turno 30 minutos."}
+              </p>
+              {maxExtensiones > 0 && (
+                <p className="tz-cierre-extensiones">
+                  Extensiones usadas: {extensiones} de {maxExtensiones}
+                </p>
+              )}
+              {onExtender && !obligatorio && (
+                <button type="button" className="tz-camera-cancel" onClick={extender} disabled={extendiendo}>
+                  {extendiendo ? <Loader2 size={15} className="tz-spin" /> : <Clock size={15} />} Extender 30 min
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Recibo del turno actual — mismo diseño del cierre de las
              cajas de Caja Tonazo. */}
@@ -262,19 +317,51 @@ export default function CierreCajaModal({
               <MessageCircle size={13} /> Enviar Resumen a WhatsApp
             </button>
             <button type="button" className="tz-csv-btn" onClick={descargarExcelCierre}>
-              <FileSpreadsheet size={13} /> Descargar Excel de hoy
+              <FileSpreadsheet size={13} /> Descargar Excel del turno
             </button>
           </div>
 
+          <div className="tz-add-entry" style={{ marginTop: 12 }}>
+            <label className="tz-field-label" htmlFor="cierre-efectivo">
+              Efectivo contado (S/)
+            </label>
+            <input
+              id="cierre-efectivo"
+              className="tz-amount-input"
+              inputMode="decimal"
+              placeholder="0.00"
+              value={efectivoContado}
+              onChange={(e) => {
+                setEfectivoContado(e.target.value);
+                setCierreError("");
+              }}
+            />
+            <div className="tz-receipt-row">
+              <span>Efectivo esperado</span>
+              <strong>{formatSoles(efectivoEsperado)}</strong>
+            </div>
+            {diferencia != null && (
+              <div className="tz-receipt-row">
+                <span>{diferencia < 0 ? "Faltante" : diferencia > 0 ? "Sobrante" : "Cuadra"}</span>
+                <strong style={{ color: diferencia < 0 ? "var(--danger)" : diferencia > 0 ? "var(--yellow)" : "var(--green)" }}>
+                  {formatSoles(Math.abs(diferencia))}
+                </strong>
+              </div>
+            )}
+          </div>
+
           {!confirmando ? (
-            <button className="tz-scan-btn tz-add-entry-toggle" onClick={() => setConfirmando(true)}>
+            <button
+              className="tz-scan-btn tz-add-entry-toggle"
+              onClick={() => (contadoValido ? setConfirmando(true) : setCierreError("Ingresa el efectivo que tienes contado (0 si no tienes)."))}
+            >
               <Receipt size={16} /> Cerrar turno
             </button>
           ) : (
             <div className="tz-add-entry">
               <p className="tz-cierre-warning">
-                <AlertTriangle size={14} /> Esto guarda una instantánea de estos totales en el historial de
-                cierres y descarga su Excel. No reinicia "Hoy" ni se puede deshacer.
+                <AlertTriangle size={14} /> Esto guarda el cierre con tu efectivo contado, descarga su Excel y
+                arranca un turno nuevo. No se puede deshacer.
               </p>
               {cierreError && <p className="tz-error">{cierreError}</p>}
               <div className="tz-add-entry-actions">
@@ -288,6 +375,7 @@ export default function CierreCajaModal({
               </div>
             </div>
           )}
+          {!confirmando && cierreError && <p className="tz-error">{cierreError}</p>}
 
           <div className="tz-method-history" style={{ marginTop: 14 }}>
             <span className="tz-method-history-label">Historial de cierres</span>
@@ -308,7 +396,7 @@ export default function CierreCajaModal({
                     <div className="tz-receipt-header">
                       <span className="tz-receipt-title">Cierre · {c.cajero_nombre}</span>
                       <span className="tz-receipt-date">
-                        {formatDate(c.created_at)} · {formatTime(c.created_at)}
+                        {formatDate(c.hasta || c.created_at)} · {formatTime(c.hasta || c.created_at)}
                       </span>
                     </div>
                     <div className="tz-receipt-divider" />
@@ -324,6 +412,14 @@ export default function CierreCajaModal({
                       <span>Balance neto</span>
                       <strong>{formatSoles(c.balance_neto)}</strong>
                     </div>
+                    {c.efectivo_real != null && (
+                      <div className="tz-receipt-row tz-plan-pagos-nota">
+                        <span>Efectivo contado / esperado</span>
+                        <span>
+                          {formatSoles(c.efectivo_real)} / {formatSoles(c.efectivo_esperado)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
