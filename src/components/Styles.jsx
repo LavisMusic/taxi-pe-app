@@ -778,9 +778,9 @@ export default function Styles() {
         font-size: 13.5px;
       }
       .tz-destino-actual-pill svg { flex-shrink: 0; color: var(--cyan); }
-      /* Destino elegido: 10 px más cerca del filtro de localidad. */
+      /* Destino elegido: 5 px más cerca del filtro de localidad (antes 10). */
       .tz-fila-saldo-localidad + .tz-destino-actual-pill,
-      .tz-fila-localidad + .tz-destino-actual-pill { margin-top: -10px; }
+      .tz-fila-localidad + .tz-destino-actual-pill { margin-top: -5px; }
       .tz-destino-actual-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .tz-radar-input::placeholder { color: var(--text-dim); }
       .tz-radar-input:focus {
@@ -5789,7 +5789,7 @@ export default function Styles() {
       /* Gemas (créditos): en su recuadro, la palabra centrada encima de la
          gema y el número. */
       .tz-gemas { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-      .tz-fila-saldo .tz-stat-chip.tz-gemas { min-width: 80px; padding: 6px 10px; position: relative; left: -12px; }
+      .tz-fila-saldo .tz-stat-chip.tz-gemas { min-width: 80px; padding: 6px 10px; position: relative; left: -12px; border: none; background: transparent; box-shadow: none; }
       .tz-fila-saldo .tz-gemas .tz-stat-value { font-size: 15px; }
       /* La palabra va del color de las gemas que representa (cliente:
          celeste; conductor: verde). */
