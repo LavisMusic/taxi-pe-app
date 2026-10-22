@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
+import { registrarServiceWorker } from './lib/push'
 import { TaxiAuthProvider } from './contexts/TaxiAuthContext'
 import RequireAdminMaster from './components/RequireAdminMaster'
 import RequireUsuarioRol from './components/RequireUsuarioRol'
@@ -23,6 +24,9 @@ import { instalarDespliegueBotones } from './lib/despliegueBotones'
 // en el siguiente paso, pero ya no es parte del flujo de rutas.
 // Botones de la cabecera: en el celular se despliegan manteniendo presionado.
 instalarDespliegueBotones()
+
+// Avisos emergentes (Web Push) e instalación de la app.
+registrarServiceWorker()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

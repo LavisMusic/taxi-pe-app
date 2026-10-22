@@ -5,6 +5,7 @@ import { useHilosChatConductor, useChatMensajes, REMITENTE_CONDUCTOR } from "../
 import ChatWindow from "./ChatWindow";
 import ChatErrorBoundary from "./ChatErrorBoundary";
 import { FilasChatsFijados, ChatFijadoAbierto, InterruptorAvisos } from "./mensajes/ChatsFijados";
+import AvisosDispositivo from "./mensajes/AvisosDispositivo";
 
 // Bandeja de mensajes del lado Conductor (/conductor, botón
 // "Mensajes") — sin esto el chat sería de un solo sentido (el pasajero
@@ -76,8 +77,8 @@ function HiloConversacion({ conductorId, pasajeroId, nivelServicio, iconoCategor
 // hook se llamaba un nivel más arriba.
 // `plataforma` (useMensajesPlataforma, desde ConductorPage): los chats
 // fijados "Taxi PE" y "Tonazo", arriba de la lista y de solo lectura.
-function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCategoriaUrl, plataforma }) {
-  const [canalFijo, setCanalFijo] = useState(null);
+function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCategoriaUrl, plataforma, canalInicial }) {
+  const [canalFijo, setCanalFijo] = useState(canalInicial ?? null);
   const { hilos, loading, pasajerosEnCarrera, refresh } = useHilosChatConductor(conductorId);
   const [nombresPorId, setNombresPorId] = useState({});
   const [borrandoId, setBorrandoId] = useState(null);
@@ -211,6 +212,7 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
           {plataforma && (
             <>
               <InterruptorAvisos activos={plataforma.avisosActivos} onCambiar={plataforma.cambiarAvisos} />
+              <AvisosDispositivo />
               <ul className="tz-history-rows" style={{ margin: "10px 0" }}>
                 <FilasChatsFijados canales={plataforma.canales} onAbrir={setCanalFijo} />
               </ul>
@@ -260,7 +262,7 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
   );
 }
 
-export default function ConductorChatInboxModal({ conductorId, pasajeroInicial, nivelServicio, iconoCategoriaUrl, plataforma, onClose }) {
+export default function ConductorChatInboxModal({ conductorId, pasajeroInicial, nivelServicio, iconoCategoriaUrl, plataforma, canalInicial, onClose }) {
   return (
     <div className="tz-modal-backdrop">
       <div className="tz-modal tz-chat-modal-shell" onClick={(e) => e.stopPropagation()}>
@@ -281,6 +283,7 @@ export default function ConductorChatInboxModal({ conductorId, pasajeroInicial, 
                 nivelServicio={nivelServicio}
                 iconoCategoriaUrl={iconoCategoriaUrl}
                 plataforma={plataforma}
+                canalInicial={canalInicial}
               />
             </ChatErrorBoundary>
           )}

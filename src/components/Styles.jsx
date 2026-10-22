@@ -7242,6 +7242,28 @@ export default function Styles() {
       .tz-chatfijo-burbuja p { margin: 0; white-space: pre-wrap; }
       .tz-chatfijo-burbuja span { display: block; margin-top: 5px; font-size: 10.5px; color: var(--text-dim); text-align: right; }
 
+      /* Avisos emergentes del dispositivo e "Instalar la app"
+         (mensajes/AvisosDispositivo.jsx). */
+      .tz-avisos-dispositivo { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; margin-top: 8px; }
+      .tz-avisos-dispositivo p { margin: 0; font-size: 12px; color: var(--text-dim); text-align: right; }
+      .tz-avisos-dispositivo-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(43,232,255,0.5);
+        background: rgba(43,232,255,0.08);
+        color: var(--cyan);
+        font: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .tz-avisos-dispositivo-btn.is-instalar { border-color: rgba(215,255,59,0.5); background: rgba(215,255,59,0.08); color: var(--yellow); }
+      .tz-guia-instalar ol { margin: 8px 0 16px; padding-left: 20px; font-size: 14px; line-height: 1.6; }
+      .tz-guia-instalar li { margin: 6px 0; }
+
       /* Términos y Condiciones (TerminosTexto / TerminosAceptarModal /
          /terminos). */
       .tz-terminos-modal { max-width: 560px; }

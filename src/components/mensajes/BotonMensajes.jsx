@@ -3,6 +3,8 @@ import { createPortal } from "react-dom";
 import { MessageCircle, X } from "lucide-react";
 import { useMensajesPlataforma } from "../../hooks/useMensajesPlataforma";
 import { FilasChatsFijados, ChatFijadoAbierto, InterruptorAvisos } from "./ChatsFijados";
+import AvisosDispositivo from "./AvisosDispositivo";
+import { useAbrirMensajesDesdeAviso } from "../../hooks/useAbrirMensajesDesdeAviso";
 
 // Botón "Mensajes" de la cabecera (pasajero y recolector): contador de no
 // leídos y el modal con los chats fijados "Taxi PE" y "Tonazo" (solo
@@ -11,6 +13,11 @@ export default function BotonMensajes({ usuarioId }) {
   const datos = useMensajesPlataforma(usuarioId);
   const [abierto, setAbierto] = useState(false);
   const [canal, setCanal] = useState(null);
+  // Tocar una notificación emergente abre Mensajes en ese chat.
+  useAbrirMensajesDesdeAviso((c) => {
+    setAbierto(true);
+    setCanal(c);
+  }, !!usuarioId);
 
   const cerrar = () => {
     setAbierto(false);
@@ -51,6 +58,7 @@ export default function BotonMensajes({ usuarioId }) {
                     <MessageCircle size={18} /> Mensajes
                   </h2>
                   <InterruptorAvisos activos={datos.avisosActivos} onCambiar={datos.cambiarAvisos} />
+                  <AvisosDispositivo />
                   <ul className="tz-history-rows" style={{ marginTop: 10 }}>
                     <FilasChatsFijados canales={datos.canales} onAbrir={setCanal} />
                   </ul>

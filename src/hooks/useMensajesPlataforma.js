@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { subscribeTable } from "../lib/realtime";
 import { sonarMensaje } from "../lib/sonidoMensaje";
+import { asegurarSuscripcion } from "../lib/push";
 
 // Chats fijados "Taxi PE" y "Tonazo" (migración 20261022110000): los
 // mensajes que le tocan a esta cuenta (la base filtra por rol, envío
@@ -52,6 +53,9 @@ export function useMensajesPlataforma(usuarioId) {
     if (!usuarioId) return undefined;
     vistos.current = null;
     cargar();
+    // Si este navegador ya dio permiso, el dispositivo queda suscrito a
+    // esta cuenta para los avisos emergentes.
+    asegurarSuscripcion();
     const desuscribir = subscribeTable("mensajes_plataforma", () => cargar());
     const intervalo = setInterval(cargar, REVISAR_MS);
     const alVolver = () => document.visibilityState === "visible" && cargar();

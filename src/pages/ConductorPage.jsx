@@ -43,6 +43,7 @@ import GestionImagenModal from "../components/admin/GestionImagenModal";
 import ConductorPublicCard from "../components/ConductorPublicCard";
 import ConductorChatInboxModal from "../components/ConductorChatInboxModal";
 import { useMensajesPlataforma } from "../hooks/useMensajesPlataforma";
+import { useAbrirMensajesDesdeAviso } from "../hooks/useAbrirMensajesDesdeAviso";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import AnimacionExitoNeon from "../components/AnimacionExitoNeon";
 import { useViajeFinalizadoAviso } from "../hooks/useViajeFinalizadoAviso";
@@ -71,6 +72,12 @@ export default function ConductorPage() {
   const { usuario, logout, updateUsuario } = useTaxiAuth();
   // Chats fijados "Taxi PE" y "Tonazo" (van dentro de su bandeja de chats).
   const plataforma = useMensajesPlataforma(usuario?.id);
+  // Tocar una notificación emergente abre su bandeja en ese chat fijado.
+  const [canalDesdeAviso, setCanalDesdeAviso] = useState(null);
+  useAbrirMensajesDesdeAviso((canal) => {
+    setCanalDesdeAviso(canal);
+    setMensajesOpen(true);
+  }, !!usuario?.id);
   const { conductor, loading, error, setEstado, actualizar, refresh: refrescarConductor } = useConductorSesion(usuario);
   const [mostrandoVerificacion, setMostrandoVerificacion] = useState(false);
   const { unreadCount, alertaSenas, descartarAlertaSenas, pasajerosEnCarrera } = useHilosChatConductor(conductor?.id);
@@ -772,15 +779,17 @@ export default function ConductorPage() {
           // mostrando el hilo/mapa del pasajero anterior. El `key`
           // fuerza a React a tirar la instancia vieja entera y montar
           // una limpia cada vez que cambia a quién se le abre el chat.
-          key={pasajeroDesdeAlerta ?? "lista"}
+          key={`${pasajeroDesdeAlerta ?? "lista"}-${canalDesdeAviso ?? ""}`}
           conductorId={conductor.id}
           pasajeroInicial={pasajeroDesdeAlerta}
           plataforma={plataforma}
+          canalInicial={canalDesdeAviso}
           nivelServicio={conductor.nivel_servicio}
           iconoCategoriaUrl={iconoCategoriaUrl}
           onClose={() => {
             setMensajesOpen(false);
             setPasajeroDesdeAlerta(null);
+            setCanalDesdeAviso(null);
           }}
         />
       )}

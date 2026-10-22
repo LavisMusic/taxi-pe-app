@@ -7,6 +7,7 @@ import { supabase, moverSesionGuardada } from "../supabaseClient";
 import { cerrarSesion, rolDeSesion, abrirSesion } from "../lib/sesionTaxi";
 import { TAXI_ADMIN_KEY, TAXI_SESSION_KEY, leerTokenAdmin } from "../lib/taxiAuth";
 import TerminosAceptarModal from "../components/TerminosAceptarModal";
+import { cancelarPushDispositivo } from "../lib/push";
 import { TERMINOS_VERSION } from "../components/TerminosTexto";
 
 // Aviso a pantalla completa cuando el Admin elimina la cuenta MIENTRAS
@@ -173,6 +174,8 @@ export function TaxiAuthProvider({ children }) {
   const logout = useCallback(() => {
     const tokenAdmin = leerTokenAdmin();
     if (tokenAdmin) supabase.rpc("taxi_admin_salir", { p_token: tokenAdmin }).then(() => {}, () => {});
+    // Este dispositivo deja de recibir los avisos de esta cuenta.
+    cancelarPushDispositivo();
     cerrarSesion();
     reiniciarBienvenidas();
     setUsuario(null);
