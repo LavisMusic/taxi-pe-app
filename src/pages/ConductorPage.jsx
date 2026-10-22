@@ -16,6 +16,7 @@ import {
   BarChart3,
   Wallet,
   Target,
+  MapPinOff,
 } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useConductorSesion } from "../hooks/useConductorSesion";
@@ -187,7 +188,7 @@ export default function ConductorPage() {
   // base todavía diga "activo" (stale, ver el auto-apagado más abajo),
   // este conductor deja de transmitirse al Radar en el instante en que
   // se queda sin créditos ni membresía, sin esperar ningún UPDATE.
-  useGpsBroadcaster({
+  const { problemaGps } = useGpsBroadcaster({
     conductorId: conductor?.id,
     estado: conductor?.estado,
     pasajerosEnCarrera,
@@ -403,6 +404,20 @@ export default function ConductorPage() {
       </header>
 
       <main className="tz-main">
+        {conductor && problemaGps && (
+          <div className="tz-aviso-ubicacion" role="alert">
+            <MapPinOff size={18} />
+            <p>
+              {problemaGps === "permiso"
+                ? "La app no tiene acceso a tu ubicación: no apareces en el radar. Enciende la ubicación del celular y permítela en el navegador (ícono del candado junto a la dirección); luego recarga."
+                : problemaGps === "no_soportado"
+                  ? "Este navegador no comparte la ubicación: no apareces en el radar. Abre la app en Chrome o Safari."
+                  : problemaGps === "sin_senal"
+                    ? "No llega la señal de tu GPS: puede que no aparezcas en el radar. Revisa que la ubicación del celular esté encendida."
+                    : "Tu ubicación está apagada: no apareces en el radar. Enciéndela en tu celular para que te encuentren."}
+            </p>
+          </div>
+        )}
         {loading ? (
           <div className="tz-loading" style={{ minHeight: "50vh" }}>
             <Loader2 className="tz-spin" size={28} />

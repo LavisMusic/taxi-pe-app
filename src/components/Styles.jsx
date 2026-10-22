@@ -7100,6 +7100,25 @@ export default function Styles() {
         color: #05030c;
       }
 
+      /* Aviso del conductor sin GPS (ConductorPage.jsx): ubicación
+         apagada o sin permiso mientras debería aparecer en el radar. */
+      .tz-aviso-ubicacion {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin: 0 0 12px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--danger);
+        background: rgba(255,84,112,0.1);
+        color: var(--text);
+        font-size: 13px;
+        line-height: 1.45;
+        animation: tz-cuenta-eliminada-glow 2s ease-in-out infinite;
+      }
+      .tz-aviso-ubicacion > svg { color: var(--danger); flex-shrink: 0; margin-top: 1px; }
+      .tz-aviso-ubicacion p { margin: 0; }
+
       /* Modal de Soporte (SoporteModal.jsx): tres opciones grandes —
          conversar, bloqueo de emergencia (rojo) y recuperar cuenta. */
       .tz-soporte-opciones { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
