@@ -41,6 +41,18 @@ const MENSAJES_RECUPERACION = {
   bloqueado: "Demasiados intentos. Espera 15 minutos e intenta de nuevo.",
 };
 
+// Razones rápidas de "¿Qué pasó con tu cuenta?"; "Otros" abre el campo
+// para que lo cuente con sus palabras.
+const RAZONES = [
+  "Me robaron el celular",
+  "Perdí mi celular",
+  "Alguien entró a mi cuenta",
+  "Alguien cambió mi PIN",
+  "Cambié de número y no tengo el anterior",
+  "Olvidé mi PIN y no tengo mi WhatsApp",
+];
+const OTROS = "Otros";
+
 const botonFila = {
   display: "flex",
   alignItems: "center",
@@ -73,6 +85,7 @@ export default function SoporteModal({ linkSoporte, onClose: cerrarModal }) {
   const [nombre, setNombre] = useState("");
   const [dni, setDni] = useState("");
   const [telRecuperacion, setTelRecuperacion] = useState("");
+  const [razon, setRazon] = useState("");
   const [comentario, setComentario] = useState("");
   const [foto, setFoto] = useState(null);
   const [fotoPreview, setFotoPreview] = useState("");
@@ -128,7 +141,8 @@ export default function SoporteModal({ linkSoporte, onClose: cerrarModal }) {
     if (!nombre.trim()) return setError("Ingresa tu nombre completo.");
     if (!/^\d{8}$/.test(dni.trim())) return setError("El DNI debe tener 8 dígitos.");
     if (!foto) return setError("La foto sosteniendo tu DNI es obligatoria.");
-    if (!comentario.trim()) return setError("Cuéntanos qué pasó con tu cuenta.");
+    if (!razon) return setError("Elige qué pasó con tu cuenta.");
+    if (razon === OTROS && !comentario.trim()) return setError("Cuéntanos qué pasó con tu cuenta.");
     if (!esTelefonoValido(telRecuperacion.trim())) {
       return setError("El número de recuperación debe tener 9 dígitos y empezar con 9.");
     }
@@ -144,7 +158,7 @@ export default function SoporteModal({ linkSoporte, onClose: cerrarModal }) {
       p_nombre: nombre.trim(),
       p_dni: dni.trim(),
       p_telefono_recuperacion: telRecuperacion.trim(),
-      p_comentario: comentario.trim(),
+      p_comentario: razon === OTROS ? `Otros: ${comentario.trim()}` : razon,
       p_foto: subida.valor,
     });
     setCargando(false);
@@ -370,7 +384,16 @@ export default function SoporteModal({ linkSoporte, onClose: cerrarModal }) {
                 <label className="tz-field-label">Foto tuya sosteniendo tu DNI</label>
                 <label
                   className="tz-camera-cancel"
-                  style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center", width: "100%", cursor: "pointer" }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    justifyContent: "center",
+                    width: "100%",
+                    boxSizing: "border-box",
+                    margin: 0,
+                    cursor: "pointer",
+                  }}
                 >
                   <Camera size={15} /> {foto ? "Cambiar foto" : "Tomar o subir foto"}
                   <input type="file" accept="image/*" capture="user" onChange={elegirFoto} style={{ display: "none" }} />
@@ -381,19 +404,32 @@ export default function SoporteModal({ linkSoporte, onClose: cerrarModal }) {
                 </p>
               </div>
               <div className="tz-login-field">
-                <label className="tz-field-label" htmlFor="sop-rec-comentario">
-                  ¿Qué pasó con tu cuenta?
-                </label>
-                <textarea
-                  id="sop-rec-comentario"
-                  className="tz-text-input"
-                  rows={3}
-                  maxLength={1000}
-                  value={comentario}
-                  onChange={(e) => setComentario(e.target.value)}
-                  placeholder="Ej. me robaron el celular el lunes y bloqueé la cuenta."
-                  style={{ resize: "vertical" }}
-                />
+                <label className="tz-field-label">¿Qué pasó con tu cuenta?</label>
+                <div className="tz-soporte-razones">
+                  {[...RAZONES, OTROS].map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      className={`tz-gasto-tipo-btn ${razon === r ? "tz-gasto-tipo-active" : ""}`}
+                      onClick={() => setRazon(r)}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+                {razon === OTROS && (
+                  <textarea
+                    id="sop-rec-comentario"
+                    className="tz-text-input"
+                    rows={3}
+                    maxLength={1000}
+                    autoFocus
+                    value={comentario}
+                    onChange={(e) => setComentario(e.target.value)}
+                    placeholder="Cuéntanos qué pasó con tu cuenta."
+                    style={{ resize: "vertical", marginTop: 8, boxSizing: "border-box" }}
+                  />
+                )}
               </div>
               <div className="tz-login-field">
                 <label className="tz-field-label" htmlFor="sop-rec-tel2">

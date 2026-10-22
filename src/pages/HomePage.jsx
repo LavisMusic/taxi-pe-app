@@ -33,8 +33,6 @@ import AccesoRecolectorModal from "../components/AccesoRecolectorModal";
 import ChatModal from "../components/ChatModal";
 import AnuncioPopupModal from "../components/AnuncioPopupModal";
 import TextoMaquina from "../components/TextoMaquina";
-import ContadorCreditos from "../components/ContadorCreditos";
-import { useMisCreditos } from "../hooks/useMisCreditos";
 import { useDescripcionesPublico } from "../hooks/useDescripciones";
 import RadarGlobal from "../components/RadarGlobal";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
@@ -72,7 +70,6 @@ export default function HomePage() {
   const esPasajero = usuario?.rol === TIPO_USUARIO_PASAJERO;
   // Créditos del pasajero (puntos por sus compras en Caja Tonazo): el
   // contador con diamante arriba de la pantalla principal.
-  const misCreditos = useMisCreditos(esPasajero ? usuario?.id : null);
   const { conductores, categorias, loading, error } = useConductoresPublicos();
   // Pop-up de marketing — ver useAnuncioActivo.js para la lógica de
   // vigencia (fecha_inicio/fecha_fin) + frecuencia (localStorage). Se
@@ -453,33 +450,16 @@ export default function HomePage() {
         <div className="tz-radar-bar">
           {/* Pasajero con sesión: el filtro de localidad a la izquierda y
              sus créditos a la derecha (centrados en su mitad). */}
-          {(localidades.length > 0 || (esPasajero && misCreditos != null)) && (
-            <div className={esPasajero && misCreditos != null ? "tz-fila-saldo-localidad" : "tz-fila-localidad"}>
-              {localidades.length > 0 && (
-                <div className="tz-localidad-filtro-wrap">
-                  <Dropdown
-                    value={localidad}
-                    onChange={setLocalidad}
-                    options={[{ value: "", label: "Todas las localidades" }, ...localidades.map((l) => ({ value: l.nombre, label: l.nombre }))]}
-                    ariaLabel="Filtrar por localidad"
-                  />
-                </div>
-              )}
-              {esPasajero && misCreditos != null && (
-                <div className="tz-fila-saldo">
-                  <div className="tz-stat-chip tz-gemas">
-                    <span className="tz-gemas-label">Gemas</span>
-                    <span className="tz-stat-value">
-                      <ContadorCreditos
-                        valor={misCreditos}
-                        clave={`tz-creditos-visto-${usuario.id}`}
-                        titulo="Gemas"
-                        className="tz-cc-heredado"
-                      />
-                    </span>
-                  </div>
-                </div>
-              )}
+          {localidades.length > 0 && (
+            <div className="tz-fila-localidad">
+              <div className="tz-localidad-filtro-wrap">
+                <Dropdown
+                  value={localidad}
+                  onChange={setLocalidad}
+                  options={[{ value: "", label: "Todas las localidades" }, ...localidades.map((l) => ({ value: l.nombre, label: l.nombre }))]}
+                  ariaLabel="Filtrar por localidad"
+                />
+              </div>
             </div>
           )}
           {/* El Buscador Inteligente se mudó adentro de <RadarGlobal/> —

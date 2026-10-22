@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Inbox,
   X,
@@ -52,6 +52,10 @@ function ConductorPendienteRow({ conductor, categorias, subgrupos, localidades, 
   const [categoriaId, setCategoriaId] = useState(String(conductor.categoria_id ?? categorias[0]?.id ?? ""));
   const [subgrupoId, setSubgrupoId] = useState(conductor.subgrupo_id ? String(conductor.subgrupo_id) : "");
   const [localidad, setLocalidad] = useState(conductor.localidad ?? "");
+  // Siempre con localidad: si no mandó una, se propone la primera.
+  useEffect(() => {
+    if (!localidad && localidades.length > 0) setLocalidad(localidades[0].nombre);
+  }, [localidad, localidades]);
   const [asientos, setAsientos] = useState(conductor.asientos_totales ?? 4);
   const [nivel, setNivel] = useState(conductor.nivel_servicio_solicitado ?? conductor.nivel_servicio ?? NIVEL_SERVICIO_ECONOMICO);
   const [busy, setBusy] = useState(false);
@@ -121,7 +125,6 @@ function ConductorPendienteRow({ conductor, categorias, subgrupos, localidades, 
           <label>
             <span>Localidad</span>
             <Select className="tz-text-input" style={selectStyle} value={localidad} onChange={(e) => setLocalidad(e.target.value)}>
-              <option value="">Sin localidad</option>
               {localidades.map((loc) => (
                 <option key={loc.id ?? loc.nombre} value={loc.nombre}>
                   {loc.nombre}
@@ -134,11 +137,11 @@ function ConductorPendienteRow({ conductor, categorias, subgrupos, localidades, 
             <input
               type="number"
               min={1}
-              max={65}
+              max={50}
               className="tz-text-input"
               style={selectStyle}
               value={asientos}
-              onChange={(e) => setAsientos(e.target.value)}
+              onChange={(e) => setAsientos(e.target.value.replace(/\D/g, "").slice(0, 2))}
             />
           </label>
           <label>
@@ -164,8 +167,12 @@ function ConductorPendienteRow({ conductor, categorias, subgrupos, localidades, 
             disabled={busy || !categoriaId}
             onClick={async () => {
               const n = Number(asientos);
-              if (!Number.isInteger(n) || n < 1 || n > 65) {
-                setError("Los asientos deben ser un número entero entre 1 y 65.");
+              if (!Number.isInteger(n) || n < 1 || n > 50) {
+                setError("Los asientos deben ser un número entero entre 1 y 50.");
+                return;
+              }
+              if (!localidad) {
+                setError("Elige la localidad del conductor.");
                 return;
               }
               setError("");
@@ -793,12 +800,22 @@ function PeticionRecuperacionRow({ peticion, onAceptar, onRechazar }) {
           </p>
         )}
         {error && <p className="tz-error" style={{ margin: "6px 0 0" }}>{error}</p>}
-        <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-          <button type="button" className="tz-camera-cancel tz-scanner-upload-btn" disabled={busy} onClick={handleAceptar}>
+        <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 10 }}>
+          <button
+            type="button"
+            className="tz-cliente-action-btn tz-cliente-action-pago"
+            disabled={busy}
+            onClick={handleAceptar}
+          >
             {busy ? <Loader2 size={14} className="tz-spin" /> : <MessageCircle size={14} />}{" "}
-            {aceptada || enviado ? "Reenviar código por WhatsApp" : "Aceptar y enviar código"}
+            {aceptada || enviado ? "Reenviar código" : "Aceptar y enviar código"}
           </button>
-          <button type="button" className="tz-camera-cancel" disabled={busy} onClick={handleRechazar}>
+          <button
+            type="button"
+            className="tz-cliente-action-btn tz-cliente-action-delete"
+            disabled={busy}
+            onClick={handleRechazar}
+          >
             <XCircle size={14} /> Rechazar
           </button>
         </div>

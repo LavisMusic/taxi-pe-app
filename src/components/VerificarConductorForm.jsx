@@ -71,8 +71,8 @@ export default function VerificarConductorForm({ usuario, conductor = null, onVe
     if (!/^\d{8}$/.test(dni.trim())) return setError("El DNI debe tener 8 dígitos.");
     if (!placa.trim()) return setError("La placa es obligatoria.");
     const asientos = Number(asientosTotales);
-    if (!Number.isInteger(asientos) || asientos < 1 || asientos > 65) {
-      return setError("La capacidad de asientos debe ser un número entero entre 1 y 65.");
+    if (!Number.isInteger(asientos) || asientos < 1 || asientos > 50) {
+      return setError("La capacidad de asientos debe ser un número entero entre 1 y 50.");
     }
     if (!localidad) return setError("Selecciona tu localidad.");
     if (!categoriaId) return setError("Elige tu vehículo.");
@@ -168,12 +168,12 @@ export default function VerificarConductorForm({ usuario, conductor = null, onVe
           type="number"
           inputMode="numeric"
           min={1}
-          max={65}
+          max={50}
           step={1}
           className="tz-text-input"
           placeholder="4"
           value={asientosTotales}
-          onChange={(e) => setAsientosTotales(e.target.value)}
+          onChange={(e) => setAsientosTotales(e.target.value.replace(/\D/g, "").slice(0, 2))}
         />
         <p className="tz-camera-note" style={{ margin: "2px 0 0" }}>
           Cuántos pasajeros puede llevar a la vez tu vehículo (sin contarte a ti).

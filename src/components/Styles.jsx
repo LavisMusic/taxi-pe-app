@@ -7142,6 +7142,8 @@ export default function Styles() {
         margin-top: 8px;
         background: rgba(0,0,0,0.25);
       }
+      .tz-soporte-razones { display: flex; flex-wrap: wrap; gap: 6px; }
+      .tz-soporte-razones .tz-gasto-tipo-btn { flex: 1 1 45%; min-width: 0; white-space: normal; line-height: 1.3; }
       .tz-soporte-boton-peligro {
         background: var(--danger) !important;
         border-color: var(--danger) !important;
