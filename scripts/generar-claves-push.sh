@@ -34,15 +34,8 @@ guardar() {
   local dir="$1" ref="$2" nombre="$3" valor="$4" salida
   mkdir -p "$dir/supabase/.temp"
   echo -n "$ref" > "$dir/supabase/.temp/project-ref"
-  salida=$(cd "$dir" && npx supabase db query --linked "
-    do \$\$
-    begin
-      if exists (select 1 from vault.secrets where name = '$nombre') then
-        perform vault.update_secret((select id from vault.secrets where name = '$nombre'), '$valor');
-      else
-        perform vault.create_secret('$valor', '$nombre');
-      end if;
-    end \$\$;" 2>&1 || true)
+  # En una sola línea y sin ";" final: la CLI rechaza la consulta si no.
+  salida=$(cd "$dir" && npx supabase db query --linked "do \$\$ begin if exists (select 1 from vault.secrets where name = '$nombre') then perform vault.update_secret((select id from vault.secrets where name = '$nombre'), '$valor'); else perform vault.create_secret('$valor', '$nombre'); end if; end \$\$" 2>&1 < /dev/null || true)
   rm -f "$dir/supabase/.temp/project-ref"
   if echo "$salida" | grep -qi '"error"\|ERROR'; then
     echo "  ✗ No se pudo guardar $nombre ($ref)." >&2
