@@ -7119,6 +7119,106 @@ export default function Styles() {
       .tz-aviso-ubicacion > svg { color: var(--danger); flex-shrink: 0; margin-top: 1px; }
       .tz-aviso-ubicacion p { margin: 0; }
 
+      /* Chats fijados "Taxi PE" y "Tonazo" (mensajes/ChatsFijados.jsx). */
+      .tz-mensajes-modal { max-width: 480px; }
+      .tz-chatfijo-row { padding: 0; }
+      .tz-chatfijo-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 10px 12px;
+        background: transparent;
+        border: 0;
+        color: var(--text);
+        text-align: left;
+        cursor: pointer;
+        font: inherit;
+      }
+      .tz-chatfijo-logo {
+        width: 38px;
+        height: 38px;
+        flex-shrink: 0;
+        object-fit: contain;
+        border-radius: 10px;
+        background: rgba(0,0,0,0.35);
+        border: 1px solid var(--border-soft);
+        padding: 3px;
+      }
+      .tz-chatfijo-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+      .tz-chatfijo-nombre { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 5px; }
+      .tz-chatfijo-pin { color: var(--cyan); }
+      .tz-chatfijo-preview { font-size: 12px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .tz-chatfijo-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+      .tz-chatfijo-hora { font-size: 11px; color: var(--text-dim); }
+      .tz-chatfijo-badge {
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        border-radius: 999px;
+        background: var(--pink);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 10px rgba(255,47,158,0.6);
+      }
+      .tz-chatfijo-avisos {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 11px;
+        border-radius: 999px;
+        border: 1px solid var(--border-soft);
+        background: transparent;
+        color: var(--text-dim);
+        font: inherit;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .tz-chatfijo-avisos.is-activo { border-color: rgba(57,255,176,0.5); color: var(--green); }
+      .tz-chatfijo-abierto { display: flex; flex-direction: column; min-height: 0; }
+      .tz-chatfijo-cabecera {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-bottom: 10px;
+        margin-bottom: 10px;
+        border-bottom: 1px solid var(--border-soft);
+        padding-right: 36px;
+      }
+      .tz-chatfijo-cabecera strong { display: block; font-size: 15px; }
+      .tz-chatfijo-cabecera small { display: block; font-size: 11px; color: var(--text-dim); }
+      .tz-chatfijo-volver {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        border: 1px solid var(--border-soft);
+        background: transparent;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .tz-chatfijo-mensajes { display: flex; flex-direction: column; gap: 10px; max-height: 60vh; overflow-y: auto; padding: 2px; }
+      .tz-chatfijo-burbuja {
+        align-self: flex-start;
+        max-width: 88%;
+        padding: 10px 12px;
+        border-radius: 4px 14px 14px 14px;
+        background: rgba(43,232,255,0.08);
+        border: 1px solid rgba(43,232,255,0.25);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .tz-chatfijo-burbuja strong { display: block; margin-bottom: 3px; color: var(--cyan); }
+      .tz-chatfijo-burbuja p { margin: 0; white-space: pre-wrap; }
+      .tz-chatfijo-burbuja span { display: block; margin-top: 5px; font-size: 10.5px; color: var(--text-dim); text-align: right; }
+
       /* Términos y Condiciones (TerminosTexto / TerminosAceptarModal /
          /terminos). */
       .tz-terminos-modal { max-width: 560px; }

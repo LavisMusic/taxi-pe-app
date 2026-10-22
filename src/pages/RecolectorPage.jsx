@@ -34,6 +34,7 @@ import HistorialVentasModal from "../components/admin/HistorialVentasModal";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import logo from "../assets/logo.webp";
 import BotonSoporte from "../components/BotonSoporte";
+import BotonMensajes from "../components/mensajes/BotonMensajes";
 
 // Ruta /recolector — entra por RequireUsuarioRol rol="recolector".
 // Pantalla operativa de calle: widget de turno bien visible arriba,
@@ -192,6 +193,7 @@ export default function RecolectorPage() {
               <LogOut size={19} />
               <span className="tz-header-btn-label">Salir</span>
             </button>
+            {usuario && <BotonMensajes usuarioId={usuario.id} />}
           </div>
         </div>
       </header>

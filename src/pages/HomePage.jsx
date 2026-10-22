@@ -42,6 +42,7 @@ import logo from "../assets/logo.webp";
 import ContadorCreditos from "../components/ContadorCreditos";
 import { useMisCreditos } from "../hooks/useMisCreditos";
 import BotonSoporte from "../components/BotonSoporte";
+import BotonMensajes from "../components/mensajes/BotonMensajes";
 
 // Persistencia del filtro de localidad — sobrevive a un F5 (ver el
 // useState/useEffect de `localidad` más abajo). Es la única pieza de
@@ -441,6 +442,7 @@ export default function HomePage() {
                 <span className="tz-header-btn-label">Login</span>
               </button>
             )}
+            {usuario && esPasajero && <BotonMensajes usuarioId={usuario.id} />}
           </div>
         </div>
       </header>

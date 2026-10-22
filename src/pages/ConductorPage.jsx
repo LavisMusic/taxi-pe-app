@@ -42,6 +42,7 @@ import Styles from "../components/Styles";
 import GestionImagenModal from "../components/admin/GestionImagenModal";
 import ConductorPublicCard from "../components/ConductorPublicCard";
 import ConductorChatInboxModal from "../components/ConductorChatInboxModal";
+import { useMensajesPlataforma } from "../hooks/useMensajesPlataforma";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import AnimacionExitoNeon from "../components/AnimacionExitoNeon";
 import { useViajeFinalizadoAviso } from "../hooks/useViajeFinalizadoAviso";
@@ -68,6 +69,8 @@ import { useAnuncioActivo } from "../hooks/useAnuncioActivo";
 // tiene abierta mientras maneja, no un dashboard para leer con calma.
 export default function ConductorPage() {
   const { usuario, logout, updateUsuario } = useTaxiAuth();
+  // Chats fijados "Taxi PE" y "Tonazo" (van dentro de su bandeja de chats).
+  const plataforma = useMensajesPlataforma(usuario?.id);
   const { conductor, loading, error, setEstado, actualizar, refresh: refrescarConductor } = useConductorSesion(usuario);
   const [mostrandoVerificacion, setMostrandoVerificacion] = useState(false);
   const { unreadCount, alertaSenas, descartarAlertaSenas, pasajerosEnCarrera } = useHilosChatConductor(conductor?.id);
@@ -376,7 +379,9 @@ export default function ConductorPage() {
               >
                 <MessageCircle size={19} />
                 <span className="tz-header-btn-label">Mensajes</span>
-                {unreadCount > 0 && <span className="tz-chat-unread-dot" aria-hidden="true" />}
+                {(unreadCount > 0 || plataforma.totalNoLeidos > 0) && (
+                  <span className="tz-chat-unread-dot" aria-hidden="true" />
+                )}
               </button>
             </div>
           ) : (
@@ -770,6 +775,7 @@ export default function ConductorPage() {
           key={pasajeroDesdeAlerta ?? "lista"}
           conductorId={conductor.id}
           pasajeroInicial={pasajeroDesdeAlerta}
+          plataforma={plataforma}
           nivelServicio={conductor.nivel_servicio}
           iconoCategoriaUrl={iconoCategoriaUrl}
           onClose={() => {

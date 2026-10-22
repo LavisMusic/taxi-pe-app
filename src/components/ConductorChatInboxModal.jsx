@@ -4,6 +4,7 @@ import { supabase } from "../supabaseClient";
 import { useHilosChatConductor, useChatMensajes, REMITENTE_CONDUCTOR } from "../hooks/useChatMensajes";
 import ChatWindow from "./ChatWindow";
 import ChatErrorBoundary from "./ChatErrorBoundary";
+import { FilasChatsFijados, ChatFijadoAbierto, InterruptorAvisos } from "./mensajes/ChatsFijados";
 
 // Bandeja de mensajes del lado Conductor (/conductor, botón
 // "Mensajes") — sin esto el chat sería de un solo sentido (el pasajero
@@ -73,7 +74,10 @@ function HiloConversacion({ conductorId, pasajeroId, nivelServicio, iconoCategor
 // envoltura, ese fue justo el bug: el error real (colisión de canales
 // de Realtime, ver useChatMensajes.js) escapaba del boundary porque el
 // hook se llamaba un nivel más arriba.
-function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCategoriaUrl }) {
+// `plataforma` (useMensajesPlataforma, desde ConductorPage): los chats
+// fijados "Taxi PE" y "Tonazo", arriba de la lista y de solo lectura.
+function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCategoriaUrl, plataforma }) {
+  const [canalFijo, setCanalFijo] = useState(null);
   const { hilos, loading, pasajerosEnCarrera, refresh } = useHilosChatConductor(conductorId);
   const [nombresPorId, setNombresPorId] = useState({});
   const [borrandoId, setBorrandoId] = useState(null);
@@ -120,6 +124,17 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
       cancelado = true;
     };
   }, [idsKey]);
+
+  if (canalFijo && plataforma) {
+    return (
+      <ChatFijadoAbierto
+        canal={canalFijo}
+        datos={plataforma.canales[canalFijo]}
+        onVolver={() => setCanalFijo(null)}
+        onLeido={plataforma.marcarLeido}
+      />
+    );
+  }
 
   return (
     <>
@@ -191,7 +206,17 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
             onCerrarPorCancelacion={() => setPasajeroAbierto(null)}
           />
         </>
-      ) : loading ? (
+      ) : (
+        <>
+          {plataforma && (
+            <>
+              <InterruptorAvisos activos={plataforma.avisosActivos} onCambiar={plataforma.cambiarAvisos} />
+              <ul className="tz-history-rows" style={{ margin: "10px 0" }}>
+                <FilasChatsFijados canales={plataforma.canales} onAbrir={setCanalFijo} />
+              </ul>
+            </>
+          )}
+          {loading ? (
         <div className="tz-loading" style={{ minHeight: 120 }}>
           <Loader2 className="tz-spin" size={24} />
           <p>Cargando…</p>
@@ -229,11 +254,13 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
           })}
         </ul>
       )}
+        </>
+      )}
     </>
   );
 }
 
-export default function ConductorChatInboxModal({ conductorId, pasajeroInicial, nivelServicio, iconoCategoriaUrl, onClose }) {
+export default function ConductorChatInboxModal({ conductorId, pasajeroInicial, nivelServicio, iconoCategoriaUrl, plataforma, onClose }) {
   return (
     <div className="tz-modal-backdrop">
       <div className="tz-modal tz-chat-modal-shell" onClick={(e) => e.stopPropagation()}>
@@ -253,6 +280,7 @@ export default function ConductorChatInboxModal({ conductorId, pasajeroInicial, 
                 pasajeroInicial={pasajeroInicial}
                 nivelServicio={nivelServicio}
                 iconoCategoriaUrl={iconoCategoriaUrl}
+                plataforma={plataforma}
               />
             </ChatErrorBoundary>
           )}
