@@ -41,6 +41,7 @@ export default function PasajeroAuthForm({ onSuccess }) {
   const [nombreRegistro, setNombreRegistro] = useState("");
   const [pinRegistro, setPinRegistro] = useState("");
   const [pinRegistroConfirm, setPinRegistroConfirm] = useState("");
+  const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const [telefono, setTelefono] = useState("");
   const [pin, setPin] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
@@ -331,6 +332,10 @@ export default function PasajeroAuthForm({ onSuccess }) {
       setError("Los dos PIN no coinciden.");
       return;
     }
+    if (!aceptaTerminos) {
+      setError("Para registrarte debes aceptar los Términos y Condiciones.");
+      return;
+    }
     const { usuario, message } = await registrarTemporal({
       nombre: nombreRegistro.trim(),
       telefono: telefonoTrim,
@@ -490,6 +495,16 @@ export default function PasajeroAuthForm({ onSuccess }) {
               placeholder="••••••"
             />
           </div>
+          <label className="tz-checkbox-row">
+            <input type="checkbox" checked={aceptaTerminos} onChange={(e) => setAceptaTerminos(e.target.checked)} />
+            <span>
+              Acepto los{" "}
+              <a href="/terminos" target="_blank" rel="noopener noreferrer" className="tz-terminos-link">
+                Términos y Condiciones
+              </a>
+              , incluido recibir notificaciones.
+            </span>
+          </label>
           {error && <p className="tz-error">{error}</p>}
           <button type="submit" className="tz-scan-btn tz-payment-save" disabled={loading}>
             <UserPlus size={16} />

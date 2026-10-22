@@ -6,6 +6,8 @@ import { buildWhatsappLink } from "../lib/whatsapp";
 import { supabase, moverSesionGuardada } from "../supabaseClient";
 import { cerrarSesion, rolDeSesion, abrirSesion } from "../lib/sesionTaxi";
 import { TAXI_ADMIN_KEY, TAXI_SESSION_KEY, leerTokenAdmin } from "../lib/taxiAuth";
+import TerminosAceptarModal from "../components/TerminosAceptarModal";
+import { TERMINOS_VERSION } from "../components/TerminosTexto";
 
 // Aviso a pantalla completa cuando el Admin elimina la cuenta MIENTRAS
 // la persona la sigue teniendo abierta en su dispositivo — sin esto,
@@ -120,6 +122,10 @@ export function TaxiAuthProvider({ children }) {
   const [isAdminMaster, setIsAdminMaster] = useState(readStoredAdminMaster);
   const [cuentaEliminada, setCuentaEliminada] = useState(false);
   const [cuentaBloqueada, setCuentaBloqueada] = useState(false);
+  // La cuenta todavía no aceptó la versión vigente de los Términos
+  // (migración 20261022100000): se bloquea la app con la ventana para
+  // aceptarlos.
+  const [requiereTerminos, setRequiereTerminos] = useState(false);
 
   // Login por DNI + Teléfono + PIN (recolector/conductor/pasajero).
   const loginUsuario = useCallback((row, remember = true) => {
@@ -236,12 +242,13 @@ export function TaxiAuthProvider({ children }) {
     const validarCuentaExiste = () => {
       supabase
         .from("usuarios")
-        .select("id")
+        .select("id, terminos_version")
         .eq("id", usuario.id)
         .maybeSingle()
         .then(({ data, error }) => {
           if (!active || error) return;
-          if (!data) marcarCuentaEliminada();
+          if (!data) return marcarCuentaEliminada();
+          setRequiereTerminos(data.terminos_version !== TERMINOS_VERSION);
         });
       supabase.rpc("taxi_cuenta_bloqueada", { p_usuario_id: usuario.id }).then(({ data, error }) => {
         if (active && !error && data === true) marcarCuentaBloqueada();
@@ -341,6 +348,22 @@ export function TaxiAuthProvider({ children }) {
   return (
     <TaxiAuthContext.Provider value={value}>
       {cuentaEliminada && <CuentaEliminadaOverlay onCerrar={() => setCuentaEliminada(false)} />}
+      {usuario && requiereTerminos && !cuentaEliminada && !cuentaBloqueada && (
+        <TerminosAceptarModal
+          onAceptar={async () => {
+            const { data, error } = await supabase.rpc("taxi_aceptar_terminos", { p_version: TERMINOS_VERSION });
+            if (error || data !== true) return false;
+            setRequiereTerminos(false);
+            updateUsuario({ terminos_version: TERMINOS_VERSION });
+            return true;
+          }}
+          onSalir={() => {
+            setRequiereTerminos(false);
+            logout();
+            window.location.href = "/";
+          }}
+        />
+      )}
       {cuentaBloqueada && !cuentaEliminada && (
         <CuentaEliminadaOverlay bloqueada onCerrar={() => setCuentaBloqueada(false)} />
       )}

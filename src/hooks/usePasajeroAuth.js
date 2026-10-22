@@ -2,6 +2,8 @@ import { useCallback, useState } from "react";
 import { loginConPin, crearPin as crearPinBase, registrarTemporal as registrarTemporalBase, MENSAJE_BLOQUEADO, MENSAJE_CUENTA_BLOQUEADA } from "../lib/pinAuth";
 import { mirrorCuentaACaja } from "../lib/mirrorCaja";
 import { ESTADO_VERIFICACION_PERMANENTE } from "../lib/taxiEnums";
+import { supabase } from "../supabaseClient";
+import { TERMINOS_VERSION } from "../components/TerminosTexto";
 
 // Registro/Login específico de Pasajero. Registro exprés: nombre,
 // celular y PIN, igual que el registro de cliente de Caja Tonazo (las
@@ -44,7 +46,9 @@ export function usePasajeroAuth() {
       return { error: new Error(resultado?.estado || "error"), message: "No se pudo crear tu cuenta. Intenta de nuevo." };
     }
     mirrorCuentaACaja({ telefono, pin, nombre, motivo: "alta" });
-    return { usuario: resultado.usuario, error: null };
+    // Aceptó los Términos en el formulario (la sesión ya está abierta).
+    await supabase.rpc("taxi_aceptar_terminos", { p_version: TERMINOS_VERSION });
+    return { usuario: { ...resultado.usuario, terminos_version: TERMINOS_VERSION }, error: null };
   }, []);
 
   // Segundo paso del registro exprés: completa los datos reales y crea

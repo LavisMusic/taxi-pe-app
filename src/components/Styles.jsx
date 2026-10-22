@@ -7119,6 +7119,26 @@ export default function Styles() {
       .tz-aviso-ubicacion > svg { color: var(--danger); flex-shrink: 0; margin-top: 1px; }
       .tz-aviso-ubicacion p { margin: 0; }
 
+      /* Términos y Condiciones (TerminosTexto / TerminosAceptarModal /
+         /terminos). */
+      .tz-terminos-modal { max-width: 560px; }
+      .tz-terminos-scroll {
+        max-height: 46vh;
+        overflow-y: auto;
+        padding: 4px 12px 4px 4px;
+        border: 1px solid var(--border-soft);
+        border-radius: 12px;
+        background: rgba(0,0,0,0.18);
+      }
+      .tz-terminos-pagina { max-width: 760px; }
+      .tz-terminos-texto { font-size: 13px; line-height: 1.55; color: var(--text); }
+      .tz-terminos-texto h2 { font-size: 17px; margin: 10px 0 6px; }
+      .tz-terminos-texto h3 { font-size: 14px; margin: 16px 0 6px; color: var(--cyan); }
+      .tz-terminos-texto p { margin: 6px 0; }
+      .tz-terminos-texto ol, .tz-terminos-texto ul { margin: 6px 0; padding-left: 20px; }
+      .tz-terminos-texto li { margin: 4px 0; }
+      .tz-terminos-link { color: var(--cyan); text-decoration: underline; }
+
       /* Modal de Soporte (SoporteModal.jsx): tres opciones grandes —
          conversar, bloqueo de emergencia (rojo) y recuperar cuenta. */
       .tz-soporte-opciones { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
