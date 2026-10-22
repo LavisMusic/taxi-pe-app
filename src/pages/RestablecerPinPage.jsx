@@ -62,6 +62,9 @@ export default function RestablecerPinPage() {
     if (data?.estado === "vencido") {
       return setError("Pasaron más de 15 minutos. Pide un código nuevo al Admin para cambiar tu PIN.");
     }
+    if (data?.estado === "bloqueada") {
+      return setError('Esta cuenta está bloqueada por seguridad. Para reactivarla, entra a Soporte → "Recuperar cuenta".');
+    }
     if (data?.estado !== "ok") return setError("No encontramos tu cuenta. Contacta a un Admin.");
     // El pasajero entra a Caja Tonazo con el mismo PIN: se copia el nuevo
     // (best-effort, mirrorCaja.js; si falla, el cambio acá ya quedó).

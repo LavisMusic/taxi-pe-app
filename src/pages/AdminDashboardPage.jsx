@@ -15,6 +15,7 @@ import { usePaquetes } from "../hooks/usePaquetes";
 import { useCrearConductorConUsuario } from "../hooks/useCrearConductorConUsuario";
 import { useRecargas } from "../hooks/useRecargas";
 import { usePeticionesPin } from "../hooks/usePeticionesPin";
+import { usePeticionesRecuperacion } from "../hooks/usePeticionesRecuperacion";
 import { usePaquetesRecolectores } from "../hooks/usePaquetesRecolectores";
 import { useRecargasRecolector } from "../hooks/useRecargasRecolector";
 import { useRecargasConductorAdmin } from "../hooks/useRecargasConductor";
@@ -155,6 +156,11 @@ export default function AdminDashboardPage() {
     enviarCodigo: enviarCodigoPin,
     descartar: descartarPeticionPin,
   } = usePeticionesPin();
+  const {
+    peticiones: peticionesRecuperacion,
+    aceptar: aceptarRecuperacion,
+    rechazar: rechazarRecuperacion,
+  } = usePeticionesRecuperacion();
   const { gastos, gastosHoy, totalGastosHoy, agregarGasto, eliminarGasto } = useGastosOperativos();
   const {
     paquetes,
@@ -291,6 +297,7 @@ export default function AdminDashboardPage() {
     conductoresPorRevisar(conductores, usuarios).length +
     recolectoresPorRevisar(usuarios).length +
     peticionesPin.length +
+    peticionesRecuperacion.length +
     recargasRecolectorPendientes.length +
     recargasConductorPendientes.length;
 
@@ -690,6 +697,9 @@ export default function AdminDashboardPage() {
           peticionesPin={peticionesPin}
           onEnviarCodigoPin={enviarCodigoPin}
           onDescartarPin={descartarPeticionPin}
+          peticionesRecuperacion={peticionesRecuperacion}
+          onAceptarRecuperacion={aceptarRecuperacion}
+          onRechazarRecuperacion={rechazarRecuperacion}
           recargasRecolector={recargasRecolectorPendientes}
           onAprobarRecargaRecolector={(peticion) => {
             const recolector = usuarios.find((u) => u.id === peticion.recolector_id);

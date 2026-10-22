@@ -18,6 +18,11 @@ async function conSesion(resultado) {
 
 export const MENSAJE_BLOQUEADO = "Demasiados intentos fallidos. Espera 15 minutos e intenta de nuevo.";
 
+// Cuenta con bloqueo de emergencia (Soporte, migración 20261021100000):
+// taxi_login devuelve 'bloqueada' (solo a quien dio el PIN correcto).
+export const MENSAJE_CUENTA_BLOQUEADA =
+  'Tu cuenta está bloqueada por seguridad. Para reactivarla, entra a Soporte → "Recuperar cuenta".';
+
 // Inicio de sesión por teléfono + PIN. Devuelve { estado, usuario }:
 // 'ok' | 'sin_pin' (la cuenta todavía no tiene PIN: hay que crearlo) |
 // 'incorrecto' | 'bloqueado'.

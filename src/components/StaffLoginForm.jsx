@@ -4,7 +4,7 @@ import { LogIn, ShieldCheck, KeyRound } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useAvisoTop } from "../hooks/useAvisoTop";
 import AvisoTop from "./AvisoTop";
-import { loginConPin, crearPin, MENSAJE_BLOQUEADO } from "../lib/pinAuth";
+import { loginConPin, crearPin, MENSAJE_BLOQUEADO, MENSAJE_CUENTA_BLOQUEADA } from "../lib/pinAuth";
 import { esTelefonoValido, ESTADO_CUENTA_PENDIENTE } from "../lib/taxiEnums";
 import { routeForRole } from "../lib/taxiAuth";
 
@@ -87,6 +87,11 @@ export default function StaffLoginForm({ onSuccess }) {
     if (resultado?.estado === "bloqueado") {
       setError(MENSAJE_BLOQUEADO);
       mostrar(MENSAJE_BLOQUEADO, "error");
+      return;
+    }
+    if (resultado?.estado === "bloqueada") {
+      setError(MENSAJE_CUENTA_BLOQUEADA);
+      mostrar("Cuenta bloqueada por seguridad.", "error");
       return;
     }
     if (resultado?.estado !== "ok") {

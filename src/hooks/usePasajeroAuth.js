@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { loginConPin, crearPin as crearPinBase, registrarTemporal as registrarTemporalBase, MENSAJE_BLOQUEADO } from "../lib/pinAuth";
+import { loginConPin, crearPin as crearPinBase, registrarTemporal as registrarTemporalBase, MENSAJE_BLOQUEADO, MENSAJE_CUENTA_BLOQUEADA } from "../lib/pinAuth";
 import { mirrorCuentaACaja } from "../lib/mirrorCaja";
 import { ESTADO_VERIFICACION_PERMANENTE } from "../lib/taxiEnums";
 
@@ -101,6 +101,9 @@ export function usePasajeroAuth() {
     }
     if (resultado?.estado === "bloqueado") {
       return { error: new Error("bloqueado"), message: MENSAJE_BLOQUEADO };
+    }
+    if (resultado?.estado === "bloqueada") {
+      return { error: new Error("bloqueada"), message: MENSAJE_CUENTA_BLOQUEADA };
     }
     if (resultado?.estado !== "ok") {
       return { error: new Error("pin incorrecto"), message: "Teléfono o PIN incorrectos." };

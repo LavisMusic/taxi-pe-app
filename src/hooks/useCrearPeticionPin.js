@@ -17,6 +17,8 @@ const MENSAJES = {
   no_existe: "No encontramos una cuenta con ese número. Revisa que esté bien escrito.",
   invalido: "Ingresa un celular válido: 9 dígitos, empieza con 9 (ej. 987654321).",
   bloqueado: "Demasiados intentos. Espera 15 minutos antes de volver a probar.",
+  bloqueada:
+    'Esta cuenta está bloqueada por seguridad: no se puede cambiar el PIN. Para reactivarla, entra a Soporte → "Recuperar cuenta".',
 };
 
 export function useCrearPeticionPin() {

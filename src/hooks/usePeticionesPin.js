@@ -27,6 +27,8 @@ export function usePeticionesPin() {
       .from("peticiones_pin")
       .select("id, nombre, dni, placa, tipo_usuario, estado, created_at, codigo_expira, telefono, usuario_id")
       .neq("estado", ESTADO_PETICION_RESUELTO)
+      // Los códigos de "Recuperar cuenta" van en su propia pestaña.
+      .eq("origen", "pin")
       .order("created_at", { ascending: false });
 
     if (fetchError) {

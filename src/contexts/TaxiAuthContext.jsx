@@ -13,9 +13,14 @@ import { TAXI_ADMIN_KEY, TAXI_SESSION_KEY, leerTokenAdmin } from "../lib/taxiAut
 // datos de una cuenta que ya no existe en la base, hasta que alguien
 // recargara a mano. Mismas clases tz-modal-backdrop/tz-modal que
 // cualquier otro modal de la app.
-function CuentaEliminadaOverlay({ onCerrar }) {
+// `bloqueada`: la cuenta tiene un bloqueo de emergencia (Soporte,
+// migración 20261021100000) — mismo aviso, otro texto.
+function CuentaEliminadaOverlay({ onCerrar, bloqueada = false }) {
   const { whatsapp_soporte } = useContactoPlataforma();
-  const linkSoporte = buildWhatsappLink(whatsapp_soporte, "Hola, eliminaron mi cuenta de Taxi-PE y creo que es un error.");
+  const linkSoporte = buildWhatsappLink(
+    whatsapp_soporte,
+    bloqueada ? "Hola, mi cuenta de Taxi-PE está bloqueada." : "Hola, eliminaron mi cuenta de Taxi-PE y creo que es un error."
+  );
   return (
     <div className="tz-modal-backdrop" style={{ zIndex: 999999 }}>
       <div
@@ -26,9 +31,13 @@ function CuentaEliminadaOverlay({ onCerrar }) {
         <div className="tz-cuenta-eliminada-icono">
           <ShieldAlert size={36} />
         </div>
-        <h2 style={{ marginTop: 14, color: "var(--danger, #ff5470)" }}>Tu cuenta ha sido eliminada</h2>
+        <h2 style={{ marginTop: 14, color: "var(--danger, #ff5470)" }}>
+          {bloqueada ? "Tu cuenta está bloqueada" : "Tu cuenta ha sido eliminada"}
+        </h2>
         <p className="tz-brand-sub" style={{ marginTop: 8 }}>
-          Un administrador eliminó esta cuenta. Si crees que es un error, comunícate con soporte.
+          {bloqueada
+            ? 'Se activó el bloqueo de emergencia de esta cuenta. Para reactivarla, entra a Soporte → "Recuperar cuenta".'
+            : "Un administrador eliminó esta cuenta. Si crees que es un error, comunícate con soporte."}
         </p>
         {linkSoporte && (
           <a
@@ -110,6 +119,7 @@ export function TaxiAuthProvider({ children }) {
   const [usuario, setUsuario] = useState(readStoredUsuario);
   const [isAdminMaster, setIsAdminMaster] = useState(readStoredAdminMaster);
   const [cuentaEliminada, setCuentaEliminada] = useState(false);
+  const [cuentaBloqueada, setCuentaBloqueada] = useState(false);
 
   // Login por DNI + Teléfono + PIN (recolector/conductor/pasajero).
   const loginUsuario = useCallback((row, remember = true) => {
@@ -184,6 +194,15 @@ export function TaxiAuthProvider({ children }) {
     setCuentaEliminada(true);
   }, []);
 
+  // Bloqueo de emergencia (Soporte): mismo cierre que una cuenta borrada.
+  const marcarCuentaBloqueada = useCallback(() => {
+    cerrarSesion();
+    setUsuario(null);
+    window.localStorage.removeItem(TAXI_SESSION_KEY);
+    window.sessionStorage.removeItem(TAXI_SESSION_KEY);
+    setCuentaBloqueada(true);
+  }, []);
+
   // Cuenta eliminada por el Admin (cualquier rol: pasajero, conductor,
   // recolector) MIENTRAS esta sesión sigue abierta en este
   // dispositivo — eliminarUsuario() (useUsuarios.js) siempre borra la
@@ -224,6 +243,9 @@ export function TaxiAuthProvider({ children }) {
           if (!active || error) return;
           if (!data) marcarCuentaEliminada();
         });
+      supabase.rpc("taxi_cuenta_bloqueada", { p_usuario_id: usuario.id }).then(({ data, error }) => {
+        if (active && !error && data === true) marcarCuentaBloqueada();
+      });
     };
 
     validarCuentaExiste();
@@ -249,7 +271,7 @@ export function TaxiAuthProvider({ children }) {
       window.removeEventListener("pageshow", validarCuentaExiste);
       window.removeEventListener("focus", validarCuentaExiste);
     };
-  }, [usuario?.id, marcarCuentaEliminada]);
+  }, [usuario?.id, marcarCuentaEliminada, marcarCuentaBloqueada]);
 
   // Paso a sesión real (fase 2A) de quien ya estaba dentro antes de esta
   // versión: el Admin con su token válido la obtiene solo; una cuenta sin
@@ -319,6 +341,9 @@ export function TaxiAuthProvider({ children }) {
   return (
     <TaxiAuthContext.Provider value={value}>
       {cuentaEliminada && <CuentaEliminadaOverlay onCerrar={() => setCuentaEliminada(false)} />}
+      {cuentaBloqueada && !cuentaEliminada && (
+        <CuentaEliminadaOverlay bloqueada onCerrar={() => setCuentaBloqueada(false)} />
+      )}
       {children}
     </TaxiAuthContext.Provider>
   );

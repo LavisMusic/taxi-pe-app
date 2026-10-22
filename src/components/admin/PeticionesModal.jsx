@@ -12,6 +12,8 @@ import {
   Wallet,
   ExternalLink,
   History,
+  LifeBuoy,
+  ShieldAlert,
 } from "lucide-react";
 import {
   NIVELES_SERVICIO,
@@ -702,6 +704,122 @@ function RecargasTab({
   );
 }
 
+// Fila de "Recuperar cuenta" (sistema antirrobo, migración
+// 20261021100000): datos que mandó la persona, su foto con el DNI y si la
+// cuenta tiene el bloqueo de emergencia puesto. Aceptar genera un código
+// (30 min) y abre WhatsApp hacia el número de recuperación con el enlace
+// a /restablecer-pin; al elegir el PIN nuevo se quita el bloqueo. Si el
+// código venció, "Reenviar código" genera otro. Rechazar la descarta.
+function PeticionRecuperacionRow({ peticion, onAceptar, onRechazar }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [enviado, setEnviado] = useState(null);
+  const fotoUrl = useUrlVisible(peticion.foto);
+  const aceptada = peticion.estado === "aceptada";
+
+  const handleAceptar = async () => {
+    setError("");
+    // La ventana se abre antes del await: si no, el navegador la bloquea.
+    const ventana = window.open("", "_blank");
+    setBusy(true);
+    const r = await onAceptar(peticion.id);
+    setBusy(false);
+    if (r?.error) {
+      ventana?.close();
+      setError(r.message || "No se pudo generar el código.");
+      return;
+    }
+    setEnviado(r);
+    const enlace = `${window.location.origin}/restablecer-pin`;
+    const link = buildWhatsappLink(
+      r.telefono,
+      `Hola ${String(r.nombre || "").split(" ")[0]}, aprobamos la recuperación de tu cuenta de TaxiPE.\n\n` +
+        `Tu código es: ${r.codigo}\n\n` +
+        `Escríbelo aquí para elegir tu PIN nuevo: ${enlace}\n\n` +
+        "Sirve una sola vez y vence en 30 minutos. Al elegir tu PIN, tu cuenta se reactiva."
+    );
+    if (link && ventana) ventana.location.href = link;
+    else ventana?.close();
+  };
+
+  const handleRechazar = async () => {
+    if (!window.confirm(`¿Rechazar la recuperación de cuenta de ${peticion.nombre_completo}?`)) return;
+    setError("");
+    setBusy(true);
+    const r = await onRechazar(peticion.id);
+    setBusy(false);
+    if (r?.error) setError(r.message || "No se pudo rechazar.");
+  };
+
+  return (
+    <li className="tz-history-row">
+      <div className="tz-history-row-detail" style={{ padding: 12 }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+          {fotoUrl ? (
+            <a href={fotoUrl} target="_blank" rel="noopener noreferrer" title="Ver foto completa">
+              <img
+                src={fotoUrl}
+                alt={`${peticion.nombre_completo} con su DNI`}
+                style={{ width: 72, height: 72, borderRadius: 10, objectFit: "cover" }}
+              />
+            </a>
+          ) : (
+            <div className="tz-peticion-foto-placeholder" style={{ width: 72, height: 72 }}>
+              <ImageIcon size={18} />
+            </div>
+          )}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <strong style={{ color: "var(--text)" }}>{peticion.nombre_completo}</strong>{" "}
+            {peticion.bloqueada && (
+              <span className="tz-tag tz-tag-danger" style={{ marginLeft: 4 }}>
+                <ShieldAlert size={11} style={{ verticalAlign: "-1px" }} /> Cuenta bloqueada
+              </span>
+            )}
+            <p style={{ margin: "2px 0", color: "var(--text-dim)", fontSize: 13 }}>
+              Cuenta {formatTelefono(peticion.telefono)} · DNI {peticion.dni}
+            </p>
+            <p style={{ margin: "2px 0", color: "var(--text-dim)", fontSize: 13 }}>
+              Código a: {formatTelefono(peticion.telefono_recuperacion)} · {formatDate(peticion.created_at)}
+            </p>
+            <p style={{ margin: "6px 0 0", fontSize: 13, whiteSpace: "pre-wrap" }}>{peticion.comentario}</p>
+          </div>
+        </div>
+
+        {(aceptada || enviado) && (
+          <p className="tz-success" style={{ margin: "8px 0 0" }}>
+            {enviado
+              ? `Código enviado — vence a las ${new Date(enviado.expira).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. La cuenta se reactiva cuando elija su PIN nuevo.`
+              : "Aprobada: ya se envió un código. Si venció, reenvía uno nuevo."}
+          </p>
+        )}
+        {error && <p className="tz-error" style={{ margin: "6px 0 0" }}>{error}</p>}
+        <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+          <button type="button" className="tz-camera-cancel tz-scanner-upload-btn" disabled={busy} onClick={handleAceptar}>
+            {busy ? <Loader2 size={14} className="tz-spin" /> : <MessageCircle size={14} />}{" "}
+            {aceptada || enviado ? "Reenviar código por WhatsApp" : "Aceptar y enviar código"}
+          </button>
+          <button type="button" className="tz-camera-cancel" disabled={busy} onClick={handleRechazar}>
+            <XCircle size={14} /> Rechazar
+          </button>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+function RecuperacionCuentaTab({ peticiones, onAceptar, onRechazar }) {
+  if (peticiones.length === 0) {
+    return <p className="tz-method-history-empty">No hay solicitudes de recuperación de cuenta.</p>;
+  }
+  return (
+    <ul className="tz-history-rows">
+      {peticiones.map((p) => (
+        <PeticionRecuperacionRow key={p.id} peticion={p} onAceptar={onAceptar} onRechazar={onRechazar} />
+      ))}
+    </ul>
+  );
+}
+
 function RecuperacionPinTab({ peticiones, onEnviarCodigo, onDescartar }) {
   if (peticiones.length === 0) {
     return <p className="tz-method-history-empty">No hay solicitudes de recuperación de PIN.</p>;
@@ -732,6 +850,9 @@ export default function PeticionesModal({
   peticionesPin,
   onEnviarCodigoPin,
   onDescartarPin,
+  peticionesRecuperacion = [],
+  onAceptarRecuperacion,
+  onRechazarRecuperacion,
   recargasRecolector,
   onAprobarRecargaRecolector,
   onRechazarRecargaRecolector,
@@ -775,6 +896,14 @@ export default function PeticionesModal({
             </button>
             <button
               type="button"
+              className={`tz-gasto-tipo-btn ${tab === "recuperacion" ? "tz-gasto-tipo-active" : ""}`}
+              onClick={() => setTab("recuperacion")}
+            >
+              <LifeBuoy size={13} style={{ marginRight: 4, verticalAlign: "-2px" }} />
+              Recuperar cuenta {peticionesRecuperacion.length > 0 ? `(${peticionesRecuperacion.length})` : ""}
+            </button>
+            <button
+              type="button"
               className={`tz-gasto-tipo-btn ${tab === "recargas" ? "tz-gasto-tipo-active" : ""}`}
               onClick={() => setTab("recargas")}
             >
@@ -808,6 +937,12 @@ export default function PeticionesModal({
             />
           ) : tab === "historial" ? (
             <HistorialVerificacionesTab />
+          ) : tab === "recuperacion" ? (
+            <RecuperacionCuentaTab
+              peticiones={peticionesRecuperacion}
+              onAceptar={onAceptarRecuperacion}
+              onRechazar={onRechazarRecuperacion}
+            />
           ) : tab === "pin" ? (
             <RecuperacionPinTab peticiones={peticionesPin} onEnviarCodigo={onEnviarCodigoPin} onDescartar={onDescartarPin} />
           ) : (

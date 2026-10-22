@@ -52,6 +52,25 @@ export async function subirComprobantePrivado(archivo, carpeta) {
   return { valor: valorPrivado(data.path) };
 }
 
+// Foto sosteniendo el DNI de "Recuperar cuenta" (SoporteModal.jsx): quien
+// la manda no tiene sesión, así que solo puede SUBIR a la carpeta
+// recuperaciones/ del bucket privado (migración 20261021100000); solo el
+// Admin la ve. Devuelve { valor: "privado:<archivo>" } o { error }.
+export async function subirFotoRecuperacion(archivo) {
+  let blob = archivo;
+  try {
+    blob = await comprimir(archivo);
+  } catch (err) {
+    console.error("[comprobantes] no se pudo comprimir, se sube el original:", err);
+  }
+  const ruta = `recuperaciones/${crypto.randomUUID()}.jpg`;
+  const { data, error } = await supabase.storage
+    .from(BUCKET_PRIVADO)
+    .upload(ruta, blob, { contentType: blob.type || "image/jpeg", upsert: false });
+  if (error) return { error };
+  return { valor: valorPrivado(data.path) };
+}
+
 // Al aprobar la petición, el Admin copia ese comprobante privado al bucket
 // de comprobantes de ventas (donde viven los de todas las ventas).
 export async function copiarComprobantePrivado(valor, carpeta = "admin") {

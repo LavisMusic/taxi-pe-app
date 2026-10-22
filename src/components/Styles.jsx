@@ -7100,6 +7100,54 @@ export default function Styles() {
         color: #05030c;
       }
 
+      /* Modal de Soporte (SoporteModal.jsx): tres opciones grandes —
+         conversar, bloqueo de emergencia (rojo) y recuperar cuenta. */
+      .tz-soporte-opciones { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+      .tz-soporte-opcion {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid var(--border-soft);
+        background: rgba(255,255,255,0.03);
+        color: var(--text);
+        text-align: left;
+        cursor: pointer;
+        font: inherit;
+      }
+      .tz-soporte-opcion:hover { border-color: var(--cyan); }
+      .tz-soporte-opcion strong { display: block; font-size: 14px; }
+      .tz-soporte-opcion small { display: block; color: var(--text-dim); font-size: 12px; margin-top: 2px; }
+      .tz-soporte-opcion > svg { flex-shrink: 0; }
+      .tz-soporte-opcion-peligro { border-color: rgba(255,84,112,0.55); }
+      .tz-soporte-opcion-peligro > svg { color: var(--danger); }
+      .tz-soporte-opcion-peligro:hover { border-color: var(--danger); box-shadow: 0 0 14px rgba(255,84,112,0.35); }
+      .tz-soporte-aviso {
+        border: 1px solid var(--danger);
+        background: rgba(255,84,112,0.08);
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-size: 13px;
+        line-height: 1.5;
+        margin-bottom: 14px;
+      }
+      .tz-soporte-aviso strong { color: var(--danger); }
+      .tz-soporte-foto {
+        width: 100%;
+        max-height: 180px;
+        object-fit: contain;
+        border-radius: 10px;
+        margin-top: 8px;
+        background: rgba(0,0,0,0.25);
+      }
+      .tz-soporte-boton-peligro {
+        background: var(--danger) !important;
+        border-color: var(--danger) !important;
+        color: #05030c !important;
+      }
+
       /* Serpentinas (Confetti.jsx) — overlay a pantalla completa,
          fixed, por encima de todo (incluso del modal del QR, que ya usa
          z-index:90). Cada tira cae con 'fall' y gira con
