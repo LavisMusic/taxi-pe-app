@@ -7239,6 +7239,9 @@ export default function Styles() {
         line-height: 1.45;
       }
       .tz-chatfijo-burbuja strong { display: block; margin-bottom: 3px; color: var(--cyan); }
+      .tz-chatfijo-media { display: block; width: 100%; max-height: 320px; object-fit: contain; border-radius: 10px; margin-bottom: 6px; background: #000; }
+      .tz-chatfijo-video { position: relative; width: 100%; aspect-ratio: 16 / 9; margin-bottom: 6px; border-radius: 10px; overflow: hidden; }
+      .tz-chatfijo-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
       .tz-chatfijo-burbuja p { margin: 0; white-space: pre-wrap; }
       .tz-chatfijo-burbuja span { display: block; margin-top: 5px; font-size: 10.5px; color: var(--text-dim); text-align: right; }
 

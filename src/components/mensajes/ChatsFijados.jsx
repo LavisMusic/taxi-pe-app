@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { ArrowLeft, Pin, Bell, BellOff } from "lucide-react";
+import { toYoutubeEmbedUrl } from "../../lib/youtube";
 import logoTaxi from "../../assets/logo.webp";
 import logoTonazo from "../../assets/logo-tonazo.webp";
 
@@ -33,7 +34,7 @@ export function FilasChatsFijados({ canales, onAbrir }) {
               {info.nombre} <Pin size={11} className="tz-chatfijo-pin" aria-label="Fijado" />
             </span>
             <span className="tz-chatfijo-preview">
-              {ultimo ? ultimo.titulo || ultimo.mensaje : "Sin mensajes todavía"}
+              {ultimo ? ultimo.titulo || ultimo.mensaje || "📢 Anuncio" : "Sin mensajes todavía"}
             </span>
           </span>
           <span className="tz-chatfijo-meta">
@@ -76,8 +77,23 @@ export function ChatFijadoAbierto({ canal, datos, onVolver, onLeido }) {
         ) : (
           datos.mensajes.map((m) => (
             <div key={m.id} className="tz-chatfijo-burbuja">
+              {/* Anuncio: su imagen o video, además del texto. */}
+              {m.imagen_url && <img src={m.imagen_url} alt="" className="tz-chatfijo-media" />}
+              {m.video_url &&
+                (toYoutubeEmbedUrl(m.video_url) ? (
+                  <div className="tz-chatfijo-video">
+                    <iframe
+                      src={toYoutubeEmbedUrl(m.video_url)}
+                      title={m.titulo || "Anuncio"}
+                      allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                ) : (
+                  <video src={m.video_url} controls playsInline className="tz-chatfijo-media" />
+                ))}
               {m.titulo && <strong>{m.titulo}</strong>}
-              <p>{m.mensaje}</p>
+              {m.mensaje && <p>{m.mensaje}</p>}
               <span>
                 {new Date(m.programado_para).toLocaleString("es-PE", {
                   day: "2-digit",

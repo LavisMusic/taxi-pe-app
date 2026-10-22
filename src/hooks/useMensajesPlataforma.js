@@ -11,6 +11,8 @@ import { asegurarSuscripcion } from "../lib/push";
 // nuevo suena si tiene los avisos activados. Los programados aparecen al
 // llegar su hora: se revisa cada minuto y al volver a la app.
 export const CANALES = ["taxipe", "tonazo"];
+// Los anuncios de Taxi PE van en el chat "Taxi PE".
+const CANAL_ANUNCIOS = "taxipe";
 const REVISAR_MS = 60 * 1000;
 
 export function useMensajesPlataforma(usuarioId) {
@@ -21,6 +23,31 @@ export function useMensajesPlataforma(usuarioId) {
   const vistos = useRef(null);
   const avisosRef = useRef(true);
 
+
+  // Anuncios vigentes para este rol: también quedan en el chat de su app,
+  // para volver a verlos después de cerrar el pop-up.
+  const traerAnuncios = async (rol) => {
+    if (!rol) return [];
+    const ahora = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("anuncios")
+      .select("id, titulo, descripcion, imagen_url, video_url, fecha_inicio, created_at")
+      .eq("activo", true)
+      .contains("roles", [rol])
+      .or(`fecha_inicio.is.null,fecha_inicio.lte.${ahora}`)
+      .or(`fecha_fin.is.null,fecha_fin.gte.${ahora}`);
+    if (error) return [];
+    return (data ?? []).map((a) => ({
+      id: `anuncio-${a.id}`,
+      canal: CANAL_ANUNCIOS,
+      titulo: a.titulo,
+      mensaje: a.descripcion,
+      imagen_url: a.imagen_url,
+      video_url: a.video_url,
+      programado_para: a.fecha_inicio || a.created_at,
+    }));
+  };
+
   const cargar = useCallback(async () => {
     if (!usuarioId) return;
     const [msj, lei, usu] = await Promise.all([
@@ -30,13 +57,16 @@ export function useMensajesPlataforma(usuarioId) {
         .order("programado_para", { ascending: true })
         .limit(300),
       supabase.from("mensajes_plataforma_leidos").select("canal, leido_hasta"),
-      supabase.from("usuarios").select("notificaciones_activas").eq("id", usuarioId).maybeSingle(),
+      supabase.from("usuarios").select("notificaciones_activas, rol").eq("id", usuarioId).maybeSingle(),
     ]);
     if (msj.error) {
       setCargando(false);
       return;
     }
-    const lista = msj.data ?? [];
+    const anuncios = await traerAnuncios(usu.data?.rol);
+    const lista = [...(msj.data ?? []), ...anuncios].sort(
+      (a, b) => new Date(a.programado_para) - new Date(b.programado_para)
+    );
     // Suena solo por mensajes que aparecen después de la primera carga.
     if (vistos.current && avisosRef.current && lista.some((m) => !vistos.current.has(m.id))) sonarMensaje();
     vistos.current = new Set(lista.map((m) => m.id));
