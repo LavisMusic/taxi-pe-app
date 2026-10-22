@@ -34,7 +34,7 @@ function camposAnuncio(d: Datos) {
   const r = roles(d.roles);
   return {
     titulo: texto(d.titulo, 200),
-    descripcion: texto(d.descripcion, 1000),
+    descripcion: texto(d.descripcion, 10000),
     imagen_url: texto(d.imagen_url, 1000),
     video_url: texto(d.video_url, 1000),
     fecha_inicio: fecha(d.fecha_inicio),

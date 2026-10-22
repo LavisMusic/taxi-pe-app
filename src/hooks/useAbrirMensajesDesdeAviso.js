@@ -18,11 +18,17 @@ export function useAbrirMensajesDesdeAviso(onAbrir, activo = true) {
       window.history.replaceState(null, "", `${window.location.pathname}${resto ? `?${resto}` : ""}${window.location.hash}`);
       ref.current(["taxipe", "tonazo"].includes(canal) ? canal : null);
     }
-    if (!("serviceWorker" in navigator)) return undefined;
+    // Tocar la imagen o el video de un anuncio (AnuncioPopupModal).
+    const alAnuncio = (e) => ref.current(["taxipe", "tonazo"].includes(e.detail?.canal) ? e.detail.canal : null);
+    window.addEventListener("tz-abrir-mensajes", alAnuncio);
+    if (!("serviceWorker" in navigator)) return () => window.removeEventListener("tz-abrir-mensajes", alAnuncio);
     const alMensaje = (e) => {
       if (e.data?.tipo === "abrir-mensajes") ref.current(["taxipe", "tonazo"].includes(e.data.canal) ? e.data.canal : null);
     };
     navigator.serviceWorker.addEventListener("message", alMensaje);
-    return () => navigator.serviceWorker.removeEventListener("message", alMensaje);
+    return () => {
+      window.removeEventListener("tz-abrir-mensajes", alAnuncio);
+      navigator.serviceWorker.removeEventListener("message", alMensaje);
+    };
   }, [activo]);
 }

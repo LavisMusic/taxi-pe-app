@@ -375,7 +375,7 @@ export default function RecolectorPage() {
           onClose={() => setHistorialOpen(false)}
         />
       )}
-      {anuncio && <AnuncioPopupModal anuncio={anuncio} onClose={cerrarAnuncio} />}
+      {anuncio && <AnuncioPopupModal anuncio={anuncio} onClose={cerrarAnuncio} canalChat="taxipe" />}
     </div>
   );
 }

@@ -446,6 +446,9 @@ export default function HomePage() {
           </div>
         </div>
       </header>
+      {/* Banda con brillo bajo la cabecera, detrás del filtro de localidad
+         (igual que la barra de filtros de Caja Tonazo): solo fondo. */}
+      <div className="tz-banda-filtros" aria-hidden="true" />
 
       <main className="tz-main">
         {/* Restauración de layout: el filtro de localidad vuelve a la
@@ -702,7 +705,9 @@ export default function HomePage() {
         />
       )}
 
-      {anuncio && <AnuncioPopupModal anuncio={anuncio} onClose={cerrarAnuncio} />}
+      {anuncio && (
+        <AnuncioPopupModal anuncio={anuncio} onClose={cerrarAnuncio} canalChat={usuario && esPasajero ? "taxipe" : null} />
+      )}
 
       {avisoDestino && <div className="tz-toast-flotante">{avisoDestino}</div>}
     </div>

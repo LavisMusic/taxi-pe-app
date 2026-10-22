@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { ArrowLeft, Pin, Bell, BellOff } from "lucide-react";
 import { toYoutubeEmbedUrl } from "../../lib/youtube";
+import TextoConEnlaces from "../TextoConEnlaces";
 import logoTaxi from "../../assets/logo.webp";
 import logoTonazo from "../../assets/logo-tonazo.webp";
 
@@ -93,7 +94,11 @@ export function ChatFijadoAbierto({ canal, datos, onVolver, onLeido }) {
                   <video src={m.video_url} controls playsInline className="tz-chatfijo-media" />
                 ))}
               {m.titulo && <strong>{m.titulo}</strong>}
-              {m.mensaje && <p>{m.mensaje}</p>}
+              {m.mensaje && (
+                <p>
+                  <TextoConEnlaces texto={m.mensaje} />
+                </p>
+              )}
               <span>
                 {new Date(m.programado_para).toLocaleString("es-PE", {
                   day: "2-digit",

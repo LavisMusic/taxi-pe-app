@@ -845,7 +845,7 @@ export default function ConductorPage() {
         </div>
       )}
 
-      {anuncio && !mostrarBienvenida && <AnuncioPopupModal anuncio={anuncio} onClose={cerrarAnuncio} />}
+      {anuncio && !mostrarBienvenida && <AnuncioPopupModal anuncio={anuncio} onClose={cerrarAnuncio} canalChat="taxipe" />}
     </div>
   );
 }

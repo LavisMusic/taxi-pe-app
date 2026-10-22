@@ -739,6 +739,36 @@ export default function Styles() {
         margin-bottom: 20px;
       }
       .tz-localidad-filtro-wrap { width: 100%; max-width: 320px; }
+      /* Banda con brillo bajo la cabecera (como la barra de filtros de Caja
+         Tonazo): degradado cian que se desvanece hacia abajo, detrás del
+         filtro de localidad. Alto 0 en el flujo: no mueve nada. */
+      .tz-banda-filtros { position: relative; height: 0; }
+      .tz-banda-filtros::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 130px;
+        background: linear-gradient(180deg, rgba(43,232,255,0.06), rgba(10,7,22,0.4));
+        box-shadow: 0 4px 24px rgba(43,232,255,0.08) inset;
+        -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 40px), transparent);
+        mask-image: linear-gradient(to bottom, #000 calc(100% - 40px), transparent);
+        pointer-events: none;
+      }
+      /* position sin z-index: queda encima de la banda por orden, sin crear
+         un contexto que deje los modales del contenido bajo el pie. */
+      .tz-banda-filtros + .tz-main { position: relative; }
+      /* El filtro de localidad con el mismo borde y brillo que en Caja. */
+      .tz-localidad-filtro-wrap .tz-dropdown-trigger {
+        background: #140d28;
+        border-color: rgba(43,232,255,0.45);
+        box-shadow: 0 0 14px rgba(43,232,255,0.18);
+      }
+      .tz-localidad-filtro-wrap .tz-dropdown-trigger:hover {
+        border-color: var(--cyan);
+        box-shadow: 0 0 20px rgba(43,232,255,0.4);
+      }
       /* Envuelve el input para poder anclar el dropdown de sugerencias
          justo debajo (position:relative acá, absolute en el dropdown). */
       .tz-buscador-wrap {
@@ -7239,6 +7269,8 @@ export default function Styles() {
         line-height: 1.45;
       }
       .tz-chatfijo-burbuja strong { display: block; margin-bottom: 3px; color: var(--cyan); }
+      .tz-enlace { color: var(--cyan); text-decoration: underline; word-break: break-all; }
+      .tz-anuncio-media-tocable { cursor: pointer; }
       .tz-chatfijo-media { display: block; width: 100%; max-height: 320px; object-fit: contain; border-radius: 10px; margin-bottom: 6px; background: #000; }
       .tz-chatfijo-video { position: relative; width: 100%; aspect-ratio: 16 / 9; margin-bottom: 6px; border-radius: 10px; overflow: hidden; }
       .tz-chatfijo-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
