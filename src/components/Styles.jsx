@@ -5799,9 +5799,11 @@ export default function Styles() {
         align-items: center;
         gap: 10px;
         padding: 0 6px;
-        margin-bottom: 12px;
       }
-      .tz-fila-saldo { display: flex; justify-content: center; align-items: center; min-width: 0; }
+      /* Alto 0: las gemas (más altas que el desplegable) se centran sobre la
+         fila sin agrandarla, así el destino y el botón del Radar quedan a la
+         misma altura con o sin sesión. */
+      .tz-fila-saldo { display: flex; justify-content: center; align-items: center; min-width: 0; height: 0; overflow: visible; }
       .tz-fila-saldo .tz-cc { top: 0; }
       /* Gemas (créditos): en su recuadro, la palabra centrada encima de la
          gema y el número. */
@@ -7192,6 +7194,14 @@ export default function Styles() {
         cursor: pointer;
       }
       .tz-chatfijo-avisos.is-activo { border-color: rgba(57,255,176,0.5); color: var(--green); }
+      .tz-chatfijo-avisos:not(.is-activo) { border-color: rgba(255,84,112,0.55); color: var(--danger); }
+      .tz-chatfijo-avisos-fila { display: flex; justify-content: flex-end; }
+      .tz-chatfijo-avisos-fila .tz-chatfijo-avisos {
+        width: 25%;
+        min-width: max-content;
+        justify-content: flex-start;
+        margin: 0;
+      }
       .tz-chatfijo-abierto { display: flex; flex-direction: column; min-height: 0; }
       .tz-chatfijo-cabecera {
         display: flex;

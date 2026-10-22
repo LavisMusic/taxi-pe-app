@@ -97,6 +97,7 @@ export function ChatFijadoAbierto({ canal, datos, onVolver, onLeido }) {
 
 export function InterruptorAvisos({ activos, onCambiar }) {
   return (
+    <div className="tz-chatfijo-avisos-fila">
     <button
       type="button"
       className={`tz-chatfijo-avisos ${activos ? "is-activo" : ""}`}
@@ -107,5 +108,6 @@ export function InterruptorAvisos({ activos, onCambiar }) {
       {activos ? <Bell size={13} /> : <BellOff size={13} />}
       {activos ? "Avisos activados" : "Avisos desactivados"}
     </button>
+    </div>
   );
 }

@@ -43,7 +43,7 @@ function camposAnuncio(d: Datos) {
     activo: d.activo !== false,
     roles: r,
     // Compatibilidad con la columna vieja (ya no decide nada).
-    publico: r.length === 1 ? { pasajero: "pasajeros", conductor: "conductores", recolector: "recolectores" }[r[0]] : "todos",
+    publico: r.length === 1 && r[0] === "pasajero" ? "pasajeros" : r.length === 1 && r[0] === "conductor" ? "conductores" : "todos",
   };
 }
 
