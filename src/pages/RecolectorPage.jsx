@@ -35,6 +35,8 @@ import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import logo from "../assets/logo.webp";
 import BotonSoporte from "../components/BotonSoporte";
 import BotonMensajes from "../components/mensajes/BotonMensajes";
+import AnuncioPopupModal from "../components/AnuncioPopupModal";
+import { useAnuncioActivo } from "../hooks/useAnuncioActivo";
 
 // Ruta /recolector — entra por RequireUsuarioRol rol="recolector".
 // Pantalla operativa de calle: widget de turno bien visible arriba,
@@ -46,6 +48,8 @@ import BotonMensajes from "../components/mensajes/BotonMensajes";
 // calle, tiene sentido que vea lo mismo que el Admin ve de sus ventas.
 export default function RecolectorPage() {
   const { usuario, logout, updateUsuario } = useTaxiAuth();
+  // Pop-up de anuncios para recolectores (los crea el superadmin).
+  const { anuncio, cerrar: cerrarAnuncio } = useAnuncioActivo("recolectores");
   const [verificandoCuenta, setVerificandoCuenta] = useState(false);
   const { ventas, ventasVigentes, loading: ventasLoading, refresh: refreshVentas } = useVentas();
   // Texto bajo el logo: el nombre y después las descripciones del Admin
@@ -371,6 +375,7 @@ export default function RecolectorPage() {
           onClose={() => setHistorialOpen(false)}
         />
       )}
+      {anuncio && <AnuncioPopupModal anuncio={anuncio} onClose={cerrarAnuncio} />}
     </div>
   );
 }

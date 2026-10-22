@@ -6,7 +6,7 @@ import { toYoutubeEmbedUrl } from "../lib/youtube";
 // (ver useAnuncioActivo.js para cuándo le toca aparecer a este
 // visitante en particular; el Gestor de Anuncios ya se encarga de que
 // un anuncio vertical 9:16 nunca tenga título/descripción, ver
-// GestorAnunciosModal.jsx):
+// GestorComunicacionesModal.jsx en el panel del superadmin de Caja):
 //   A) Solo multimedia Y vertical (9:16, sin título NI descripción): el
 //      modal ABANDONA el ancho genérico y toma forma de teléfono
 //      (aspect-ratio 9:16, ver .tz-anuncio-modal-vertical en

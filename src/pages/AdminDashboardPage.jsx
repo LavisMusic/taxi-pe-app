@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, CreditCard, Megaphone, MapPin, Loader2, Trash2, MessageSquareText } from "lucide-react";
+import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, CreditCard, MapPin, Loader2, Trash2, MessageSquareText } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useLocalidades } from "../hooks/useLocalidades";
 import { useVentas } from "../hooks/useVentas";
@@ -20,7 +20,6 @@ import { usePaquetesRecolectores } from "../hooks/usePaquetesRecolectores";
 import { useRecargasRecolector } from "../hooks/useRecargasRecolector";
 import { useRecargasConductorAdmin } from "../hooks/useRecargasConductor";
 import { useCierresCaja } from "../hooks/useCierresCaja";
-import { useAnuncios } from "../hooks/useAnuncios";
 import { useDescripciones } from "../hooks/useDescripciones";
 import {
   METODOS_PAGO,
@@ -43,7 +42,6 @@ import GastosOperativosModal from "../components/admin/GastosOperativosModal";
 import HistorialVentasModal from "../components/admin/HistorialVentasModal";
 import CierreCajaModal from "../components/admin/CierreCajaModal";
 import ConfigurarMembresiasModal from "../components/admin/ConfigurarMembresiasModal";
-import GestorAnunciosModal from "../components/admin/GestorAnunciosModal";
 import GestorDescripcionesModal from "../components/admin/GestorDescripcionesModal";
 import AdminLocalidadesModal from "../components/admin/AdminLocalidadesModal";
 import UsuariosModal from "../components/admin/UsuariosModal";
@@ -171,14 +169,6 @@ export default function AdminDashboardPage() {
     eliminarPaquete,
     reordenarPaquetes,
   } = usePaquetes();
-  const {
-    anuncios,
-    loading: anunciosLoading,
-    error: anunciosError,
-    crearAnuncio,
-    actualizarAnuncio,
-    eliminarAnuncio,
-  } = useAnuncios();
   const { anular, busyId: anulandoId } = useAnularVenta({
     onDone: () => {
       refreshVentas();
@@ -254,7 +244,6 @@ export default function AdminDashboardPage() {
   const [membresiasOpen, setMembresiasOpen] = useState(false);
   const [usuariosOpen, setUsuariosOpen] = useState(false);
   const [categoriasOpen, setCategoriasOpen] = useState(false);
-  const [anunciosOpen, setAnunciosOpen] = useState(false);
   const [descripcionesOpen, setDescripcionesOpen] = useState(false);
   const gestorDescripciones = useDescripciones();
   const [localidadesOpen, setLocalidadesOpen] = useState(false);
@@ -471,10 +460,6 @@ export default function AdminDashboardPage() {
           <LayoutGrid size={18} />
           Categorías
         </button>
-        <button className="tz-footer-btn tz-footer-btn-stock" onClick={() => setAnunciosOpen(true)}>
-          <Megaphone size={18} />
-          Anuncios
-        </button>
         <button className="tz-footer-btn tz-footer-btn-catalogo" onClick={() => setDescripcionesOpen(true)}>
           <MessageSquareText size={18} />
           Descripciones
@@ -638,17 +623,6 @@ export default function AdminDashboardPage() {
             },
           ]}
           onClose={() => setMembresiasOpen(false)}
-        />
-      )}
-      {anunciosOpen && (
-        <GestorAnunciosModal
-          anuncios={anuncios}
-          loading={anunciosLoading}
-          error={anunciosError}
-          crearAnuncio={crearAnuncio}
-          actualizarAnuncio={actualizarAnuncio}
-          eliminarAnuncio={eliminarAnuncio}
-          onClose={() => setAnunciosOpen(false)}
         />
       )}
 

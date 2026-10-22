@@ -48,6 +48,8 @@ function marcarComoVisto(anuncio) {
 // también entran los anuncios para "todos". Sin la migración
 // 20261007100000 (sin columna "publico") los anuncios son solo de
 // pasajeros, como antes.
+const ROL_DE_PUBLICO = { pasajeros: "pasajero", conductores: "conductor", recolectores: "recolector" };
+
 export function useAnuncioActivo(publico = "pasajeros") {
   const [anuncio, setAnuncio] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -60,22 +62,23 @@ export function useAnuncioActivo(publico = "pasajeros") {
         // Vigencia en la propia query (menos filas que traer): sin
         // fecha_inicio/fecha_fin en la fila, esa cota no aplica —
         // `.or()` con "is.null" cubre ese caso por cada extremo.
-        const consultar = (conPublico) => {
+        // Por rol (anuncios.roles, migración 20261022120000; los crea el
+        // superadmin desde Caja). Sin esa columna, por `publico` como antes.
+        const consultar = (filtro) => {
           let q = supabase
             .from("anuncios")
             .select("id, titulo, descripcion, imagen_url, video_url, fecha_inicio, fecha_fin, frecuencia_mostrar, orden")
             .eq("activo", true)
             .or(`fecha_inicio.is.null,fecha_inicio.lte.${ahora}`)
             .or(`fecha_fin.is.null,fecha_fin.gte.${ahora}`)
-            .order("orden", { ascending: true });
-          if (conPublico) q = q.in("publico", [publico, "todos"]);
+            .order("orden", { ascending: true })
+            .order("created_at", { ascending: false });
+          if (filtro === "roles") q = q.contains("roles", [ROL_DE_PUBLICO[publico] ?? "pasajero"]);
+          if (filtro === "publico") q = q.in("publico", [publico, "todos"]);
           return q;
         };
-        let { data, error } = await consultar(true);
-        if (error) {
-          // Sin la columna "publico": solo los pasajeros ven anuncios.
-          ({ data, error } = publico === "pasajeros" ? await consultar(false) : { data: [], error: null });
-        }
+        let { data, error } = await consultar("roles");
+        if (error) ({ data, error } = await consultar("publico"));
 
         if (cancelado) return;
         if (error || !data) {
