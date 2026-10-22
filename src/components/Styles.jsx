@@ -782,6 +782,23 @@ export default function Styles() {
       .tz-fila-saldo-localidad + .tz-destino-actual-pill,
       .tz-fila-localidad + .tz-destino-actual-pill { margin-top: -5px; }
       .tz-destino-actual-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .tz-destino-borrar {
+        flex-shrink: 0;
+        margin-left: auto;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        border: 1px solid rgba(255,84,112,0.45);
+        background: rgba(255,84,112,0.1);
+        color: var(--danger);
+        cursor: pointer;
+        padding: 0;
+      }
+      .tz-destino-borrar svg { color: var(--danger); }
+      .tz-destino-borrar:hover { background: rgba(255,84,112,0.22); }
       .tz-radar-input::placeholder { color: var(--text-dim); }
       .tz-radar-input:focus {
         outline: none;
@@ -5789,7 +5806,7 @@ export default function Styles() {
       /* Gemas (créditos): en su recuadro, la palabra centrada encima de la
          gema y el número. */
       .tz-gemas { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-      .tz-fila-saldo .tz-stat-chip.tz-gemas { min-width: 80px; padding: 6px 10px; position: relative; left: -12px; border: none; background: transparent; box-shadow: none; }
+      .tz-fila-saldo .tz-stat-chip.tz-gemas { min-width: 80px; padding: 6px 10px; position: relative; left: -2px; border: none; background: transparent; box-shadow: none; }
       .tz-fila-saldo .tz-gemas .tz-stat-value { font-size: 15px; }
       /* La palabra va del color de las gemas que representa (cliente:
          celeste; conductor: verde). */
@@ -7136,14 +7153,10 @@ export default function Styles() {
         font: inherit;
       }
       .tz-chatfijo-logo {
-        width: 38px;
-        height: 38px;
+        width: 40px;
+        height: 40px;
         flex-shrink: 0;
         object-fit: contain;
-        border-radius: 10px;
-        background: rgba(0,0,0,0.35);
-        border: 1px solid var(--border-soft);
-        padding: 3px;
       }
       .tz-chatfijo-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
       .tz-chatfijo-nombre { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 5px; }

@@ -491,6 +491,22 @@ export default function HomePage() {
             <div className="tz-destino-actual-pill">
               <MapPin size={14} />
               <span>{destinoSeleccionado.nombre}</span>
+              {/* Borra el destino y abre el Radar para elegir otro (no con
+                 un viaje ya acordado: ese destino es el del viaje). */}
+              {!conductorAcordadoId && (
+                <button
+                  type="button"
+                  className="tz-destino-borrar"
+                  onClick={() => {
+                    setDestinoSeleccionado(null);
+                    handleAbrirRadar();
+                  }}
+                  aria-label="Borrar destino y elegir otro"
+                  title="Borrar destino y elegir otro"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
           )}
           <button type="button" className="tz-radar-btn" onClick={handleAbrirRadar}>
