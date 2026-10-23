@@ -2832,14 +2832,17 @@ export default function Styles() {
          en la última fila para tener que centrarlo a mano — 3+3+2
          arriba, 2+2+2+2 en mobile (grid de 2 columnas), las dos
          reparticiones caen parejas solas. */
+      /* 3 botones por fila (2 en celular) y la última fila, si queda
+         incompleta, CENTRADA (antes era un grid y quedaba a la izquierda). */
       .tz-page-footer-admin-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        flex-wrap: nowrap;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px !important;
       }
-      .tz-page-footer-admin-grid .tz-footer-btn { max-width: none; }
+      .tz-page-footer-admin-grid .tz-footer-btn { max-width: none; flex: 0 0 calc((100% - 20px) / 3); }
       @media (max-width: 640px) {
-        .tz-page-footer-admin-grid { grid-template-columns: repeat(2, 1fr); }
+        .tz-page-footer-admin-grid .tz-footer-btn { flex-basis: calc((100% - 10px) / 2); }
       }
 
       /* ---- Historial de ventas (mismo diseño que el super admin de Caja) ---- */
