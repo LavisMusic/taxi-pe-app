@@ -442,7 +442,14 @@ export default function HomePage() {
                 <span className="tz-header-btn-label">Login</span>
               </button>
             )}
-            {usuario && esPasajero && <BotonMensajes usuarioId={usuario.id} />}
+            {usuario && esPasajero && (
+              <BotonMensajes
+                usuarioId={usuario.id}
+                // El chat con su(s) conductor(es) en contacto también en Mensajes.
+                conductores={chatsActivos.map((id) => conductores.find((c) => c.id === id) ?? { id })}
+                onAbrirConductor={(id) => abrirChat(id, { auto: false })}
+              />
+            )}
           </div>
         </div>
       </header>

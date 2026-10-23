@@ -7193,6 +7193,10 @@ export default function Styles() {
         flex-shrink: 0;
         object-fit: contain;
       }
+      /* Mensajes del pasajero: su(s) conductor(es) actual(es). */
+      .tz-chatneg-seccion { list-style: none; margin: 10px 2px 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); }
+      .tz-chatcond-foto { border-radius: 50%; object-fit: cover; }
+      .tz-chatcond-foto-vacia { display: inline-flex; align-items: center; justify-content: center; background: rgba(var(--cyan-rgb),0.12); border: 1px solid rgba(var(--cyan-rgb),0.35); color: var(--cyan); }
       .tz-chatfijo-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
       .tz-chatfijo-nombre { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 5px; }
       .tz-chatfijo-pin { color: var(--cyan); }

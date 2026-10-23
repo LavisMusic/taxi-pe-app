@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { MessageCircle, X } from "lucide-react";
+import { MessageCircle, X, Car } from "lucide-react";
 import { useMensajesPlataforma } from "../../hooks/useMensajesPlataforma";
 import { FilasChatsFijados, ChatFijadoAbierto, InterruptorAvisos } from "./ChatsFijados";
 import AvisosDispositivo from "./AvisosDispositivo";
@@ -8,8 +8,11 @@ import { useAbrirMensajesDesdeAviso } from "../../hooks/useAbrirMensajesDesdeAvi
 
 // Botón "Mensajes" de la cabecera (pasajero y recolector): contador de no
 // leídos y el modal con los chats fijados "Taxi PE" y "Tonazo" (solo
-// lectura). El conductor los ve dentro de su bandeja de chats.
-export default function BotonMensajes({ usuarioId }) {
+// lectura) y, para el pasajero, el chat con su(s) conductor(es) actual(es)
+// (`conductores`: [{ id, nombre, foto_url, estado }]; tocar uno cierra
+// Mensajes y abre ese chat con `onAbrirConductor`). Nunca muestra chats de
+// Caja Tonazo. El conductor ve los fijados dentro de su bandeja de chats.
+export default function BotonMensajes({ usuarioId, conductores = [], onAbrirConductor = null }) {
   const datos = useMensajesPlataforma(usuarioId);
   const [abierto, setAbierto] = useState(false);
   const [canal, setCanal] = useState(null);
@@ -61,6 +64,35 @@ export default function BotonMensajes({ usuarioId }) {
                   <AvisosDispositivo />
                   <ul className="tz-history-rows" style={{ marginTop: 10 }}>
                     <FilasChatsFijados canales={datos.canales} onAbrir={setCanal} />
+                    {onAbrirConductor && conductores.length > 0 && (
+                      <>
+                        <li className="tz-chatneg-seccion">{conductores.length === 1 ? "Tu conductor" : "Tus conductores"}</li>
+                        {conductores.map((c) => (
+                          <li key={c.id} className="tz-history-row tz-chatfijo-row">
+                            <button
+                              type="button"
+                              className="tz-chatfijo-btn"
+                              onClick={() => {
+                                cerrar();
+                                onAbrirConductor(c.id);
+                              }}
+                            >
+                              {c.foto_url ? (
+                                <img src={c.foto_url} alt="" className="tz-chatfijo-logo tz-chatcond-foto" />
+                              ) : (
+                                <span className="tz-chatfijo-logo tz-chatcond-foto tz-chatcond-foto-vacia">
+                                  <Car size={18} />
+                                </span>
+                              )}
+                              <span className="tz-chatfijo-texto">
+                                <span className="tz-chatfijo-nombre">{c.nombre || "Conductor"}</span>
+                                <span className="tz-chatfijo-preview">Toca para abrir el chat del viaje</span>
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </>
+                    )}
                   </ul>
                 </>
               )}
