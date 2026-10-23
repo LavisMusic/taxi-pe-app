@@ -41,8 +41,10 @@ export function usePaquetesClientes() {
 
   useEffect(
     () =>
-      subscribeTable("paquetes_clientes", () => {
+      subscribeTable("paquetes_clientes", (evento) => {
         refresh();
+        // Al reconectar solo se pone al día: no es un cambio del Admin.
+        if (evento?.reconexion) return;
         setGlow(true);
         clearTimeout(glowTimeoutRef.current);
         glowTimeoutRef.current = setTimeout(() => setGlow(false), GLOW_DURACION_MS);

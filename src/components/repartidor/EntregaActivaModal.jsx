@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { X, MapPin, Store, PackageCheck, QrCode, KeyRound, Loader2, Send, Check, CheckCheck, Navigation } from "lucide-react";
 import { useEntregaChat } from "../../hooks/useEntregaChat";
+import { useEscribiendo } from "../../hooks/useEscribiendo";
+import { supabase } from "../../supabaseClient";
+import PuntosEscribiendo from "../PuntosEscribiendo";
 import { formatSoles } from "../../utils/format";
 import EscanerQrModal from "./EscanerQrModal";
 import MapaEntrega from "./MapaEntrega";
@@ -26,6 +29,11 @@ function Chat({ entregaId, conductorId, hilo }) {
   });
   const [texto, setTexto] = useState("");
   const delHilo = mensajes.filter((m) => m.hilo === hilo);
+  const { escribiendo, avisar, apagar } = useEscribiendo(supabase, entregaId ? `entrega-${entregaId}-${hilo}` : null, "conductor");
+  const ultimo = delHilo[delHilo.length - 1];
+  useEffect(() => {
+    if (ultimo && ultimo.emisor_rol !== "conductor") apagar();
+  }, [ultimo?.id, ultimo?.emisor_rol, apagar]);
   const noLeidosDeOtro = delHilo.filter((m) => m.emisor_rol !== "conductor" && m.emisor_rol !== "sistema" && !m.leido).length;
 
   // Marca leídos los del otro cuando este hilo está a la vista.
@@ -65,13 +73,17 @@ function Chat({ entregaId, conductorId, hilo }) {
             </div>
           ))
         )}
+        {escribiendo && <PuntosEscribiendo quien={escribiendo === "cajero" ? "La tienda" : "El cliente"} />}
       </div>
       <div className="tz-entrega-chat-input">
         <input
           className="tz-text-input"
           placeholder="Escribe un mensaje…"
           value={texto}
-          onChange={(e) => setTexto(e.target.value)}
+          onChange={(e) => {
+            setTexto(e.target.value);
+            if (e.target.value.trim()) avisar();
+          }}
           onKeyDown={(e) => e.key === "Enter" && onEnviar()}
         />
         <button className="tz-scan-btn tz-payment-save" onClick={onEnviar} disabled={enviando || !texto.trim()}>

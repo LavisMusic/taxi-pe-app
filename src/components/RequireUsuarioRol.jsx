@@ -8,7 +8,7 @@ import { ESTADO_CUENTA_PENDIENTE } from "../lib/taxiEnums";
 // a mano, ni viceversa.
 //
 // Un recolector auto-registrado (usuarios.estado_cuenta='pendiente',
-// ver RegistroRecolectorModal.jsx) puede loguearse — el PIN diferido lo
+// registro exprés + verificación) puede loguearse — el PIN diferido lo
 // permite — pero no puede ENTRAR a cobrar hasta que el Admin lo apruebe
 // desde el Centro de Peticiones. Los conductores no tienen este
 // bloqueo acá: su gate real es `conductores.aprobado`, que ya filtra

@@ -18,6 +18,11 @@ async function conSesion(resultado) {
 
 export const MENSAJE_BLOQUEADO = "Demasiados intentos fallidos. Espera 15 minutos e intenta de nuevo.";
 
+// Cuenta con bloqueo de emergencia (Soporte, migración 20261021100000):
+// taxi_login devuelve 'bloqueada' (solo a quien dio el PIN correcto).
+export const MENSAJE_CUENTA_BLOQUEADA =
+  'Tu cuenta está bloqueada por seguridad. Para reactivarla, entra a Soporte → "Recuperar cuenta".';
+
 // Inicio de sesión por teléfono + PIN. Devuelve { estado, usuario }:
 // 'ok' | 'sin_pin' (la cuenta todavía no tiene PIN: hay que crearlo) |
 // 'incorrecto' | 'bloqueado'.
@@ -37,28 +42,41 @@ export async function crearPin(usuarioId, pin, datos = null) {
   return conSesion(data);
 }
 
-// Paso 2 de /recuperar-pin (la petición ya la verificó el Admin).
-// Devuelve { estado, usuario }: 'ok' | 'no_verificado' | 'no_existe'.
-export async function fijarPinRecuperacion(peticionId, dni, pin) {
-  const { data, error } = await supabase.rpc("taxi_fijar_pin_recuperacion", {
-    p_peticion_id: String(peticionId),
-    p_dni: dni,
-    p_pin: pin,
-  });
-  if (error) throw error;
-  return conSesion(data);
-}
-
 // Registro exprés (pasajero o conductor temporal, sin PIN todavía): la
 // base crea la cuenta y devuelve el ticket de la sesión. Devuelve
 // { estado, usuario }: 'ok' | 'duplicado'.
-export async function registrarTemporal({ rol, telefono, nombre = null, nombreUsuario = null, expiraEn = null }) {
+export async function registrarTemporal({
+  rol,
+  telefono,
+  nombre = null,
+  nombreUsuario = null,
+  expiraEn = null,
+  pin = null,
+  localidad = null,
+}) {
   const { data, error } = await supabase.rpc("taxi_registrar_temporal", {
     p_rol: rol,
     p_telefono: telefono,
     p_nombre: nombre,
     p_nombre_usuario: nombreUsuario,
     p_expira_en: expiraEn,
+    p_pin: pin,
+    p_localidad: localidad,
+  });
+  if (error) throw error;
+  return conSesion(data);
+}
+
+// Conductor que reclama el pre-registro que le hizo un recolector
+// (/registro-conductor): la base crea su cuenta con su PIN y devuelve el
+// ticket de la sesión. Devuelve { estado, usuario }: 'ok' | 'duplicado' |
+// 'sin_preregistro'.
+export async function registrarConductorVinculado({ dni, telefono, nombre, pin }) {
+  const { data, error } = await supabase.rpc("taxi_registrar_conductor_vinculado", {
+    p_dni: dni,
+    p_telefono: telefono,
+    p_nombre: nombre,
+    p_pin: pin,
   });
   if (error) throw error;
   return conSesion(data);
@@ -80,4 +98,4 @@ export async function adminFijarPin(usuarioId, pin) {
 // PIN" del Centro de Peticiones — el Admin generaba el PIN nuevo y se
 // lo mandaba él mismo. Se eliminó (bug reportado: el dueño de la
 // cuenta debe elegir su propio PIN, no el Admin) junto con esa función
-// — ver useCrearPeticionPin.js/fijarNuevoPin.js para el reemplazo.
+// — hoy lo elige él mismo con un código en /restablecer-pin.

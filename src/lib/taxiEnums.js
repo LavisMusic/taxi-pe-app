@@ -73,7 +73,7 @@ export const TIPOS_USUARIO = [
 
 // `usuarios.estado_cuenta` — el equivalente de `conductores.aprobado`
 // pero para cuentas que NO tienen fila en `conductores` (Recolectores
-// auto-registrados, ver RegistroRecolectorModal.jsx). Todo lo que crea
+// auto-registrados, ver VerificarRecolectorForm.jsx). Todo lo que crea
 // una fila en `usuarios` la marca explícito ('activo' para altas del
 // Admin/Recolector-a-Recolector, 'pendiente' solo para el auto-registro
 // público) — nunca se deja que sea el DEFAULT de la columna quien
@@ -160,6 +160,7 @@ export function esTelefonoValido(telefono) {
 // resuelto (PIN ya cambiado y enviado, o descartada).
 export const ESTADO_PETICION_PENDIENTE = "pendiente";
 export const ESTADO_PETICION_VERIFICADO = "verificado";
+export const ESTADO_PETICION_CODIGO_ENVIADO = "codigo_enviado";
 export const ESTADO_PETICION_RESUELTO = "resuelto";
 
 // `conductores.nivel_servicio` — con CHECK constraint en la DB (ver
@@ -215,13 +216,22 @@ export const FRECUENCIA_UNA_VEZ_TOTAL = "una_vez_total";
 // A quién va una descripción (texto bajo el logo) o un anuncio.
 export const PUBLICO_PASAJEROS = "pasajeros";
 export const PUBLICO_CONDUCTORES = "conductores";
+export const PUBLICO_RECOLECTORES = "recolectores";
 export const PUBLICO_TODOS = "todos";
+// Anuncios: pasajeros, conductores o ambos.
 export const PUBLICOS = [
   { value: PUBLICO_PASAJEROS, label: "Pasajeros" },
   { value: PUBLICO_CONDUCTORES, label: "Conductores" },
   { value: PUBLICO_TODOS, label: "Ambos" },
 ];
-export const etiquetaPublico = (v) => PUBLICOS.find((p) => p.value === v)?.label || "Pasajeros";
+// Descripciones: además recolectores ('todos' = los tres).
+export const PUBLICOS_DESCRIPCION = [
+  { value: PUBLICO_PASAJEROS, label: "Pasajeros" },
+  { value: PUBLICO_CONDUCTORES, label: "Conductores" },
+  { value: PUBLICO_RECOLECTORES, label: "Recolectores" },
+  { value: PUBLICO_TODOS, label: "Todos" },
+];
+export const etiquetaPublico = (v, lista = PUBLICOS) => lista.find((p) => p.value === v)?.label || "Pasajeros";
 // Largo máximo de una descripción (entra en 2 líneas en el celular).
 export const DESCRIPCION_MAX = 40;
 

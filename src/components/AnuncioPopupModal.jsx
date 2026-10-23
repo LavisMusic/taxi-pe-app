@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { toYoutubeEmbedUrl } from "../lib/youtube";
+import TextoConEnlaces from "./TextoConEnlaces";
 
 // Pop-up de marketing — Vista Cliente. Layouts según tenga o no texto
 // (ver useAnuncioActivo.js para cuándo le toca aparecer a este
 // visitante en particular; el Gestor de Anuncios ya se encarga de que
 // un anuncio vertical 9:16 nunca tenga título/descripción, ver
-// GestorAnunciosModal.jsx):
+// GestorComunicacionesModal.jsx en el panel del superadmin de Caja):
 //   A) Solo multimedia Y vertical (9:16, sin título NI descripción): el
 //      modal ABANDONA el ancho genérico y toma forma de teléfono
 //      (aspect-ratio 9:16, ver .tz-anuncio-modal-vertical en
@@ -19,7 +20,7 @@ import { toYoutubeEmbedUrl } from "../lib/youtube";
 //   B) Con texto (siempre 16:9 — YouTube o una subida horizontal):
 //      SIEMPRE en columna (media arriba a ancho completo, texto abajo).
 // Ver los .tz-anuncio-* en Styles.jsx.
-export default function AnuncioPopupModal({ anuncio, onClose }) {
+export default function AnuncioPopupModal({ anuncio, onClose, canalChat = null }) {
   const [esVertical, setEsVertical] = useState(false);
   // `terminado` ya NO controla si la "X" existe (ver el bug reportado:
   // el usuario debe poder cerrar el anuncio cuando quiera) — solo
@@ -73,6 +74,13 @@ export default function AnuncioPopupModal({ anuncio, onClose }) {
 
   if (!anuncio) return null;
 
+  // Tocar la imagen o el video lleva al chat donde quedó guardado el
+  // anuncio (Mensajes). YouTube no: sus toques los usa su reproductor.
+  const abrirChat = () => {
+    window.dispatchEvent(new CustomEvent("tz-abrir-mensajes", { detail: { canal: canalChat } }));
+    onClose();
+  };
+
   const hayMedia = !!embedUrl || esVideoArchivo || !!anuncio.imagen_url;
   const modalVertical = soloMultimedia && esVertical;
 
@@ -94,7 +102,11 @@ export default function AnuncioPopupModal({ anuncio, onClose }) {
 
         <div className={`tz-anuncio-layout ${soloMultimedia ? "tz-anuncio-layout-fill" : ""}`}>
           {hayMedia && (
-            <div className="tz-anuncio-media">
+            <div
+              className={`tz-anuncio-media ${canalChat && !embedUrl ? "tz-anuncio-media-tocable" : ""}`}
+              onClick={canalChat && !embedUrl ? abrirChat : undefined}
+              title={canalChat && !embedUrl ? "Ver en Mensajes" : undefined}
+            >
               {embedUrl ? (
                 <div className="tz-anuncio-video-wrap">
                   <iframe
@@ -169,7 +181,11 @@ export default function AnuncioPopupModal({ anuncio, onClose }) {
           {!soloMultimedia && (
             <div className="tz-anuncio-text">
               {anuncio.titulo && <h3>{anuncio.titulo}</h3>}
-              {anuncio.descripcion && <p>{anuncio.descripcion}</p>}
+              {anuncio.descripcion && (
+                <p>
+                  <TextoConEnlaces texto={anuncio.descripcion} />
+                </p>
+              )}
             </div>
           )}
         </div>

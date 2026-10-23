@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { ESTADO_CONDUCTOR_ACTIVO, ESTADO_CONDUCTOR_OCUPADO } from "../lib/taxiEnums";
 import { CANAL_RADAR_PUBLICO } from "./useRadarPublico";
@@ -59,6 +59,11 @@ export function canalViaje(conductorId, pasajeroId) {
 // Realtime reparte broadcasts por topic en el servidor, así que dos
 // pasajeros distintos escuchando SUS PROPIOS topics nunca compiten ni
 // se pisan entre sí, cada uno solo recibe lo suyo.
+// Devuelve `problemaGps` mientras debería estar transmitiendo y el GPS
+// no responde: 'permiso' (le negó la ubicación a la app), 'apagada' (la
+// ubicación del celular está apagada o no hay posición), 'sin_senal'
+// (no llega un punto a tiempo) o 'no_soportado'. null si todo va bien o
+// si no tiene que transmitir. ConductorPage.jsx muestra el aviso.
 export function useGpsBroadcaster({
   conductorId,
   estado,
@@ -66,8 +71,12 @@ export function useGpsBroadcaster({
   asientosOcupados = 0,
   asientosTotales = 4,
   tieneAcceso = true,
+  // Modo delivery encendido: la posición se guarda en su fila aunque esté
+  // desconectado como taxi (así lo encuentran los negocios para repartos).
+  modoDelivery = false,
 }) {
   const ultimaEscrituraDbRef = useRef(0);
+  const [problemaGps, setProblemaGps] = useState(null);
   // Clave estable (ids ordenados y unidos) en vez del array crudo como
   // dependencia — `pasajerosEnCarrera` es un array NUEVO en cada
   // `refresh()` de useHilosChatConductor.js aunque el contenido sea
@@ -78,14 +87,18 @@ export function useGpsBroadcaster({
   const pasajerosKey = [...idsPrivados].sort().join(",");
 
   useEffect(() => {
-    if (!conductorId || !navigator.geolocation) return undefined;
+    if (!conductorId) return undefined;
 
     const idsActuales = pasajerosKey ? pasajerosKey.split(",") : [];
     const hayLugar = asientosOcupados < asientosTotales;
     const vaAlPublico = tieneAcceso && hayLugar && (estado === ESTADO_CONDUCTOR_ACTIVO || estado === ESTADO_CONDUCTOR_OCUPADO);
     const vaAlPrivado = estado === ESTADO_CONDUCTOR_OCUPADO && idsActuales.length > 0;
 
-    if (!vaAlPublico && !vaAlPrivado) return undefined;
+    if (!vaAlPublico && !vaAlPrivado && !modoDelivery) return undefined;
+    if (!navigator.geolocation) {
+      setProblemaGps("no_soportado");
+      return () => setProblemaGps(null);
+    }
 
     const canalPublico = vaAlPublico ? supabase.channel(CANAL_RADAR_PUBLICO) : null;
     canalPublico?.subscribe();
@@ -104,6 +117,7 @@ export function useGpsBroadcaster({
 
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
+        setProblemaGps(null);
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         // Público: hace falta identificar DE QUIÉN es cada punto (muchos
@@ -123,7 +137,7 @@ export function useGpsBroadcaster({
         // que el pasajero se suscribió. Solo mientras haya lugar
         // público (mismo criterio que decide si se transmite o no) y
         // con throttle — no hace falta un UPDATE por cada tick del GPS.
-        if (vaAlPublico) {
+        if (vaAlPublico || modoDelivery) {
           const ahora = Date.now();
           if (ahora - ultimaEscrituraDbRef.current > DB_WRITE_THROTTLE_MS) {
             ultimaEscrituraDbRef.current = ahora;
@@ -137,9 +151,10 @@ export function useGpsBroadcaster({
           }
         }
       },
-      () => {
-        // Sin permiso de GPS no hay nada que transmitir — el radar
-        // simplemente no muestra a este conductor, no es un error fatal.
+      (err) => {
+        // Sin GPS no hay nada que transmitir — el radar simplemente no
+        // muestra a este conductor; se le avisa para que lo active.
+        setProblemaGps(err?.code === 1 ? "permiso" : err?.code === 3 ? "sin_senal" : "apagada");
       },
       // Fix Precisión GPS: `maximumAge: 0` obliga al navegador a pedir
       // una lectura FRESCA del chip GPS en cada tick — antes 5000ms de
@@ -154,6 +169,7 @@ export function useGpsBroadcaster({
     // estado, los asientos, o la lista de pasajeros a bordo) y también
     // al desmontar del todo.
     return () => {
+      setProblemaGps(null);
       navigator.geolocation.clearWatch(watchId);
       if (canalPublico) supabase.removeChannel(canalPublico);
       canalesPrivados.forEach((canal) => supabase.removeChannel(canal));
@@ -162,5 +178,7 @@ export function useGpsBroadcaster({
     // el comentario de arriba — es la identidad real que debe reiniciar
     // este efecto, no una referencia nueva con el mismo contenido.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conductorId, estado, pasajerosKey, asientosOcupados, asientosTotales, tieneAcceso]);
+  }, [conductorId, estado, pasajerosKey, asientosOcupados, asientosTotales, tieneAcceso, modoDelivery]);
+
+  return { problemaGps };
 }

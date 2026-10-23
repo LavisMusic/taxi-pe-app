@@ -42,14 +42,34 @@ export function useEntregaChat({ entregaId, conductorId = null, sessionToken = n
     cargar();
   }, [cargar]);
 
+  // En vivo: aviso de mensaje nuevo (lo manda quien escribe) y de cambio
+  // de estado (los mensajes automáticos que escribe la base al aceptar o
+  // avanzar un reparto no tienen aviso propio). Y por si un aviso se
+  // pierde, se vuelve a leer cada 4 s mientras el chat está abierto, al
+  // volver a la pestaña y al reconectarse el canal.
   useEffect(() => {
-    if (!entregaId) return;
+    if (!entregaId) return undefined;
+    let yaSuscrito = false;
     const ch = supabase
       .channel(canalEntrega(entregaId))
       .on("broadcast", { event: "mensaje" }, cargar)
-      .subscribe();
+      .on("broadcast", { event: "estado" }, cargar)
+      .subscribe((status) => {
+        if (status !== "SUBSCRIBED") return;
+        if (yaSuscrito) cargar();
+        yaSuscrito = true;
+      });
     channelRef.current = ch;
+    const sondeo = setInterval(() => {
+      if (document.visibilityState === "visible") cargar();
+    }, 4000);
+    const alVolver = () => {
+      if (document.visibilityState === "visible") cargar();
+    };
+    document.addEventListener("visibilitychange", alVolver);
     return () => {
+      clearInterval(sondeo);
+      document.removeEventListener("visibilitychange", alVolver);
       channelRef.current = null;
       supabase.removeChannel(ch);
     };
@@ -85,7 +105,7 @@ export function useEntregaChat({ entregaId, conductorId = null, sessionToken = n
       setEnviando(false);
       if (!error && data?.status === "ok") {
         channelRef.current
-          ?.send({ type: "broadcast", event: "mensaje", payload: { hilo } })
+          ?.send({ type: "broadcast", event: "mensaje", payload: { hilo, rol: emisorRol } })
           .catch(() => {});
         await cargar();
         return { error: null };

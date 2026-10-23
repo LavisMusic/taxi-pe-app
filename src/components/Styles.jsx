@@ -187,8 +187,13 @@ export default function Styles() {
         box-sizing: border-box;
         overflow: visible;
         padding: 20px 14px 22px;
-        background: rgba(10, 7, 22, 0.85);
-        border-bottom: 1px solid rgba(43,232,255,0.15);
+        /* Borde inferior tipo láser (igual que Caja Tonazo): 1.5 px,
+           brillante al centro y que se desvanece en punta hacia los
+           costados. */
+        background:
+          linear-gradient(90deg, transparent 0%, rgba(43,232,255,0.22) 14%, rgba(43,232,255,0.75) 50%, rgba(43,232,255,0.22) 86%, transparent 100%) center bottom / 100% 1.5px no-repeat,
+          rgba(10, 7, 22, 0.85);
+        border-bottom: none;
       }
       /* Cabecera INAMOVIBLE: las 3 zonas son 'position:absolute' contra
          '.tz-header-row', que a su vez tiene una altura FIJA
@@ -249,11 +254,15 @@ export default function Styles() {
         pointer-events: none;
       }
       .tz-header-center * { pointer-events: auto; }
+      /* Brillo de siempre (contorno del logo). translateZ(0): lo pinta en
+         su propia capa — evita que Safari del iPhone dibuje la zona del
+         filtro como un recuadro oscuro al cargar (no cambia cómo se ve). */
       .tz-logo {
         max-width: 130px;
         width: 100%;
         height: auto;
         overflow: visible;
+        transform: translateZ(0);
         filter:
           drop-shadow(0 0 18px rgba(43,232,255,0.55))
           drop-shadow(0 0 34px rgba(255,47,158,0.35));
@@ -279,9 +288,10 @@ export default function Styles() {
         color: var(--yellow);
         text-align: center;
         white-space: nowrap;
-        /* Aura limón — se estira sola con el texto, sea cual sea su
-           largo, porque text-shadow no tiene ancho propio. */
-        text-shadow: 0 0 8px rgba(215,255,59,0.85), 0 0 18px rgba(215,255,59,0.55);
+        /* Brillo sutil de las letras, de su mismo color (antes un aura
+           neón de hasta 18 px que, recortada por el límite de 2 líneas,
+           se veía como un recuadro). */
+        text-shadow: 0 0 6px rgba(215,255,59,0.8), 0 0 12px rgba(215,255,59,0.45);
       }
       /* Pasajero y conductor: el texto va justo debajo del logo, como en
          Caja Tonazo (--tz-sub-ajuste; negativo = más arriba). Solo se
@@ -312,7 +322,11 @@ export default function Styles() {
         top: 50%;
         transform: translate(-50%, -50%);
         width: max-content;
-        max-width: min(230px, 60vw);
+        /* +24 px de aire interno: el brillo de las letras cabe dentro
+           de la caja (que recorta para limitar a 2 líneas) y no se ve
+           como un recuadro. */
+        max-width: calc(min(230px, 60vw) + 24px);
+        padding: 8px 12px;
         margin: 0;
         box-sizing: border-box;
         white-space: pre-wrap;
@@ -333,10 +347,17 @@ export default function Styles() {
       .tz-header-btn {
         flex: 0 0 auto;
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         align-items: center;
         justify-content: center;
-        gap: 3px;
+        gap: 0;
+        position: relative;
+        /* Celular: mantener presionado + deslizar (lib/despliegueBotones)
+           sin que la página se desplace ni salga el menú del navegador. */
+        touch-action: none;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
         background: rgba(255,149,0,0.06);
         border: 1px solid rgba(255,149,0,0.45);
         color: var(--orange);
@@ -373,13 +394,33 @@ export default function Styles() {
         background: rgba(255,149,0,0.16);
         box-shadow: 0 0 16px rgba(255,149,0,0.4);
       }
+      /* Botones de la cabecera: solo el ícono; el nombre se DESPLIEGA
+         (el botón se estira con animación). PC: al pasar el cursor.
+         Celular: manteniendo presionado (y deslizando por los demás) —
+         clase .tz-hbtn-abierto, ver lib/despliegueBotones.js. Los de la
+         izquierda se abren a la derecha y los de la derecha a la
+         izquierda, por encima del logo. */
       .tz-header-btn-label {
-        display: none;
-        font-size: 9px;
+        display: inline-block;
+        max-width: 0;
+        opacity: 0;
+        overflow: hidden;
+        margin-left: 0;
+        vertical-align: middle;
+        font-size: 10px;
         letter-spacing: 0.04em;
         text-transform: uppercase;
         font-weight: 700;
         white-space: nowrap;
+        transition: max-width 0.28s ease, opacity 0.2s ease, margin-left 0.28s ease;
+      }
+      .tz-header-btn.tz-hbtn-abierto,
+      .tz-header-btn:focus-visible { z-index: 30; }
+      .tz-header-btn.tz-hbtn-abierto .tz-header-btn-label,
+      .tz-header-btn:focus-visible .tz-header-btn-label { max-width: 220px; opacity: 1; margin-left: 7px; }
+      @media (hover: hover) and (pointer: fine) {
+        .tz-header-btn:hover { z-index: 30; }
+        .tz-header-btn:hover .tz-header-btn-label { max-width: 220px; opacity: 1; margin-left: 7px; }
       }
 
       .tz-header-payment-wrap { position: relative; flex: 0 0 auto; }
@@ -698,6 +739,36 @@ export default function Styles() {
         margin-bottom: 20px;
       }
       .tz-localidad-filtro-wrap { width: 100%; max-width: 320px; }
+      /* Banda con brillo bajo la cabecera (como la barra de filtros de Caja
+         Tonazo): degradado cian que se desvanece hacia abajo, detrás del
+         filtro de localidad. Alto 0 en el flujo: no mueve nada. */
+      .tz-banda-filtros { position: relative; height: 0; }
+      .tz-banda-filtros::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 130px;
+        background: linear-gradient(180deg, rgba(43,232,255,0.06), rgba(10,7,22,0.4));
+        box-shadow: 0 4px 24px rgba(43,232,255,0.08) inset;
+        -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 40px), transparent);
+        mask-image: linear-gradient(to bottom, #000 calc(100% - 40px), transparent);
+        pointer-events: none;
+      }
+      /* position sin z-index: queda encima de la banda por orden, sin crear
+         un contexto que deje los modales del contenido bajo el pie. */
+      .tz-banda-filtros + .tz-main { position: relative; }
+      /* El filtro de localidad con el mismo borde y brillo que en Caja. */
+      .tz-localidad-filtro-wrap .tz-dropdown-trigger {
+        background: #140d28;
+        border-color: rgba(43,232,255,0.45);
+        box-shadow: 0 0 14px rgba(43,232,255,0.18);
+      }
+      .tz-localidad-filtro-wrap .tz-dropdown-trigger:hover {
+        border-color: var(--cyan);
+        box-shadow: 0 0 20px rgba(43,232,255,0.4);
+      }
       /* Envuelve el input para poder anclar el dropdown de sugerencias
          justo debajo (position:relative acá, absolute en el dropdown). */
       .tz-buscador-wrap {
@@ -737,7 +808,27 @@ export default function Styles() {
         font-size: 13.5px;
       }
       .tz-destino-actual-pill svg { flex-shrink: 0; color: var(--cyan); }
+      /* Destino elegido: 5 px más cerca del filtro de localidad (antes 10). */
+      .tz-fila-saldo-localidad + .tz-destino-actual-pill,
+      .tz-fila-localidad + .tz-destino-actual-pill { margin-top: -5px; }
       .tz-destino-actual-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .tz-destino-borrar {
+        flex-shrink: 0;
+        margin-left: auto;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        border: 1px solid rgba(255,84,112,0.45);
+        background: rgba(255,84,112,0.1);
+        color: var(--danger);
+        cursor: pointer;
+        padding: 0;
+      }
+      .tz-destino-borrar svg { color: var(--danger); }
+      .tz-destino-borrar:hover { background: rgba(255,84,112,0.22); }
       .tz-radar-input::placeholder { color: var(--text-dim); }
       .tz-radar-input:focus {
         outline: none;
@@ -856,6 +947,44 @@ export default function Styles() {
       }
       .tz-dropdown-item { border-bottom: 1px solid var(--border-soft); }
       .tz-dropdown-item.tz-dropdown-item-activo { background: rgba(43,232,255,0.12); color: var(--cyan); }
+
+      /* Desplegable propio en lugar de un <select> (Select.jsx): el botón
+         toma la clase del select que reemplaza; acá solo el acomodo y la
+         flecha. :where() = sin especificidad, la clase del select manda. */
+      :where(.tz-dropdown-nativo) {
+        font: inherit;
+        color: inherit;
+        background: transparent;
+        border: 1px solid transparent;
+      }
+      .tz-dropdown-nativo {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        width: 100%;
+        box-sizing: border-box;
+        text-align: left;
+        cursor: pointer;
+        background-image: none !important;
+        min-width: 0;
+      }
+      .tz-dropdown .tz-dropdown-nativo { padding-right: 10px; }
+      .tz-dropdown-nativo:disabled { opacity: 0.55; cursor: not-allowed; }
+      .tz-dropdown-nativo .tz-dropdown-chevron { color: currentColor; opacity: 0.75; }
+      .tz-dropdown-nativo .tz-dropdown-valor,
+      .tz-dropdown-nativo .tz-dropdown-placeholder { min-width: 0; }
+      /* La lista flota sobre todo (portal con posición fija): no la recorta
+         el scroll de un modal ni de una tabla. */
+      .tz-dropdown-list.tz-dropdown-flotante {
+        position: fixed;
+        top: auto;
+        right: auto;
+        z-index: 10050;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+      }
+      .tz-dropdown-item:disabled { opacity: 0.45; cursor: not-allowed; }
       .tz-buscador-empty {
         display: flex;
         align-items: center;
@@ -1939,6 +2068,14 @@ export default function Styles() {
         display: flex;
         flex-direction: column;
       }
+      /* La X va por encima del mapa (Leaflet pinta sus capas con z-index
+         400+) y con fondo propio para que se vea sobre cualquier zona. */
+      .tz-ruta-preview-card > .tz-modal-close {
+        z-index: 1200;
+        background: rgba(10, 7, 22, 0.85);
+        border-color: rgba(43, 232, 255, 0.6);
+        box-shadow: 0 0 12px rgba(43, 232, 255, 0.45);
+      }
       .tz-ruta-preview-map { flex: 1 1 auto; width: 100%; }
       .tz-ruta-preview-map .leaflet-container { background: #10141c; }
       .tz-ruta-preview-caption {
@@ -2337,6 +2474,265 @@ export default function Styles() {
       .tz-pink-cell { color: var(--pink); font-weight: 700; }
       .tz-dim-cell { color: var(--text-dim); }
 
+      /* ---------- PANELES DEL CONDUCTOR (Viajes / Delivery en cubo 3D) ---------- */
+      .tz-paneles-wrap { width: 100%; }
+      .tz-paneles-tabs {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin: 0 auto 14px;
+      }
+      .tz-paneles-tabs button {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid var(--border-soft);
+        background: transparent;
+        color: var(--text-dim);
+        border-radius: 999px;
+        padding: 6px 14px;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 700;
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+      .tz-paneles-tabs button::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: currentColor;
+        opacity: 0.6;
+      }
+      .tz-paneles-tabs button.is-activa {
+        color: var(--cyan);
+        border-color: var(--cyan);
+        box-shadow: 0 0 12px rgba(43,232,255,0.35);
+      }
+      .tz-paneles-tabs button.is-activa::before { opacity: 1; box-shadow: 0 0 8px currentColor; }
+      /* touch-action: pan-y — el scroll vertical sigue siendo del navegador;
+         el horizontal llega como pointer events y gira el cubo. */
+      .tz-paneles { touch-action: pan-y; }
+      /* El 3D solo mientras gira (ver PanelesConductor.jsx): quieto no debe
+         haber perspective / preserve-3d / transform, o los avisos fixed de
+         adentro quedan encerrados en la columna. */
+      .tz-paneles.is-3d { perspective: 1100px; }
+      .tz-paneles-cubo {
+        position: relative;
+        display: grid;
+      }
+      .tz-paneles.is-3d .tz-paneles-cubo { transform-style: preserve-3d; }
+      .tz-panel-cara {
+        grid-area: 1 / 1;
+        min-width: 0;
+      }
+      .tz-paneles.is-3d .tz-panel-cara {
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+      }
+      .tz-panel-cara.is-oculta {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 0;
+        overflow: hidden;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      .tz-panel-cara.is-oculta .tz-modal-backdrop {
+        visibility: visible;
+        pointer-events: auto;
+      }
+      .tz-reparto-vacio {
+        margin: 18px 0 6px;
+        padding: 22px 12px;
+        border: 1px dashed var(--border-soft);
+        border-radius: 14px;
+        text-align: center;
+        color: var(--text-dim);
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 600;
+        font-size: 14px;
+      }
+      /* Repartiendo / en carrera: el switch se ve encendido pero bloqueado
+         (no se apaga ni cambia hasta terminar). */
+      .tz-estado-toggle[data-estado="repartiendo"],
+      .tz-delivery-toggle.tz-delivery-repartiendo {
+        border-color: var(--cyan);
+        animation: tz-estado-glow-repartiendo 2.2s ease-in-out infinite;
+      }
+      .tz-estado-toggle[data-estado="repartiendo"] .tz-estado-toggle-label,
+      .tz-delivery-toggle.tz-delivery-repartiendo .tz-estado-toggle-label { color: var(--cyan); }
+      @keyframes tz-estado-glow-repartiendo {
+        0%, 100% { box-shadow: 0 0 12px rgba(43,232,255,0.45), 0 0 20px rgba(57,255,176,0.2); }
+        50% { box-shadow: 0 0 20px rgba(43,232,255,0.8), 0 0 32px rgba(57,255,176,0.35); }
+      }
+      .tz-delivery-toggle.tz-delivery-carrera {
+        border-color: var(--orange);
+        animation: tz-estado-glow-ocupado 2.2s ease-in-out infinite;
+      }
+      .tz-delivery-toggle.tz-delivery-carrera .tz-estado-toggle-label { color: var(--orange) !important; }
+      .tz-estado-toggle.tz-estado-toggle-trabajando:disabled,
+      .tz-delivery-toggle.tz-delivery-repartiendo:disabled { opacity: 1; cursor: not-allowed; }
+
+      /* Repartos aceptados: entran desde abajo y, al entregarse, salen
+         deslizándose a la derecha mientras los de abajo suben. */
+      .tz-entrega-item {
+        margin-top: 8px;
+        max-height: 140px;
+        animation: tz-entrega-entra 0.35s ease-out;
+      }
+      .tz-entrega-item.is-saliendo {
+        overflow: hidden;
+        pointer-events: none;
+        animation: tz-entrega-sale 0.65s ease-in forwards;
+      }
+      @keyframes tz-entrega-entra {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: none; }
+      }
+      @keyframes tz-entrega-sale {
+        0% { opacity: 1; transform: none; max-height: 140px; margin-top: 8px; }
+        55% { opacity: 0; transform: translateX(70%); max-height: 140px; margin-top: 8px; }
+        100% { opacity: 0; transform: translateX(70%); max-height: 0; margin-top: 0; }
+      }
+
+      /* Meta del día */
+      .tz-meta-progreso { margin-top: 4px; }
+      .tz-meta-progreso-cifras {
+        display: flex;
+        align-items: baseline;
+        justify-content: center;
+        gap: 8px;
+        font-family: 'Orbitron', sans-serif;
+      }
+      .tz-meta-progreso-cifras strong { font-size: 24px; }
+      .tz-meta-progreso-cifras span { color: var(--text-dim); font-size: 13px; }
+      .tz-meta-track {
+        width: 100%;
+        height: 10px;
+        margin-top: 10px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.1);
+        overflow: hidden;
+      }
+      .tz-meta-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--cyan), var(--green));
+        box-shadow: 0 0 10px rgba(43,232,255,0.6);
+        transition: width 0.6s ease;
+      }
+      .tz-meta-fill.is-cumplida { background: var(--green); box-shadow: 0 0 14px rgba(57,255,176,0.8); }
+
+      .tz-delivery-toggle.is-on {
+        border-color: var(--green);
+        animation: tz-estado-glow-activo 2.2s ease-in-out infinite;
+      }
+      .tz-delivery-toggle.is-on .tz-estado-toggle-label { color: var(--green); }
+      .tz-delivery-toggle .tz-estado-toggle-label { font-size: 19px; text-align: center; }
+
+      /* ---------- TURNOS Y ESTADÍSTICAS DEL CONDUCTOR ---------- */
+      .tz-turno-ver-detalle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 6px auto 4px;
+        border: none;
+        background: transparent;
+        color: var(--cyan);
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .tz-turno-ver-detalle svg { transition: transform 0.2s ease; }
+      .tz-turno-detalle {
+        list-style: none;
+        margin: 4px 0 10px;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .tz-turno-detalle li {
+        display: grid;
+        grid-template-columns: auto auto 1fr auto;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.04);
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 13px;
+      }
+      .tz-turno-detalle li svg { color: var(--cyan); }
+      .tz-turno-detalle-hora { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+      .tz-turno-detalle-texto { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .tz-turno-detalle li strong { color: var(--green); }
+      .tz-estad-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 10px;
+        margin-top: 8px;
+      }
+      .tz-estad-card {
+        border: 1px solid var(--border-soft);
+        border-radius: 14px;
+        padding: 10px 12px;
+        background: rgba(255,255,255,0.03);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .tz-estad-card > .tz-stat-label {
+        color: var(--cyan);
+        text-shadow: 0 0 8px rgba(43,232,255,0.6);
+      }
+      .tz-estad-card > .tz-stat-label svg {
+        color: var(--cyan);
+        filter: drop-shadow(0 0 4px rgba(43,232,255,0.7));
+      }
+      /* Hoy y Semana arriba, Mes abajo al centro (triángulo). */
+      .tz-estad-periodos {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+      }
+      .tz-estad-periodo:nth-child(3) {
+        grid-column: 1 / -1;
+        justify-self: center;
+        width: calc(50% - 3px);
+      }
+      .tz-estad-periodo {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        padding: 6px 4px;
+        border-radius: 10px;
+        background: rgba(57,255,176,0.08);
+        border: 1px solid rgba(57,255,176,0.28);
+      }
+      .tz-estad-periodo span {
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 11px;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .tz-estad-periodo strong {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 13px;
+        color: var(--green);
+        text-shadow: 0 0 8px rgba(57,255,176,0.45);
+        white-space: nowrap;
+      }
+
       /* ---------- PIE DE PÁGINA (Cerrar Caja / Gastos / Editar Stock) ---------- */
       /* Flujo normal del documento (NO fixed): así nunca puede tapar el
          formulario de checkout, sin importar cuánto crezca. */
@@ -2436,14 +2832,17 @@ export default function Styles() {
          en la última fila para tener que centrarlo a mano — 3+3+2
          arriba, 2+2+2+2 en mobile (grid de 2 columnas), las dos
          reparticiones caen parejas solas. */
+      /* 3 botones por fila (2 en celular) y la última fila, si queda
+         incompleta, CENTRADA (antes era un grid y quedaba a la izquierda). */
       .tz-page-footer-admin-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        flex-wrap: nowrap;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px !important;
       }
-      .tz-page-footer-admin-grid .tz-footer-btn { max-width: none; }
+      .tz-page-footer-admin-grid .tz-footer-btn { max-width: none; flex: 0 0 calc((100% - 20px) / 3); }
       @media (max-width: 640px) {
-        .tz-page-footer-admin-grid { grid-template-columns: repeat(2, 1fr); }
+        .tz-page-footer-admin-grid .tz-footer-btn { flex-basis: calc((100% - 10px) / 2); }
       }
 
       /* ---- Historial de ventas (mismo diseño que el super admin de Caja) ---- */
@@ -3071,7 +3470,11 @@ export default function Styles() {
         min-height: 0;
         overflow-y: auto;
         overflow-x: hidden;
-        padding: 4px 6px;
+        padding: 14px 6px;
+        /* Bordes suaves arriba y abajo: los mensajes se desvanecen al
+           entrar y salir del área visible en vez de cortarse en seco. */
+        -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+        mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
         /* #root (index.css, plantilla de Vite) hereda text-align:center
            a todo el árbol — sin este reset, cada burbuja seguía
            parada a la izquierda/derecha por 'align-self' (eso ya
@@ -3093,12 +3496,28 @@ export default function Styles() {
       /* Aviso de cancelación remota (ChatWindow.jsx) — flota arriba de
          todo lo demás del chat un momento antes de que el modal se
          cierre solo, para que no sea un cierre sorpresivo. */
+      /* Aviso de viaje cancelado: va a document.body (portal) y queda por
+         encima de todo — modales, mapa y avisos. La capa .tz-root solo
+         aporta los colores del tema (sin fondo ni alto propios). */
+      .tz-root.tz-chat-toast-capa {
+        min-height: 0;
+        width: 0;
+        height: 0;
+        background: none;
+        overflow: visible;
+      }
+      .tz-chat-toast-capa .tz-chat-toast {
+        background: rgba(40, 8, 18, 0.94);
+        box-shadow: 0 0 18px rgba(255, 84, 112, 0.55);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+      }
       .tz-chat-toast {
-        position: absolute;
-        top: 8px;
+        position: fixed;
+        top: max(16px, env(safe-area-inset-top));
         left: 50%;
         transform: translateX(-50%);
-        z-index: 30;
+        z-index: 100000;
         max-width: 92%;
         padding: 8px 16px;
         border-radius: 999px;
@@ -3372,8 +3791,8 @@ export default function Styles() {
          a ser el protagonista visual. Va DESPUÉS de .tz-chat-messages
          en la hoja para poder pisar su 'flex:1 1 auto'. */
       .tz-chat-messages-mini {
-        flex: 0 0 90px;
-        max-height: 90px;
+        flex: 1 1 auto;
+        min-height: 150px;
       }
       @keyframes tzChatBubbleIn {
         from { opacity: 0; transform: translateY(8px); }
@@ -3442,6 +3861,39 @@ export default function Styles() {
       }
       .tz-chat-check-leido {
         color: var(--cyan);
+      }
+      /* ---- "Escribiendo…": tres puntitos (PuntosEscribiendo.jsx) ---- */
+      .tz-escribiendo {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        align-self: flex-start;
+        margin: 4px 0 2px;
+        padding: 9px 12px;
+        border-radius: 14px 14px 14px 4px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.08);
+        width: fit-content;
+      }
+      .tz-escribiendo-puntos { display: inline-flex; gap: 4px; }
+      .tz-escribiendo-puntos i {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--pink);
+        animation: tz-escribiendo-salto 1.1s ease-in-out infinite;
+      }
+      .tz-escribiendo-puntos i:nth-child(2) { animation-delay: 0.15s; }
+      .tz-escribiendo-puntos i:nth-child(3) { animation-delay: 0.3s; }
+      .tz-escribiendo-quien {
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-dim);
+      }
+      @keyframes tz-escribiendo-salto {
+        0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+        30% { transform: translateY(-4px); opacity: 1; }
       }
       .tz-chat-typing {
         display: flex;
@@ -3534,6 +3986,7 @@ export default function Styles() {
          pase con el alto de los mensajes — es lo que faltaba antes y
          causaba que los chips de tarifa se aplastaran/superpusieran. */
       .tz-chat-footer {
+        position: relative;
         flex-shrink: 0;
         /* Refuerzo Fase 2: redundante con el 'flex:1' de .tz-chat-messages
            (ese ya empuja al footer hasta el fondo en cualquier navegador
@@ -3569,8 +4022,18 @@ export default function Styles() {
            recorta cualquier cosa que se salga de esta caja, glow
            incluido — sin aire alrededor, el box-shadow de
            .tz-chat-senas-btn se veía cortado en vez de difuminarse. */
-        padding: 8px 4px;
-        width: 100%;
+        /* Flota centrada sobre el final del chat, como el botón de
+           señas del pasajero. 14px de aire alrededor: el glow de los
+           chips no se recorta (por eso 'bottom' descuenta ese aire). */
+        position: absolute;
+        bottom: calc(100% - 3px);
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2;
+        width: max-content;
+        max-width: calc(100% + 20px);
+        padding: 14px;
+        box-sizing: border-box;
         scrollbar-width: none;
       }
       .tz-chat-quickrow::-webkit-scrollbar { display: none; }
@@ -3595,27 +4058,55 @@ export default function Styles() {
       }
       .tz-chat-quickreply-btn:hover:not(:disabled) { background: rgba(43,232,255,0.2); box-shadow: 0 0 12px rgba(43,232,255,0.3); }
       .tz-chat-quickreply-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-      /* "Tonazo" (Pasajero, ChatWindow.jsx) — solo el logo, circular;
+      /* Vibración sutil cada pocos segundos (señas y tarifas rápidas). */
+      @keyframes tz-vibrar-sutil {
+        0%, 82%, 100% { transform: translate(0, 0) rotate(0); }
+        85% { transform: translate(-1px, 0) rotate(-2deg); }
+        88% { transform: translate(1px, 0) rotate(2deg); }
+        91% { transform: translate(-1px, 0) rotate(-1.5deg); }
+        94% { transform: translate(1px, 0) rotate(1deg); }
+        97% { transform: translate(0, 0) rotate(-0.5deg); }
+      }
+      .tz-chat-tonazo-btn:not(:disabled),
+      .tz-chat-quickreply-btn:not(:disabled) {
+        animation: tz-vibrar-sutil 3.2s ease-in-out infinite;
+      }
+      .tz-chat-quickreply-btn:nth-child(2) { animation-delay: 0.15s; }
+      .tz-chat-quickreply-btn:nth-child(3) { animation-delay: 0.3s; }
+      .tz-chat-quickreply-btn:nth-child(4) { animation-delay: 0.45s; }
+      /* "Tonazo" (Pasajero, ChatWindow.jsx) — solo el logo, en píldora;
          el contador de restantes vive en el atributo title (tooltip),
          acá abajo solo se muestra el cooldown mientras está activo. */
+      /* Flota sobre el final del chat (sin franja propia en el footer). */
       .tz-chat-tonazo-row {
+        position: absolute;
+        bottom: calc(100% + 11px);
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2;
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 4px;
-        padding: 0 4px 8px;
+        pointer-events: none;
       }
+      .tz-chat-tonazo-row > * { pointer-events: auto; }
+      /* Espacio al final de los mensajes para que el botón flotante no
+         tape el último. */
+      .tz-chat-messages-con-tonazo { padding-bottom: 66px; }
       .tz-chat-tonazo-btn {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 42px;
-        height: 42px;
+        width: 72px;
+        height: 45px;
         padding: 0;
         flex-shrink: 0;
-        border-radius: 50%;
+        border-radius: 999px;
         border: 1px solid rgba(255,47,158,0.4);
         background: rgba(255,47,158,0.1);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
         color: var(--pink);
         cursor: pointer;
         transition: background 0.15s, box-shadow 0.15s;
@@ -3627,7 +4118,7 @@ export default function Styles() {
          se ve apagado igual, pero sigue recibiendo el click para poder
          mostrar el toast de aviso. */
       .tz-chat-tonazo-btn-bloqueado { opacity: 0.5; cursor: pointer; }
-      .tz-chat-tonazo-logo { width: 20px; height: 20px; object-fit: contain; border-radius: 4px; }
+      .tz-chat-tonazo-logo { width: 48px; height: 32px; object-fit: contain; border-radius: 4px; }
       .tz-chat-tonazo-cooldown {
         font-family: 'Rajdhani', sans-serif;
         font-size: 11px;
@@ -3743,6 +4234,15 @@ export default function Styles() {
          usa .tz-history-row-method (esa sí lleva uppercase, es correcta
          para lo demás que la usa) para no forzar mayúsculas acá. */
       .tz-chat-thread-name { font-size: 13px; font-weight: 700; color: var(--pink); }
+      /* Nombre del pasajero arriba del chat abierto (Conductor). */
+      .tz-chat-thread-titulo {
+        margin: 0 0 8px;
+        text-align: center;
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--cyan);
+        text-shadow: 0 0 8px rgba(43, 232, 255, 0.75), 0 0 18px rgba(43, 232, 255, 0.45);
+      }
       .tz-chat-thread-preview { color: var(--text-dim); font-weight: 400; }
       /* Fase 5 (Motor de Viajes Simultáneos) — Selector de Hilos: fila
          deslizable de pestañas chicas arriba del chat abierto, para
@@ -5263,6 +5763,165 @@ export default function Styles() {
         font-weight: 600;
         line-height: 1.4;
       }
+      /* Turno vencido (useTurnoCaja): aviso arriba del cierre con el botón
+         para extender 30 minutos. */
+      /* Turno sin extensiones: el cierre va encima de cualquier otro modal. */
+      .tz-modal-backdrop.tz-cierre-obligatorio {
+        z-index: 450;
+      }
+      /* Historial de verificaciones (Centro de Peticiones). */
+      .tz-historial-verif-buscar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+        color: var(--text-dim);
+      }
+      .tz-historial-verif-buscar .tz-text-input { flex: 1 1 auto; }
+      .tz-historial-verif-cabecera {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .tz-historial-verif-rol {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 999px;
+        color: var(--cyan);
+        border: 1px solid rgba(43, 232, 255, 0.4);
+        background: rgba(43, 232, 255, 0.08);
+      }
+      .tz-historial-verif-foto {
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: zoom-in;
+        color: inherit;
+        font: inherit;
+      }
+      /* Peticiones: datos del conductor que el Admin confirma al aprobar. */
+      .tz-peticion-datos {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px 8px;
+        margin-top: 6px;
+      }
+      .tz-peticion-datos label {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+      .tz-peticion-datos label > span {
+        font-size: 11px;
+        color: var(--text-dim);
+      }
+      /* Contador de créditos del pasajero (ContadorCreditos.jsx). */
+      /* Fila del pasajero: el filtro de localidad ocupa el 70 % desde la
+         izquierda y los créditos el 30 % restante, centrados ahí. 13 px
+         más de aire antes del botón del Radar. Sin sesión, el filtro solo
+         y centrado como siempre. */
+      .tz-fila-localidad { width: 100%; display: flex; justify-content: center; }
+      .tz-fila-saldo-localidad {
+        width: 100%;
+        max-width: 560px;
+        display: grid;
+        grid-template-columns: 7fr 3fr;
+        align-items: center;
+        gap: 10px;
+        padding: 0 6px;
+      }
+      /* Alto 0: las gemas (más altas que el desplegable) se centran sobre la
+         fila sin agrandarla, así el destino y el botón del Radar quedan a la
+         misma altura con o sin sesión. */
+      .tz-fila-saldo { display: flex; justify-content: center; align-items: center; min-width: 0; height: 0; overflow: visible; }
+      .tz-fila-saldo .tz-cc { top: 0; }
+      /* Gemas (créditos): en su recuadro, la palabra centrada encima de la
+         gema y el número. */
+      .tz-gemas { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+      .tz-fila-saldo .tz-stat-chip.tz-gemas { min-width: 80px; padding: 6px 10px; position: relative; left: -2px; border: none; background: transparent; box-shadow: none; }
+      .tz-fila-saldo .tz-gemas .tz-stat-value { font-size: 15px; }
+      /* La palabra va del color de las gemas que representa (cliente:
+         celeste; conductor: verde). */
+      .tz-gemas-label {
+        font-size: 9.5px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--cyan);
+        text-shadow: 0 0 6px rgba(43, 232, 255, 0.45);
+      }
+      /* Recuadros del conductor (Gemas / Vigencia) con todo centrado. */
+      .tz-stats-centrados .tz-stat-chip { align-items: center; text-align: center; }
+      .tz-stats-centrados .tz-stat-label { justify-content: center; }
+      .tz-stat-label-gemas-verde { color: var(--green); text-shadow: 0 0 6px rgba(57, 255, 176, 0.4); }
+      /* Sin localidades cargadas: los créditos solos, centrados. */
+      .tz-fila-saldo:only-child { grid-column: 1 / -1; }
+      .tz-fila-saldo-localidad .tz-localidad-filtro-wrap { max-width: none; min-width: 0; }
+      /* Panel del conductor / recolector con la cuenta sin verificar. */
+      .tz-cuenta-temporal {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin: 0 0 12px;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(215, 255, 59, 0.45);
+        background: rgba(215, 255, 59, 0.06);
+      }
+      .tz-cuenta-temporal.tz-cuenta-rechazada {
+        border-color: rgba(255, 77, 109, 0.6);
+        background: rgba(255, 77, 109, 0.1);
+      }
+      .tz-cuenta-rechazada strong {
+        color: var(--danger);
+      }
+      .tz-btn-reenviar {
+        background: var(--danger);
+        color: #fff;
+        border-color: var(--danger);
+      }
+      .tz-cuenta-temporal p {
+        margin: 0;
+        font-size: 13px;
+        color: var(--text);
+      }
+      .tz-cuenta-temporal .tz-field-label {
+        margin: 2px 0 0;
+      }
+      .tz-cierre-extensiones {
+        margin: 0;
+        font-size: 12px;
+        color: var(--text-dim);
+      }
+      .tz-cierre-vencido {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin: 0 0 12px;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(215, 255, 59, 0.45);
+        background: rgba(215, 255, 59, 0.06);
+      }
+      /* Punto amarillo de aviso en un botón (caja sin cerrar). */
+      .tz-btn-aviso {
+        position: relative;
+      }
+      .tz-btn-aviso::after {
+        content: "";
+        position: absolute;
+        top: -3px;
+        right: -3px;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: var(--yellow);
+        box-shadow: 0 0 8px rgba(215, 255, 59, 0.9);
+        animation: tz-subtitle-parpadeo 1.2s steps(1) infinite;
+      }
 
       /* ---------- CRM WHATSAPP EN EL COBRO ---------- */
       .tz-checkout-crm {
@@ -5702,11 +6361,8 @@ export default function Styles() {
           max-width: 700px;
           margin: 0 auto;
         }
-        .tz-header-btn {
-          flex-direction: row;
-          padding: 9px 14px;
-        }
-        .tz-header-btn-label { display: inline; font-size: 11px; }
+        .tz-header-btn { padding: 9px 12px; }
+        .tz-header-btn-label { font-size: 11px; }
         .tz-main {
           max-width: 700px;
           margin: 0 auto;
@@ -6262,6 +6918,11 @@ export default function Styles() {
         animation: tz-select-glow-neon-pulse 0.55s ease-in-out infinite;
         border-radius: 10px;
       }
+      /* En el Dropdown propio el parpadeo va en el botón, no en el contenedor. */
+      .tz-dropdown.tz-select-glow-neon { animation: none; }
+      .tz-dropdown.tz-select-glow-neon .tz-dropdown-trigger {
+        animation: tz-select-glow-neon-pulse 0.55s ease-in-out infinite;
+      }
       @keyframes tz-select-glow-neon-pulse {
         0%, 100% {
           border-color: var(--border-soft);
@@ -6489,6 +7150,230 @@ export default function Styles() {
         background: var(--danger);
         border-color: var(--danger);
         color: #05030c;
+      }
+
+      /* Aviso del conductor sin GPS (ConductorPage.jsx): ubicación
+         apagada o sin permiso mientras debería aparecer en el radar. */
+      .tz-aviso-ubicacion {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin: 0 0 12px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--danger);
+        background: rgba(255,84,112,0.1);
+        color: var(--text);
+        font-size: 13px;
+        line-height: 1.45;
+        animation: tz-cuenta-eliminada-glow 2s ease-in-out infinite;
+      }
+      .tz-aviso-ubicacion > svg { color: var(--danger); flex-shrink: 0; margin-top: 1px; }
+      .tz-aviso-ubicacion p { margin: 0; }
+
+      /* Chats fijados "Taxi PE" y "Tonazo" (mensajes/ChatsFijados.jsx). */
+      .tz-mensajes-modal { max-width: 480px; }
+      .tz-chatfijo-row { padding: 0; }
+      .tz-chatfijo-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 10px 12px;
+        background: transparent;
+        border: 0;
+        color: var(--text);
+        text-align: left;
+        cursor: pointer;
+        font: inherit;
+      }
+      .tz-chatfijo-logo {
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+        object-fit: contain;
+      }
+      /* Mensajes del pasajero: su(s) conductor(es) actual(es). */
+      .tz-chatneg-seccion { list-style: none; margin: 10px 2px 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); }
+      .tz-chatcond-foto { border-radius: 50%; object-fit: cover; }
+      .tz-chatcond-foto-vacia { display: inline-flex; align-items: center; justify-content: center; background: rgba(var(--cyan-rgb),0.12); border: 1px solid rgba(var(--cyan-rgb),0.35); color: var(--cyan); }
+      .tz-chatfijo-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+      .tz-chatfijo-nombre { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 5px; }
+      .tz-chatfijo-pin { color: var(--cyan); }
+      .tz-chatfijo-preview { font-size: 12px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .tz-chatfijo-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+      .tz-chatfijo-hora { font-size: 11px; color: var(--text-dim); }
+      .tz-chatfijo-badge {
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        border-radius: 999px;
+        background: var(--pink);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 10px rgba(255,47,158,0.6);
+      }
+      .tz-chatfijo-avisos {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 11px;
+        border-radius: 999px;
+        border: 1px solid var(--border-soft);
+        background: transparent;
+        color: var(--text-dim);
+        font: inherit;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .tz-chatfijo-avisos.is-activo { border-color: rgba(57,255,176,0.5); color: var(--green); }
+      .tz-chatfijo-avisos:not(.is-activo) { border-color: rgba(255,84,112,0.55); color: var(--danger); }
+      .tz-chatfijo-avisos-fila { display: flex; justify-content: flex-end; }
+      .tz-chatfijo-avisos-fila .tz-chatfijo-avisos {
+        width: 25%;
+        min-width: max-content;
+        justify-content: flex-start;
+        margin: 0;
+      }
+      .tz-chatfijo-abierto { display: flex; flex-direction: column; min-height: 0; }
+      .tz-chatfijo-cabecera {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-bottom: 10px;
+        margin-bottom: 10px;
+        border-bottom: 1px solid var(--border-soft);
+        padding-right: 36px;
+      }
+      .tz-chatfijo-cabecera strong { display: block; font-size: 15px; }
+      .tz-chatfijo-cabecera small { display: block; font-size: 11px; color: var(--text-dim); }
+      .tz-chatfijo-volver {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        border: 1px solid var(--border-soft);
+        background: transparent;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .tz-chatfijo-mensajes { display: flex; flex-direction: column; gap: 10px; max-height: 60vh; overflow-y: auto; padding: 2px; }
+      .tz-chatfijo-burbuja {
+        align-self: flex-start;
+        max-width: 88%;
+        padding: 10px 12px;
+        border-radius: 4px 14px 14px 14px;
+        background: rgba(43,232,255,0.08);
+        border: 1px solid rgba(43,232,255,0.25);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .tz-chatfijo-burbuja strong { display: block; margin-bottom: 3px; color: var(--cyan); }
+      .tz-enlace { color: var(--cyan); text-decoration: underline; word-break: break-all; }
+      .tz-anuncio-media-tocable { cursor: pointer; }
+      .tz-chatfijo-media { display: block; width: 100%; max-height: 320px; object-fit: contain; border-radius: 10px; margin-bottom: 6px; background: #000; }
+      .tz-chatfijo-video { position: relative; width: 100%; aspect-ratio: 16 / 9; margin-bottom: 6px; border-radius: 10px; overflow: hidden; }
+      .tz-chatfijo-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+      .tz-chatfijo-burbuja p { margin: 0; white-space: pre-wrap; }
+      .tz-chatfijo-burbuja span { display: block; margin-top: 5px; font-size: 10.5px; color: var(--text-dim); text-align: right; }
+
+      /* Avisos emergentes del dispositivo e "Instalar la app"
+         (mensajes/AvisosDispositivo.jsx). */
+      .tz-avisos-dispositivo { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; margin-top: 8px; }
+      .tz-avisos-dispositivo p { margin: 0; font-size: 12px; color: var(--text-dim); text-align: right; }
+      .tz-avisos-dispositivo-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(43,232,255,0.5);
+        background: rgba(43,232,255,0.08);
+        color: var(--cyan);
+        font: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .tz-avisos-dispositivo-btn.is-instalar { border-color: rgba(215,255,59,0.5); background: rgba(215,255,59,0.08); color: var(--yellow); }
+      .tz-guia-instalar ol { margin: 8px 0 16px; padding-left: 20px; font-size: 14px; line-height: 1.6; }
+      .tz-guia-instalar li { margin: 6px 0; }
+
+      /* Términos y Condiciones (TerminosTexto / TerminosAceptarModal /
+         /terminos). */
+      .tz-terminos-modal { max-width: 560px; }
+      .tz-terminos-scroll {
+        max-height: 46vh;
+        overflow-y: auto;
+        padding: 4px 12px 4px 4px;
+        border: 1px solid var(--border-soft);
+        border-radius: 12px;
+        background: rgba(0,0,0,0.18);
+      }
+      .tz-terminos-pagina { max-width: 760px; }
+      .tz-terminos-texto { font-size: 13px; line-height: 1.55; color: var(--text); }
+      .tz-terminos-texto h2 { font-size: 17px; margin: 10px 0 6px; }
+      .tz-terminos-texto h3 { font-size: 14px; margin: 16px 0 6px; color: var(--cyan); }
+      .tz-terminos-texto p { margin: 6px 0; }
+      .tz-terminos-texto ol, .tz-terminos-texto ul { margin: 6px 0; padding-left: 20px; }
+      .tz-terminos-texto li { margin: 4px 0; }
+      .tz-terminos-link { color: var(--cyan); text-decoration: underline; }
+
+      /* Modal de Soporte (SoporteModal.jsx): tres opciones grandes —
+         conversar, bloqueo de emergencia (rojo) y recuperar cuenta. */
+      .tz-soporte-opciones { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+      .tz-soporte-opcion {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid var(--border-soft);
+        background: rgba(255,255,255,0.03);
+        color: var(--text);
+        text-align: left;
+        cursor: pointer;
+        font: inherit;
+      }
+      .tz-soporte-opcion:hover { border-color: var(--cyan); }
+      .tz-soporte-opcion strong { display: block; font-size: 14px; }
+      .tz-soporte-opcion small { display: block; color: var(--text-dim); font-size: 12px; margin-top: 2px; }
+      .tz-soporte-opcion > svg { flex-shrink: 0; }
+      .tz-soporte-opcion-peligro { border-color: rgba(255,84,112,0.55); }
+      .tz-soporte-opcion-peligro > svg { color: var(--danger); }
+      .tz-soporte-opcion-peligro:hover { border-color: var(--danger); box-shadow: 0 0 14px rgba(255,84,112,0.35); }
+      .tz-soporte-aviso {
+        border: 1px solid var(--danger);
+        background: rgba(255,84,112,0.08);
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-size: 13px;
+        line-height: 1.5;
+        margin-bottom: 14px;
+      }
+      .tz-soporte-aviso strong { color: var(--danger); }
+      .tz-soporte-foto {
+        width: 100%;
+        max-height: 180px;
+        object-fit: contain;
+        border-radius: 10px;
+        margin-top: 8px;
+        background: rgba(0,0,0,0.25);
+      }
+      .tz-soporte-razones { display: flex; flex-wrap: wrap; gap: 6px; }
+      .tz-soporte-razones .tz-gasto-tipo-btn { flex: 1 1 45%; min-width: 0; white-space: normal; line-height: 1.3; }
+      .tz-soporte-boton-peligro {
+        background: var(--danger) !important;
+        border-color: var(--danger) !important;
+        color: #05030c !important;
       }
 
       /* Serpentinas (Confetti.jsx) — overlay a pantalla completa,
