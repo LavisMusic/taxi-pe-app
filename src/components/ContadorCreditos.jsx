@@ -317,7 +317,8 @@ export default function ContadorCreditos({ valor, clave, titulo = "Créditos", v
 
 const ESTILO = `
 .tz-cc {
-  --tz-cc-color: var(--cyan, #2be8ff);
+  /* Color FIJO: la gema no cambia con el tema del negocio. */
+  --tz-cc-color: #2be8ff;
   --tz-cc-claro: #9eeeff;
   --tz-cc-medio: #1689f5;
   --tz-cc-oscuro: #0a4bbf;
@@ -342,7 +343,7 @@ const ESTILO = `
 }
 /* Créditos del conductor: gema verde (esmeralda). */
 .tz-cc.tz-cc-verde {
-  --tz-cc-color: var(--green, #39ffb0);
+  --tz-cc-color: #39ffb0;
   --tz-cc-claro: #b8ffd9;
   --tz-cc-medio: #16c25a;
   --tz-cc-oscuro: #0a7a35;
