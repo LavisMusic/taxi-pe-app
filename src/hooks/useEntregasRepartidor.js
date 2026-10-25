@@ -31,6 +31,9 @@ export function useEntregasRepartidor(conductorId) {
   const [entregasActivas, setEntregasActivas] = useState([]);
   // Entregas con un mensaje nuevo de la tienda o del cliente sin abrir.
   const [mensajesNuevos, setMensajesNuevos] = useState(() => new Set());
+  // Mensajes sin leer guardados en la base, por entrega y por hilo:
+  // { [entregaId]: { cliente_conductor, cajero_conductor, total } }.
+  const [noLeidos, setNoLeidos] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const yaCargo = useRef(false);
@@ -44,10 +47,20 @@ export function useEntregasRepartidor(conductorId) {
     }
     if (!yaCargo.current) setLoading(true);
 
-    const [ofertasRes, activaRes] = await Promise.all([
+    const [ofertasRes, activaRes, noLeidosRes] = await Promise.all([
       supabase.rpc("rpc_entrega_ofertas_conductor", { p_conductor_id: conductorId }),
       supabase.rpc("rpc_entrega_activa_conductor", { p_conductor_id: conductorId }),
+      supabase.rpc("rpc_entrega_no_leidos_conductor", { p_conductor_id: conductorId }),
     ]);
+    if (!noLeidosRes.error) {
+      const m = {};
+      for (const f of noLeidosRes.data ?? []) {
+        const x = m[f.entrega_id] ?? (m[f.entrega_id] = { total: 0 });
+        x[f.hilo] = f.no_leidos;
+        x.total += f.no_leidos;
+      }
+      setNoLeidos(m);
+    }
 
     if (ofertasRes.error || activaRes.error) {
       setError("No se pudieron cargar las entregas.");
@@ -218,6 +231,7 @@ export function useEntregasRepartidor(conductorId) {
     tieneEnRuta,
     mensajesNuevos,
     marcarMensajesVistos,
+    noLeidos,
     loading,
     error,
     refresh,

@@ -94,7 +94,7 @@ function Chat({ entregaId, conductorId, hilo }) {
   );
 }
 
-export default function EntregaActivaModal({ entrega, conductorId, onClose, avanzar, finalizar, onEntregado }) {
+export default function EntregaActivaModal({ entrega, conductorId, onClose, avanzar, finalizar, onEntregado, noLeidos = null }) {
   const [hilo, setHilo] = useState("cliente_conductor");
   const [escaneando, setEscaneando] = useState(false);
   const [intentosQr, setIntentosQr] = useState(0);
@@ -303,8 +303,10 @@ export default function EntregaActivaModal({ entrega, conductorId, onClose, avan
               type="button"
               className={`tz-gasto-tipo-btn ${hilo === h.key ? "tz-gasto-tipo-active" : ""}`}
               onClick={() => setHilo(h.key)}
+              style={{ position: "relative" }}
             >
               {h.label}
+              {hilo !== h.key && noLeidos?.[h.key] > 0 && <span className="tz-badge-dot">{noLeidos[h.key] > 9 ? "9+" : noLeidos[h.key]}</span>}
             </button>
           ))}
         </div>
@@ -322,3 +324,6 @@ export default function EntregaActivaModal({ entrega, conductorId, onClose, avan
     </div>
   );
 }
+
+// El mismo chat (un hilo) para Mensajes del conductor: "Tus entregas".
+export { Chat as ChatEntregaConductor };

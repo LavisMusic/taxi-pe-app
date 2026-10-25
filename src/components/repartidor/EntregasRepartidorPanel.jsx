@@ -113,6 +113,8 @@ export default function EntregasRepartidorPanel({
     finalizar,
     mensajesNuevos,
     marcarMensajesVistos,
+    noLeidos,
+    refresh,
   } = datos || propio;
   const lleno = entregasActivas.length >= MAX_REPARTOS;
   const bloqueado = enCarrera || lleno;
@@ -265,7 +267,7 @@ export default function EntregasRepartidorPanel({
           }}
           style={{ width: "100%", justifyContent: "space-between", position: "relative" }}
         >
-          {mensajesNuevos?.has(entrega.id) && !sale && (
+          {(mensajesNuevos?.has(entrega.id) || noLeidos?.[entrega.id]?.total > 0) && !sale && (
             <span className="tz-chat-unread-dot" aria-label="Mensaje nuevo" />
           )}
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -362,7 +364,11 @@ export default function EntregasRepartidorPanel({
           avanzar={avanzar}
           finalizar={finalizar}
           onEntregado={onEntregado}
-          onClose={() => setAbiertaId(null)}
+          noLeidos={noLeidos?.[entregaAbierta.id]}
+          onClose={() => {
+            setAbiertaId(null);
+            refresh?.();
+          }}
         />
       )}
 

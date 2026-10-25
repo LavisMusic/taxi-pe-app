@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { X, MessageCircle, ArrowLeft, Loader2, Trash2 } from "lucide-react";
+import { X, MessageCircle, ArrowLeft, Loader2, Trash2, Store, ChevronDown } from "lucide-react";
+import { ChatEntregaConductor } from "./repartidor/EntregaActivaModal";
 import { supabase } from "../supabaseClient";
 import { useHilosChatConductor, useChatMensajes, REMITENTE_CONDUCTOR } from "../hooks/useChatMensajes";
 import ChatWindow from "./ChatWindow";
@@ -23,6 +24,7 @@ function horaCorta(iso) {
     : d.toLocaleDateString("es-PE", { day: "2-digit", month: "2-digit" });
 }
 const inicial = (nombre) => (nombre || "P").trim().charAt(0).toUpperCase();
+const ESTADO_ENTREGA = { aceptado: "Por recoger", en_ruta: "En camino" };
 
 function HiloConversacion({ conductorId, pasajeroId, nivelServicio, iconoCategoriaUrl, onCerrarPorCancelacion }) {
   const {
@@ -88,8 +90,20 @@ function HiloConversacion({ conductorId, pasajeroId, nivelServicio, iconoCategor
 // hook se llamaba un nivel más arriba.
 // `plataforma` (useMensajesPlataforma, desde ConductorPage): los chats
 // fijados "Taxi PE" y "Tonazo", arriba de la lista y de solo lectura.
-function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCategoriaUrl, plataforma, canalInicial }) {
+// `entregas` (delivery de Caja en curso) y `noLeidosEntregas`: sección
+// "Tus entregas" — la tienda de cada pedido y, desplegando, su cliente,
+// cada uno con su chat (como "Tus pedidos" del cliente).
+function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCategoriaUrl, plataforma, canalInicial, entregas = [], noLeidosEntregas = {}, onEntregasCambio }) {
   const [canalFijo, setCanalFijo] = useState(canalInicial ?? null);
+  const [entregaChat, setEntregaChat] = useState(null); // { id, hilo }
+  const [desplegadas, setDesplegadas] = useState(() => new Set());
+  const alternarEntrega = (id) =>
+    setDesplegadas((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
   const { hilos, loading, pasajerosEnCarrera, refresh } = useHilosChatConductor(conductorId);
   const [nombresPorId, setNombresPorId] = useState({});
   const [borrandoId, setBorrandoId] = useState(null);
@@ -136,6 +150,37 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
       cancelado = true;
     };
   }, [idsKey]);
+
+  if (entregaChat) {
+    const e = entregas.find((x) => x.id === entregaChat.id);
+    const conTienda = entregaChat.hilo === "cajero_conductor";
+    return (
+      <>
+        <div className="tz-chatfijo-cabecera">
+          <button
+            type="button"
+            className="tz-chatfijo-volver"
+            onClick={() => {
+              setEntregaChat(null);
+              onEntregasCambio?.();
+            }}
+            aria-label="Volver a los chats"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <span className="tz-chatneg-avatar">{conTienda ? <Store size={18} /> : inicial(e?.cliente_nombre)}</span>
+          <span>
+            <strong>{conTienda ? e?.caja_sucursal || "Sucursal" : e?.cliente_nombre || "Cliente"}</strong>
+            <small>
+              {conTienda ? "Tienda del pedido" : "Cliente del pedido"}
+              {e ? ` · ${ESTADO_ENTREGA[e.estado] || e.estado}` : ""}
+            </small>
+          </span>
+        </div>
+        <ChatEntregaConductor entregaId={entregaChat.id} conductorId={conductorId} hilo={entregaChat.hilo} />
+      </>
+    );
+  }
 
   if (canalFijo && plataforma) {
     return (
@@ -227,6 +272,57 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
               </ul>
             </>
           )}
+          {entregas.length > 0 && (
+            <ul className="tz-history-rows" style={{ margin: "10px 0" }}>
+              <li className="tz-chatneg-seccion">Tus entregas</li>
+              {entregas.map((e) => {
+                const n = noLeidosEntregas[e.id] || {};
+                const abierta = desplegadas.has(e.id);
+                return (
+                  <li key={e.id} className="tz-history-row tz-chatfijo-row tz-chatent-row">
+                    <div className="tz-chatent-fila">
+                      <button type="button" className="tz-chatfijo-btn" onClick={() => setEntregaChat({ id: e.id, hilo: "cajero_conductor" })}>
+                        <span className="tz-chatneg-avatar">
+                          <Store size={18} />
+                        </span>
+                        <span className="tz-chatfijo-texto">
+                          <span className="tz-chatfijo-nombre">{e.caja_sucursal || "Sucursal"}</span>
+                          <span className="tz-chatfijo-preview">
+                            <span className="tz-chatent-estado">{ESTADO_ENTREGA[e.estado] || e.estado}</span> · Pedido de {e.cliente_nombre || "cliente"}
+                          </span>
+                        </span>
+                        {n.cajero_conductor > 0 && <span className="tz-chatfijo-badge">{n.cajero_conductor}</span>}
+                      </button>
+                      <button
+                        type="button"
+                        className={`tz-chatent-flecha ${abierta ? "is-abierta" : ""}`}
+                        onClick={() => alternarEntrega(e.id)}
+                        aria-expanded={abierta}
+                        aria-label={abierta ? "Ocultar cliente" : "Ver cliente"}
+                      >
+                        <ChevronDown size={16} />
+                        {!abierta && n.cliente_conductor > 0 && <span className="tz-badge-dot">{n.cliente_conductor}</span>}
+                      </button>
+                    </div>
+                    {abierta && (
+                      <button
+                        type="button"
+                        className="tz-chatfijo-btn tz-chatent-cliente"
+                        onClick={() => setEntregaChat({ id: e.id, hilo: "cliente_conductor" })}
+                      >
+                        <span className="tz-chatneg-avatar">{inicial(e.cliente_nombre)}</span>
+                        <span className="tz-chatfijo-texto">
+                          <span className="tz-chatfijo-nombre">{e.cliente_nombre || "Cliente"}</span>
+                          <span className="tz-chatfijo-preview">Cliente · {e.direccion_entrega || "Sin dirección"}</span>
+                        </span>
+                        {n.cliente_conductor > 0 && <span className="tz-chatfijo-badge">{n.cliente_conductor}</span>}
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
           {loading ? (
         <div className="tz-loading" style={{ minHeight: 120 }}>
           <Loader2 className="tz-spin" size={24} />
@@ -289,7 +385,7 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
   );
 }
 
-export default function ConductorChatInboxModal({ conductorId, pasajeroInicial, nivelServicio, iconoCategoriaUrl, plataforma, canalInicial, onClose }) {
+export default function ConductorChatInboxModal({ conductorId, pasajeroInicial, nivelServicio, iconoCategoriaUrl, plataforma, canalInicial, entregas, noLeidosEntregas, onEntregasCambio, onClose }) {
   return (
     <div className="tz-modal-backdrop">
       <div className="tz-modal tz-chat-modal-shell" onClick={(e) => e.stopPropagation()}>
@@ -311,6 +407,9 @@ export default function ConductorChatInboxModal({ conductorId, pasajeroInicial, 
                 iconoCategoriaUrl={iconoCategoriaUrl}
                 plataforma={plataforma}
                 canalInicial={canalInicial}
+                entregas={entregas}
+                noLeidosEntregas={noLeidosEntregas}
+                onEntregasCambio={onEntregasCambio}
               />
             </ChatErrorBoundary>
           )}

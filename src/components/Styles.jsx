@@ -7221,6 +7221,36 @@ export default function Styles() {
       .tz-chatneg-estado.is-en-linea::before { opacity: 1; box-shadow: 0 0 6px var(--green); }
       .tz-chat-inbox-row.tz-chatfijo-row { display: flex; align-items: stretch; gap: 6px; }
       .tz-chat-inbox-row .tz-chatfijo-btn { flex: 1 1 auto; min-width: 0; }
+      /* Círculo rojo con el número de mensajes sin leer (mismo de Caja). */
+      .tz-badge-dot {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        min-width: 16px;
+        height: 16px;
+        padding: 0 4px;
+        border-radius: 999px;
+        background: var(--danger, #ff3b5c);
+        color: #fff;
+        font-size: 10px;
+        font-weight: 800;
+        line-height: 16px;
+        text-align: center;
+        box-shadow: 0 0 0 2px var(--bg, #0b0e14);
+      }
+      /* "Tus entregas" (conductor en modo delivery). */
+      .tz-chatent-row { display: flex; flex-direction: column; gap: 6px; }
+      .tz-chatent-fila { display: flex; align-items: center; gap: 6px; }
+      .tz-chatent-fila > .tz-chatfijo-btn { flex: 1; min-width: 0; }
+      .tz-chatent-estado { color: var(--green); font-weight: 700; }
+      .tz-chatent-flecha {
+        position: relative; width: 34px; height: 34px; flex-shrink: 0; border-radius: 10px;
+        border: 1px solid var(--border-soft); background: transparent; color: var(--text);
+        display: flex; align-items: center; justify-content: center; cursor: pointer;
+      }
+      .tz-chatent-flecha.is-abierta svg { transform: rotate(180deg); }
+      .tz-chatent-flecha .tz-badge-dot { position: absolute; top: -6px; right: -6px; }
+      .tz-chatent-cliente { margin-left: 18px; width: calc(100% - 18px); border-top: 1px dashed var(--border-soft); padding-top: 8px; }
       .tz-chatcond-foto-vacia { display: inline-flex; align-items: center; justify-content: center; background: rgba(var(--cyan-rgb),0.12); border: 1px solid rgba(var(--cyan-rgb),0.35); color: var(--cyan); }
       .tz-chatfijo-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
       .tz-chatfijo-nombre { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 5px; }

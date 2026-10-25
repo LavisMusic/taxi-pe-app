@@ -386,7 +386,9 @@ export default function ConductorPage() {
               >
                 <MessageCircle size={19} />
                 <span className="tz-header-btn-label">Mensajes</span>
-                {(unreadCount > 0 || plataforma.totalNoLeidos > 0) && (
+                {(unreadCount > 0 ||
+                  plataforma.totalNoLeidos > 0 ||
+                  Object.values(repartos.noLeidos || {}).some((x) => x.total > 0)) && (
                   <span className="tz-chat-unread-dot" aria-hidden="true" />
                 )}
               </button>
@@ -784,6 +786,9 @@ export default function ConductorPage() {
           pasajeroInicial={pasajeroDesdeAlerta}
           plataforma={plataforma}
           canalInicial={canalDesdeAviso}
+          entregas={repartos.entregasActivas}
+          noLeidosEntregas={repartos.noLeidos}
+          onEntregasCambio={repartos.refresh}
           nivelServicio={conductor.nivel_servicio}
           iconoCategoriaUrl={iconoCategoriaUrl}
           onClose={() => {
