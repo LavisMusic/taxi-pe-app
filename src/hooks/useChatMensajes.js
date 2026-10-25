@@ -581,7 +581,14 @@ export function useHilosChatConductor(conductorId) {
         for (const m of filas) {
           if (m?.pasajero_id && !porPasajero.has(m.pasajero_id)) porPasajero.set(m.pasajero_id, m);
         }
-        setHilos([...porPasajero.entries()].map(([pasajeroId, ultimo]) => ({ pasajeroId, ultimo })));
+        // (noLeidos: lo que mandó ese pasajero y el conductor no abrió.)
+        setHilos(
+          [...porPasajero.entries()].map(([pasajeroId, ultimo]) => ({
+            pasajeroId,
+            ultimo,
+            noLeidos: filas.filter((m) => m?.pasajero_id === pasajeroId && m?.remitente === REMITENTE_PASAJERO && !m?.leido).length,
+          }))
+        );
         setUnreadCount(filas.filter((m) => m?.remitente === REMITENTE_PASAJERO && !m?.leido).length);
         // Fase 5: TODAS las ofertas 'aceptada'/'en_transito', no solo la
         // primera que se encuentre — un conductor puede tener varios

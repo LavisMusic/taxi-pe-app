@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, MessageCircle, ChevronLeft, Loader2, Trash2 } from "lucide-react";
+import { X, MessageCircle, ArrowLeft, Loader2, Trash2 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { useHilosChatConductor, useChatMensajes, REMITENTE_CONDUCTOR } from "../hooks/useChatMensajes";
 import ChatWindow from "./ChatWindow";
@@ -12,7 +12,18 @@ import AvisosDispositivo from "./mensajes/AvisosDispositivo";
 // escribe desde ChatModal y nadie del otro lado lo ve). Lista de hilos
 // (un pasajero = un hilo) -> click abre la conversación con el mismo
 // ChatWindow que usa el pasajero, solo que acá el remitente propio es
-// "conductor".
+// "conductor". Mismo estilo que Mensajes (lista de chats con su avatar y la
+// cabecera del chat abierto), como los chats de los negocios del cliente.
+
+function horaCorta(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toDateString() === new Date().toDateString()
+    ? d.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })
+    : d.toLocaleDateString("es-PE", { day: "2-digit", month: "2-digit" });
+}
+const inicial = (nombre) => (nombre || "P").trim().charAt(0).toUpperCase();
+
 function HiloConversacion({ conductorId, pasajeroId, nivelServicio, iconoCategoriaUrl, onCerrarPorCancelacion }) {
   const {
     mensajes,
@@ -139,23 +150,24 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
 
   return (
     <>
-      <h2>
-        {pasajeroAbierto && (
-          <button
-            type="button"
-            className="tz-vis-edit-btn"
-            onClick={() => setPasajeroAbierto(null)}
-            aria-label="Volver a la lista"
-            style={{ marginRight: 4 }}
-          >
-            <ChevronLeft size={16} />
-          </button>
-        )}
-        <MessageCircle size={17} /> Mensajes
-      </h2>
+      {!pasajeroAbierto && (
+        <h2 style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <MessageCircle size={18} /> Mensajes
+        </h2>
+      )}
 
       {pasajeroAbierto ? (
         <>
+          <div className="tz-chatfijo-cabecera">
+            <button type="button" className="tz-chatfijo-volver" onClick={() => setPasajeroAbierto(null)} aria-label="Volver a los chats">
+              <ArrowLeft size={16} />
+            </button>
+            <span className="tz-chatneg-avatar">{inicial(nombresPorId[pasajeroAbierto])}</span>
+            <span>
+              <strong>{nombresPorId[pasajeroAbierto] ?? "Pasajero"}</strong>
+              <small>{pasajerosEnCarrera?.includes(pasajeroAbierto) ? "Viaje en curso" : "Negociando"}</small>
+            </span>
+          </div>
           {/* Fase 5 (Motor de Viajes Simultáneos) — Selector de Hilos:
              solo aparece si hay MÁS de un hilo — un conductor con una
              sola conversación no necesita pestañas para elegir entre
@@ -186,9 +198,6 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
               })}
             </div>
           )}
-          <p className="tz-chat-thread-titulo">
-            {nombresPorId[pasajeroAbierto] ?? "Pasajero"}
-          </p>
           {/* `key={pasajeroAbierto}` fuerza un remount COMPLETO de
              HiloConversacion (y del ChatWindow que tiene adentro) al
              cambiar de pestaña — sin esto, React reutilizaría la MISMA
@@ -227,16 +236,25 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
         <p className="tz-method-history-empty">Todavía no tienes mensajes de pasajeros.</p>
       ) : (
         <ul className="tz-history-rows">
+          <li className="tz-chatneg-seccion">Pasajeros</li>
           {listaHilos.map((h) => {
             const pid = h?.pasajeroId ?? null;
             const enCurso = pid && pasajerosEnCarrera?.includes(pid);
+            const nombre = nombresPorId[pid] ?? "Pasajero";
             return (
-              <li key={pid ?? Math.random()} className="tz-history-row tz-chat-inbox-row">
-                <button type="button" className="tz-history-row-head" onClick={() => setPasajeroAbierto(pid)}>
-                  <span className="tz-chat-thread-name">{nombresPorId[pid] ?? "Pasajero"}</span>
-                  <span className="tz-history-row-amount tz-chat-thread-preview">
-                    {(h?.ultimo?.mensaje ?? "").slice(0, 30)}
-                    {(h?.ultimo?.mensaje?.length ?? 0) > 30 ? "…" : ""}
+              <li key={pid ?? Math.random()} className="tz-history-row tz-chatfijo-row tz-chat-inbox-row">
+                <button type="button" className="tz-chatfijo-btn" onClick={() => setPasajeroAbierto(pid)}>
+                  <span className="tz-chatneg-avatar">{inicial(nombre)}</span>
+                  <span className="tz-chatfijo-texto">
+                    <span className="tz-chatfijo-nombre">
+                      {nombre}
+                      <span className={`tz-chatneg-estado ${enCurso ? "is-en-linea" : ""}`}>{enCurso ? "Viaje en curso" : "Negociando"}</span>
+                    </span>
+                    <span className="tz-chatfijo-preview">{h?.ultimo?.mensaje || "Sin mensajes todavía"}</span>
+                  </span>
+                  <span className="tz-chatfijo-meta">
+                    <span className="tz-chatfijo-hora">{horaCorta(h?.ultimo?.created_at)}</span>
+                    {h?.noLeidos > 0 && <span className="tz-chatfijo-badge">{h.noLeidos}</span>}
                   </span>
                 </button>
                 {pid && !enCurso && (
