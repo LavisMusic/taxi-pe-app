@@ -236,8 +236,16 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
         <p className="tz-method-history-empty">Todavía no tienes mensajes de pasajeros.</p>
       ) : (
         <ul className="tz-history-rows">
-          <li className="tz-chatneg-seccion">Pasajeros</li>
-          {listaHilos.map((h) => {
+          {/* Por secciones, como Mensajes del cliente: primero los viajes
+              en curso, después las conversaciones en negociación. */}
+          {[
+            { titulo: "Viajes en curso", hilos: listaHilos.filter((h) => pasajerosEnCarrera?.includes(h?.pasajeroId)) },
+            { titulo: "Negociando", hilos: listaHilos.filter((h) => !pasajerosEnCarrera?.includes(h?.pasajeroId)) },
+          ]
+            .filter((sec) => sec.hilos.length > 0)
+            .flatMap((sec) => [
+              <li key={`sec-${sec.titulo}`} className="tz-chatneg-seccion">{sec.titulo}</li>,
+              ...sec.hilos.map((h) => {
             const pid = h?.pasajeroId ?? null;
             const enCurso = pid && pasajerosEnCarrera?.includes(pid);
             const nombre = nombresPorId[pid] ?? "Pasajero";
@@ -271,7 +279,8 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
                 )}
               </li>
             );
-          })}
+              }),
+            ])}
         </ul>
       )}
         </>
