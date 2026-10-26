@@ -7238,18 +7238,48 @@ export default function Styles() {
         text-align: center;
         box-shadow: 0 0 0 2px var(--bg, #0b0e14);
       }
-      /* "Tus entregas" (conductor en modo delivery). */
-      .tz-chatent-row { display: flex; flex-direction: column; gap: 6px; }
-      .tz-chatent-fila { display: flex; align-items: center; gap: 6px; }
-      .tz-chatent-fila > .tz-chatfijo-btn { flex: 1; min-width: 0; }
-      .tz-chatent-estado { color: var(--green); font-weight: 700; }
-      .tz-chatent-flecha {
-        position: relative; width: 34px; height: 34px; flex-shrink: 0; border-radius: 10px;
-        border: 1px solid var(--border-soft); background: transparent; color: var(--text);
-        display: flex; align-items: center; justify-content: center; cursor: pointer;
+      /* "Tus entregas" (conductor en modo delivery): la tienda y, agrupado
+         debajo (se despliega solo), el cliente; un brillo verde recorre el
+         borde de los dos juntos — mismo diseño que "Tus pedidos" en Caja. */
+      .tz-chatent-row { position: relative; display: flex; flex-direction: column; gap: 6px; border-radius: 14px; overflow: visible !important; }
+      .tz-chatent-row.is-activo { box-shadow: 0 0 14px rgba(57,255,176,0.25) !important; }
+      .tz-chatent-row.is-activo::before {
+        content: "";
+        position: absolute;
+        inset: -1px;
+        border-radius: inherit;
+        padding: 2px;
+        background: linear-gradient(90deg, rgba(57,255,176,0.1), rgba(57,255,176,1), rgba(57,255,176,0.1));
+        background-size: 300% 100%;
+        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        animation: tz-chatent-brillo 2.6s linear infinite;
+        pointer-events: none;
+        z-index: 1;
       }
-      .tz-chatent-flecha.is-abierta svg { transform: rotate(180deg); }
-      .tz-chatent-flecha .tz-badge-dot { position: absolute; top: -6px; right: -6px; }
+      @keyframes tz-chatent-brillo {
+        from { background-position: 0% 0; }
+        to { background-position: 300% 0; }
+      }
+      .tz-chatent-despliegue { overflow: hidden; animation: tz-chatent-desplegar 0.5s cubic-bezier(.2,.8,.2,1) both; }
+      @keyframes tz-chatent-desplegar {
+        from { max-height: 0; opacity: 0; transform: translateY(-8px); }
+        to { max-height: 90px; opacity: 1; transform: none; }
+      }
+      .tz-chatent-estado { color: var(--green); font-weight: 700; }
+      /* Entrega en curso: botones que abren su chat en Mensajes. */
+      .tz-entrega-chats-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+      .tz-entrega-chats-btns > button { display: inline-flex; }
+      /* Chat de una entrega abierto en la bandeja: ocupa todo el alto del
+         modal 9:16 (antes quedaba encogido en 220px). */
+      .tz-chat-modal-shell .tz-payment-modal > .tz-entrega-chat {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      .tz-chat-modal-shell .tz-entrega-chat-scroll { flex: 1 1 auto; min-height: 0; max-height: none; }
       .tz-chatent-cliente { margin-left: 18px; width: calc(100% - 18px); border-top: 1px dashed var(--border-soft); padding-top: 8px; }
       .tz-chatcond-foto-vacia { display: inline-flex; align-items: center; justify-content: center; background: rgba(var(--cyan-rgb),0.12); border: 1px solid rgba(var(--cyan-rgb),0.35); color: var(--cyan); }
       .tz-chatfijo-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }

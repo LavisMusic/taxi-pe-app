@@ -233,6 +233,18 @@ export default function ConductorPage() {
   const [toggleError, setToggleError] = useState("");
   const [editandoPerfil, setEditandoPerfil] = useState(false);
   const [mensajesOpen, setMensajesOpen] = useState(false);
+  // Chat de una entrega pedido desde su tarjeta de reparto (botón
+  // "Mensajes" de EntregaActivaModal): abre la bandeja directo en él.
+  const [entregaDesdePanel, setEntregaDesdePanel] = useState(null); // { id, hilo }
+  useEffect(() => {
+    const abrir = (ev) => {
+      if (!ev.detail?.id) return;
+      setEntregaDesdePanel({ id: ev.detail.id, hilo: ev.detail.hilo || "cajero_conductor" });
+      setMensajesOpen(true);
+    };
+    window.addEventListener("tz-abrir-chat-entrega", abrir);
+    return () => window.removeEventListener("tz-abrir-chat-entrega", abrir);
+  }, []);
   // Viaje finalizado (lo cerró el pasajero) con la bandeja cerrada: se
   // festeja al volver a la pantalla principal.
   const viajeFinalizado = useViajeFinalizadoAviso({
@@ -781,7 +793,7 @@ export default function ConductorPage() {
           // mostrando el hilo/mapa del pasajero anterior. El `key`
           // fuerza a React a tirar la instancia vieja entera y montar
           // una limpia cada vez que cambia a quién se le abre el chat.
-          key={`${pasajeroDesdeAlerta ?? "lista"}-${canalDesdeAviso ?? ""}`}
+          key={`${pasajeroDesdeAlerta ?? "lista"}-${canalDesdeAviso ?? ""}-${entregaDesdePanel ? entregaDesdePanel.id + entregaDesdePanel.hilo : ""}`}
           conductorId={conductor.id}
           pasajeroInicial={pasajeroDesdeAlerta}
           plataforma={plataforma}
@@ -789,12 +801,15 @@ export default function ConductorPage() {
           entregas={repartos.entregasActivas}
           noLeidosEntregas={repartos.noLeidos}
           onEntregasCambio={repartos.refresh}
+          entregaInicial={entregaDesdePanel}
           nivelServicio={conductor.nivel_servicio}
           iconoCategoriaUrl={iconoCategoriaUrl}
           onClose={() => {
             setMensajesOpen(false);
             setPasajeroDesdeAlerta(null);
             setCanalDesdeAviso(null);
+            setEntregaDesdePanel(null);
+            repartos.refresh();
           }}
         />
       )}

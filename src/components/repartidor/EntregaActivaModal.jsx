@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, MapPin, Store, PackageCheck, QrCode, KeyRound, Loader2, Send, Check, CheckCheck, Navigation } from "lucide-react";
+import { X, MapPin, Store, PackageCheck, QrCode, KeyRound, Loader2, Send, Check, CheckCheck, Navigation, User } from "lucide-react";
 import { useEntregaChat } from "../../hooks/useEntregaChat";
 import { useEscribiendo } from "../../hooks/useEscribiendo";
 import { supabase } from "../../supabaseClient";
@@ -15,9 +15,11 @@ import MapaEntrega from "./MapaEntrega";
 // intentos fallidos —o si no hay cámara / se niega el permiso— se
 // habilita el input de PIN como respaldo.
 
-const HILOS = [
-  { key: "cliente_conductor", label: "Cliente" },
-  { key: "cajero_conductor", label: "Sucursal" },
+// Los chats con la tienda y con el cliente viven en Mensajes ("Tus
+// entregas"); acá solo los botones que abren cada uno.
+const CHATS = [
+  { hilo: "cajero_conductor", label: "Chat tienda", icono: Store },
+  { hilo: "cliente_conductor", label: "Chat cliente", icono: User },
 ];
 const MAX_INTENTOS_QR = 3;
 
@@ -95,7 +97,6 @@ function Chat({ entregaId, conductorId, hilo }) {
 }
 
 export default function EntregaActivaModal({ entrega, conductorId, onClose, avanzar, finalizar, onEntregado, noLeidos = null }) {
-  const [hilo, setHilo] = useState("cliente_conductor");
   const [escaneando, setEscaneando] = useState(false);
   const [intentosQr, setIntentosQr] = useState(0);
   const [pinForzado, setPinForzado] = useState(false);
@@ -295,22 +296,23 @@ export default function EntregaActivaModal({ entrega, conductorId, onClose, avan
 
         {msg && <p className="tz-error" style={{ marginTop: 8 }}>{msg}</p>}
 
-        {/* Chat: cliente / sucursal */}
-        <div className="tz-gasto-tipo-buttons" style={{ marginTop: 16 }}>
-          {HILOS.map((h) => (
+        <div className="tz-entrega-chats-btns">
+          {CHATS.map(({ hilo, label, icono: Icono }) => (
             <button
-              key={h.key}
+              key={hilo}
               type="button"
-              className={`tz-gasto-tipo-btn ${hilo === h.key ? "tz-gasto-tipo-active" : ""}`}
-              onClick={() => setHilo(h.key)}
+              className="tz-camera-cancel tz-image-manager-btn"
+              onClick={() => {
+                onClose();
+                window.dispatchEvent(new CustomEvent("tz-abrir-chat-entrega", { detail: { id: entrega.id, hilo } }));
+              }}
               style={{ position: "relative" }}
             >
-              {h.label}
-              {hilo !== h.key && noLeidos?.[h.key] > 0 && <span className="tz-badge-dot">{noLeidos[h.key] > 9 ? "9+" : noLeidos[h.key]}</span>}
+              <Icono size={14} /> {label}
+              {noLeidos?.[hilo] > 0 && <span className="tz-badge-dot">{noLeidos[hilo] > 9 ? "9+" : noLeidos[hilo]}</span>}
             </button>
           ))}
         </div>
-        <Chat entregaId={entrega.id} conductorId={conductorId} hilo={hilo} />
       </div>
 
       {escaneando && (
@@ -325,5 +327,5 @@ export default function EntregaActivaModal({ entrega, conductorId, onClose, avan
   );
 }
 
-// El mismo chat (un hilo) para Mensajes del conductor: "Tus entregas".
+// Chat de un hilo de la entrega: lo usa Mensajes del conductor ("Tus entregas").
 export { Chat as ChatEntregaConductor };
