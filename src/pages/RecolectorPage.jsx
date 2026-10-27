@@ -179,6 +179,7 @@ export default function RecolectorPage() {
               <UserPlus size={19} />
               <span className="tz-header-btn-label">Conductor nuevo</span>
             </button>
+            {usuario && <BotonMensajes usuarioId={usuario.id} />}
           </div>
 
           <div className="tz-header-center">
@@ -197,7 +198,6 @@ export default function RecolectorPage() {
               <LogOut size={19} />
               <span className="tz-header-btn-label">Salir</span>
             </button>
-            {usuario && <BotonMensajes usuarioId={usuario.id} />}
           </div>
         </div>
       </header>

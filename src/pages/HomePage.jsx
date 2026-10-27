@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LogIn, LogOut, Car, Users, MessageCircle, X, Loader2, MapPin } from "lucide-react";
+import { LogIn, LogOut, Car, Users, MessageCircle, X, Loader2, MapPin, Pencil } from "lucide-react";
+import PerfilPasajeroModal from "../components/PerfilPasajeroModal";
 import { supabase } from "../supabaseClient";
 import { useConductoresPublicos } from "../hooks/useConductoresPublicos";
 import { useAnuncioActivo } from "../hooks/useAnuncioActivo";
@@ -256,6 +257,7 @@ export default function HomePage() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [accesoConductorOpen, setAccesoConductorOpen] = useState(false);
   const [accesoRecolectorOpen, setAccesoRecolectorOpen] = useState(false);
+  const [perfilOpen, setPerfilOpen] = useState(false);
   // Se guarda solo el ID, no una copia del objeto — `conductores` ya
   // está suscrito a Realtime (useConductoresPublicos.js), así que
   // derivar el conductor actual de ahí en cada render (en vez de
@@ -404,22 +406,41 @@ export default function HomePage() {
       <header className="tz-header">
         <div className="tz-header-row">
           <div className="tz-header-side tz-header-side-left">
-            <button
-              className="tz-header-btn"
-              onClick={() => setAccesoConductorOpen(true)}
-              aria-label="Acceso de conductor"
-            >
-              <Car size={19} />
-              <span className="tz-header-btn-label">Conductores</span>
-            </button>
-            <button
-              className="tz-header-btn"
-              onClick={() => setAccesoRecolectorOpen(true)}
-              aria-label="Acceso de recolector"
-            >
-              <Users size={19} />
-              <span className="tz-header-btn-label">Recolectores</span>
-            </button>
+            {/* Con sesión de pasajero: solo su perfil y sus Mensajes (los
+                accesos de conductor/recolector son para entrar). */}
+            {usuario && esPasajero ? (
+              <>
+                <button className="tz-header-btn" onClick={() => setPerfilOpen(true)} aria-label="Editar perfil" title="Editar perfil">
+                  <Pencil size={19} />
+                  <span className="tz-header-btn-label">Editar Perfil</span>
+                </button>
+                <BotonMensajes
+                  usuarioId={usuario.id}
+                  // El chat con su(s) conductor(es) en contacto también en Mensajes.
+                  conductores={chatsActivos.map((id) => conductores.find((c) => c.id === id) ?? { id })}
+                  onAbrirConductor={(id) => abrirChat(id, { auto: false })}
+                />
+              </>
+            ) : (
+              <>
+                <button
+                  className="tz-header-btn"
+                  onClick={() => setAccesoConductorOpen(true)}
+                  aria-label="Acceso de conductor"
+                >
+                  <Car size={19} />
+                  <span className="tz-header-btn-label">Conductores</span>
+                </button>
+                <button
+                  className="tz-header-btn"
+                  onClick={() => setAccesoRecolectorOpen(true)}
+                  aria-label="Acceso de recolector"
+                >
+                  <Users size={19} />
+                  <span className="tz-header-btn-label">Recolectores</span>
+                </button>
+              </>
+            )}
           </div>
 
           <div className="tz-header-center">
@@ -442,17 +463,10 @@ export default function HomePage() {
                 <span className="tz-header-btn-label">Login</span>
               </button>
             )}
-            {usuario && esPasajero && (
-              <BotonMensajes
-                usuarioId={usuario.id}
-                // El chat con su(s) conductor(es) en contacto también en Mensajes.
-                conductores={chatsActivos.map((id) => conductores.find((c) => c.id === id) ?? { id })}
-                onAbrirConductor={(id) => abrirChat(id, { auto: false })}
-              />
-            )}
           </div>
         </div>
       </header>
+      {perfilOpen && <PerfilPasajeroModal onClose={() => setPerfilOpen(false)} />}
       {/* Banda con brillo bajo la cabecera, detrás del filtro de localidad
          (igual que la barra de filtros de Caja Tonazo): solo fondo. */}
       <div className="tz-banda-filtros" aria-hidden="true" />

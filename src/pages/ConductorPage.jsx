@@ -491,6 +491,8 @@ export default function ConductorPage() {
           <PanelesConductor
             panel={panel}
             onCambiar={setPanel}
+            // Repartiendo: la pantalla queda en Delivery hasta terminar.
+            fijo={repartiendo ? "delivery" : null}
             delivery={
               <PanelDelivery
                 conductor={conductor}

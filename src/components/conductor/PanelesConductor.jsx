@@ -12,11 +12,13 @@ import { useEffect, useRef, useState } from "react";
 // necesita tu servicio!") quedaban encerrados en la columna. Quieto, la
 // cara visible no lleva ninguna transformación. En reposo la transformación
 // del cubo + la de la cara dan la identidad, así que el cambio no se nota.
+// `fijo` ("delivery" mientras reparte): el cubo gira solo a esa cara y queda
+// ahí — sin deslizar ni la otra pestaña — hasta que se libera.
 const UMBRAL_ARRASTRE = 12; // px antes de decidir que es un deslizamiento horizontal
 const DURACION_MS = 600;
 const ANGULO = { viajes: 0, delivery: -90 };
 
-export default function PanelesConductor({ panel, onCambiar, viajes, delivery }) {
+export default function PanelesConductor({ panel, onCambiar, viajes, delivery, fijo = null }) {
   const contRef = useRef(null);
   const [ancho, setAncho] = useState(360);
   const [arrastre, setArrastre] = useState(null); // px mientras se desliza
@@ -53,7 +55,14 @@ export default function PanelesConductor({ panel, onCambiar, viajes, delivery })
     finAnim.current = setTimeout(() => setAnim(null), DURACION_MS + 80);
   };
 
+  // Al fijarse (empezó a repartir) gira solo hasta esa cara.
+  useEffect(() => {
+    if (fijo && panel !== fijo) ir(fijo, ANGULO[panel] ?? 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fijo]);
+
   const onPointerDown = (e) => {
+    if (fijo) return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
     // Arrastrar un mapa, escribir o elegir en una lista no gira el cubo.
     if (e.target.closest?.(".leaflet-container, input, textarea, select, .tz-dropdown")) return;
@@ -108,6 +117,8 @@ export default function PanelesConductor({ panel, onCambiar, viajes, delivery })
             role="tab"
             aria-selected={panel === id}
             className={panel === id ? "is-activa" : ""}
+            disabled={!!fijo && id !== fijo}
+            title={fijo && id !== fijo ? "Termina tus repartos para volver a Viajes" : undefined}
             onClick={() => panel !== id && ir(id, reposo)}
           >
             {etiqueta}

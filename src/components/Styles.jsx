@@ -4124,8 +4124,9 @@ export default function Styles() {
         padding: 0;
         flex-shrink: 0;
         border-radius: 999px;
-        border: 1px solid rgba(255,47,158,0.4);
-        background: rgba(255,47,158,0.1);
+        border: 1.5px solid #ff6ac1;
+        background: rgba(255,47,158,0.32);
+        box-shadow: 0 0 14px rgba(255,47,158,0.5);
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
         color: var(--pink);
@@ -4133,12 +4134,12 @@ export default function Styles() {
         transition: background 0.15s, box-shadow 0.15s;
       }
       .tz-chat-tonazo-btn:hover:not(:disabled) { background: rgba(255,47,158,0.2); box-shadow: 0 0 12px rgba(255,47,158,0.3); }
-      .tz-chat-tonazo-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .tz-chat-tonazo-btn:disabled { opacity: 0.75; box-shadow: none; cursor: not-allowed; }
       /* Sin destino (Lógica de Negocio) — a propósito NO usa el
          atributo disabled nativo (ver el comentario en ChatWindow.jsx):
          se ve apagado igual, pero sigue recibiendo el click para poder
          mostrar el toast de aviso. */
-      .tz-chat-tonazo-btn-bloqueado { opacity: 0.5; cursor: pointer; }
+      .tz-chat-tonazo-btn-bloqueado { opacity: 0.75; box-shadow: none; cursor: pointer; }
       .tz-chat-tonazo-logo { width: 48px; height: 32px; object-fit: contain; border-radius: 4px; }
       .tz-chat-tonazo-cooldown {
         font-family: 'Rajdhani', sans-serif;
@@ -4243,14 +4244,16 @@ export default function Styles() {
         align-items: center;
         justify-content: center;
         border-radius: 12px;
-        border: 1px solid rgba(255,47,158,0.45);
-        background: rgba(255,47,158,0.14);
-        color: var(--pink);
+        border: 1px solid #ff6ac1;
+        background: linear-gradient(135deg, #ff2f9e, #ff6ac1);
+        color: #ffffff;
         cursor: pointer;
-        transition: background 0.15s, box-shadow 0.15s;
+        box-shadow: 0 0 12px rgba(255,47,158,0.55);
+        transition: filter 0.15s, box-shadow 0.15s;
       }
-      .tz-chat-send-btn:hover:not(:disabled) { background: rgba(255,47,158,0.22); box-shadow: 0 0 12px rgba(255,47,158,0.35); }
-      .tz-chat-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+      .tz-chat-send-btn:hover:not(:disabled) { filter: brightness(1.1); box-shadow: 0 0 16px rgba(255,47,158,0.75); }
+      /* Sin texto: el mismo botón, apenas más tenue (antes quedaba casi negro). */
+      .tz-chat-send-btn:disabled { opacity: 0.7; box-shadow: none; cursor: not-allowed; }
       /* Nombre de un hilo en la bandeja del Conductor — a propósito NO
          usa .tz-history-row-method (esa sí lleva uppercase, es correcta
          para lo demás que la usa) para no forzar mayúsculas acá. */
@@ -7089,6 +7092,10 @@ export default function Styles() {
         min-width: 0;   /* sin esto el input no cede ancho y el botón lo aplasta */
       }
       .tz-entrega-chat-input .tz-scan-btn {
+        background: linear-gradient(135deg, #ff2f9e, #ff6ac1);
+        border-color: #ff6ac1;
+        color: #ffffff;
+        box-shadow: 0 0 12px rgba(255,47,158,0.55);
         flex: 0 0 42px;
         width: 42px;
         height: 42px;
@@ -7293,6 +7300,26 @@ export default function Styles() {
         to { max-height: 90px; opacity: 1; transform: none; }
       }
       .tz-chatent-estado { color: var(--green); font-weight: 700; }
+      .tz-entrega-chat-input .tz-scan-btn:disabled { opacity: 0.7; box-shadow: none; }
+      .tz-paneles-tabs button:disabled { opacity: 0.45; cursor: not-allowed; }
+      /* "Mi perfil" del pasajero. */
+      .tz-perfil-pasajero { max-width: 380px; text-align: center; }
+      .tz-perfil-pasajero-foto {
+        position: relative; width: 104px; height: 104px; margin: 6px auto 14px; padding: 0;
+        border-radius: 50%; border: 2px solid var(--cyan); background: rgba(43,232,255,0.1);
+        color: var(--cyan); font-size: 40px; font-weight: 800; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; box-shadow: 0 0 16px rgba(43,232,255,0.35);
+      }
+      .tz-perfil-pasajero-foto img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+      .tz-perfil-pasajero-camara {
+        position: absolute; right: 2px; bottom: 2px; width: 30px; height: 30px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--cyan); color: #04121a; border: 2px solid var(--bg-1, #0b0e14);
+      }
+      .tz-perfil-pasajero-form { text-align: left; }
+      .tz-perfil-pasajero-fila { display: flex; gap: 8px; }
+      .tz-perfil-pasajero-fila .tz-text-input { flex: 1; min-width: 0; margin: 0; }
+      .tz-perfil-pasajero-fila .tz-scan-btn { flex: 0 0 46px; width: 46px; padding: 0; margin: 0; }
       /* Entrega en curso: botones que abren su chat en Mensajes. */
       .tz-entrega-chats-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
       .tz-entrega-chats-btns > button { display: inline-flex; }
