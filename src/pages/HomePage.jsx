@@ -14,7 +14,7 @@ import {
   ESTADO_OFERTA_EN_TRANSITO,
 } from "../hooks/useChatMensajes";
 import { TIPO_USUARIO_PASAJERO, ESTADO_CONDUCTOR_ACTIVO } from "../lib/taxiEnums";
-import { useActividadChatsPasajero } from "../hooks/useActividadChatsPasajero";
+import { useActividadChatsPasajero, useConductoresDeMisChats } from "../hooks/useActividadChatsPasajero";
 
 // Chats a la vez con conductores elegidos en el Radar, y cuánto tiempo sin
 // mensajes (de ningún lado) hasta que el conductor deja de estar en
@@ -174,17 +174,23 @@ export default function HomePage() {
   // INACTIVIDAD_CHAT_MS. Apenas el pasajero acepta la oferta de uno, solo
   // queda ese (los demás pierden el botón).
   const [seleccionados, setSeleccionados] = useState({}); // { conductorId: ms en que se eligió }
-  const { ultimaActividad, conductorAcordadoId } = useActividadChatsPasajero(esPasajero ? usuario?.id : null);
+  const { ultimaActividad, ultimos, noLeidos, viajeTerminado, conductorAcordadoId } = useActividadChatsPasajero(
+    esPasajero ? usuario?.id : null
+  );
   const [ahora, setAhora] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setAhora(Date.now()), 15000);
     return () => clearInterval(t);
   }, []);
   const actividadDe = (id) => Math.max(seleccionados[id] || 0, ultimaActividad[id] || 0);
+  // Viaje terminado (finalizado o cancelado) con ese conductor: se va su
+  // botón para contactarlo — hasta que lo vuelva a elegir en el Radar. El
+  // chat sigue en Mensajes (24 h).
+  const terminoCon = (id) => viajeTerminado[id] && !(seleccionados[id] > viajeTerminado[id]);
   const chatsActivos = conductorAcordadoId
     ? [conductorAcordadoId]
     : [...new Set([...Object.keys(seleccionados), ...Object.keys(ultimaActividad)])]
-        .filter((id) => ahora - actividadDe(id) < INACTIVIDAD_CHAT_MS)
+        .filter((id) => ahora - actividadDe(id) < INACTIVIDAD_CHAT_MS && !terminoCon(id))
         .sort((a, b) => actividadDe(b) - actividadDe(a))
         .slice(0, MAX_CHATS_SIMULTANEOS);
 
@@ -273,7 +279,29 @@ export default function HomePage() {
     valor: esPasajero ? usuario?.id : null,
     chatAbierto: !!chatConductorId,
   });
-  const chatConductor = chatConductorId ? conductores.find((c) => c.id === chatConductorId) ?? null : null;
+  // Conductores de sus chats (24 h) con nombre y foto aunque ya no estén
+  // conectados (la lista pública solo trae a los activos).
+  const idsChats = Object.keys(ultimaActividad).sort().join(",");
+  const conductoresDeChats = useConductoresDeMisChats(esPasajero, idsChats);
+  const conductorPorId = (id) => conductores.find((c) => c.id === id) ?? conductoresDeChats[id] ?? null;
+  const chatConductor = chatConductorId ? conductorPorId(chatConductorId) : null;
+  // Mensajes del pasajero: todos sus chats de las últimas 24 h, el más
+  // reciente arriba, con el último mensaje, la hora y los no leídos.
+  const chatsMensajes = Object.keys(ultimaActividad)
+    .sort((a, b) => ultimaActividad[b] - ultimaActividad[a])
+    .map((id) => ({
+      ...(conductorPorId(id) ?? { id }),
+      ultimo: ultimos[id] ?? null,
+      noLeidos: noLeidos[id] || 0,
+      enViaje: id === conductorAcordadoId,
+      terminado: !!terminoCon(id),
+    }));
+  // Desde Mensajes se abre cualquier chat de las últimas 24 h (uno de un
+  // viaje ya terminado queda de solo lectura dentro de ChatWindow).
+  const verChat = (id) => {
+    setChatAuto(false);
+    setChatConductorId(id);
+  };
 
   // Persistencia de sesión (recuperación ante recargas o apagados): sin
   // esto, recargar la página perdía el viaje activo del lado del
@@ -414,12 +442,7 @@ export default function HomePage() {
                   <Pencil size={19} />
                   <span className="tz-header-btn-label">Editar Perfil</span>
                 </button>
-                <BotonMensajes
-                  usuarioId={usuario.id}
-                  // El chat con su(s) conductor(es) en contacto también en Mensajes.
-                  conductores={chatsActivos.map((id) => conductores.find((c) => c.id === id) ?? { id })}
-                  onAbrirConductor={(id) => abrirChat(id, { auto: false })}
-                />
+                <BotonMensajes usuarioId={usuario.id} conductores={chatsMensajes} onAbrirConductor={verChat} />
               </>
             ) : (
               <>

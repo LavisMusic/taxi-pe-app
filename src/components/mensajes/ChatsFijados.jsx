@@ -22,8 +22,12 @@ function horaCorta(iso) {
     : d.toLocaleDateString("es-PE", { day: "2-digit", month: "2-digit" });
 }
 
-export function FilasChatsFijados({ canales, onAbrir }) {
-  return Object.entries(INFO_CANAL).map(([canal, info]) => {
+// `soloCanales`: limita los fijados que se muestran (al pasajero, solo
+// "Taxi PE": en su Mensajes no aparece ningún negocio).
+export function FilasChatsFijados({ canales, onAbrir, soloCanales = null }) {
+  return Object.entries(INFO_CANAL)
+    .filter(([canal]) => !soloCanales || soloCanales.includes(canal))
+    .map(([canal, info]) => {
     const datos = canales[canal];
     const ultimo = datos?.ultimo;
     return (

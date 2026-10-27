@@ -4114,33 +4114,36 @@ export default function Styles() {
       .tz-chat-tonazo-row > * { pointer-events: auto; }
       /* Espacio al final de los mensajes para que el botón flotante no
          tape el último. */
-      .tz-chat-messages-con-tonazo { padding-bottom: 66px; }
+      .tz-chat-messages-con-tonazo { padding-bottom: 74px; }
+      /* Solo el logo (sin cuadro), 20 px más grande que antes; un brillo
+         rosa propio para que se lea sobre cualquier fondo del chat. */
       .tz-chat-tonazo-btn {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 72px;
-        height: 45px;
         padding: 0;
         flex-shrink: 0;
-        border-radius: 999px;
-        border: 1.5px solid #ff6ac1;
-        background: rgba(255,47,158,0.32);
-        box-shadow: 0 0 14px rgba(255,47,158,0.5);
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
+        border: none;
+        background: none;
+        box-shadow: none;
         color: var(--pink);
         cursor: pointer;
-        transition: background 0.15s, box-shadow 0.15s;
+        transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), filter 0.2s;
       }
-      .tz-chat-tonazo-btn:hover:not(:disabled) { background: rgba(255,47,158,0.2); box-shadow: 0 0 12px rgba(255,47,158,0.3); }
-      .tz-chat-tonazo-btn:disabled { opacity: 0.75; box-shadow: none; cursor: not-allowed; }
+      .tz-chat-tonazo-btn:hover:not(:disabled) { transform: scale(1.08); filter: brightness(1.12); }
+      .tz-chat-tonazo-btn:active:not(:disabled) { transform: scale(0.94); }
+      .tz-chat-tonazo-btn:disabled { opacity: 0.6; cursor: not-allowed; }
       /* Sin destino (Lógica de Negocio) — a propósito NO usa el
          atributo disabled nativo (ver el comentario en ChatWindow.jsx):
          se ve apagado igual, pero sigue recibiendo el click para poder
          mostrar el toast de aviso. */
-      .tz-chat-tonazo-btn-bloqueado { opacity: 0.75; box-shadow: none; cursor: pointer; }
-      .tz-chat-tonazo-logo { width: 48px; height: 32px; object-fit: contain; border-radius: 4px; }
+      .tz-chat-tonazo-btn-bloqueado { opacity: 0.6; cursor: pointer; }
+      .tz-chat-tonazo-logo {
+        width: 68px;
+        height: 52px;
+        object-fit: contain;
+        filter: drop-shadow(0 0 8px rgba(255,47,158,0.75)) drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+      }
       .tz-chat-tonazo-cooldown {
         font-family: 'Rajdhani', sans-serif;
         font-size: 11px;
@@ -7273,9 +7276,9 @@ export default function Styles() {
       /* "Tus entregas" (conductor en modo delivery): la tienda y, agrupado
          debajo (se despliega solo), el cliente; un brillo verde recorre el
          borde de los dos juntos — mismo diseño que "Tus pedidos" en Caja. */
-      .tz-chatent-row { position: relative; display: flex; flex-direction: column; gap: 6px; border-radius: 14px; overflow: visible !important; }
-      .tz-chatent-row.is-activo { box-shadow: 0 0 14px rgba(57,255,176,0.25) !important; }
-      .tz-chatent-row.is-activo::before {
+      .tz-chatent-row, .tz-chatpas-row { position: relative; display: flex; flex-direction: column; gap: 6px; border-radius: 14px; overflow: visible !important; }
+      .tz-chatent-row.is-activo, .tz-chatpas-row.is-activo { box-shadow: 0 0 14px rgba(57,255,176,0.25) !important; }
+      .tz-chatent-row.is-activo::before, .tz-chatpas-row.is-activo::before {
         content: "";
         position: absolute;
         inset: -1px;

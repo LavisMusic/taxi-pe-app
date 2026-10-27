@@ -1,56 +1,44 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { MessageCircle, X, Car } from "lucide-react";
 import { useMensajesPlataforma } from "../../hooks/useMensajesPlataforma";
 import { FilasChatsFijados, ChatFijadoAbierto, InterruptorAvisos } from "./ChatsFijados";
 import AvisosDispositivo from "./AvisosDispositivo";
 import { useAbrirMensajesDesdeAviso } from "../../hooks/useAbrirMensajesDesdeAviso";
-import { supabase } from "../../supabaseClient";
 
-// Mensajes del conductor que el pasajero todavía no leyó, por conductor
-// (chat_mensajes.leido lo marca el chat del viaje al abrirse).
-const SONDEO_MS = 8000;
-function useNoLeidosDeConductores(pasajeroId) {
-  const [porConductor, setPorConductor] = useState({});
-  const cargar = useCallback(async () => {
-    if (!pasajeroId) return;
-    const { data, error } = await supabase
-      .from("chat_mensajes")
-      .select("conductor_id")
-      .eq("pasajero_id", pasajeroId)
-      .eq("remitente", "conductor")
-      .eq("leido", false);
-    if (error) return;
-    const m = {};
-    for (const f of data ?? []) m[f.conductor_id] = (m[f.conductor_id] || 0) + 1;
-    setPorConductor(m);
-  }, [pasajeroId]);
-  useEffect(() => {
-    if (!pasajeroId) return undefined;
-    cargar();
-    const t = setInterval(() => {
-      if (document.visibilityState === "visible") cargar();
-    }, SONDEO_MS);
-    document.addEventListener("visibilitychange", cargar);
-    return () => {
-      clearInterval(t);
-      document.removeEventListener("visibilitychange", cargar);
-    };
-  }, [pasajeroId, cargar]);
-  return porConductor;
+const horaCorta = (ms) => {
+  const d = new Date(ms);
+  return d.toDateString() === new Date().toDateString()
+    ? d.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })
+    : d.toLocaleDateString("es-PE", { day: "2-digit", month: "2-digit" });
+};
+// Vista previa del último mensaje de un chat de viaje.
+function previa(c) {
+  const m = c.ultimo;
+  if (!m) return "Toca para abrir el chat";
+  if (m.tipo === "oferta") return `💰 ${m.mensaje || "Oferta del viaje"}`;
+  if (m.tipo === "senas") return "👋 Hiciste señas";
+  return `${m.remitente === "pasajero" ? "Tú: " : ""}${m.mensaje || ""}`;
 }
 
 // Botón "Mensajes" de la cabecera (pasajero y recolector): contador de no
-// leídos y el modal con los chats fijados "Taxi PE" y "Tonazo" (solo
-// lectura) y, para el pasajero, el chat con su(s) conductor(es) actual(es)
-// (`conductores`: [{ id, nombre, foto_url, estado }]; tocar uno cierra
-// Mensajes y abre ese chat con `onAbrirConductor`). Nunca muestra chats de
-// Caja Tonazo. El conductor ve los fijados dentro de su bandeja de chats.
+// leídos y el modal con los chats fijados (solo lectura) y, para el
+// pasajero, sus chats con conductores de las últimas 24 h, con el estilo de
+// Mensajes del cliente en Caja (foto, último mensaje, hora y no leídos;
+// `conductores`: [{ id, nombre, foto_url, ultimo, noLeidos, enViaje,
+// terminado }]; tocar uno cierra Mensajes y abre ese chat con
+// `onAbrirConductor`). Al pasajero no se le muestra ningún negocio: solo el
+// fijado "Taxi PE" y sus conductores. El conductor ve los fijados dentro de
+// su bandeja de chats.
 export default function BotonMensajes({ usuarioId, conductores = [], onAbrirConductor = null }) {
   const datos = useMensajesPlataforma(usuarioId);
-  // Solo el pasajero (el que tiene chats con conductores).
-  const noLeidosConductor = useNoLeidosDeConductores(onAbrirConductor ? usuarioId : null);
-  const total = datos.totalNoLeidos + Object.values(noLeidosConductor).reduce((s, n) => s + n, 0);
+  const esPasajero = !!onAbrirConductor;
+  const canalesVisibles = esPasajero ? ["taxipe"] : null;
+  const noLeidosFijados = (canalesVisibles ?? Object.keys(datos.canales)).reduce(
+    (s, c) => s + (datos.canales[c]?.noLeidos || 0),
+    0
+  );
+  const total = noLeidosFijados + conductores.reduce((s, c) => s + (c.noLeidos || 0), 0);
   const [abierto, setAbierto] = useState(false);
   const [canal, setCanal] = useState(null);
   // Tocar una notificación emergente abre Mensajes en ese chat.
@@ -100,12 +88,12 @@ export default function BotonMensajes({ usuarioId, conductores = [], onAbrirCond
                   <InterruptorAvisos activos={datos.avisosActivos} onCambiar={datos.cambiarAvisos} />
                   <AvisosDispositivo />
                   <ul className="tz-history-rows" style={{ marginTop: 10 }}>
-                    <FilasChatsFijados canales={datos.canales} onAbrir={setCanal} />
+                    <FilasChatsFijados canales={datos.canales} onAbrir={setCanal} soloCanales={canalesVisibles} />
                     {onAbrirConductor && conductores.length > 0 && (
                       <>
                         <li className="tz-chatneg-seccion">{conductores.length === 1 ? "Tu conductor" : "Tus conductores"}</li>
                         {conductores.map((c) => (
-                          <li key={c.id} className="tz-history-row tz-chatfijo-row">
+                          <li key={c.id} className={`tz-history-row tz-chatfijo-row tz-chatpas-row ${c.enViaje ? "is-activo" : ""}`}>
                             <button
                               type="button"
                               className="tz-chatfijo-btn"
@@ -122,10 +110,20 @@ export default function BotonMensajes({ usuarioId, conductores = [], onAbrirCond
                                 </span>
                               )}
                               <span className="tz-chatfijo-texto">
-                                <span className="tz-chatfijo-nombre">{c.nombre || "Conductor"}</span>
-                                <span className="tz-chatfijo-preview">Toca para abrir el chat del viaje</span>
+                                <span className="tz-chatfijo-nombre">
+                                  {c.nombre || "Conductor"}
+                                  {c.enViaje ? (
+                                    <span className="tz-chatneg-estado is-en-linea">Viaje en curso</span>
+                                  ) : c.terminado ? (
+                                    <span className="tz-chatneg-estado">Viaje terminado</span>
+                                  ) : null}
+                                </span>
+                                <span className="tz-chatfijo-preview">{previa(c)}</span>
                               </span>
-                              {noLeidosConductor[c.id] > 0 && <span className="tz-chatfijo-badge">{noLeidosConductor[c.id] > 9 ? "+9" : noLeidosConductor[c.id]}</span>}
+                              <span className="tz-chatfijo-meta">
+                                {c.ultimo && <span className="tz-chatfijo-hora">{horaCorta(c.ultimo.created_at)}</span>}
+                                {c.noLeidos > 0 && <span className="tz-chatfijo-badge">{c.noLeidos > 9 ? "+9" : c.noLeidos}</span>}
+                              </span>
                             </button>
                           </li>
                         ))}
