@@ -405,7 +405,7 @@ export default function ConductorPage() {
                     unreadCount +
                     plataforma.totalNoLeidos +
                     Object.values(repartos.noLeidos || {}).reduce((s, x) => s + (x.total || 0), 0);
-                  if (total > 0) return <span className="tz-header-btn-badge">{total > 99 ? "99+" : total}</span>;
+                  if (total > 0) return <span className="tz-header-btn-badge">{total > 9 ? "+9" : total}</span>;
                   return repartos.entregasActivas.length > 0 ? (
                     <span className="tz-header-btn-badge is-punto" aria-label="Tienes un reparto en curso" />
                   ) : null;

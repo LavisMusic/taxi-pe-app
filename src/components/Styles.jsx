@@ -5037,10 +5037,14 @@ export default function Styles() {
       /* react-easy-crop se posiciona absolute llenando el contenedor
          padre — necesita un alto fijo y position:relative explícitos,
          si no colapsa a 0px. */
+      /* Cuadrado (como el recorte): con "cover" el lado corto de la foto
+         coincide con el cuadro de recorte y con la silueta guía. */
       .tz-cropper-container {
         position: relative;
-        width: 100%;
-        height: 280px;
+        width: min(100%, 320px);
+        aspect-ratio: 1 / 1;
+        margin-left: auto !important;
+        margin-right: auto !important;
         border-radius: 14px;
         overflow: hidden;
         background: #000;

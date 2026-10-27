@@ -76,7 +76,7 @@ export default function BotonMensajes({ usuarioId, conductores = [], onAbrirCond
       >
         <MessageCircle size={19} />
         <span className="tz-header-btn-label">Mensajes</span>
-        {total > 0 && <span className="tz-header-btn-badge">{total > 99 ? "99+" : total}</span>}
+        {total > 0 && <span className="tz-header-btn-badge">{total > 9 ? "+9" : total}</span>}
       </button>
       {abierto &&
         createPortal(
@@ -125,7 +125,7 @@ export default function BotonMensajes({ usuarioId, conductores = [], onAbrirCond
                                 <span className="tz-chatfijo-nombre">{c.nombre || "Conductor"}</span>
                                 <span className="tz-chatfijo-preview">Toca para abrir el chat del viaje</span>
                               </span>
-                              {noLeidosConductor[c.id] > 0 && <span className="tz-chatfijo-badge">{noLeidosConductor[c.id]}</span>}
+                              {noLeidosConductor[c.id] > 0 && <span className="tz-chatfijo-badge">{noLeidosConductor[c.id] > 9 ? "+9" : noLeidosConductor[c.id]}</span>}
                             </button>
                           </li>
                         ))}

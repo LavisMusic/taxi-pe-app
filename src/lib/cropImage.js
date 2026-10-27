@@ -12,12 +12,17 @@ function loadImage(url) {
   });
 }
 
-export async function getCroppedImageBlob(imageSrc, croppedAreaPixels) {
+// `maxLado`: tope del lado del recorte — una foto de 4000 px daba un
+// recorte de 4000×4000 (archivo pesado y la IA de "Mejorar" muy lenta);
+// para una foto de perfil 1024 px sobra.
+export async function getCroppedImageBlob(imageSrc, croppedAreaPixels, maxLado = 1024) {
   const image = await loadImage(imageSrc);
+  const escala = Math.min(1, maxLado / Math.max(croppedAreaPixels.width, croppedAreaPixels.height));
   const canvas = document.createElement("canvas");
-  canvas.width = croppedAreaPixels.width;
-  canvas.height = croppedAreaPixels.height;
+  canvas.width = Math.round(croppedAreaPixels.width * escala);
+  canvas.height = Math.round(croppedAreaPixels.height * escala);
   const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingQuality = "high";
 
   ctx.drawImage(
     image,
@@ -27,8 +32,8 @@ export async function getCroppedImageBlob(imageSrc, croppedAreaPixels) {
     croppedAreaPixels.height,
     0,
     0,
-    croppedAreaPixels.width,
-    croppedAreaPixels.height
+    canvas.width,
+    canvas.height
   );
 
   return new Promise((resolve, reject) => {

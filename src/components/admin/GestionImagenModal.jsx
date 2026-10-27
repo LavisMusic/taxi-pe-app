@@ -1,9 +1,33 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Cropper from "react-easy-crop";
 import { Upload, Camera, Wand2, Check, X, Loader2, Image as ImageIcon, Crop } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { getCroppedImageBlob, reducirImagenEvidencia } from "../../lib/cropImage";
+
+// "Mejorar con IA" rápido: modelo liviano (cuantizado; en GPU, el de media
+// precisión si el navegador tiene WebGPU) y la imagen reducida a 1024 px
+// antes de procesarla — antes iba el modelo completo sobre la foto entera.
+const CONFIG_IA = {
+  model: typeof navigator !== "undefined" && navigator.gpu ? "isnet_fp16" : "isnet_quint8",
+  device: typeof navigator !== "undefined" && navigator.gpu ? "gpu" : "cpu",
+  output: { format: "image/png" },
+};
+const LADO_IA = 1024;
+async function reducirParaIa(blob) {
+  const bitmap = await createImageBitmap(blob);
+  const escala = Math.min(1, LADO_IA / Math.max(bitmap.width, bitmap.height));
+  if (escala === 1) {
+    bitmap.close?.();
+    return blob;
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * escala);
+  canvas.height = Math.round(bitmap.height * escala);
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close?.();
+  return new Promise((res) => canvas.toBlob((b) => res(b || blob), "image/png"));
+}
 import { BUCKET_PRIVADO, esImagenPrivada, useUrlVisible, valorPrivado } from "../../lib/imagenesPrivadas";
 
 // Restaura el modal "Gestión de Imagen" de la caja registradora vieja
@@ -80,6 +104,16 @@ export default function GestionImagenModal({
   const [aiError, setAiError] = useState("");
   const [aiPreviewBlob, setAiPreviewBlob] = useState(null);
   const [aiPreviewUrl, setAiPreviewUrl] = useState("");
+
+  // Foto de perfil: el modelo de la IA se empieza a bajar al abrir la
+  // ventana (queda en caché del navegador), así "Mejorar con IA" no espera
+  // la descarga entera recién al tocarlo.
+  useEffect(() => {
+    if (!isProfilePic) return;
+    import("@imgly/background-removal")
+      .then(({ preload }) => preload?.(CONFIG_IA))
+      .catch(() => {});
+  }, [isProfilePic]);
 
   const discardAiPreview = () => {
     if (aiPreviewUrl) URL.revokeObjectURL(aiPreviewUrl);
@@ -189,7 +223,7 @@ export default function GestionImagenModal({
       }
 
       const { removeBackground } = await import("@imgly/background-removal");
-      const resultBlob = await removeBackground(source);
+      const resultBlob = await removeBackground(await reducirParaIa(source), CONFIG_IA);
 
       setAiPreviewBlob(resultBlob);
       setAiPreviewUrl(URL.createObjectURL(resultBlob));
@@ -226,6 +260,10 @@ export default function GestionImagenModal({
                 crop={crop}
                 zoom={zoom}
                 aspect={1}
+                // "cover": la foto siempre llena el cuadro de recorte (antes,
+                // con una foto muy alta o muy ancha el cuadro se achicaba al
+                // lado corto de la foto y no coincidía con la silueta guía).
+                objectFit="cover"
                 onCropChange={setCrop}
                 onZoomChange={setZoom}
                 onCropComplete={(_, areaPixels) => setCroppedAreaPixels(areaPixels)}

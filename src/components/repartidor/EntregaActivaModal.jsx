@@ -87,8 +87,9 @@ function Chat({ entregaId, conductorId, hilo }) {
             if (e.target.value.trim()) avisar();
           }}
           onKeyDown={(e) => e.key === "Enter" && onEnviar()}
+          autoFocus
         />
-        <button className="tz-scan-btn tz-payment-save" onClick={onEnviar} disabled={enviando || !texto.trim()}>
+        <button className="tz-scan-btn tz-payment-save" onMouseDown={(e) => e.preventDefault()} onClick={onEnviar} disabled={enviando || !texto.trim()}>
           {enviando ? <Loader2 size={16} className="tz-spin" /> : <Send size={16} />}
         </button>
       </div>
@@ -168,7 +169,7 @@ export default function EntregaActivaModal({ entrega, conductorId, onClose, avan
   const onSinCamara = (m) => {
     setEscaneando(false);
     setPinForzado(true);
-    setMsg(`${m} Ingresá el PIN que el cliente recibió por WhatsApp.`);
+    setMsg(`${m} Pídele al cliente el PIN que aparece en su app.`);
   };
 
   const onConfirmarPin = async () => {
@@ -309,7 +310,7 @@ export default function EntregaActivaModal({ entrega, conductorId, onClose, avan
               style={{ position: "relative" }}
             >
               <Icono size={14} /> {label}
-              {noLeidos?.[hilo] > 0 && <span className="tz-badge-dot">{noLeidos[hilo] > 9 ? "9+" : noLeidos[hilo]}</span>}
+              {noLeidos?.[hilo] > 0 && <span className="tz-badge-dot">{noLeidos[hilo] > 9 ? "+9" : noLeidos[hilo]}</span>}
             </button>
           ))}
         </div>

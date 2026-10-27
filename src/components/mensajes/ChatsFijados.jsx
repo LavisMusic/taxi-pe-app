@@ -40,7 +40,7 @@ export function FilasChatsFijados({ canales, onAbrir }) {
           </span>
           <span className="tz-chatfijo-meta">
             {ultimo && <span className="tz-chatfijo-hora">{horaCorta(ultimo.programado_para)}</span>}
-            {datos?.noLeidos > 0 && <span className="tz-chatfijo-badge">{datos.noLeidos}</span>}
+            {datos?.noLeidos > 0 && <span className="tz-chatfijo-badge">{datos.noLeidos > 9 ? "+9" : datos.noLeidos}</span>}
           </span>
         </button>
       </li>

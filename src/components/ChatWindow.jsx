@@ -1718,10 +1718,12 @@ export default function ChatWindow({
               placeholder="Escribe un mensaje…"
               value={texto}
               onChange={handleChange}
+              autoFocus
             />
             <button
               type="submit"
               className="tz-chat-send-btn"
+              onMouseDown={(e) => e.preventDefault()}
               disabled={!texto.trim() || bloqueado || enviando}
               aria-label="Enviar"
             >

@@ -283,7 +283,7 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
                           <span className="tz-chatent-estado">{ESTADO_ENTREGA[e.estado] || e.estado}</span> · Pedido de {e.cliente_nombre || "cliente"}
                         </span>
                       </span>
-                      {n.cajero_conductor > 0 && <span className="tz-chatfijo-badge">{n.cajero_conductor}</span>}
+                      {n.cajero_conductor > 0 && <span className="tz-chatfijo-badge">{n.cajero_conductor > 9 ? "+9" : n.cajero_conductor}</span>}
                     </button>
                     <div className="tz-chatent-despliegue">
                       <button
@@ -296,7 +296,7 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
                           <span className="tz-chatfijo-nombre">{e.cliente_nombre || "Cliente"}</span>
                           <span className="tz-chatfijo-preview">Cliente · {e.direccion_entrega || "Sin dirección"}</span>
                         </span>
-                        {n.cliente_conductor > 0 && <span className="tz-chatfijo-badge">{n.cliente_conductor}</span>}
+                        {n.cliente_conductor > 0 && <span className="tz-chatfijo-badge">{n.cliente_conductor > 9 ? "+9" : n.cliente_conductor}</span>}
                       </button>
                     </div>
                   </li>
@@ -339,7 +339,7 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
                   </span>
                   <span className="tz-chatfijo-meta">
                     <span className="tz-chatfijo-hora">{horaCorta(h?.ultimo?.created_at)}</span>
-                    {h?.noLeidos > 0 && <span className="tz-chatfijo-badge">{h.noLeidos}</span>}
+                    {h?.noLeidos > 0 && <span className="tz-chatfijo-badge">{h.noLeidos > 9 ? "+9" : h.noLeidos}</span>}
                   </span>
                 </button>
                 {pid && !enCurso && (
