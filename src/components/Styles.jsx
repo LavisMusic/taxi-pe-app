@@ -4132,17 +4132,18 @@ export default function Styles() {
       }
       .tz-chat-tonazo-btn:hover:not(:disabled) { transform: scale(1.08); filter: brightness(1.12); }
       .tz-chat-tonazo-btn:active:not(:disabled) { transform: scale(0.94); }
-      .tz-chat-tonazo-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+      /* En espera entre avisos: apenas más tenue, nunca oscuro. */
+      .tz-chat-tonazo-btn:disabled { opacity: 0.85; cursor: not-allowed; }
       /* Sin destino (Lógica de Negocio) — a propósito NO usa el
          atributo disabled nativo (ver el comentario en ChatWindow.jsx):
-         se ve apagado igual, pero sigue recibiendo el click para poder
-         mostrar el toast de aviso. */
-      .tz-chat-tonazo-btn-bloqueado { opacity: 0.6; cursor: pointer; }
+         sigue recibiendo el click para mostrar el toast de aviso. Ya no se
+         apaga: se veía oscuro justo cuando el pasajero más lo usa. */
+      .tz-chat-tonazo-btn-bloqueado { cursor: pointer; }
       .tz-chat-tonazo-logo {
         width: 68px;
         height: 52px;
         object-fit: contain;
-        filter: drop-shadow(0 0 8px rgba(255,47,158,0.75)) drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+        filter: brightness(1.12) saturate(1.15) drop-shadow(0 0 10px rgba(255,47,158,0.8));
       }
       .tz-chat-tonazo-cooldown {
         font-family: 'Rajdhani', sans-serif;
