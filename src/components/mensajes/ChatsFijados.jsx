@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { ArrowLeft, Pin, Bell, BellOff } from "lucide-react";
-import { toYoutubeEmbedUrl } from "../../lib/youtube";
+import VideoEnChat from "./VideoEnChat";
 import TextoConEnlaces from "../TextoConEnlaces";
 import logoTaxi from "../../assets/logo.webp";
 import logoTonazo from "../../assets/logo-tonazo.webp";
@@ -84,19 +84,7 @@ export function ChatFijadoAbierto({ canal, datos, onVolver, onLeido }) {
             <div key={m.id} className="tz-chatfijo-burbuja">
               {/* Anuncio: su imagen o video, además del texto. */}
               {m.imagen_url && <img src={m.imagen_url} alt="" className="tz-chatfijo-media" />}
-              {m.video_url &&
-                (toYoutubeEmbedUrl(m.video_url) ? (
-                  <div className="tz-chatfijo-video">
-                    <iframe
-                      src={toYoutubeEmbedUrl(m.video_url)}
-                      title={m.titulo || "Anuncio"}
-                      allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                  </div>
-                ) : (
-                  <video src={m.video_url} controls playsInline className="tz-chatfijo-media" />
-                ))}
+              {m.video_url && <VideoEnChat url={m.video_url} titulo={m.titulo} />}
               {m.titulo && <strong>{m.titulo}</strong>}
               {m.mensaje && (
                 <p>

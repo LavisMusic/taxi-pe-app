@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, MessageCircle, ArrowLeft, Loader2, Store } from "lucide-react";
+import { X, MessageCircle, ArrowLeft, Loader2, Store, UserRound } from "lucide-react";
 import { ChatEntregaConductor } from "./repartidor/EntregaActivaModal";
 import { supabase } from "../supabaseClient";
 import { useHilosChatConductor, useChatMensajes, REMITENTE_CONDUCTOR } from "../hooks/useChatMensajes";
@@ -23,22 +23,24 @@ function horaCorta(iso) {
     ? d.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })
     : d.toLocaleDateString("es-PE", { day: "2-digit", month: "2-digit" });
 }
-const inicial = (nombre) => (nombre || "P").trim().replace(/^@/, "").charAt(0).toUpperCase();
-// Foto de la persona (su perfil) o su inicial.
-function Avatar({ foto, nombre }) {
+// Foto de la persona (su perfil), sola y sin marco; sin foto, el sticker.
+function Avatar({ foto }) {
   return foto ? (
-    <img src={foto} alt="" className="tz-chatneg-avatar tz-chatneg-avatar-foto" />
+    <img src={foto} alt="" className="tz-chat-cara" />
   ) : (
-    <span className="tz-chatneg-avatar">{inicial(nombre)}</span>
+    <span className="tz-chat-sticker">
+      <UserRound size={26} />
+    </span>
   );
 }
-// Logo del negocio del pedido (o el ícono de tienda si la entrega no lo trae).
+// Logo del negocio del pedido, sin marco (o el sticker de tienda si la
+// entrega no lo trae).
 function LogoTienda({ url }) {
   return url ? (
-    <img src={url} alt="" className="tz-chatneg-avatar tz-chatneg-avatar-logo" />
+    <img src={url} alt="" className="tz-chat-cara" />
   ) : (
-    <span className="tz-chatneg-avatar">
-      <Store size={18} />
+    <span className="tz-chat-sticker">
+      <Store size={26} />
     </span>
   );
 }

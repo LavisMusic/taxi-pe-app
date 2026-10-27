@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { toYoutubeEmbedUrl } from "../lib/youtube";
 import TextoConEnlaces from "./TextoConEnlaces";
 
@@ -20,7 +20,26 @@ import TextoConEnlaces from "./TextoConEnlaces";
 //   B) Con texto (siempre 16:9 — YouTube o una subida horizontal):
 //      SIEMPRE en columna (media arriba a ancho completo, texto abajo).
 // Ver los .tz-anuncio-* en Styles.jsx.
-export default function AnuncioPopupModal({ anuncio, onClose, canalChat = null }) {
+// `alTocar` ({ titulo, ir }, o una función (anuncio) => { titulo, ir }):
+// qué pasa al tocar la imagen o el video (ej. el anuncio de un negocio en el
+// Directorio lleva a su tienda). Sin él, si hay `canalChat`, lleva al chat
+// donde quedó guardado.
+// `anuncios`: todos los que tocan ahora → carrusel con flechas a los lados
+// (y deslizando en el celular), puntos abajo y un cambio con
+// deslizamiento suave. Sin él, el `anuncio` suelto de siempre.
+export default function AnuncioPopupModal({ anuncio: anuncioSuelto, anuncios = null, onClose, canalChat = null, alTocar: alTocarProp = null }) {
+  const lista = anuncios?.length ? anuncios : anuncioSuelto ? [anuncioSuelto] : [];
+  const [indice, setIndice] = useState(0);
+  const [direccion, setDireccion] = useState(0); // -1 anterior, 1 siguiente
+  const anuncio = lista[Math.min(indice, lista.length - 1)] ?? null;
+  const varios = lista.length > 1;
+  const ir = (paso) => {
+    if (!varios) return;
+    setDireccion(paso);
+    setIndice((i) => (i + paso + lista.length) % lista.length);
+  };
+  const deslizar = useRef(null);
+  const alTocar = typeof alTocarProp === "function" ? (anuncio ? alTocarProp(anuncio) : null) : alTocarProp;
   const [esVertical, setEsVertical] = useState(false);
   // `terminado` ya NO controla si la "X" existe (ver el bug reportado:
   // el usuario debe poder cerrar el anuncio cuando quiera) — solo
@@ -82,13 +101,43 @@ export default function AnuncioPopupModal({ anuncio, onClose, canalChat = null }
   };
 
   const hayMedia = !!embedUrl || esVideoArchivo || !!anuncio.imagen_url;
+  const toque = embedUrl
+    ? null
+    : alTocar
+      ? {
+          titulo: alTocar.titulo,
+          fn: () => {
+            onClose();
+            alTocar.ir();
+          },
+        }
+      : canalChat
+        ? { titulo: "Ver en Mensajes", fn: abrirChat }
+        : null;
   const modalVertical = soloMultimedia && esVertical;
 
   return (
-    <div className="tz-modal-backdrop">
+    <div className="tz-modal-backdrop tz-anuncio-carrusel">
+      {varios && (
+        <button type="button" className="tz-anuncio-flecha is-izq" onClick={() => ir(-1)} aria-label="Anuncio anterior">
+          <ChevronLeft size={24} />
+        </button>
+      )}
       <div
-        className={`tz-anuncio-modal ${soloMultimedia ? "tz-anuncio-modal-media-only" : ""} ${modalVertical ? "tz-anuncio-modal-vertical" : ""}`}
+        key={anuncio.id}
+        className={`tz-anuncio-modal ${soloMultimedia ? "tz-anuncio-modal-media-only" : ""} ${modalVertical ? "tz-anuncio-modal-vertical" : ""} ${
+          direccion > 0 ? "tz-anuncio-entra-der" : direccion < 0 ? "tz-anuncio-entra-izq" : ""
+        }`}
         onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => {
+          deslizar.current = e.pointerType === "touch" ? e.clientX : null;
+        }}
+        onPointerUp={(e) => {
+          if (deslizar.current == null) return;
+          const dx = e.clientX - deslizar.current;
+          deslizar.current = null;
+          if (Math.abs(dx) > 50) ir(dx < 0 ? 1 : -1);
+        }}
       >
         {/* Bug reportado: el usuario debe poder cerrar el anuncio en
            cualquier momento — antes la "X" no existía en el DOM
@@ -103,9 +152,9 @@ export default function AnuncioPopupModal({ anuncio, onClose, canalChat = null }
         <div className={`tz-anuncio-layout ${soloMultimedia ? "tz-anuncio-layout-fill" : ""}`}>
           {hayMedia && (
             <div
-              className={`tz-anuncio-media ${canalChat && !embedUrl ? "tz-anuncio-media-tocable" : ""}`}
-              onClick={canalChat && !embedUrl ? abrirChat : undefined}
-              title={canalChat && !embedUrl ? "Ver en Mensajes" : undefined}
+              className={`tz-anuncio-media ${toque ? "tz-anuncio-media-tocable" : ""}`}
+              onClick={toque?.fn}
+              title={toque?.titulo}
             >
               {embedUrl ? (
                 <div className="tz-anuncio-video-wrap">
@@ -189,7 +238,19 @@ export default function AnuncioPopupModal({ anuncio, onClose, canalChat = null }
             </div>
           )}
         </div>
+        {varios && (
+          <div className="tz-anuncio-puntos" aria-hidden="true">
+            {lista.map((a, i) => (
+              <span key={a.id} className={i === indice ? "is-activo" : ""} />
+            ))}
+          </div>
+        )}
       </div>
+      {varios && (
+        <button type="button" className="tz-anuncio-flecha is-der" onClick={() => ir(1)} aria-label="Anuncio siguiente">
+          <ChevronRight size={24} />
+        </button>
+      )}
     </div>
   );
 }

@@ -49,7 +49,7 @@ import { useAnuncioActivo } from "../hooks/useAnuncioActivo";
 export default function RecolectorPage() {
   const { usuario, logout, updateUsuario } = useTaxiAuth();
   // Pop-up de anuncios para recolectores (los crea el superadmin).
-  const { anuncio, cerrar: cerrarAnuncio } = useAnuncioActivo("recolectores");
+  const { anuncio, anuncios, cerrar: cerrarAnuncio } = useAnuncioActivo("recolectores");
   const [verificandoCuenta, setVerificandoCuenta] = useState(false);
   const { ventas, ventasVigentes, loading: ventasLoading, refresh: refreshVentas } = useVentas();
   // Texto bajo el logo: el nombre y después las descripciones del Admin
@@ -375,7 +375,7 @@ export default function RecolectorPage() {
           onClose={() => setHistorialOpen(false)}
         />
       )}
-      {anuncio && <AnuncioPopupModal anuncio={anuncio} onClose={cerrarAnuncio} canalChat="taxipe" />}
+      {anuncio && <AnuncioPopupModal anuncios={anuncios} onClose={cerrarAnuncio} canalChat="taxipe" />}
     </div>
   );
 }

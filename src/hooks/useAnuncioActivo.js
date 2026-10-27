@@ -51,7 +51,8 @@ function marcarComoVisto(anuncio) {
 const ROL_DE_PUBLICO = { pasajeros: "pasajero", conductores: "conductor", recolectores: "recolector" };
 
 export function useAnuncioActivo(publico = "pasajeros") {
-  const [anuncio, setAnuncio] = useState(null);
+  // Todos los que tocan ahora (carrusel, AnuncioPopupModal `anuncios`).
+  const [anuncios, setAnuncios] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -81,13 +82,9 @@ export function useAnuncioActivo(publico = "pasajeros") {
         if (error) ({ data, error } = await consultar("publico"));
 
         if (cancelado) return;
-        if (error || !data) {
-          setAnuncio(null);
-        } else {
-          setAnuncio(data.find((a) => tocaMostrar(a)) ?? null);
-        }
+        setAnuncios(error || !data ? [] : data.filter((a) => tocaMostrar(a)));
       } catch {
-        if (!cancelado) setAnuncio(null);
+        if (!cancelado) setAnuncios([]);
       }
       if (!cancelado) setLoading(false);
     })();
@@ -96,10 +93,11 @@ export function useAnuncioActivo(publico = "pasajeros") {
     };
   }, [publico]);
 
+  // Cerrar el carrusel cuenta como visto para todos los que mostró.
   const cerrar = () => {
-    if (anuncio) marcarComoVisto(anuncio);
-    setAnuncio(null);
+    anuncios.forEach(marcarComoVisto);
+    setAnuncios([]);
   };
 
-  return { anuncio, loading, cerrar };
+  return { anuncio: anuncios[0] ?? null, anuncios, loading, cerrar };
 }

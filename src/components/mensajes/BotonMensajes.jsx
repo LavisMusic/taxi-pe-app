@@ -102,11 +102,12 @@ export default function BotonMensajes({ usuarioId, conductores = [], onAbrirCond
                                 onAbrirConductor(c.id);
                               }}
                             >
+                              {/* La foto sola, sin marco; sin foto, el sticker. */}
                               {c.foto_url ? (
-                                <img src={c.foto_url} alt="" className="tz-chatfijo-logo tz-chatcond-foto" />
+                                <img src={c.foto_url} alt="" className="tz-chat-cara" />
                               ) : (
-                                <span className="tz-chatfijo-logo tz-chatcond-foto tz-chatcond-foto-vacia">
-                                  <Car size={18} />
+                                <span className="tz-chat-sticker">
+                                  <Car size={26} />
                                 </span>
                               )}
                               <span className="tz-chatfijo-texto">

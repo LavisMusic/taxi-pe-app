@@ -80,7 +80,7 @@ export default function HomePage() {
   // vigencia (fecha_inicio/fecha_fin) + frecuencia (localStorage). Se
   // muestra a CUALQUIER visitante de la Home, con o sin sesión de
   // Pasajero — es publicidad, no contenido privado.
-  const { anuncio, cerrar: cerrarAnuncio } = useAnuncioActivo("pasajeros");
+  const { anuncio, anuncios, cerrar: cerrarAnuncio } = useAnuncioActivo("pasajeros");
   // Texto bajo el logo: "Tu taxi, al toque" y después las descripciones
   // del Admin para pasajeros.
   const descripcionesPasajero = useDescripcionesPublico("pasajeros");
@@ -750,7 +750,7 @@ export default function HomePage() {
       )}
 
       {anuncio && (
-        <AnuncioPopupModal anuncio={anuncio} onClose={cerrarAnuncio} canalChat={usuario && esPasajero ? "taxipe" : null} />
+        <AnuncioPopupModal anuncios={anuncios} onClose={cerrarAnuncio} canalChat={usuario && esPasajero ? "taxipe" : null} />
       )}
 
       {avisoDestino && <div className="tz-toast-flotante">{avisoDestino}</div>}

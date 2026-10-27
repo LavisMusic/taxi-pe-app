@@ -6749,6 +6749,42 @@ export default function Styles() {
            - Solo multimedia / sin texto (típicamente 9:16 vertical): el
              media llena el modal entero, sin recorte a 16:9, la 'X'
              flota encima. Ver .tz-anuncio-layout-fill. */
+      /* Carrusel de anuncios: flechas a los lados, puntos abajo y un cambio
+         con deslizamiento suave (entra desde el lado hacia el que se va). */
+      .tz-anuncio-carrusel { gap: 10px; }
+      .tz-anuncio-flecha {
+        flex-shrink: 0; width: 42px; height: 42px; border-radius: 999px; z-index: 2;
+        display: flex; align-items: center; justify-content: center; cursor: pointer;
+        border: 1px solid rgba(255,255,255,0.3); background: rgba(10,7,22,0.7); color: #fff;
+        backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+        box-shadow: 0 0 14px rgba(0,0,0,0.5);
+        transition: transform 0.3s cubic-bezier(.34,1.56,.64,1), background 0.2s, box-shadow 0.2s;
+      }
+      .tz-anuncio-flecha:hover { transform: scale(1.12); background: rgba(255,47,158,0.75); box-shadow: 0 0 18px rgba(255,47,158,0.6); }
+      .tz-anuncio-flecha:active { transform: scale(0.92); }
+      @media (max-width: 560px) {
+        .tz-anuncio-flecha { position: absolute; top: 50%; margin-top: -21px; }
+        .tz-anuncio-flecha.is-izq { left: 6px; }
+        .tz-anuncio-flecha.is-der { right: 6px; }
+      }
+      .tz-anuncio-entra-der { animation: tz-anuncio-entra-der 0.45s cubic-bezier(.22,.9,.3,1) both; }
+      .tz-anuncio-entra-izq { animation: tz-anuncio-entra-izq 0.45s cubic-bezier(.22,.9,.3,1) both; }
+      @keyframes tz-anuncio-entra-der {
+        from { opacity: 0; transform: translateX(42px) scale(0.97); filter: blur(4px); }
+        to { opacity: 1; transform: none; filter: none; }
+      }
+      @keyframes tz-anuncio-entra-izq {
+        from { opacity: 0; transform: translateX(-42px) scale(0.97); filter: blur(4px); }
+        to { opacity: 1; transform: none; filter: none; }
+      }
+      .tz-anuncio-puntos {
+        position: absolute; left: 0; right: 0; bottom: 8px; z-index: 3; display: flex; justify-content: center; gap: 6px; pointer-events: none;
+      }
+      .tz-anuncio-puntos span {
+        width: 7px; height: 7px; border-radius: 999px; background: rgba(255,255,255,0.35);
+        transition: width 0.35s cubic-bezier(.34,1.56,.64,1), background 0.3s;
+      }
+      .tz-anuncio-puntos span.is-activo { width: 20px; background: var(--pink, #ff2f9e); box-shadow: 0 0 8px rgba(255,47,158,0.7); }
       .tz-anuncio-modal {
         position: relative;
         width: 100%;
@@ -7251,7 +7287,13 @@ export default function Styles() {
         background: rgba(var(--cyan-rgb), 0.14); border: 1px solid rgba(var(--cyan-rgb), 0.4);
         color: var(--cyan); font-weight: 800; font-size: 16px;
       }
-      .tz-chatneg-avatar-foto { object-fit: cover; padding: 0; }
+      /* Caras en los chats (personas y tiendas): la foto sola, sin marco ni
+         fondo, como los logos de Taxi PE y Tonazo; sin foto, solo el sticker. */
+      .tz-chat-cara { width: 40px; height: 40px; flex-shrink: 0; object-fit: contain; border: none; border-radius: 0; background: none; }
+      .tz-chat-sticker {
+        width: 40px; height: 40px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+        color: var(--cyan); background: none; border: none; filter: drop-shadow(0 0 6px rgba(43,232,255,0.45));
+      }
       .tz-chatneg-avatar-logo { object-fit: contain; padding: 4px; background: #ffffff; }
       .tz-chatneg-estado { font-size: 10.5px; font-weight: 600; color: var(--text-dim); display: inline-flex; align-items: center; gap: 4px; }
       .tz-chatneg-estado::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.6; }
@@ -7435,6 +7477,18 @@ export default function Styles() {
       .tz-enlace { color: var(--cyan); text-decoration: underline; word-break: break-all; }
       .tz-anuncio-media-tocable { cursor: pointer; }
       .tz-chatfijo-media { display: block; width: 100%; max-height: 320px; object-fit: contain; border-radius: 10px; margin-bottom: 6px; background: #000; }
+      /* Video de un anuncio en el chat: se reproduce solo al verse, sin
+         sonido, con el botón para activarlo (VideoEnChat.jsx). */
+      .tz-chatfijo-video-caja { position: relative; margin-bottom: 6px; }
+      .tz-chatfijo-video-caja .tz-chatfijo-media, .tz-chatfijo-video-caja .tz-chatfijo-video { margin-bottom: 0; }
+      .tz-chatfijo-sonido {
+        position: absolute; right: 8px; bottom: 8px; z-index: 2; width: 32px; height: 32px; border-radius: 999px;
+        display: flex; align-items: center; justify-content: center; cursor: pointer;
+        border: 1px solid rgba(255,255,255,0.35); background: rgba(0,0,0,0.6); color: #fff;
+        transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), background 0.2s;
+      }
+      .tz-chatfijo-sonido:hover { transform: scale(1.1); }
+      .tz-chatfijo-sonido.is-activo { background: var(--pink, #ff2f9e); border-color: transparent; }
       .tz-chatfijo-video { position: relative; width: 100%; aspect-ratio: 16 / 9; margin-bottom: 6px; border-radius: 10px; overflow: hidden; }
       .tz-chatfijo-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
       .tz-chatfijo-burbuja p { margin: 0; white-space: pre-wrap; }
