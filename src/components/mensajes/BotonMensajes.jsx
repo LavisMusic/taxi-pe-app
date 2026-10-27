@@ -111,7 +111,7 @@ export default function BotonMensajes({ usuarioId, conductores = [], onAbrirCond
                               )}
                               <span className="tz-chatfijo-texto">
                                 <span className="tz-chatfijo-nombre">
-                                  {c.nombre || "Conductor"}
+                                  {c.nombre_usuario ? `@${c.nombre_usuario}` : c.nombre || "Conductor"}
                                   {c.enViaje ? (
                                     <span className="tz-chatneg-estado is-en-linea">Viaje en curso</span>
                                   ) : c.terminado ? (

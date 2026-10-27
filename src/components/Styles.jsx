@@ -7250,6 +7250,7 @@ export default function Styles() {
         background: rgba(var(--cyan-rgb), 0.14); border: 1px solid rgba(var(--cyan-rgb), 0.4);
         color: var(--cyan); font-weight: 800; font-size: 16px;
       }
+      .tz-chatneg-avatar-foto { object-fit: cover; padding: 0; }
       .tz-chatneg-estado { font-size: 10.5px; font-weight: 600; color: var(--text-dim); display: inline-flex; align-items: center; gap: 4px; }
       .tz-chatneg-estado::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.6; }
       .tz-chatneg-estado.is-en-linea { color: var(--green); }
@@ -7322,6 +7323,19 @@ export default function Styles() {
       .tz-perfil-pasajero-form { text-align: left; }
       .tz-perfil-pasajero-fila { display: flex; gap: 8px; }
       .tz-perfil-pasajero-fila .tz-text-input { flex: 1; min-width: 0; margin: 0; }
+      .tz-perfil-usuario-input { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; }
+      .tz-perfil-usuario-input svg { position: absolute; left: 11px; color: var(--cyan); pointer-events: none; }
+      .tz-perfil-usuario-input .tz-text-input { padding-left: 32px; text-transform: none; }
+      .tz-perfil-usuario-estado {
+        margin: 6px 2px 0; font-size: 12px; display: flex; align-items: center; gap: 4px; color: var(--text-dim);
+        animation: tz-perfil-estado-in 0.35s cubic-bezier(.34,1.56,.64,1) both;
+      }
+      .tz-perfil-usuario-estado.is-libre, .tz-perfil-usuario-estado.is-sugerido { color: var(--green); }
+      .tz-perfil-usuario-estado.is-tomado, .tz-perfil-usuario-estado.is-invalido, .tz-perfil-usuario-estado.is-sinrevisar { color: var(--danger, #ff5470); }
+      @keyframes tz-perfil-estado-in {
+        from { opacity: 0; transform: translateY(-6px) scale(0.96); filter: blur(2px); }
+        to { opacity: 1; transform: none; filter: none; }
+      }
       .tz-perfil-pasajero-fila .tz-scan-btn { flex: 0 0 46px; width: 46px; padding: 0; margin: 0; }
       /* Entrega en curso: botones que abren su chat en Mensajes. */
       .tz-entrega-chats-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }

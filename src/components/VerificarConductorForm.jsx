@@ -4,6 +4,9 @@ import Dropdown from "./Dropdown";
 import ImagenGuardada from "./ImagenGuardada";
 import GestionImagenModal from "./admin/GestionImagenModal";
 import { useConductorTemporal } from "../hooks/useConductorTemporal";
+import { supabase } from "../supabaseClient";
+import CampoUsuario, { useCampoUsuario } from "./CampoUsuario";
+import { guardarNombreUsuario } from "../lib/nombreUsuario";
 import { useCategoriasPublicas } from "../hooks/useCategoriasPublicas";
 import { useLocalidades } from "../hooks/useLocalidades";
 import { esEdadValida, SEXOS, NIVELES_SERVICIO, NIVEL_SERVICIO_ECONOMICO } from "../lib/taxiEnums";
@@ -62,10 +65,17 @@ export default function VerificarConductorForm({ usuario, conductor = null, onVe
   }, [categoriaId]);
 
   const faltanFotos = FOTOS_REQUERIDAS.some((f) => !fotos[f.key]);
+  const campoUsuario = useCampoUsuario({
+    nombre: usuario.nombre,
+    nombreUsuario: usuario.nombre_usuario,
+    telefono: usuario.telefono,
+    usuarioId: usuario.id,
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    if (!campoUsuario.listo) return setError("Elige un nombre de usuario libre.");
     if (!esEdadValida(edad)) return setError("Ingresa una edad válida (18 a 90 años).");
     if (!sexo) return setError("Selecciona tu sexo.");
     if (!/^\d{8}$/.test(dni.trim())) return setError("El DNI debe tener 8 dígitos.");
@@ -82,6 +92,9 @@ export default function VerificarConductorForm({ usuario, conductor = null, onVe
       if (!/^\d{6}$/.test(nuevoPin)) return setError("El PIN debe tener 6 dígitos.");
       if (nuevoPin !== confirmarNuevoPin) return setError("Los PIN no coinciden.");
     }
+
+    const errUsuario = await guardarNombreUsuario(usuario.id, campoUsuario);
+    if (errUsuario) return setError(errUsuario);
 
     const { usuario: actualizado, message } = await verificarCuenta({
       usuarioId: usuario.id,
@@ -104,7 +117,7 @@ export default function VerificarConductorForm({ usuario, conductor = null, onVe
       setError(message);
       return;
     }
-    onVerificado(actualizado);
+    onVerificado({ ...actualizado, nombre_usuario: campoUsuario.valor });
   };
 
   return (
@@ -114,6 +127,8 @@ export default function VerificarConductorForm({ usuario, conductor = null, onVe
           Hola, {usuario.nombre} — completa esto para que tu cuenta deje de ser temporal. El Admin la revisa en el
           Centro de Peticiones; mientras tanto puedes seguir usando la app.
         </p>
+
+        <CampoUsuario campo={campoUsuario} id="verif-usuario" />
 
         <label className="tz-field-label" htmlFor="verif-edad">
           Edad

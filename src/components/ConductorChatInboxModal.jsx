@@ -23,7 +23,15 @@ function horaCorta(iso) {
     ? d.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })
     : d.toLocaleDateString("es-PE", { day: "2-digit", month: "2-digit" });
 }
-const inicial = (nombre) => (nombre || "P").trim().charAt(0).toUpperCase();
+const inicial = (nombre) => (nombre || "P").trim().replace(/^@/, "").charAt(0).toUpperCase();
+// Foto de la persona (su perfil) o su inicial.
+function Avatar({ foto, nombre }) {
+  return foto ? (
+    <img src={foto} alt="" className="tz-chatneg-avatar tz-chatneg-avatar-foto" />
+  ) : (
+    <span className="tz-chatneg-avatar">{inicial(nombre)}</span>
+  );
+}
 const ESTADO_ENTREGA = { aceptado: "Por recoger", en_ruta: "En camino" };
 
 function HiloConversacion({ conductorId, pasajeroId, nivelServicio, iconoCategoriaUrl, onCerrarPorCancelacion }) {
@@ -100,6 +108,7 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
   const [entregaChat, setEntregaChat] = useState(entregaInicial ?? null); // { id, hilo }
   const { hilos, loading, pasajerosEnCarrera, refresh } = useHilosChatConductor(conductorId);
   const [nombresPorId, setNombresPorId] = useState({});
+  const [fotosPorId, setFotosPorId] = useState({});
   const [borrandoId, setBorrandoId] = useState(null);
 
   // Borra el historial de un hilo cuyo viaje ya terminó (el botón solo
@@ -128,13 +137,18 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
     let cancelado = false;
     (async () => {
       try {
-        const { data, error } = await supabase.from("usuarios_publicos").select("id, nombre").in("id", ids);
+        // "*": con la migración 20261027110000 la vista trae nombre_usuario,
+        // que es lo que se muestra de cada persona (si no, su nombre).
+        const { data, error } = await supabase.from("usuarios_publicos").select("*").in("id", ids);
         if (cancelado || error) return;
         const map = {};
+        const fotos = {};
         (data ?? []).forEach((u) => {
-          if (u?.id) map[u.id] = u.nombre;
+          if (u?.id && u.foto_url) fotos[u.id] = u.foto_url;
+          if (u?.id) map[u.id] = u.nombre_usuario && !/^\d{6,}$/.test(u.nombre_usuario) ? `@${u.nombre_usuario}` : u.nombre;
         });
         setNombresPorId(map);
+        setFotosPorId(fotos);
       } catch {
         // Silencioso a propósito: si falla, los nombres caen al
         // fallback "Pasajero" — no es motivo para romper el modal.
@@ -201,7 +215,7 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
             <button type="button" className="tz-chatfijo-volver" onClick={() => setPasajeroAbierto(null)} aria-label="Volver a los chats">
               <ArrowLeft size={16} />
             </button>
-            <span className="tz-chatneg-avatar">{inicial(nombresPorId[pasajeroAbierto])}</span>
+            <Avatar foto={fotosPorId[pasajeroAbierto]} nombre={nombresPorId[pasajeroAbierto]} />
             <span>
               <strong>{nombresPorId[pasajeroAbierto] ?? "Pasajero"}</strong>
               <small>{pasajerosEnCarrera?.includes(pasajeroAbierto) ? "Viaje en curso" : "Negociando"}</small>
@@ -329,7 +343,7 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
             return (
               <li key={pid ?? Math.random()} className="tz-history-row tz-chatfijo-row tz-chat-inbox-row">
                 <button type="button" className="tz-chatfijo-btn" onClick={() => setPasajeroAbierto(pid)}>
-                  <span className="tz-chatneg-avatar">{inicial(nombre)}</span>
+                  <Avatar foto={fotosPorId[pid]} nombre={nombre} />
                   <span className="tz-chatfijo-texto">
                     <span className="tz-chatfijo-nombre">
                       {nombre}

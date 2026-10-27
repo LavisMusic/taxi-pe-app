@@ -5,6 +5,8 @@ import GestionImagenModal from "./admin/GestionImagenModal";
 import ImagenGuardada from "./ImagenGuardada";
 import { supabase } from "../supabaseClient";
 import { guardarDatosVerificacion } from "../hooks/useConductorTemporal";
+import CampoUsuario, { useCampoUsuario } from "./CampoUsuario";
+import { guardarNombreUsuario } from "../lib/nombreUsuario";
 import { esEdadValida, SEXOS, ESTADO_VERIFICACION_EN_REVISION } from "../lib/taxiEnums";
 
 // Verificación de cuenta del RECOLECTOR (desde su panel, después del
@@ -30,10 +32,17 @@ export default function VerificarRecolectorForm({ usuario, onVerificado, submitL
   const [error, setError] = useState("");
   // El PIN solo si la cuenta todavía no tiene uno (cuentas exprés antiguas).
   const tienePin = !!usuario.pin;
+  const campoUsuario = useCampoUsuario({
+    nombre: usuario.nombre,
+    nombreUsuario: usuario.nombre_usuario,
+    telefono: usuario.telefono,
+    usuarioId: usuario.id,
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    if (!campoUsuario.listo) return setError("Elige un nombre de usuario libre.");
     if (!esEdadValida(edad)) return setError("Ingresa una edad válida (18 a 90 años).");
     if (!sexo) return setError("Selecciona tu sexo.");
     if (!/^\d{8}$/.test(dni.trim())) return setError("El DNI debe tener 8 dígitos.");
@@ -49,6 +58,11 @@ export default function VerificarRecolectorForm({ usuario, onVerificado, submitL
     if (dniExistente) {
       setEnviando(false);
       return setError("Ya existe una cuenta con ese DNI.");
+    }
+    const errUsuario = await guardarNombreUsuario(usuario.id, campoUsuario);
+    if (errUsuario) {
+      setEnviando(false);
+      return setError(errUsuario);
     }
     const { usuario: actualizado, error: guardarError } = await guardarDatosVerificacion(usuario.id, tienePin ? null : nuevoPin, {
       edad: Number(edad),
@@ -69,7 +83,7 @@ export default function VerificarRecolectorForm({ usuario, onVerificado, submitL
             : "No se pudo guardar tu verificación. Intenta de nuevo."
       );
     }
-    onVerificado(actualizado);
+    onVerificado({ ...actualizado, nombre_usuario: campoUsuario.valor });
   };
 
   return (
@@ -79,6 +93,8 @@ export default function VerificarRecolectorForm({ usuario, onVerificado, submitL
           Hola, {usuario.nombre} — completa esto para verificar tu cuenta. Puedes seguir usando la app mientras el
           Admin la revisa. Si no verificas tu cuenta en 7 días, se eliminará.
         </p>
+        <CampoUsuario campo={campoUsuario} id="verif-rec-usuario" />
+
         <label className="tz-field-label" htmlFor="verif-rec-edad">
           Edad
         </label>
