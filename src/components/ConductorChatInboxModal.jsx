@@ -32,6 +32,16 @@ function Avatar({ foto, nombre }) {
     <span className="tz-chatneg-avatar">{inicial(nombre)}</span>
   );
 }
+// Logo del negocio del pedido (o el ícono de tienda si la entrega no lo trae).
+function LogoTienda({ url }) {
+  return url ? (
+    <img src={url} alt="" className="tz-chatneg-avatar tz-chatneg-avatar-logo" />
+  ) : (
+    <span className="tz-chatneg-avatar">
+      <Store size={18} />
+    </span>
+  );
+}
 const ESTADO_ENTREGA = { aceptado: "Por recoger", en_ruta: "En camino" };
 
 function HiloConversacion({ conductorId, pasajeroId, nivelServicio, iconoCategoriaUrl, onCerrarPorCancelacion }) {
@@ -109,6 +119,21 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
   const { hilos, loading, pasajerosEnCarrera, refresh } = useHilosChatConductor(conductorId);
   const [nombresPorId, setNombresPorId] = useState({});
   const [fotosPorId, setFotosPorId] = useState({});
+  // Caras de "Tus entregas": logo del negocio y foto/@usuario del cliente
+  // (rpc_entrega_caras_conductor, migración 20261027130000).
+  const [caras, setCaras] = useState({});
+  const idsEntregasKey = entregas.map((e) => e.id).sort().join(",");
+  useEffect(() => {
+    if (!idsEntregasKey || !conductorId) return undefined;
+    let vivo = true;
+    supabase.rpc("rpc_entrega_caras_conductor", { p_conductor_id: conductorId }).then(({ data, error }) => {
+      if (vivo && !error) setCaras(Object.fromEntries((data || []).map((f) => [f.entrega_id, f])));
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [idsEntregasKey, conductorId]);
+  const nombreCliente = (e) => (caras[e?.id]?.cliente_usuario && !/^\d{6,}$/.test(caras[e.id].cliente_usuario) ? `@${caras[e.id].cliente_usuario}` : e?.cliente_nombre || "Cliente");
   const [borrandoId, setBorrandoId] = useState(null);
 
   // Borra el historial de un hilo cuyo viaje ya terminó (el botón solo
@@ -176,9 +201,9 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
           >
             <ArrowLeft size={16} />
           </button>
-          <span className="tz-chatneg-avatar">{conTienda ? <Store size={18} /> : inicial(e?.cliente_nombre)}</span>
+          {conTienda ? <LogoTienda url={caras[e?.id]?.caja_logo_url} /> : <Avatar foto={caras[e?.id]?.cliente_foto_url} nombre={nombreCliente(e)} />}
           <span>
-            <strong>{conTienda ? e?.caja_sucursal || "Sucursal" : e?.cliente_nombre || "Cliente"}</strong>
+            <strong>{conTienda ? e?.caja_sucursal || "Sucursal" : nombreCliente(e)}</strong>
             <small>
               {conTienda ? "Tienda del pedido" : "Cliente del pedido"}
               {e ? ` · ${ESTADO_ENTREGA[e.estado] || e.estado}` : ""}
@@ -288,9 +313,7 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
                 return (
                   <li key={e.id} className="tz-history-row tz-chatfijo-row tz-chatent-row is-activo">
                     <button type="button" className="tz-chatfijo-btn" onClick={() => setEntregaChat({ id: e.id, hilo: "cajero_conductor" })}>
-                      <span className="tz-chatneg-avatar">
-                        <Store size={18} />
-                      </span>
+                      <LogoTienda url={caras[e.id]?.caja_logo_url} />
                       <span className="tz-chatfijo-texto">
                         <span className="tz-chatfijo-nombre">{e.caja_sucursal || "Sucursal"}</span>
                         <span className="tz-chatfijo-preview">
@@ -305,9 +328,9 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
                         className="tz-chatfijo-btn tz-chatent-cliente"
                         onClick={() => setEntregaChat({ id: e.id, hilo: "cliente_conductor" })}
                       >
-                        <span className="tz-chatneg-avatar">{inicial(e.cliente_nombre)}</span>
+                        <Avatar foto={caras[e.id]?.cliente_foto_url} nombre={nombreCliente(e)} />
                         <span className="tz-chatfijo-texto">
-                          <span className="tz-chatfijo-nombre">{e.cliente_nombre || "Cliente"}</span>
+                          <span className="tz-chatfijo-nombre">{nombreCliente(e)}</span>
                           <span className="tz-chatfijo-preview">Cliente · {e.direccion_entrega || "Sin dirección"}</span>
                         </span>
                         {n.cliente_conductor > 0 && <span className="tz-chatfijo-badge">{n.cliente_conductor > 9 ? "+9" : n.cliente_conductor}</span>}

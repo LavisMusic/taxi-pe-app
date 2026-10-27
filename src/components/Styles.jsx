@@ -7251,6 +7251,7 @@ export default function Styles() {
         color: var(--cyan); font-weight: 800; font-size: 16px;
       }
       .tz-chatneg-avatar-foto { object-fit: cover; padding: 0; }
+      .tz-chatneg-avatar-logo { object-fit: contain; padding: 4px; background: #ffffff; }
       .tz-chatneg-estado { font-size: 10.5px; font-weight: 600; color: var(--text-dim); display: inline-flex; align-items: center; gap: 4px; }
       .tz-chatneg-estado::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.6; }
       .tz-chatneg-estado.is-en-linea { color: var(--green); }
