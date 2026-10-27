@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
+import { usePerfilesEnVivo } from "./usePerfilesEnVivo";
 
 // Actividad de los chats del pasajero, para la lista de conductores de la
 // Home y para sus Mensajes: por conductor, cuándo fue el último mensaje
@@ -90,6 +91,9 @@ export function useActividadChatsPasajero(pasajeroId) {
 // separados por coma — se vuelve a pedir cuando cambia el conjunto.
 export function useConductoresDeMisChats(activo, idsKey) {
   const [porId, setPorId] = useState({});
+  // Foto o nombre cambiados (en vivo): se vuelve a pedir.
+  const [version, setVersion] = useState(0);
+  usePerfilesEnVivo(() => setVersion((v) => v + 1), activo);
   useEffect(() => {
     if (!activo || !idsKey) return undefined;
     let vivo = true;
@@ -99,15 +103,9 @@ export function useConductoresDeMisChats(activo, idsKey) {
         setPorId(Object.fromEntries((data || []).map((c) => [c.id, c])));
       });
     cargar();
-    // La foto o el nombre pueden cambiar mientras tanto.
-    const t = setInterval(cargar, 60000);
-    const alCambiarPerfil = () => cargar();
-    window.addEventListener("tz-perfil-actualizado", alCambiarPerfil);
     return () => {
       vivo = false;
-      clearInterval(t);
-      window.removeEventListener("tz-perfil-actualizado", alCambiarPerfil);
     };
-  }, [activo, idsKey]);
+  }, [activo, idsKey, version]);
   return porId;
 }

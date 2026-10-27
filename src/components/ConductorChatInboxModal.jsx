@@ -3,6 +3,7 @@ import { X, MessageCircle, ArrowLeft, Loader2, Store, UserRound } from "lucide-r
 import { ChatEntregaConductor } from "./repartidor/EntregaActivaModal";
 import { supabase } from "../supabaseClient";
 import { useHilosChatConductor, useChatMensajes, REMITENTE_CONDUCTOR } from "../hooks/useChatMensajes";
+import { usePerfilesEnVivo } from "../hooks/usePerfilesEnVivo";
 import ChatWindow from "./ChatWindow";
 import ChatErrorBoundary from "./ChatErrorBoundary";
 import { FilasChatsFijados, ChatFijadoAbierto, InterruptorAvisos } from "./mensajes/ChatsFijados";
@@ -121,6 +122,9 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
   const { hilos, loading, pasajerosEnCarrera, refresh } = useHilosChatConductor(conductorId);
   const [nombresPorId, setNombresPorId] = useState({});
   const [fotosPorId, setFotosPorId] = useState({});
+  // Foto o @usuario cambiados (en vivo): se vuelven a pedir nombres y caras.
+  const [versionPerfiles, setVersionPerfiles] = useState(0);
+  usePerfilesEnVivo(() => setVersionPerfiles((v) => v + 1));
   // Caras de "Tus entregas": logo del negocio y foto/@usuario del cliente
   // (rpc_entrega_caras_conductor, migración 20261027130000).
   const [caras, setCaras] = useState({});
@@ -134,7 +138,7 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
     return () => {
       vivo = false;
     };
-  }, [idsEntregasKey, conductorId]);
+  }, [idsEntregasKey, conductorId, versionPerfiles]);
   const nombreCliente = (e) => (caras[e?.id]?.cliente_usuario && !/^\d{6,}$/.test(caras[e.id].cliente_usuario) ? `@${caras[e.id].cliente_usuario}` : e?.cliente_nombre || "Cliente");
   // Si el modal se abrió desde la alerta de "Hacer Señas" (ver
   // ConductorPage.jsx), entra directo a ese hilo en vez de mostrar la
@@ -169,7 +173,7 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
     return () => {
       cancelado = true;
     };
-  }, [idsKey]);
+  }, [idsKey, versionPerfiles]);
 
   if (entregaChat) {
     const e = entregas.find((x) => x.id === entregaChat.id);
