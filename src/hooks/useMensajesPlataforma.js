@@ -100,7 +100,10 @@ export function useMensajesPlataforma(usuarioId) {
   const canales = useMemo(() => {
     const salida = {};
     CANALES.forEach((canal) => {
-      const lista = mensajes.filter((m) => m.canal === canal);
+      // Regla de las 24 h (migración 20261027140000): lo anterior no se muestra.
+      const lista = mensajes.filter(
+        (m) => m.canal === canal && new Date(m.programado_para).getTime() >= Date.now() - 24 * 60 * 60 * 1000
+      );
       const desde = leidos[canal] ? new Date(leidos[canal]).getTime() : 0;
       salida[canal] = {
         mensajes: lista,

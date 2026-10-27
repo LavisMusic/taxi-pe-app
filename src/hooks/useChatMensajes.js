@@ -564,11 +564,25 @@ export function useHilosChatConductor(conductorId) {
     setLoading(true);
     setError("");
     try {
-      const { data, error: fetchError } = await supabase
-        .from("chat_mensajes")
-        .select("id, pasajero_id, remitente, mensaje, tipo, estado_oferta, leido, created_at")
-        .eq("conductor_id", conductorId)
-        .order("created_at", { ascending: false });
+      const [{ data, error: fetchError }, { data: turno }] = await Promise.all([
+        supabase
+          .from("chat_mensajes")
+          .select("id, pasajero_id, remitente, mensaje, tipo, estado_oferta, leido, created_at")
+          .eq("conductor_id", conductorId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("taxi_conductor_turnos")
+          .select("hasta")
+          .eq("conductor_id", conductorId)
+          .order("hasta", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+      // Regla de las 24 h (migración 20261027140000): la bandeja muestra
+      // solo lo de las últimas 24 h y nada de antes de su último turno
+      // cerrado (al cerrar caja se limpian SUS chats; el pasajero los sigue
+      // viendo). Los viajes en curso se calculan con todo igual.
+      const corte = Math.max(Date.now() - 24 * 60 * 60 * 1000, turno?.hasta ? new Date(turno.hasta).getTime() : 0);
 
       if (fetchError) {
         setError("No se pudo cargar la bandeja de mensajes.");
@@ -576,7 +590,8 @@ export function useHilosChatConductor(conductorId) {
         setUnreadCount(0);
         setPasajerosEnCarrera([]);
       } else {
-        const filas = data ?? [];
+        const todas = data ?? [];
+        const filas = todas.filter((m) => new Date(m.created_at).getTime() >= corte);
         const porPasajero = new Map();
         for (const m of filas) {
           if (m?.pasajero_id && !porPasajero.has(m.pasajero_id)) porPasajero.set(m.pasajero_id, m);
@@ -597,7 +612,7 @@ export function useHilosChatConductor(conductorId) {
         // resuelta por pasajero, ver el comentario de
         // `sincronizarAsientosYEstado` en useChatMensajes.js — pero es
         // gratis blindarse acá también).
-        const ofertasEnCurso = filas.filter(
+        const ofertasEnCurso = todas.filter(
           (m) =>
             m?.tipo === TIPO_MENSAJE_OFERTA &&
             (m?.estado_oferta === ESTADO_OFERTA_ACEPTADA || m?.estado_oferta === ESTADO_OFERTA_EN_TRANSITO)

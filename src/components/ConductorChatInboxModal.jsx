@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, MessageCircle, ArrowLeft, Loader2, Trash2, Store } from "lucide-react";
+import { X, MessageCircle, ArrowLeft, Loader2, Store } from "lucide-react";
 import { ChatEntregaConductor } from "./repartidor/EntregaActivaModal";
 import { supabase } from "../supabaseClient";
 import { useHilosChatConductor, useChatMensajes, REMITENTE_CONDUCTOR } from "../hooks/useChatMensajes";
@@ -134,21 +134,6 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
     };
   }, [idsEntregasKey, conductorId]);
   const nombreCliente = (e) => (caras[e?.id]?.cliente_usuario && !/^\d{6,}$/.test(caras[e.id].cliente_usuario) ? `@${caras[e.id].cliente_usuario}` : e?.cliente_nombre || "Cliente");
-  const [borrandoId, setBorrandoId] = useState(null);
-
-  // Borra el historial de un hilo cuyo viaje ya terminó (el botón solo
-  // aparece si NO está en `pasajerosEnCarrera`).
-  const borrarHilo = async (pasajeroId) => {
-    if (!pasajeroId || !conductorId) return;
-    if (!window.confirm("¿Borrar el historial de este chat? No se puede deshacer.")) return;
-    setBorrandoId(pasajeroId);
-    await supabase.rpc("rpc_borrar_hilo_chat", {
-      p_conductor_id: conductorId,
-      p_pasajero_id: pasajeroId,
-    });
-    setBorrandoId(null);
-    refresh?.();
-  };
   // Si el modal se abrió desde la alerta de "Hacer Señas" (ver
   // ConductorPage.jsx), entra directo a ese hilo en vez de mostrar la
   // lista primero.
@@ -379,18 +364,6 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
                     {h?.noLeidos > 0 && <span className="tz-chatfijo-badge">{h.noLeidos > 9 ? "+9" : h.noLeidos}</span>}
                   </span>
                 </button>
-                {pid && !enCurso && (
-                  <button
-                    type="button"
-                    className="tz-chat-inbox-del"
-                    onClick={() => borrarHilo(pid)}
-                    disabled={borrandoId === pid}
-                    aria-label="Borrar historial de este chat"
-                    title="Borrar historial de este chat"
-                  >
-                    {borrandoId === pid ? <Loader2 size={14} className="tz-spin" /> : <Trash2 size={14} />}
-                  </button>
-                )}
               </li>
             );
               }),
