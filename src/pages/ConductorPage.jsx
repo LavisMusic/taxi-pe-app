@@ -398,11 +398,18 @@ export default function ConductorPage() {
               >
                 <MessageCircle size={19} />
                 <span className="tz-header-btn-label">Mensajes</span>
-                {(unreadCount > 0 ||
-                  plataforma.totalNoLeidos > 0 ||
-                  Object.values(repartos.noLeidos || {}).some((x) => x.total > 0)) && (
-                  <span className="tz-chat-unread-dot" aria-hidden="true" />
-                )}
+                {(() => {
+                  // Número de no leídos (pasajeros + fijados + entregas); sin
+                  // no leídos, un punto encendido mientras haya un reparto.
+                  const total =
+                    unreadCount +
+                    plataforma.totalNoLeidos +
+                    Object.values(repartos.noLeidos || {}).reduce((s, x) => s + (x.total || 0), 0);
+                  if (total > 0) return <span className="tz-header-btn-badge">{total > 99 ? "99+" : total}</span>;
+                  return repartos.entregasActivas.length > 0 ? (
+                    <span className="tz-header-btn-badge is-punto" aria-label="Tienes un reparto en curso" />
+                  ) : null;
+                })()}
               </button>
             </div>
           ) : (

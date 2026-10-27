@@ -371,22 +371,43 @@ export default function Styles() {
       .tz-header-btn svg {
         filter: drop-shadow(0 0 4px var(--orange-glow));
       }
-      .tz-header-btn-badge {
-        position: absolute;
-        top: -6px;
-        right: -6px;
-        min-width: 16px;
-        height: 16px;
-        padding: 0 4px;
-        border-radius: 999px;
-        background: var(--danger);
-        color: #2b0006;
-        font-size: 10px;
+      /* Contador de no leídos de la cabecera: por FUERA de la esquina
+         superior derecha del botón (mismo diseño que Caja Tonazo). */
+      .tz-header-btn { overflow: visible !important; }
+      .tz-header-btn .tz-header-btn-badge {
+        position: absolute !important;
+        top: -10px !important;
+        right: -10px !important;
+        left: auto !important;
+        bottom: auto !important;
+        transform: none !important;
+        z-index: 6;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 5px;
+        border-radius: 999px !important;
+        background: #ff2d55 !important;
+        color: #ffffff !important;
+        border: 2px solid var(--bg-1, #0b0e14) !important;
+        font-size: 10.5px;
         font-weight: 800;
+        line-height: 1;
+        letter-spacing: 0;
+        text-shadow: none !important;
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 0 8px rgba(255,84,112,0.6);
+        box-shadow: 0 0 8px rgba(255,45,85,0.65) !important;
+        pointer-events: none;
+      }
+      /* Sin no leídos pero con un reparto en curso: solo el punto. */
+      .tz-header-btn .tz-header-btn-badge.is-punto {
+        top: -6px !important;
+        right: -6px !important;
+        min-width: 0;
+        width: 13px;
+        height: 13px;
+        padding: 0;
       }
       .tz-header-btn:hover {
         color: var(--orange);
