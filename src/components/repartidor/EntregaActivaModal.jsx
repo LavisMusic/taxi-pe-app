@@ -6,6 +6,8 @@ import { supabase } from "../../supabaseClient";
 import PuntosEscribiendo from "../PuntosEscribiendo";
 import { formatSoles } from "../../utils/format";
 import EscanerQrModal from "./EscanerQrModal";
+import EntradaChat from "../chat/EntradaChat";
+import AdjuntoMensaje from "../chat/AdjuntoMensaje";
 import MapaEntrega from "./MapaEntrega";
 
 // Pantalla de la entrega en curso para el repartidor. Ver DELIVERY.md §7.
@@ -24,12 +26,11 @@ const CHATS = [
 const MAX_INTENTOS_QR = 3;
 
 function Chat({ entregaId, conductorId, hilo }) {
-  const { mensajes, enviar, enviando, marcarLeido } = useEntregaChat({
+  const { mensajes, enviar, marcarLeido } = useEntregaChat({
     entregaId,
     conductorId,
     emisorRol: "conductor",
   });
-  const [texto, setTexto] = useState("");
   const delHilo = mensajes.filter((m) => m.hilo === hilo);
   const { escribiendo, avisar, apagar } = useEscribiendo(supabase, entregaId ? `entrega-${entregaId}-${hilo}` : null, "conductor");
   const ultimo = delHilo[delHilo.length - 1];
@@ -42,13 +43,6 @@ function Chat({ entregaId, conductorId, hilo }) {
   useEffect(() => {
     if (noLeidosDeOtro > 0) marcarLeido(hilo);
   }, [hilo, noLeidosDeOtro, marcarLeido]);
-
-  const onEnviar = async () => {
-    const t = texto.trim();
-    if (!t) return;
-    setTexto("");
-    await enviar(hilo, t);
-  };
 
   return (
     <div className="tz-entrega-chat">
@@ -66,7 +60,9 @@ function Chat({ entregaId, conductorId, hilo }) {
               {m.emisor_rol !== "conductor" && m.emisor_rol !== "sistema" && (
                 <span className="tz-entrega-msg-quien">{m.emisor_rol}</span>
               )}
-              <span>{m.mensaje}</span>
+              <AdjuntoMensaje texto={m.mensaje}>
+                <span>{m.mensaje}</span>
+              </AdjuntoMensaje>
               {m.emisor_rol === "conductor" && (
                 <span className="tz-entrega-msg-check">
                   {m.leido ? <CheckCheck size={13} /> : <Check size={13} />}
@@ -78,20 +74,7 @@ function Chat({ entregaId, conductorId, hilo }) {
         {escribiendo && <PuntosEscribiendo quien={escribiendo === "cajero" ? "La tienda" : "El cliente"} />}
       </div>
       <div className="tz-entrega-chat-input">
-        <input
-          className="tz-text-input"
-          placeholder="Escribe un mensaje…"
-          value={texto}
-          onChange={(e) => {
-            setTexto(e.target.value);
-            if (e.target.value.trim()) avisar();
-          }}
-          onKeyDown={(e) => e.key === "Enter" && onEnviar()}
-          autoFocus
-        />
-        <button className="tz-scan-btn tz-payment-save" onMouseDown={(e) => e.preventDefault()} onClick={onEnviar} disabled={enviando || !texto.trim()}>
-          {enviando ? <Loader2 size={16} className="tz-spin" /> : <Send size={16} />}
-        </button>
+        <EntradaChat onEnviar={(t) => enviar(hilo, t)} onEscribir={avisar} />
       </div>
     </div>
   );

@@ -7287,6 +7287,107 @@ export default function Styles() {
         background: rgba(var(--cyan-rgb), 0.14); border: 1px solid rgba(var(--cyan-rgb), 0.4);
         color: var(--cyan); font-weight: 800; font-size: 16px;
       }
+      /* ===== Chats: escribir con fotos y notas de voz (chat/EntradaChat.jsx) ===== */
+      .tz-entrada { position: relative; display: flex; align-items: center; gap: 8px; width: 100%; flex-wrap: wrap; }
+      .tz-entrada-campo { position: relative; flex: 1 1 auto; min-width: 0; }
+      .tz-dlv-chat-input > .tz-entrada, .tz-chatneg-escribir > .tz-entrada, .tz-entrega-chat-input > .tz-entrada, .tz-chat-input-row > .tz-entrada { flex: 1 1 auto; min-width: 0; }
+      .tz-entrada-input { width: 100%; margin: 0 !important; padding-right: 44px !important; text-transform: none; }
+      .tz-entrada-mas {
+        position: absolute; right: 6px; top: 50%; width: 30px; height: 30px; margin-top: -15px; border-radius: 999px;
+        display: flex; align-items: center; justify-content: center; cursor: pointer;
+        border: 1px solid rgba(43,232,255,0.55); background: rgba(43,232,255,0.12); color: var(--cyan, #2be8ff);
+        transition: transform 0.45s cubic-bezier(.34,1.56,.64,1), background 0.25s, box-shadow 0.25s;
+      }
+      .tz-entrada-mas:hover:not(:disabled) { box-shadow: 0 0 12px rgba(43,232,255,0.55); }
+      .tz-entrada-mas.is-abierto { transform: rotate(135deg) scale(1.08); background: rgba(255,47,158,0.22); border-color: #ff6ac1; color: #ff6ac1; }
+      .tz-entrada-menu {
+        position: absolute; right: 0; bottom: calc(100% + 10px); z-index: 5;
+        transform-origin: 90% 100%;
+        animation: tz-entrada-menu-in 0.5s cubic-bezier(.34,1.56,.64,1) both;
+      }
+      @keyframes tz-entrada-menu-in {
+        0% { opacity: 0; transform: translateY(14px) scale(0.55); filter: blur(6px); }
+        60% { opacity: 1; filter: blur(0); }
+        100% { opacity: 1; transform: none; filter: none; }
+      }
+      .tz-entrada-menu-btn {
+        display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 14px; cursor: pointer;
+        font: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; color: #fff;
+        border: 1px solid rgba(43,232,255,0.6);
+        background: linear-gradient(135deg, rgba(43,232,255,0.32), rgba(124,58,237,0.38));
+        box-shadow: 0 8px 24px rgba(0,0,0,0.45), 0 0 18px rgba(43,232,255,0.35);
+        backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
+      }
+      .tz-entrada-menu-btn:hover { transform: translateY(-2px) scale(1.04); }
+      .tz-entrada-accion {
+        flex: 0 0 44px; width: 44px; height: 44px; border-radius: 999px; padding: 0; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; color: #fff; border: 1px solid transparent;
+        animation: tz-entrada-morph 0.42s cubic-bezier(.34,1.56,.64,1) both;
+        touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+      }
+      @keyframes tz-entrada-morph {
+        from { opacity: 0; transform: rotate(-110deg) scale(0.35); filter: blur(3px); }
+        to { opacity: 1; transform: none; filter: none; }
+      }
+      .tz-entrada-accion.is-enviar { background: linear-gradient(135deg, #ff2f9e, #ff6ac1); border-color: #ff6ac1; box-shadow: 0 0 14px rgba(255,47,158,0.6); }
+      .tz-entrada-accion.is-enviar:disabled { opacity: 0.75; box-shadow: none; }
+      .tz-entrada-accion.is-mic { background: linear-gradient(135deg, #12b5cf, #2be8ff); border-color: #7cf3ff; color: #03141b; box-shadow: 0 0 14px rgba(43,232,255,0.55); }
+      .tz-entrada-accion.is-mic.is-grabando { background: linear-gradient(135deg, #ff2f6d, #ff6a8e); color: #fff; animation: tz-entrada-latido 1s ease-in-out infinite; }
+      @keyframes tz-entrada-latido {
+        0%, 100% { transform: scale(1.12); box-shadow: 0 0 0 0 rgba(255,47,109,0.6); }
+        50% { transform: scale(1.22); box-shadow: 0 0 0 14px rgba(255,47,109,0); }
+      }
+      .tz-entrada-accion.is-subiendo { background: rgba(255,255,255,0.08); color: var(--cyan, #2be8ff); }
+      .tz-entrada-error { flex-basis: 100%; margin: 2px 4px 0; font-size: 12px; color: var(--danger, #ff5470); }
+      /* Grabando: ondas en el medio del chat que siguen la voz. */
+      .tz-grabacion {
+        position: fixed; left: 50%; top: 50%; z-index: 4000; width: min(320px, 86vw);
+        transform: translate(-50%, -50%); padding: 22px 18px 16px; border-radius: 22px; text-align: center; pointer-events: none;
+        background: rgba(10,7,22,0.82); border: 1px solid rgba(43,232,255,0.45);
+        box-shadow: 0 0 40px rgba(43,232,255,0.3), 0 20px 50px rgba(0,0,0,0.6);
+        backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+        animation: tz-grabacion-in 0.45s cubic-bezier(.34,1.56,.64,1) both;
+        transition: border-color 0.25s, box-shadow 0.25s;
+      }
+      @keyframes tz-grabacion-in {
+        from { opacity: 0; transform: translate(-50%, -40%) scale(0.7); filter: blur(6px); }
+        to { opacity: 1; transform: translate(-50%, -50%); filter: none; }
+      }
+      .tz-grabacion.is-cancelar { border-color: rgba(255,84,112,0.8); box-shadow: 0 0 40px rgba(255,84,112,0.4), 0 20px 50px rgba(0,0,0,0.6); }
+      .tz-grabacion-ondas { display: flex; align-items: center; justify-content: center; gap: 4px; height: 90px; }
+      .tz-grabacion-ondas span {
+        width: 5px; height: 100%; border-radius: 999px; transform: scaleY(0.12);
+        background: linear-gradient(180deg, #ff6ac1, #2be8ff 55%, #7c3aed);
+        box-shadow: 0 0 8px rgba(43,232,255,0.6); transition: transform 0.08s linear;
+      }
+      .tz-grabacion.is-cancelar .tz-grabacion-ondas span { background: linear-gradient(180deg, #ff8fa3, #ff5470); box-shadow: 0 0 8px rgba(255,84,112,0.6); }
+      .tz-grabacion-tiempo { margin: 12px 0 2px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 800; font-size: 16px; color: #fff; font-variant-numeric: tabular-nums; }
+      .tz-grabacion-punto { width: 10px; height: 10px; border-radius: 50%; background: #ff2f6d; box-shadow: 0 0 10px #ff2f6d; animation: tz-grabacion-punto 1s ease-in-out infinite; }
+      @keyframes tz-grabacion-punto { 50% { opacity: 0.25; } }
+      .tz-grabacion-ayuda { margin: 0; font-size: 12px; color: rgba(255,255,255,0.7); }
+      .tz-grabacion.is-cancelar .tz-grabacion-tiempo { color: #ff8fa3; }
+      /* Foto y nota de voz dentro de un mensaje (chat/AdjuntoMensaje.jsx). */
+      .tz-adjunto-foto { display: block; padding: 0; margin: 0 0 4px; border: none; background: none; cursor: zoom-in; border-radius: 10px; overflow: hidden; }
+      .tz-adjunto-foto img { display: block; max-width: 220px; max-height: 260px; width: auto; height: auto; object-fit: cover; border-radius: 10px; }
+      .tz-adjunto-audio { display: block; width: 230px; max-width: 100%; height: 40px; margin: 2px 0 4px; }
+      .tz-adjunto-visor {
+        position: fixed; inset: 0; z-index: 4000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+        padding: 16px; background: rgba(5,3,12,0.92); cursor: zoom-out;
+        animation: tz-adjunto-visor-in 0.35s cubic-bezier(.22,.9,.3,1) both;
+      }
+      @keyframes tz-adjunto-visor-in { from { opacity: 0; backdrop-filter: blur(0); } to { opacity: 1; } }
+      .tz-adjunto-visor img {
+        max-width: 100%; max-height: 78vh; border-radius: 14px; cursor: default; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+        animation: tz-adjunto-foto-in 0.45s cubic-bezier(.34,1.56,.64,1) both;
+      }
+      @keyframes tz-adjunto-foto-in { from { opacity: 0; transform: scale(0.85); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+      .tz-adjunto-visor-acciones { display: flex; gap: 10px; cursor: default; }
+      .tz-adjunto-visor-acciones button {
+        display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 999px; cursor: pointer; font: inherit; font-weight: 700;
+        border: 1px solid rgba(43,232,255,0.6); background: rgba(43,232,255,0.16); color: #fff;
+      }
+      .tz-adjunto-visor-nota { margin: 0; font-size: 12px; color: rgba(255,255,255,0.65); text-align: center; }
       /* Caras en los chats (personas y tiendas): la foto sola, sin marco ni
          fondo, como los logos de Taxi PE y Tonazo; sin foto, solo el sticker. */
       .tz-chat-cara { width: 40px; height: 40px; flex-shrink: 0; object-fit: contain; border: none; border-radius: 0; background: none; }

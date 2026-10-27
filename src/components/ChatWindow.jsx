@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import EntradaChat from "./chat/EntradaChat";
+import AdjuntoMensaje from "./chat/AdjuntoMensaje";
 import { createPortal } from "react-dom";
 import { Send, ShieldAlert, Loader2, Plus, ChevronUp, ChevronDown } from "lucide-react";
 import { formatTime, formatDate } from "../utils/format";
@@ -350,7 +352,9 @@ function MessageBubble({ mensaje, mine, esOfertaParaPasajero, estadoOferta, onRe
 
   return (
     <div className={`tz-chat-bubble ${mine ? "tz-chat-bubble-mine" : ""}`}>
-      <p>{texto}</p>
+      <AdjuntoMensaje texto={texto}>
+        <p>{texto}</p>
+      </AdjuntoMensaje>
       <span className="tz-chat-bubble-time">
         {hora}
         <ChecksLectura mine={mine} leido={!!mensaje?.leido} />
@@ -398,8 +402,6 @@ export default function ChatWindow({
   otroEscribiendo = false,
   onEscribiendo,
 }) {
-  const [texto, setTexto] = useState("");
-  const [bloqueado, setBloqueado] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [respondiendo, setRespondiendo] = useState(false);
   const [errorOferta, setErrorOferta] = useState("");
@@ -933,22 +935,6 @@ export default function ChatWindow({
     onEnviar?.(REMITENTE_SISTEMA, "📍 Estás cerca de tu destino", { tipo: TIPO_MENSAJE_SISTEMA });
   }, [remitentePropio, cercaDeDestino, pasajeroRecogido, viajeCerrado, onEnviar]);
 
-  const handleChange = (e) => {
-    const value = e.target.value;
-    setTexto(value);
-    setBloqueado(contieneTelefono(value));
-    if (value.trim()) onEscribiendo?.(remitentePropio);
-  };
-
-  const handleEnviar = async (e) => {
-    e.preventDefault();
-    const mensaje = texto.trim();
-    if (!mensaje || bloqueado) return;
-    setEnviando(true);
-    const { error } = await onEnviar(remitentePropio, mensaje);
-    setEnviando(false);
-    if (!error) setTexto("");
-  };
 
   // Limpieza del intervalo del cooldown si el chat se cierra a mitad de
   // la cuenta regresiva — sin esto, el interval sigue vivo llamando a
@@ -1537,11 +1523,6 @@ export default function ChatWindow({
          teléfono bloqueado, la fila de acciones rápidas (deslizable,
          un solo contenedor para los dos roles) y el input. */}
       <div className="tz-chat-footer">
-        {bloqueado && (
-          <p className="tz-error" style={{ display: "flex", alignItems: "center", gap: 6, margin: 0 }}>
-            <ShieldAlert size={14} /> Por seguridad, no se pueden enviar números de teléfono por el chat.
-          </p>
-        )}
 
         {errorOferta && (
           <p className="tz-error" style={{ margin: 0 }}>
@@ -1711,25 +1692,15 @@ export default function ChatWindow({
         {loading ? null : viajeCerrado || viajeCancelado ? (
           <p className="tz-chat-cerrado-aviso">🔒 El chat se ha cerrado</p>
         ) : (
-          <form className="tz-chat-input-row" onSubmit={handleEnviar}>
-            <input
-              type="text"
-              className="tz-text-input tz-chat-input"
-              placeholder="Escribe un mensaje…"
-              value={texto}
-              onChange={handleChange}
-              autoFocus
+          <div className="tz-chat-input-row">
+            {/* Texto, fotos y notas de voz (chat/EntradaChat.jsx). Por
+                seguridad no deja mandar números de teléfono. */}
+            <EntradaChat
+              onEnviar={(t) => onEnviar(remitentePropio, t)}
+              onEscribir={() => onEscribiendo?.(remitentePropio)}
+              validar={(t) => (contieneTelefono(t) ? "Por seguridad, no se pueden enviar números de teléfono por el chat." : null)}
             />
-            <button
-              type="submit"
-              className="tz-chat-send-btn"
-              onMouseDown={(e) => e.preventDefault()}
-              disabled={!texto.trim() || bloqueado || enviando}
-              aria-label="Enviar"
-            >
-              <Send size={16} />
-            </button>
-          </form>
+          </div>
         )}
       </div>
       </div>

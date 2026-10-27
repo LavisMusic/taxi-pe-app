@@ -5,6 +5,7 @@ import { useMensajesPlataforma } from "../../hooks/useMensajesPlataforma";
 import { FilasChatsFijados, ChatFijadoAbierto, InterruptorAvisos } from "./ChatsFijados";
 import AvisosDispositivo from "./AvisosDispositivo";
 import { useAbrirMensajesDesdeAviso } from "../../hooks/useAbrirMensajesDesdeAviso";
+import { previaMensaje } from "../../lib/adjuntosChat";
 
 const horaCorta = (ms) => {
   const d = new Date(ms);
@@ -18,7 +19,7 @@ function previa(c) {
   if (!m) return "Toca para abrir el chat";
   if (m.tipo === "oferta") return `💰 ${m.mensaje || "Oferta del viaje"}`;
   if (m.tipo === "senas") return "👋 Hiciste señas";
-  return `${m.remitente === "pasajero" ? "Tú: " : ""}${m.mensaje || ""}`;
+  return `${m.remitente === "pasajero" ? "Tú: " : ""}${previaMensaje(m.mensaje) || ""}`;
 }
 
 // Botón "Mensajes" de la cabecera (pasajero y recolector): contador de no

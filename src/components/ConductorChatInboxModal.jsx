@@ -4,6 +4,7 @@ import { ChatEntregaConductor } from "./repartidor/EntregaActivaModal";
 import { supabase } from "../supabaseClient";
 import { useHilosChatConductor, useChatMensajes, REMITENTE_CONDUCTOR } from "../hooks/useChatMensajes";
 import { usePerfilesEnVivo } from "../hooks/usePerfilesEnVivo";
+import { previaMensaje } from "../lib/adjuntosChat";
 import ChatWindow from "./ChatWindow";
 import ChatErrorBoundary from "./ChatErrorBoundary";
 import { FilasChatsFijados, ChatFijadoAbierto, InterruptorAvisos } from "./mensajes/ChatsFijados";
@@ -363,7 +364,7 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
                       {nombre}
                       <span className={`tz-chatneg-estado ${enCurso ? "is-en-linea" : ""}`}>{enCurso ? "Viaje en curso" : "Negociando"}</span>
                     </span>
-                    <span className="tz-chatfijo-preview">{h?.ultimo?.mensaje || "Sin mensajes todavía"}</span>
+                    <span className="tz-chatfijo-preview">{previaMensaje(h?.ultimo?.mensaje) || "Sin mensajes todavía"}</span>
                   </span>
                   <span className="tz-chatfijo-meta">
                     <span className="tz-chatfijo-hora">{horaCorta(h?.ultimo?.created_at)}</span>
