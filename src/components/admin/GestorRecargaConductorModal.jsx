@@ -14,6 +14,7 @@ import { ventaParaPanel } from "../../lib/ventaBoleta";
 import { subirComprobante } from "../../lib/comprobantes";
 import Dropdown from "../Dropdown";
 import Select from "../Select";
+import BotonPegarComprobante from "../BotonPegarComprobante";
 
 // Gestor de la membresía de UN conductor (botón ⚡ de su tarjeta en el
 // Directorio del Admin) — COMPLETAMENTE igual al gestor del plan de un
@@ -282,6 +283,7 @@ function RecargaRapida({ conductor, paquetes, registrarRecarga, saving, errorExt
               <input type="file" accept="image/*" hidden onChange={elegirArchivo} />
             </label>
           </div>
+          <BotonPegarComprobante onArchivo={(f) => elegirArchivo({ target: { files: [f], value: "" } })} />
           {preview && <img src={preview} alt="Comprobante" className="tz-renovar-comprobante" />}
         </div>
       )}

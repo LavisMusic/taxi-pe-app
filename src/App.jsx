@@ -63,6 +63,7 @@ import TicketBoleta from "./components/TicketBoleta";
 
 import logo from "./assets/logo.webp";
 import Select from "./components/Select";
+import BotonPegarComprobante from "./components/BotonPegarComprobante";
 
 /* ------------------------------------------------------------------ */
 /* CATALOGO DINAMICO: la carga (categorias/productos/stock desde       */
@@ -5917,6 +5918,7 @@ export default function App() {
                                 ? "Escanear otro comprobante"
                                 : "Escanear comprobante"}
                             </button>
+                            <BotonPegarComprobante onArchivo={(f) => processReceiptImage(f)} />
                             {!cameraSupported && (
                               <p className="tz-camera-note">
                                 No se pudo acceder a la cámara; se abrirá el selector de fotos.
@@ -7928,6 +7930,7 @@ export default function App() {
                                               ? "Comprobante adjuntado ✓"
                                               : "Adjuntar comprobante (obligatorio)"}
                                           </button>
+                                          <BotonPegarComprobante onArchivo={(f) => processReceiptImage(f)} />
                                         )}
                                         {!cameraSupported && (
                                           <p className="tz-camera-note">

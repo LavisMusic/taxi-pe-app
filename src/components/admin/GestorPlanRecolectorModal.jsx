@@ -13,6 +13,7 @@ import {
 } from "../../lib/taxiEnums";
 import { subirComprobante } from "../../lib/comprobantes";
 import Dropdown from "../Dropdown";
+import BotonPegarComprobante from "../BotonPegarComprobante";
 
 // Gestor del plan de UN recolector (botón ⚡ de su tarjeta en el
 // Directorio del Admin, categoría "Recolectores") — el mismo diseño que el
@@ -166,6 +167,7 @@ function RecargaRapida({ recolector, paquetes, crearPeticion, onHecho }) {
               <input type="file" accept="image/*" hidden onChange={elegirArchivo} />
             </label>
           </div>
+          <BotonPegarComprobante onArchivo={(f) => elegirArchivo({ target: { files: [f], value: "" } })} />
           {preview && <img src={preview} alt="Comprobante" className="tz-renovar-comprobante" />}
         </div>
       )}

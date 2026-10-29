@@ -7287,6 +7287,9 @@ export default function Styles() {
         background: rgba(var(--cyan-rgb), 0.14); border: 1px solid rgba(var(--cyan-rgb), 0.4);
         color: var(--cyan); font-weight: 800; font-size: 16px;
       }
+      /* "Pegar comprobante" (BotonPegarComprobante.jsx), debajo de adjuntar. */
+      .tz-pegar-comprobante { margin-top: 8px; width: 100%; justify-content: center; }
+      .tz-pegar-comprobante-aviso { margin: 6px 2px 0; font-size: 12px; color: var(--text-dim); }
       /* ===== Chats: escribir con fotos y notas de voz (chat/EntradaChat.jsx) ===== */
       .tz-entrada { position: relative; display: flex; align-items: center; gap: 8px; width: 100%; flex-wrap: wrap; }
       .tz-entrada-campo { position: relative; flex: 1 1 auto; min-width: 0; }

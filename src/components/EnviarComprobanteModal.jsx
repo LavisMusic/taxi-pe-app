@@ -3,6 +3,7 @@ import { X, Camera, Send } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../contexts/AuthContext";
 import { formatSoles } from "../utils/format";
+import BotonPegarComprobante from "./BotonPegarComprobante";
 
 // Flujo estricto: el cliente NUNCA modifica su deuda directamente. Esto
 // solo sube el comprobante a Storage e inserta una fila 'pendiente' en
@@ -131,6 +132,7 @@ export default function EnviarComprobanteModal({
               onChange={handleFileChange}
             />
           </label>
+          <BotonPegarComprobante onArchivo={(f) => handleFileChange({ target: { files: [f], value: "" } })} />
           {previewUrl && (
             <img
               src={previewUrl}

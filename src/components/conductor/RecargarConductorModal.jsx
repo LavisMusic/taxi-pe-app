@@ -13,6 +13,7 @@ import {
 import { usePaquetes } from "../../hooks/usePaquetes";
 import { useMiRecargaConductor } from "../../hooks/useRecargasConductor";
 import Dropdown from "../Dropdown";
+import BotonPegarComprobante from "../BotonPegarComprobante";
 
 // "Recargar" del pie de página del conductor: pide membresía o gemas por
 // su cuenta (Yape/Plin/Otros + foto del comprobante, obligatoria). La
@@ -186,6 +187,7 @@ export default function RecargarConductorModal({ conductor, onClose }) {
               <input type="file" accept="image/*" hidden onChange={elegirArchivo} />
             </label>
           </div>
+          <BotonPegarComprobante onArchivo={(f) => elegirArchivo({ target: { files: [f], value: "" } })} />
           {preview && <img src={preview} alt="Comprobante" className="tz-renovar-comprobante" />}
         </div>
 
