@@ -106,7 +106,7 @@ export function useAnuncioActivo(publico = "pasajeros") {
             .or(`fecha_inicio.is.null,fecha_inicio.lte.${ahora}`)
             .or(`fecha_fin.is.null,fecha_fin.gte.${ahora}`)
             .order("orden", { ascending: true })
-            .order("created_at", { ascending: false });
+            .order("created_at", { ascending: true });
           if (filtro === "roles") q = q.contains("roles", [ROL_DE_PUBLICO[publico] ?? "pasajero"]);
           if (filtro === "publico") q = q.in("publico", [publico, "todos"]);
           return q;

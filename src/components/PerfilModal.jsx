@@ -14,6 +14,8 @@ import { esUsuarioProvisional } from "../lib/nombreUsuario";
 //   usuarioHasta / fotoHasta  → ms hasta cuando no se pueden volver a
 //                               cambiar (una vez por semana; migración
 //                               20261029100000)
+//   limitesListos             → ya se sabe si puede cambiarlos (antes, el
+//                               nombre se ve pero no se edita)
 export default function PerfilModal({
   titulo = "Mi perfil",
   fotoUrl,
@@ -26,6 +28,7 @@ export default function PerfilModal({
   onGuardarUsuario,
   usuarioHasta = null,
   fotoHasta = null,
+  limitesListos = true,
   onClose,
 }) {
   const fecha = (ms) =>
@@ -39,7 +42,7 @@ export default function PerfilModal({
   const [guardando, setGuardando] = useState(false);
   const [aviso, setAviso] = useState("");
   const [error, setError] = useState("");
-  const puedeGuardar = campo.listo && campo.cambio && !usuarioBloqueado;
+  const puedeGuardar = campo.listo && campo.cambio && !usuarioBloqueado && limitesListos;
 
   const guardarUsuario = async (e) => {
     e.preventDefault();
@@ -64,7 +67,13 @@ export default function PerfilModal({
         <button
           type="button"
           className="tz-perfil-pasajero-foto"
-          onClick={() => (fotoBloqueada ? setError(`Ya cambiaste tu foto esta semana: podrás cambiarla de nuevo el ${fotoBloqueada}.`) : setEditandoFoto(true))}
+          onClick={() =>
+            !limitesListos
+              ? null
+              : fotoBloqueada
+                ? setError(`Ya cambiaste tu foto esta semana: podrás cambiarla de nuevo el ${fotoBloqueada}.`)
+                : setEditandoFoto(true)
+          }
           aria-label="Cambiar foto"
         >
           {fotoUrl ? (
@@ -77,7 +86,7 @@ export default function PerfilModal({
           </span>
         </button>
         <form onSubmit={guardarUsuario} className="tz-perfil-pasajero-form">
-          <CampoUsuario campo={campo} id="perfil-usuario" bloqueadoHasta={usuarioBloqueado}>
+          <CampoUsuario campo={campo} id="perfil-usuario" bloqueadoHasta={usuarioBloqueado} deshabilitado={!limitesListos}>
             <button type="submit" className="tz-scan-btn tz-payment-save" disabled={guardando || !puedeGuardar} aria-label="Guardar nombre de usuario">
               {guardando ? <Loader2 size={16} className="tz-spin" /> : <Check size={16} />}
             </button>

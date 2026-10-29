@@ -14,7 +14,7 @@ const mensaje = (e) =>
 
 export default function PerfilConductorModal({ conductor, actualizar, onClose }) {
   const { usuario, updateUsuario } = useTaxiAuth();
-  const [cambios, setCambios] = useState({});
+  const [cambios, setCambios] = useState(null);
 
   const leerCambios = async () => {
     const [u, c] = await Promise.all([
@@ -37,8 +37,9 @@ export default function PerfilConductorModal({ conductor, actualizar, onClose })
       telefono={usuario?.telefono}
       usuarioId={usuario?.id}
       storageKey={conductor.id}
-      usuarioHasta={mas7(cambios.nombre_usuario_cambiado_at)}
-      fotoHasta={mas7(cambios.foto_cambiada_at)}
+      usuarioHasta={mas7(cambios?.nombre_usuario_cambiado_at)}
+      fotoHasta={mas7(cambios?.foto_cambiada_at)}
+      limitesListos={!!cambios}
       onGuardarFoto={async (url) => {
         const { error: e } = await actualizar(conductor.id, { foto_url: url });
         if (e) return false;

@@ -115,20 +115,6 @@ export default function AuraVoz({ analizador, cancelar = false, children }) {
       ctx.arc(c, c, base * 0.9, 0, Math.PI * 2);
       ctx.fill();
 
-      // Anillo de partículas (como la referencia), que se abre con la voz.
-      ctx.save();
-      ctx.globalCompositeOperation = "lighter";
-      for (let i = 0; i < 90; i++) {
-        const ang = (i / 90) * Math.PI * 2 + giro * 0.5;
-        const v = suavizado[Math.floor((i / 90) * PUNTOS)];
-        const r = base * 1.28 + v * TAM * 0.08;
-        ctx.fillStyle = rojo ? `rgba(255,120,140,${0.25 + v * 0.7})` : `hsla(${(i * 4 + giro * 80) % 360},100%,72%,${0.25 + v * 0.7})`;
-        ctx.beginPath();
-        ctx.arc(c + Math.cos(ang) * r, c + Math.sin(ang) * r, 1.1 + v * 1.6, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-
       raf = requestAnimationFrame(dibujar);
     };
     raf = requestAnimationFrame(dibujar);

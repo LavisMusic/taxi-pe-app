@@ -21,8 +21,15 @@ export function useCampoUsuario({ nombre, nombreUsuario, telefono, usuarioId }) 
   const [estado, setEstado] = useState(provisional ? "sugiriendo" : "propio");
   const consulta = useRef(0);
 
+  // Si el nombre de la cuenta llega después (la sesión guardada traía el
+  // viejo), el campo lo toma al instante.
   useEffect(() => {
-    if (!provisional) return undefined;
+    if (!provisional) {
+      consulta.current = 0;
+      setValor(nombreUsuario || "");
+      setEstado("propio");
+      return undefined;
+    }
     let vivo = true;
     sugerirUsuarioLibre(nombre, usuarioId).then((s) => {
       if (!vivo || consulta.current > 0) return; // ya empezó a escribir
@@ -36,7 +43,7 @@ export function useCampoUsuario({ nombre, nombreUsuario, telefono, usuarioId }) 
     return () => {
       vivo = false;
     };
-  }, [provisional, nombre, usuarioId]);
+  }, [provisional, nombre, usuarioId, nombreUsuario]);
 
   const cambiar = (texto) => {
     const limpio = normalizarUsuario(texto);
@@ -74,7 +81,9 @@ const TEXTO = {
 
 // `children`: lo que va a la derecha del campo (ej. el botón Guardar).
 // `bloqueadoHasta` (texto de fecha): ya lo cambió esta semana — no se edita.
-export default function CampoUsuario({ campo, id = "campo-usuario", children, bloqueadoHasta = null }) {
+// `deshabilitado`: todavía se está confirmando si puede cambiarlo (se ve
+// el nombre, pero no se edita hasta saberlo).
+export default function CampoUsuario({ campo, id = "campo-usuario", children, bloqueadoHasta = null, deshabilitado = false }) {
   const texto = bloqueadoHasta ? `Ya lo cambiaste esta semana: podrás cambiarlo de nuevo el ${bloqueadoHasta}.` : TEXTO[campo.estado];
   return (
     <>
@@ -92,7 +101,7 @@ export default function CampoUsuario({ campo, id = "campo-usuario", children, bl
             spellCheck={false}
             placeholder={campo.estado === "sugiriendo" ? "…" : "tu.usuario"}
             onChange={(e) => campo.cambiar(e.target.value)}
-            disabled={!!bloqueadoHasta}
+            disabled={!!bloqueadoHasta || deshabilitado}
           />
         </span>
         {children}

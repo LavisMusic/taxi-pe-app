@@ -12,7 +12,7 @@ export default function PerfilPasajeroModal({ onClose }) {
   // Último cambio de usuario y de foto (una vez por semana) y lo que hay
   // en la base: la sesión guardada puede traer un nombre viejo (antes del
   // nombre de usuario automático).
-  const [cambios, setCambios] = useState({});
+  const [cambios, setCambios] = useState(null);
   const leerCambios = () =>
     supabase
       .from("usuarios")
@@ -56,8 +56,9 @@ export default function PerfilPasajeroModal({ onClose }) {
       storageKey={`pasajero-${usuario.id}`}
       onGuardarFoto={async (url) => !(await guardar({ foto_url: url }))}
       onGuardarUsuario={(nombreUsuario) => guardar({ nombre_usuario: nombreUsuario })}
-      usuarioHasta={mas7(cambios.nombre_usuario_cambiado_at)}
-      fotoHasta={mas7(cambios.foto_cambiada_at)}
+      usuarioHasta={mas7(cambios?.nombre_usuario_cambiado_at)}
+      fotoHasta={mas7(cambios?.foto_cambiada_at)}
+      limitesListos={!!cambios}
       onClose={onClose}
     />
   );

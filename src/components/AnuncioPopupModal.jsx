@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { X, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { toYoutubeEmbedUrl } from "../lib/youtube";
 import TextoConEnlaces from "./TextoConEnlaces";
 
@@ -262,7 +262,7 @@ export default function AnuncioPopupModal({
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
             >
-              {anuncio.boton_texto || "VAMOS"} <ExternalLink size={15} />
+              {anuncio.boton_texto || "VAMOS"}
             </a>
           </div>
         )}

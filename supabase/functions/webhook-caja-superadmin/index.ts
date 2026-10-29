@@ -103,8 +103,10 @@ Deno.serve(async (req) => {
     case "anuncios.listar": {
       const { data, error } = await db
         .from("anuncios")
-        .select("id, titulo, descripcion, imagen_url, video_url, fecha_inicio, fecha_fin, frecuencia_mostrar, activo, orden, roles, created_at")
-        .order("created_at", { ascending: false });
+        .select("id, titulo, descripcion, imagen_url, video_url, boton_url, boton_texto, fecha_inicio, fecha_fin, frecuencia_mostrar, activo, orden, roles, created_at")
+        // Como el carrusel: del más antiguo al más nuevo, o como se reordenó.
+        .order("orden", { ascending: true })
+        .order("created_at", { ascending: true });
       if (error) return jsonResponse(500, { error: error.message });
       return jsonResponse(200, { ok: true, filas: data ?? [] });
     }
@@ -126,6 +128,16 @@ Deno.serve(async (req) => {
       }
       const { error } = await db.from("anuncios").update(campos).eq("id", id);
       if (error) return jsonResponse(500, { error: error.message });
+      return jsonResponse(200, { ok: true });
+    }
+    // Orden del carrusel (arrastrando en el gestor): posición = orden.
+    case "anuncios.ordenar": {
+      const ids = Array.isArray(d.ids) ? d.ids.map(uuid).filter(Boolean) : [];
+      if (ids.length === 0) return jsonResponse(400, { error: "datos inválidos" });
+      for (let i = 0; i < ids.length; i++) {
+        const { error } = await db.from("anuncios").update({ orden: i + 1 }).eq("id", ids[i]);
+        if (error) return jsonResponse(500, { error: error.message });
+      }
       return jsonResponse(200, { ok: true });
     }
     case "anuncios.eliminar": {
