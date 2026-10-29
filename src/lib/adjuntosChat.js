@@ -61,3 +61,7 @@ export async function subirAdjunto({ tipo, blob, duracion = 0 }) {
   const url = supabase.storage.from("chat-adjuntos").getPublicUrl(ruta).data?.publicUrl;
   return codificarAdjunto({ tipo, url, duracion });
 }
+
+// Clase extra para la burbuja de un mensaje que es una nota de voz: la
+// burbuja queda sin cuadro (la nota lleva su propio color).
+export const claseNota = (texto) => (leerAdjunto(texto)?.tipo === "audio" ? "is-nota" : "");

@@ -8,6 +8,7 @@ import { formatSoles } from "../../utils/format";
 import EscanerQrModal from "./EscanerQrModal";
 import EntradaChat from "../chat/EntradaChat";
 import AdjuntoMensaje from "../chat/AdjuntoMensaje";
+import { claseNota } from "../../lib/adjuntosChat";
 import MapaEntrega from "./MapaEntrega";
 
 // Pantalla de la entrega en curso para el repartidor. Ver DELIVERY.md §7.
@@ -55,12 +56,15 @@ function Chat({ entregaId, conductorId, hilo }) {
               key={m.id}
               className={`tz-entrega-msg ${m.emisor_rol === "conductor" ? "tz-entrega-msg-propio" : ""} ${
                 m.emisor_rol === "sistema" ? "tz-entrega-msg-sistema" : ""
-              }`}
+              } ${claseNota(m.mensaje)}`}
             >
               {m.emisor_rol !== "conductor" && m.emisor_rol !== "sistema" && (
                 <span className="tz-entrega-msg-quien">{m.emisor_rol}</span>
               )}
-              <AdjuntoMensaje texto={m.mensaje}>
+              <AdjuntoMensaje
+                texto={m.mensaje}
+                claseBurbuja={`tz-entrega-msg ${m.emisor_rol === "conductor" ? "tz-entrega-msg-propio" : ""}`}
+              >
                 <span>{m.mensaje}</span>
               </AdjuntoMensaje>
               {m.emisor_rol === "conductor" && (

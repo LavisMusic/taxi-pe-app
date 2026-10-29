@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import EntradaChat from "./chat/EntradaChat";
 import AdjuntoMensaje from "./chat/AdjuntoMensaje";
+import { claseNota } from "../lib/adjuntosChat";
 import { createPortal } from "react-dom";
 import { Send, ShieldAlert, Loader2, Plus, ChevronUp, ChevronDown } from "lucide-react";
 import { formatTime, formatDate } from "../utils/format";
@@ -351,8 +352,8 @@ function MessageBubble({ mensaje, mine, esOfertaParaPasajero, estadoOferta, onRe
   }
 
   return (
-    <div className={`tz-chat-bubble ${mine ? "tz-chat-bubble-mine" : ""}`}>
-      <AdjuntoMensaje texto={texto}>
+    <div className={`tz-chat-bubble ${mine ? "tz-chat-bubble-mine" : ""} ${claseNota(texto)}`}>
+      <AdjuntoMensaje texto={texto} claseBurbuja={`tz-chat-bubble ${mine ? "tz-chat-bubble-mine" : ""}`}>
         <p>{texto}</p>
       </AdjuntoMensaje>
       <span className="tz-chat-bubble-time">

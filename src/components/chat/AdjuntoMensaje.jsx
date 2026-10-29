@@ -2,19 +2,22 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Download, X } from "lucide-react";
 import { leerAdjunto } from "../../lib/adjuntosChat";
+import NotaDeVoz from "./NotaDeVoz";
 
 // Contenido de un mensaje de chat: si es una foto o una nota de voz
 // (lib/adjuntosChat.js) la muestra; si no, `children` (el texto como ya lo
 // pintaba cada chat). La foto se abre en grande con botón para descargarla:
 // todo el chat se borra a las 24 h.
-export default function AdjuntoMensaje({ texto, children }) {
+// `claseBurbuja`: las clases de la burbuja de ese chat — la nota de voz
+// toma ese color (el del tema) sin ir dentro del cuadro del mensaje.
+export default function AdjuntoMensaje({ texto, children, claseBurbuja = "" }) {
   const adjunto = leerAdjunto(texto);
   const [abierta, setAbierta] = useState(false);
   const [bajando, setBajando] = useState(false);
   if (!adjunto) return children;
 
   if (adjunto.tipo === "audio") {
-    return <audio className="tz-adjunto-audio" src={adjunto.url} controls preload="metadata" />;
+    return <NotaDeVoz url={adjunto.url} duracion={adjunto.duracion} claseBurbuja={claseBurbuja} />;
   }
 
   const descargar = async () => {

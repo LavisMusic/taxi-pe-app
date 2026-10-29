@@ -7324,7 +7324,7 @@ export default function Styles() {
       .tz-entrada-mas.is-abierto { transform: rotate(135deg) scale(1.08); background: rgba(255,47,158,0.22); border-color: #ff6ac1; color: #ff6ac1; }
       .tz-entrada-menu {
         position: absolute; right: 0; bottom: calc(100% + 10px); z-index: 5;
-        transform-origin: 90% 100%;
+        transform-origin: 90% 100%; display: flex; flex-direction: column; align-items: stretch; gap: 6px;
         animation: tz-entrada-menu-in 0.5s cubic-bezier(.34,1.56,.64,1) both;
       }
       @keyframes tz-entrada-menu-in {
@@ -7362,33 +7362,57 @@ export default function Styles() {
       }
       .tz-entrada-accion.is-subiendo { background: rgba(255,255,255,0.08); color: var(--cyan, #2be8ff); }
       .tz-entrada-error { flex-basis: 100%; margin: 2px 4px 0; font-size: 12px; color: var(--danger, #ff5470); }
-      /* Grabando: ondas en el medio del chat que siguen la voz. */
+      /* Grabando: el aura (AuraVoz) en el medio del chat, sin recuadro; el
+         contador al centro y una ayuda corta debajo. */
       .tz-grabacion {
-        position: fixed; left: 50%; top: 50%; z-index: 4000; width: min(320px, 86vw);
-        transform: translate(-50%, -50%); padding: 22px 18px 16px; border-radius: 22px; text-align: center; pointer-events: none;
-        background: rgba(10,7,22,0.82); border: 1px solid rgba(43,232,255,0.45);
-        box-shadow: 0 0 40px rgba(43,232,255,0.3), 0 20px 50px rgba(0,0,0,0.6);
-        backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-        animation: tz-grabacion-in 0.45s cubic-bezier(.34,1.56,.64,1) both;
-        transition: border-color 0.25s, box-shadow 0.25s;
+        position: fixed; left: 50%; top: 50%; z-index: 4000; transform: translate(-50%, -50%);
+        display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; text-align: center;
+        animation: tz-grabacion-in 0.5s cubic-bezier(.34,1.56,.64,1) both;
       }
       @keyframes tz-grabacion-in {
-        from { opacity: 0; transform: translate(-50%, -40%) scale(0.7); filter: blur(6px); }
+        from { opacity: 0; transform: translate(-50%, -46%) scale(0.6); filter: blur(8px); }
         to { opacity: 1; transform: translate(-50%, -50%); filter: none; }
       }
-      .tz-grabacion.is-cancelar { border-color: rgba(255,84,112,0.8); box-shadow: 0 0 40px rgba(255,84,112,0.4), 0 20px 50px rgba(0,0,0,0.6); }
-      .tz-grabacion-ondas { display: flex; align-items: center; justify-content: center; gap: 4px; height: 90px; }
-      .tz-grabacion-ondas span {
-        width: 5px; height: 100%; border-radius: 999px; transform: scaleY(0.12);
-        background: linear-gradient(180deg, #ff6ac1, #2be8ff 55%, #7c3aed);
-        box-shadow: 0 0 8px rgba(43,232,255,0.6); transition: transform 0.08s linear;
+      .tz-aura { position: relative; }
+      .tz-aura canvas { display: block; }
+      .tz-aura-centro { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; }
+      .tz-grabacion-tiempo { font-weight: 800; font-size: 26px; color: #fff; font-variant-numeric: tabular-nums; text-shadow: 0 0 12px rgba(255,255,255,0.6); }
+      .tz-grabacion.is-cancelar .tz-aura-centro { color: #ff8fa3; }
+      .tz-grabacion-ayuda {
+        margin: 0; padding: 5px 12px; border-radius: 999px; font-size: 12px; color: rgba(255,255,255,0.85);
+        background: rgba(8,6,20,0.65); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
       }
-      .tz-grabacion.is-cancelar .tz-grabacion-ondas span { background: linear-gradient(180deg, #ff8fa3, #ff5470); box-shadow: 0 0 8px rgba(255,84,112,0.6); }
-      .tz-grabacion-tiempo { margin: 12px 0 2px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 800; font-size: 16px; color: #fff; font-variant-numeric: tabular-nums; }
-      .tz-grabacion-punto { width: 10px; height: 10px; border-radius: 50%; background: #ff2f6d; box-shadow: 0 0 10px #ff2f6d; animation: tz-grabacion-punto 1s ease-in-out infinite; }
-      @keyframes tz-grabacion-punto { 50% { opacity: 0.25; } }
-      .tz-grabacion-ayuda { margin: 0; font-size: 12px; color: rgba(255,255,255,0.7); }
-      .tz-grabacion.is-cancelar .tz-grabacion-tiempo { color: #ff8fa3; }
+      /* Nota de voz (chat/NotaDeVoz.jsx): sin el cuadro del mensaje; la
+         píldora lleva las clases de la burbuja del chat (el color del tema). */
+      .tz-dlv-bubble.is-nota, .tz-chatfijo-burbuja.is-nota, .tz-chat-bubble.is-nota, .tz-entrega-msg.is-nota {
+        background: none !important; border: none !important; box-shadow: none !important; padding: 0 !important;
+      }
+      .tz-nota {
+        position: relative; display: flex !important; align-items: center; gap: 10px;
+        width: 250px; max-width: 100% !important; min-width: 200px; margin: 0 0 3px !important;
+        padding: 7px 12px 7px 7px !important; border-radius: 999px !important;
+        -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation;
+      }
+      .tz-nota-play {
+        flex: 0 0 34px; width: 34px; height: 34px; border-radius: 999px; padding: 0; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        border: none; background: rgba(255,255,255,0.18); color: inherit;
+        transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), background 0.2s;
+      }
+      .tz-nota-play:hover { transform: scale(1.08); background: rgba(255,255,255,0.28); }
+      .tz-nota-barra { position: relative; flex: 1; height: 22px; cursor: pointer; touch-action: none; }
+      .tz-nota-barra::before {
+        content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 4px; margin-top: -2px;
+        border-radius: 999px; background: currentColor; opacity: 0.28;
+      }
+      .tz-nota-barra-relleno { position: absolute; left: 0; top: 50%; height: 4px; margin-top: -2px; border-radius: 999px; background: currentColor; }
+      .tz-nota-barra-punto {
+        position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%;
+        background: currentColor; box-shadow: 0 0 8px rgba(255,255,255,0.5);
+      }
+      .tz-nota-tiempo { flex-shrink: 0; font-size: 12px; font-weight: 700; opacity: 0.85; font-variant-numeric: tabular-nums; }
+      .tz-nota-tiempo b { margin-right: 2px; }
+      .tz-nota-menu { right: auto; left: 0; display: flex; flex-direction: column; gap: 6px; transform-origin: 10% 100%; }
       /* Foto y nota de voz dentro de un mensaje (chat/AdjuntoMensaje.jsx). */
       .tz-adjunto-foto { display: block; padding: 0; margin: 0 0 4px; border: none; background: none; cursor: zoom-in; border-radius: 10px; overflow: hidden; }
       .tz-adjunto-foto img { display: block; max-width: 220px; max-height: 260px; width: auto; height: auto; object-fit: cover; border-radius: 10px; }

@@ -1,14 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Send, Mic, ImagePlus, Loader2, Trash2 } from "lucide-react";
+import { Plus, Send, Mic, ImagePlus, Camera, Loader2, Trash2 } from "lucide-react";
 import { subirAdjunto, minSeg } from "../../lib/adjuntosChat";
+import AuraVoz from "./AuraVoz";
 
 // Campo de escribir de los chats, con fotos y notas de voz:
-//   - "+" dentro del campo, a la derecha: despliega "Subir foto".
+//   - "+" dentro del campo, a la derecha: despliega "Subir foto" y "Tomar
+//     foto" (abre la cámara del celular).
 //   - A la derecha, el micrófono; apenas se activa el campo (foco o texto)
 //     se convierte en el avión de papel de enviar.
-//   - Mantener presionado el micrófono graba: en el medio del chat aparecen
-//     ondas que siguen la voz. Soltar envía; deslizar hacia afuera cancela.
+//   - Mantener presionado el micrófono graba: en el medio del chat aparece
+//     un aura arcoíris (AuraVoz) que se mueve con la voz, con el contador
+//     al centro. Soltar envía; deslizar hacia afuera cancela.
 //     Máximo 60 s (al llegar, se envía solo).
 // `onEnviar(texto)` → Promise ({ error } opcional): el texto o, para una
 // foto o un audio, el mensaje ya codificado (lib/adjuntosChat.js).
@@ -16,7 +19,6 @@ import { subirAdjunto, minSeg } from "../../lib/adjuntosChat";
 // `validar(texto)` → mensaje de aviso o null: con aviso no se envía (ej.
 // el chat del viaje no deja mandar números de teléfono).
 const MAX_SEG = 60;
-const BARRAS = 28;
 const DISTANCIA_CANCELAR = 90; // px desde donde se empezó a grabar
 
 export default function EntradaChat({ onEnviar, onEscribir, validar = null, deshabilitado = false, placeholder = "Escribe un mensaje…", autoFocus = true }) {
@@ -29,8 +31,8 @@ export default function EntradaChat({ onEnviar, onEscribir, validar = null, desh
   const [segundos, setSegundos] = useState(0);
   const inputRef = useRef(null);
   const fileRef = useRef(null);
+  const camaraRef = useRef(null);
   const grab = useRef(null); // { recorder, stream, ctx, analyser, inicio, partes, x, y, cancelar, raf, tope }
-  const barrasRef = useRef([]);
 
   const activo = foco || texto.trim().length > 0;
   const aviso = validar && texto.trim() ? validar(texto) : null;
@@ -63,25 +65,13 @@ export default function EntradaChat({ onEnviar, onEscribir, validar = null, desh
   const pararTodo = () => {
     const g = grab.current;
     if (!g) return;
-    cancelAnimationFrame(g.raf);
     clearInterval(g.reloj);
     g.stream?.getTracks().forEach((t) => t.stop());
     g.ctx?.close().catch(() => {});
   };
 
-  const animarOndas = () => {
-    const g = grab.current;
-    if (!g?.analyser) return;
-    const datos = new Uint8Array(g.analyser.frequencyBinCount);
-    g.analyser.getByteFrequencyData(datos);
-    const paso = Math.max(1, Math.floor(datos.length / BARRAS));
-    barrasRef.current.forEach((el, i) => {
-      if (!el) return;
-      const v = datos[i * paso] / 255;
-      el.style.transform = `scaleY(${0.12 + v * 0.95})`;
-    });
-    g.raf = requestAnimationFrame(animarOndas);
-  };
+  // El aura lee el analizador del micrófono en cada cuadro.
+  const analizador = useCallback(() => grab.current?.analyser ?? null, []);
 
   const empezarGrabacion = async (e) => {
     if (deshabilitado || subiendo || grab.current) return;
@@ -119,7 +109,8 @@ export default function EntradaChat({ onEnviar, onEscribir, validar = null, desh
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const analyser = ctx.createAnalyser();
-      analyser.fftSize = 128;
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.7;
       ctx.createMediaStreamSource(stream).connect(analyser);
       Object.assign(g, { ctx, analyser });
     } catch {
@@ -133,7 +124,6 @@ export default function EntradaChat({ onEnviar, onEscribir, validar = null, desh
       setSegundos(s);
       if (s >= MAX_SEG && g.recorder.state === "recording") g.recorder.stop();
     }, 200);
-    g.raf = requestAnimationFrame(animarOndas);
   };
 
   const moverGrabacion = (e) => {
@@ -197,12 +187,26 @@ export default function EntradaChat({ onEnviar, onEscribir, validar = null, desh
             <button type="button" className="tz-entrada-menu-btn" onClick={() => fileRef.current?.click()}>
               <ImagePlus size={17} /> Subir foto
             </button>
+            <button type="button" className="tz-entrada-menu-btn" onClick={() => camaraRef.current?.click()}>
+              <Camera size={17} /> Tomar foto
+            </button>
           </div>
         )}
         <input
           ref={fileRef}
           type="file"
           accept="image/*"
+          hidden
+          onChange={(e) => {
+            elegirFoto(e.target.files?.[0]);
+            e.target.value = "";
+          }}
+        />
+        <input
+          ref={camaraRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
           hidden
           onChange={(e) => {
             elegirFoto(e.target.files?.[0]);
@@ -250,14 +254,9 @@ export default function EntradaChat({ onEnviar, onEscribir, validar = null, desh
       {grabando &&
         createPortal(
           <div className={`tz-grabacion ${grabando.cancelar ? "is-cancelar" : ""}`} aria-live="polite">
-            <div className="tz-grabacion-ondas">
-              {Array.from({ length: BARRAS }, (_, i) => (
-                <span key={i} ref={(el) => (barrasRef.current[i] = el)} style={{ animationDelay: `${(i % 7) * 0.08}s` }} />
-              ))}
-            </div>
-            <p className="tz-grabacion-tiempo">
-              {grabando.cancelar ? <Trash2 size={16} /> : <span className="tz-grabacion-punto" />} {minSeg(segundos)} / {minSeg(MAX_SEG)}
-            </p>
+            <AuraVoz analizador={analizador} cancelar={grabando.cancelar}>
+              {grabando.cancelar ? <Trash2 size={22} /> : <span className="tz-grabacion-tiempo">{minSeg(segundos)}</span>}
+            </AuraVoz>
             <p className="tz-grabacion-ayuda">{grabando.cancelar ? "Suelta para cancelar" : "Suelta para enviar · desliza afuera para cancelar"}</p>
           </div>,
           document.body
