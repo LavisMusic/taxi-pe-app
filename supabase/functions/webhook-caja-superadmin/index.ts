@@ -78,14 +78,17 @@ Deno.serve(async (req) => {
       const id = uuid(d.id);
       const r = roles(d.roles);
       const mensaje = texto(d.mensaje, 2000);
-      if (!id || !CANALES.includes(String(d.canal)) || !mensaje || r.length === 0) {
+      // Con video el texto es opcional (migración 20261029130000).
+      const videoUrl = /^https:\/\/\S+$/i.test(String(d.video_url || "")) ? String(d.video_url).slice(0, 1000) : null;
+      if (!id || !CANALES.includes(String(d.canal)) || (!mensaje && !videoUrl) || r.length === 0) {
         return jsonResponse(400, { error: "datos inválidos" });
       }
       const { error } = await db.from("mensajes_plataforma").insert({
         id,
         canal: String(d.canal),
         titulo: texto(d.titulo, 200),
-        mensaje,
+        mensaje: mensaje ?? "",
+        video_url: videoUrl,
         roles: r,
         programado_para: fecha(d.programado_para) ?? new Date().toISOString(),
         vence_at: fecha(d.vence_at),

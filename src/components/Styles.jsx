@@ -6758,7 +6758,7 @@ export default function Styles() {
       .tz-anuncio-boton {
         display: inline-flex; align-items: center; gap: 8px; padding: 11px 26px; border-radius: 999px;
         font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none;
-        color: #ffffff; background: rgba(10,7,22,0.78); border: 1.5px solid rgba(43,232,255,0.7);
+        color: #ffffff; background: #0c0a1c; border: 1.5px solid #2be8ff;
         box-shadow: 0 6px 20px rgba(0,0,0,0.45), 0 0 14px rgba(43,232,255,0.35);
         backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
         transition: background 0.25s, color 0.25s, transform 0.3s cubic-bezier(.34,1.56,.64,1), box-shadow 0.25s;
@@ -7335,10 +7335,10 @@ export default function Styles() {
       .tz-entrada-menu-btn {
         display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 14px; cursor: pointer;
         font: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; color: #fff;
-        border: 1px solid rgba(43,232,255,0.6);
-        background: linear-gradient(135deg, rgba(43,232,255,0.32), rgba(124,58,237,0.38));
-        box-shadow: 0 8px 24px rgba(0,0,0,0.45), 0 0 18px rgba(43,232,255,0.35);
-        backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        /* Sólidos (no translúcidos): se leen sobre cualquier foto o burbuja. */
+        border: 1px solid #2be8ff;
+        background: linear-gradient(135deg, #0e5f74, #3d2391);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.55), 0 0 18px rgba(43,232,255,0.35);
         transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
       }
       .tz-entrada-menu-btn:hover { transform: translateY(-2px) scale(1.04); }
@@ -7380,7 +7380,7 @@ export default function Styles() {
       .tz-grabacion.is-cancelar .tz-aura-centro { color: #ff8fa3; }
       .tz-grabacion-ayuda {
         margin: 0; padding: 5px 12px; border-radius: 999px; font-size: 12px; color: rgba(255,255,255,0.85);
-        background: rgba(8,6,20,0.65); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+        background: #0c0a1c; border: 1px solid rgba(43,232,255,0.45);
       }
       /* Nota de voz (chat/NotaDeVoz.jsx): sin el cuadro del mensaje; la
          píldora lleva las clases de la burbuja del chat (el color del tema). */
@@ -7431,7 +7431,7 @@ export default function Styles() {
       .tz-adjunto-visor-acciones { display: flex; gap: 10px; cursor: default; }
       .tz-adjunto-visor-acciones button {
         display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 999px; cursor: pointer; font: inherit; font-weight: 700;
-        border: 1px solid rgba(43,232,255,0.6); background: rgba(43,232,255,0.16); color: #fff;
+        border: 1px solid #2be8ff; background: linear-gradient(135deg, #0e5f74, #3d2391); color: #fff;
       }
       .tz-adjunto-visor-nota { margin: 0; font-size: 12px; color: rgba(255,255,255,0.65); text-align: center; }
       /* Caras en los chats (personas y tiendas): la foto sola, sin marco ni
@@ -7627,6 +7627,11 @@ export default function Styles() {
       /* Video de un anuncio en el chat: se reproduce solo al verse, sin
          sonido, con el botón para activarlo (VideoEnChat.jsx). */
       .tz-chatfijo-video-caja { position: relative; margin-bottom: 6px; }
+      /* Chat fijo: la imagen/video de un mensaje va sola (sin el cuadro) y el
+         texto en su burbuja debajo. */
+      .tz-chatfijo-item { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; max-width: 88%; }
+      .tz-chatfijo-item > .tz-chatfijo-burbuja { max-width: 100%; }
+      .tz-chatfijo-item > .tz-chatfijo-video-caja, .tz-chatfijo-media-suelta { width: 100%; margin: 0; border-radius: 14px; }
       .tz-chatfijo-video-caja .tz-chatfijo-media, .tz-chatfijo-video-caja .tz-chatfijo-video { margin-bottom: 0; }
       .tz-chatfijo-sonido {
         position: absolute; right: 8px; bottom: 8px; z-index: 2; width: 32px; height: 32px; border-radius: 999px;

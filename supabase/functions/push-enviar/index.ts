@@ -31,7 +31,7 @@ Deno.serve(async () => {
   const ahora = new Date().toISOString();
   const { data: pendientes } = await db
     .from("mensajes_plataforma")
-    .select("id, canal, titulo, mensaje, roles, vence_at")
+    .select("id, canal, titulo, mensaje, video_url, roles, vence_at")
     .is("push_enviado_at", null)
     .lte("programado_para", ahora)
     .order("programado_para", { ascending: true })
@@ -63,7 +63,8 @@ Deno.serve(async () => {
             s,
             {
               title: m.titulo || NOMBRE_CANAL[m.canal] || "Taxi PE",
-              body: String(m.mensaje).slice(0, 200),
+              // Una notificación con solo video (sin texto) igual dice algo.
+              body: String(m.mensaje || (m.video_url ? "🎬 Te enviamos un video" : "")).slice(0, 200),
               canal: m.canal,
               url: `${RUTA_ROL[rol] ?? "/"}?mensajes=${m.canal}`,
               tag: `msg-${m.id}`,

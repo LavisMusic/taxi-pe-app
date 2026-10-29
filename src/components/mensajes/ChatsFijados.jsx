@@ -81,10 +81,12 @@ export function ChatFijadoAbierto({ canal, datos, onVolver, onLeido }) {
           <p className="tz-method-history-empty">Todavía no hay mensajes.</p>
         ) : (
           datos.mensajes.map((m) => (
-            <div key={m.id} className="tz-chatfijo-burbuja">
-              {/* Anuncio: su imagen o video, además del texto. */}
-              {m.imagen_url && <img src={m.imagen_url} alt="" className="tz-chatfijo-media" />}
+            <div key={m.id} className="tz-chatfijo-item">
+              {/* La imagen o el video van solos, fuera del cuadro; el texto
+                  (si hay) en su burbuja debajo. */}
+              {m.imagen_url && <img src={m.imagen_url} alt="" className="tz-chatfijo-media tz-chatfijo-media-suelta" />}
               {m.video_url && <VideoEnChat url={m.video_url} titulo={m.titulo} />}
+              <div className={`tz-chatfijo-burbuja ${m.titulo || m.mensaje ? "" : "is-nota"}`}>
               {m.titulo && <strong>{m.titulo}</strong>}
               {m.mensaje && (
                 <p>
@@ -99,6 +101,7 @@ export function ChatFijadoAbierto({ canal, datos, onVolver, onLeido }) {
                   minute: "2-digit",
                 })}
               </span>
+              </div>
             </div>
           ))
         )}

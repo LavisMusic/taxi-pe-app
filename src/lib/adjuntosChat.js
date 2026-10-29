@@ -62,6 +62,7 @@ export async function subirAdjunto({ tipo, blob, duracion = 0 }) {
   return codificarAdjunto({ tipo, url, duracion });
 }
 
-// Clase extra para la burbuja de un mensaje que es una nota de voz: la
-// burbuja queda sin cuadro (la nota lleva su propio color).
-export const claseNota = (texto) => (leerAdjunto(texto)?.tipo === "audio" ? "is-nota" : "");
+// Clase extra para la burbuja de un mensaje que es una foto o una nota de
+// voz: la burbuja queda sin cuadro (la foto va sola; la nota lleva su
+// propio color).
+export const claseNota = (texto) => (leerAdjunto(texto) ? "is-nota" : "");

@@ -52,7 +52,7 @@ const ROL_DE_PUBLICO = { pasajeros: "pasajero", conductores: "conductor", recole
 
 // Con sesión, lo visto es por PERSONA (anuncios_vistos): "Una sola vez" no
 // vuelve a salir en otro navegador ni en una ventana privada, y
-// "Programado (una vez al día)" sale cada 24 h hasta su fecha de fin. Sin
+// "Una vez al día" sale cada 24 h; las dos, entre sus fechas programadas. Sin
 // sesión, por navegador como antes.
 async function vistosDeLaPersona(ids) {
   const { data: sesion } = await supabase.auth.getSession();

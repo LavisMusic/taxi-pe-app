@@ -63,6 +63,7 @@ export default function AnuncioPopupModal({
   // la barra fina de abajo, como contador de tiempo visual sin números.
   const [terminado, setTerminado] = useState(false);
   const [progreso, setProgreso] = useState(0);
+  const progresoRef = useRef(0);
 
   const soloMultimedia = !!anuncio && !anuncio.titulo && !anuncio.descripcion;
   const embedUrl = anuncio ? toYoutubeEmbedUrl(anuncio.video_url) : null;
@@ -77,6 +78,7 @@ export default function AnuncioPopupModal({
   useEffect(() => {
     setTerminado(false);
     setProgreso(0);
+    progresoRef.current = 0;
   }, [anuncio]);
 
   // YouTube siempre se trata como 16:9 (nunca toma la forma de
@@ -174,7 +176,8 @@ export default function AnuncioPopupModal({
               {embedUrl ? (
                 <div className="tz-anuncio-video-wrap">
                   <iframe
-                    src={embedUrl}
+                    // En bucle (y solo, en silencio) hasta que se cierra.
+                    src={`${embedUrl}?autoplay=1&mute=1&loop=1&playlist=${embedUrl.split("/").pop()}&playsinline=1&rel=0`}
                     title={anuncio.titulo || "Anuncio"}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
@@ -185,6 +188,8 @@ export default function AnuncioPopupModal({
                   src={anuncio.video_url}
                   playsInline
                   autoPlay
+                  // En bucle hasta que se cierra el anuncio.
+                  loop
                   // Bug reportado ("se queda estancado, sin
                   // reproducirse"): todos los navegadores (Chrome,
                   // Safari, Firefox) BLOQUEAN el autoplay de un <video>
@@ -200,7 +205,12 @@ export default function AnuncioPopupModal({
                   onContextMenu={(e) => e.preventDefault()}
                   onTimeUpdate={(e) => {
                     const v = e.currentTarget;
-                    if (v.duration) setProgreso((v.currentTime / v.duration) * 100);
+                    if (!v.duration) return;
+                    const p = (v.currentTime / v.duration) * 100;
+                    // En bucle no hay 'ended': volver al principio = ya se vio entero.
+                    if (p + 50 < progresoRef.current) setTerminado(true);
+                    progresoRef.current = p;
+                    setProgreso(p);
                   }}
                   onEnded={() => {
                     setProgreso(100);

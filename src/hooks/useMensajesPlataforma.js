@@ -53,7 +53,7 @@ export function useMensajesPlataforma(usuarioId) {
     const [msj, lei, usu] = await Promise.all([
       supabase
         .from("mensajes_plataforma")
-        .select("id, canal, titulo, mensaje, programado_para")
+        .select("id, canal, titulo, mensaje, video_url, programado_para")
         .order("programado_para", { ascending: true })
         .limit(300),
       supabase.from("mensajes_plataforma_leidos").select("canal, leido_hasta"),
