@@ -22,8 +22,7 @@ function horaCorta(iso) {
     : d.toLocaleDateString("es-PE", { day: "2-digit", month: "2-digit" });
 }
 
-// `soloCanales`: limita los fijados que se muestran (al pasajero, solo
-// "Taxi PE": en su Mensajes no aparece ningún negocio).
+// `soloCanales` (opcional): limita los fijados que se muestran (ej. ["taxipe"]).
 export function FilasChatsFijados({ canales, onAbrir, soloCanales = null }) {
   return Object.entries(INFO_CANAL)
     .filter(([canal]) => !soloCanales || soloCanales.includes(canal))

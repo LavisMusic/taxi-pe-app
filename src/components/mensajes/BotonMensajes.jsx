@@ -28,14 +28,12 @@ function previa(c) {
 // Mensajes del cliente en Caja (foto, último mensaje, hora y no leídos;
 // `conductores`: [{ id, nombre, foto_url, ultimo, noLeidos, enViaje,
 // terminado }]; tocar uno cierra Mensajes y abre ese chat con
-// `onAbrirConductor`). Pasajero y recolector solo tienen el fijado "Taxi PE"
-// (ni "Tonazo" ni negocios); el pasajero además sus conductores. El
-// conductor ve los fijados dentro de su bandeja de chats.
-const CANALES_VISIBLES = ["taxipe"];
+// `onAbrirConductor`). Pasajero y recolector tienen los dos fijados, "Taxi
+// PE" y "Tonazo" (por ahí llegan enlaces a la otra app); el pasajero además
+// sus conductores. El conductor ve los fijados dentro de su bandeja de chats.
 export default function BotonMensajes({ usuarioId, conductores = [], onAbrirConductor = null }) {
   const datos = useMensajesPlataforma(usuarioId);
-  const canalesVisibles = CANALES_VISIBLES;
-  const noLeidosFijados = canalesVisibles.reduce(
+  const noLeidosFijados = Object.keys(datos.canales).reduce(
     (s, c) => s + (datos.canales[c]?.noLeidos || 0),
     0
   );
@@ -45,7 +43,7 @@ export default function BotonMensajes({ usuarioId, conductores = [], onAbrirCond
   // Tocar una notificación emergente abre Mensajes en ese chat.
   useAbrirMensajesDesdeAviso((c) => {
     setAbierto(true);
-    setCanal(canalesVisibles.includes(c) ? c : null);
+    setCanal(c);
   }, !!usuarioId);
 
   const cerrar = () => {
@@ -89,7 +87,7 @@ export default function BotonMensajes({ usuarioId, conductores = [], onAbrirCond
                   <InterruptorAvisos activos={datos.avisosActivos} onCambiar={datos.cambiarAvisos} />
                   <AvisosDispositivo />
                   <ul className="tz-history-rows" style={{ marginTop: 10 }}>
-                    <FilasChatsFijados canales={datos.canales} onAbrir={setCanal} soloCanales={canalesVisibles} />
+                    <FilasChatsFijados canales={datos.canales} onAbrir={setCanal} />
                     {onAbrirConductor && conductores.length > 0 && (
                       <>
                         <li className="tz-chatneg-seccion">{conductores.length === 1 ? "Tu conductor" : "Tus conductores"}</li>
