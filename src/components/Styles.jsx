@@ -6898,6 +6898,7 @@ export default function Styles() {
         box-shadow: 0 0 8px var(--cyan);
         transition: width 0.2s linear;
       }
+      .tz-barra-fluida { width: 100%; transform: scaleX(0); transform-origin: left center; transition: none; will-change: transform; }
       /* Caso "con texto" (default): fuerza el media a una caja 16:9
          arriba, el texto va abajo — columna siempre, en cualquier ancho. */
       .tz-anuncio-layout:not(.tz-anuncio-layout-fill) .tz-anuncio-media {
@@ -7436,8 +7437,7 @@ export default function Styles() {
       .tz-adjunto-visor-acciones { display: flex; gap: 10px; cursor: default; }
       /* Descargar y X del visor: mismos botones (y entrada con resorte) que
          Subir foto / Descargar del chat. */
-      .tz-adjunto-visor-acciones .tz-entrada-menu-btn { animation: tz-entrada-menu-in 0.5s cubic-bezier(.34,1.56,.64,1) 0.12s both; }
-      .tz-adjunto-visor-acciones .tz-entrada-menu-btn + .tz-entrada-menu-btn { animation-delay: 0.2s; }
+      .tz-adjunto-visor-acciones { animation: tz-entrada-menu-in 0.5s cubic-bezier(.34,1.56,.64,1) 0.12s both; }
       .tz-adjunto-visor-acciones .tz-entrada-menu-btn:disabled { cursor: default; opacity: 0.8; }
       .tz-adjunto-visor-nota { margin: 0; font-size: 12px; color: rgba(255,255,255,0.65); text-align: center; }
       /* Caras en los chats (personas y tiendas): la foto sola, sin marco ni

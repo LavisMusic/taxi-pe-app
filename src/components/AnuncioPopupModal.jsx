@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { toYoutubeEmbedUrl } from "../lib/youtube";
 import TextoConEnlaces from "./TextoConEnlaces";
+import BarraAvance from "./BarraAvance";
 
 // Pop-up de marketing — Vista Cliente. Layouts según tenga o no texto
 // (ver useAnuncioActivo.js para cuándo le toca aparecer a este
@@ -64,6 +65,7 @@ export default function AnuncioPopupModal({
   const [terminado, setTerminado] = useState(false);
   const [progreso, setProgreso] = useState(0);
   const progresoRef = useRef(0);
+  const videoRef = useRef(null);
 
   const soloMultimedia = !!anuncio && !anuncio.titulo && !anuncio.descripcion;
   const embedUrl = anuncio ? toYoutubeEmbedUrl(anuncio.video_url) : null;
@@ -185,6 +187,7 @@ export default function AnuncioPopupModal({
                 </div>
               ) : esVideoArchivo ? (
                 <video
+                  ref={videoRef}
                   src={anuncio.video_url}
                   playsInline
                   autoPlay
@@ -245,9 +248,7 @@ export default function AnuncioPopupModal({
                  pedido, sin números, pegada al borde inferior del
                  propio bloque de media. */}
               {esVideoArchivo && (
-                <div className="tz-anuncio-progreso-track">
-                  <div className="tz-anuncio-progreso-fill" style={{ width: `${progreso}%` }} />
-                </div>
+                <BarraAvance videoRef={videoRef} />
               )}
             </div>
           )}

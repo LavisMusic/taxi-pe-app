@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Maximize2, Volume2, VolumeX, X } from "lucide-react";
 import { toYoutubeEmbedUrl } from "../../lib/youtube";
+import BarraAvance from "../BarraAvance";
 
 // Video de un mensaje dentro del chat (fijados "Taxi PE" / "Tonazo"): se
 // reproduce solo apenas se ve en pantalla y se pausa al salir. Arranca sin
@@ -16,7 +17,6 @@ export default function VideoEnChat({ url, titulo }) {
   const videoRef = useRef(null);
   const iframeRef = useRef(null);
   const [silencio, setSilencio] = useState(true);
-  const [progreso, setProgreso] = useState(0);
   const [visor, setVisor] = useState(null); // { desde } mientras está abierto
 
   const ordenYoutube = (func, args = []) =>
@@ -82,14 +82,8 @@ export default function VideoEnChat({ url, titulo }) {
             preload="metadata"
             className="tz-chatfijo-media"
             onClick={abrirVisor}
-            onTimeUpdate={(e) => {
-              const v = e.currentTarget;
-              if (v.duration) setProgreso((v.currentTime / v.duration) * 100);
-            }}
           />
-          <div className="tz-anuncio-progreso-track">
-            <div className="tz-anuncio-progreso-fill" style={{ width: `${progreso}%` }} />
-          </div>
+          <BarraAvance videoRef={videoRef} />
         </>
       )}
       <div className="tz-chatfijo-video-botones">
