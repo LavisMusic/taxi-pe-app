@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
     case "mensajes.listar": {
       const { data, error } = await db
         .from("mensajes_plataforma")
-        .select("id, canal, titulo, mensaje, imagen_url, video_url, roles, programado_para, vence_at, created_at")
+        .select("id, canal, titulo, mensaje, imagen_url, video_url, boton_url, boton_texto, roles, programado_para, vence_at, created_at")
         .order("created_at", { ascending: false })
         .limit(300);
       if (error) return jsonResponse(500, { error: error.message });
@@ -92,6 +92,9 @@ Deno.serve(async (req) => {
         mensaje: mensaje ?? "",
         video_url: videoUrl,
         imagen_url: imagenUrl,
+        // Botón con enlace opcional (migración 20261029150000).
+        boton_url: /^https?:\/\/\S+$/i.test(String(d.boton_url || "")) ? String(d.boton_url).slice(0, 1000) : null,
+        boton_texto: /^https?:\/\//i.test(String(d.boton_url || "")) ? (texto(d.boton_texto, 16) || "VAMOS") : null,
         roles: r,
         programado_para: fecha(d.programado_para) ?? new Date().toISOString(),
         vence_at: fecha(d.vence_at),

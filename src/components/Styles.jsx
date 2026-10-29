@@ -7716,6 +7716,7 @@ export default function Styles() {
       .tz-chatfijo-video { position: relative; width: 100%; aspect-ratio: 16 / 9; margin-bottom: 6px; border-radius: 10px; overflow: hidden; }
       .tz-chatfijo-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
       .tz-chatfijo-burbuja p { margin: 0; white-space: pre-wrap; }
+      .tz-chatfijo-boton { align-self: flex-start; order: 1; margin-top: 2px; text-decoration: none; animation: tz-entrada-menu-in 0.5s cubic-bezier(.34,1.56,.64,1) backwards; }
       .tz-chatfijo-burbuja span { display: block; margin-top: 5px; font-size: 10.5px; color: var(--text-dim); text-align: right; }
 
       /* Avisos emergentes del dispositivo e "Instalar la app"

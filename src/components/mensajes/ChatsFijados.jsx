@@ -87,6 +87,12 @@ export function ChatFijadoAbierto({ canal, datos, onVolver, onLeido }) {
                   (si hay) en su burbuja debajo. */}
               {m.imagen_url && <img src={m.imagen_url} alt="" className="tz-chatfijo-media tz-chatfijo-media-suelta" />}
               {m.video_url && <VideoEnChat url={m.video_url} titulo={m.titulo} />}
+              {/* Botón con enlace (abre otra pestaña), como en los anuncios. */}
+              {m.boton_url && (
+                <a className="tz-anuncio-boton tz-chatfijo-boton" href={m.boton_url} target="_blank" rel="noopener noreferrer">
+                  {m.boton_texto || "VAMOS"}
+                </a>
+              )}
               <div className={`tz-chatfijo-burbuja ${m.titulo || m.mensaje ? "" : "is-nota"}`}>
               {m.titulo && <strong>{m.titulo}</strong>}
               {m.mensaje && (

@@ -31,7 +31,7 @@ export function useMensajesPlataforma(usuarioId) {
     const ahora = new Date().toISOString();
     const { data, error } = await supabase
       .from("anuncios")
-      .select("id, titulo, descripcion, imagen_url, video_url, fecha_inicio, created_at")
+      .select("id, titulo, descripcion, imagen_url, video_url, boton_url, boton_texto, fecha_inicio, created_at")
       .eq("activo", true)
       .contains("roles", [rol])
       .or(`fecha_inicio.is.null,fecha_inicio.lte.${ahora}`)
@@ -44,6 +44,8 @@ export function useMensajesPlataforma(usuarioId) {
       mensaje: a.descripcion,
       imagen_url: a.imagen_url,
       video_url: a.video_url,
+      boton_url: a.boton_url,
+      boton_texto: a.boton_texto,
       programado_para: a.fecha_inicio || a.created_at,
     }));
   };
@@ -55,7 +57,7 @@ export function useMensajesPlataforma(usuarioId) {
     const traerMensajes = async () => {
       const consulta = (columnas) =>
         supabase.from("mensajes_plataforma").select(columnas).order("programado_para", { ascending: true }).limit(300);
-      const r = await consulta("id, canal, titulo, mensaje, imagen_url, video_url, programado_para");
+      const r = await consulta("id, canal, titulo, mensaje, imagen_url, video_url, boton_url, boton_texto, programado_para");
       return r.error ? consulta("id, canal, titulo, mensaje, programado_para") : r;
     };
     const [msj, lei, usu] = await Promise.all([
