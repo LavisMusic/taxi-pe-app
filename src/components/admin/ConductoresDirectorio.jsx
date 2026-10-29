@@ -14,6 +14,7 @@ import {
   NIVELES_SERVICIO,
 } from "../../lib/taxiEnums";
 import { agruparPorNivel } from "../../lib/nivelServicio";
+import Select from "../Select";
 
 // Tab sintética, no viene de la tabla `categorias` — "predeterminada e
 // inamovible" (siempre está, tenga o no recolectores cargados) a
@@ -165,7 +166,7 @@ function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar
                     onChange={(e) => setDni(e.target.value)}
                     placeholder="DNI"
                   />
-                  <select
+                  <Select
                     className="tz-text-input"
                     value={subgrupoId}
                     onChange={(e) => setSubgrupoId(e.target.value)}
@@ -179,8 +180,8 @@ function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar
                         {s.nombre}
                       </option>
                     ))}
-                  </select>
-                  <select
+                  </Select>
+                  <Select
                     className="tz-text-input"
                     value={nivelServicio}
                     onChange={(e) => setNivelServicio(e.target.value)}
@@ -190,7 +191,7 @@ function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar
                         {n.label}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   <input
                     type="number"
                     inputMode="numeric"
@@ -275,7 +276,7 @@ function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar
               )}
             </div>
 
-            <select
+            <Select
               className="tz-estado-select"
               data-estado={conductor.estado}
               value={conductor.estado ?? ""}
@@ -287,7 +288,7 @@ function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar
                   {e.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
       </div>

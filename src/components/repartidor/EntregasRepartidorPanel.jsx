@@ -4,7 +4,7 @@ import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { PackageCheck, Bike, MapPin, Store, Check, X, Loader2, Map as MapIcon, AlertTriangle } from "lucide-react";
-import { useEntregasRepartidor } from "../../hooks/useEntregasRepartidor";
+import { useEntregasRepartidor, MAX_REPARTOS } from "../../hooks/useEntregasRepartidor";
 import { useEntregaGpsBroadcaster } from "../../hooks/useEntregaGpsBroadcaster";
 import { MAPBOX_TILE_URL, MAPBOX_ATTRIBUTION } from "../../lib/mapboxConfig";
 import EntregaActivaModal from "./EntregaActivaModal";
@@ -14,11 +14,10 @@ import { formatSoles } from "../../utils/format";
 // Solo se muestra si hay algo que atender: entregas en curso o pedidos
 // ofrecidos por la Caja. No mete ruido si no hay nada.
 //
-// Multi-oferta (DELIVERY.md §9): el conductor puede tener VARIAS
-// entregas 'aceptado' a la vez (todavía sin recoger ninguna) — recién
-// deja de recibir ofertas nuevas cuando alguna llega a 'en_ruta' (ya
-// recogió y pagó esa). Por eso la lista de ofertas se sigue mostrando
-// mientras `!tieneEnRuta`, sin importar cuántas 'aceptado' ya tenga.
+// Repartiendo: el conductor sigue recibiendo solicitudes y acepta hasta
+// MAX_REPARTOS a la vez (la base lo vuelve a validar). En carrera con un
+// pasajero no recibe ni acepta repartos. Los aceptados van del más
+// antiguo al más reciente y salen con un deslizamiento al entregarse.
 
 const TIMEOUT_OFERTA_MS = 30000;
 
@@ -91,9 +90,53 @@ function AjustarVistaPreview({ puntos }) {
   return null;
 }
 
-export default function EntregasRepartidorPanel({ conductorId, onEntregado }) {
-  const { ofertas, entregasActivas, tieneEnRuta, loading, error, aceptar, rechazar, expirarOferta, avanzar, finalizar } =
-    useEntregasRepartidor(conductorId);
+export default function EntregasRepartidorPanel({
+  conductorId,
+  datos,
+  enCarrera = false,
+  onEntregado,
+  onVerPedido,
+  mensajeVacio,
+}) {
+  // `datos`: el mismo useEntregasRepartidor ya abierto por la página (así
+  // no hay dos sondeos); sin él, el panel abre el suyo.
+  const propio = useEntregasRepartidor(datos ? null : conductorId);
+  const {
+    ofertas,
+    entregasActivas,
+    loading,
+    error,
+    aceptar,
+    rechazar,
+    expirarOferta,
+    avanzar,
+    finalizar,
+    mensajesNuevos,
+    marcarMensajesVistos,
+    noLeidos,
+    refresh,
+  } = datos || propio;
+  const lleno = entregasActivas.length >= MAX_REPARTOS;
+  const bloqueado = enCarrera || lleno;
+
+  // Entregas que se acaban de concretar: se siguen dibujando un momento
+  // con la animación de salida y las de abajo suben.
+  const [saliendo, setSaliendo] = useState([]);
+  const previasRef = useRef(null);
+  useEffect(() => {
+    const previas = previasRef.current;
+    previasRef.current = entregasActivas;
+    if (!previas) return;
+    const ids = new Set(entregasActivas.map((e) => e.id));
+    const idas = previas.filter((e) => !ids.has(e.id));
+    if (idas.length === 0) return;
+    setSaliendo((s) => [...s.filter((x) => !idas.some((i) => i.id === x.id)), ...idas]);
+    setTimeout(() => setSaliendo((s) => s.filter((x) => !idas.some((i) => i.id === x.id))), 700);
+  }, [entregasActivas]);
+  const listaEntregas = [
+    ...entregasActivas.map((e) => ({ e, sale: false })),
+    ...saliendo.filter((x) => !entregasActivas.some((e) => e.id === x.id)).map((e) => ({ e, sale: true })),
+  ].sort((a, b) => new Date(a.e.aceptado_at || 0) - new Date(b.e.aceptado_at || 0));
   const [abiertaId, setAbiertaId] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [aviso, setAviso] = useState("");
@@ -135,14 +178,14 @@ export default function EntregasRepartidorPanel({ conductorId, onEntregado }) {
       ids.forEach((id) => ofertasVistasRef.current.add(id));
       return;
     }
-    if (tieneEnRuta) {
+    if (bloqueado) {
       ids.forEach((id) => ofertasVistasRef.current.add(id));
       return;
     }
     const hayNueva = ids.some((id) => !ofertasVistasRef.current.has(id));
     ids.forEach((id) => ofertasVistasRef.current.add(id));
     if (hayNueva) setAlertaOferta(true);
-  }, [ofertas, tieneEnRuta]);
+  }, [ofertas, bloqueado]);
 
   // Reloj de 30s por oferta: tick cada 250ms (solo mientras hay ofertas
   // pendientes) para la barra verde regresiva, y dispara la expiración
@@ -174,9 +217,13 @@ export default function EntregasRepartidorPanel({ conductorId, onEntregado }) {
     });
   }, [ahora, ofertas, expirarOferta]);
 
-  if (loading && entregasActivas.length === 0 && ofertas.length === 0) return null;
-  if (error) return null;
-  if (entregasActivas.length === 0 && ofertas.length === 0) return null;
+  // `mensajeVacio`: en el panel Delivery del conductor el espacio queda
+  // reservado con ese aviso en vez de desaparecer.
+  const vacio = mensajeVacio ? <p className="tz-reparto-vacio">{mensajeVacio}</p> : null;
+  const nada = listaEntregas.length === 0 && (ofertas.length === 0 || enCarrera);
+  if (loading && nada) return vacio;
+  if (error) return vacio;
+  if (nada) return vacio;
 
   const onAceptar = async (id) => {
     setBusyId(id);
@@ -184,8 +231,10 @@ export default function EntregasRepartidorPanel({ conductorId, onEntregado }) {
     const r = await aceptar(id);
     setBusyId(null);
     if (r.status === "ya_tomada") setAviso("Otro repartidor tomó ese pedido primero.");
-    else if (r.status === "conductor_en_ruta") {
-      setAviso("Ya recogiste un pedido — no podés aceptar otro hasta entregarlo.");
+    else if (r.status === "limite_repartos") {
+      setAviso(`Ya llevas ${MAX_REPARTOS} pedidos: entrega alguno para aceptar otro.`);
+    } else if (r.status === "conductor_en_carrera") {
+      setAviso("Estás en carrera: termina el viaje para aceptar repartos.");
     } else if (r.status && r.status !== "ok") setAviso(`No se pudo aceptar (${r.status}).`);
   };
 
@@ -203,16 +252,24 @@ export default function EntregasRepartidorPanel({ conductorId, onEntregado }) {
     <section className="tz-method-history" style={{ marginTop: 18 }}>
       <span className="tz-method-history-label">
         <Bike size={14} style={{ verticalAlign: "-2px", marginRight: 4 }} /> Reparto
+        {entregasActivas.length > 0 && ` · ${entregasActivas.length}/${MAX_REPARTOS}`}
       </span>
 
-      {entregasActivas.map((entrega) => (
+      {listaEntregas.map(({ e: entrega, sale }) => (
+        <div key={entrega.id} className={`tz-entrega-item ${sale ? "is-saliendo" : ""}`}>
         <button
-          key={entrega.id}
           type="button"
           className="tz-scan-btn tz-payment-save"
-          style={{ width: "100%", marginTop: 8, justifyContent: "space-between" }}
-          onClick={() => setAbiertaId(entrega.id)}
+          disabled={sale}
+          onClick={() => {
+            setAbiertaId(entrega.id);
+            marcarMensajesVistos?.(entrega.id);
+          }}
+          style={{ width: "100%", justifyContent: "space-between", position: "relative" }}
         >
+          {(mensajesNuevos?.has(entrega.id) || noLeidos?.[entrega.id]?.total > 0) && !sale && (
+            <span className="tz-chat-unread-dot" aria-label="Mensaje nuevo" />
+          )}
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <PackageCheck size={16} /> Entrega en curso · {entrega.cliente_nombre || "Cliente"}
           </span>
@@ -220,14 +277,21 @@ export default function EntregasRepartidorPanel({ conductorId, onEntregado }) {
             {entrega.caja_sucursal && (
               <span className="tz-entrega-badge tz-entrega-badge-sucursal">{entrega.caja_sucursal}</span>
             )}
-            <span className={`tz-entrega-badge tz-entrega-badge-${entrega.estado}`}>
-              {entrega.estado.replace("_", " ")}
+            <span className={`tz-entrega-badge tz-entrega-badge-${sale ? "entregado" : entrega.estado}`}>
+              {sale ? "entregado" : entrega.estado.replace("_", " ")}
             </span>
           </span>
         </button>
+        </div>
       ))}
 
-      {!tieneEnRuta &&
+      {lleno && !enCarrera && ofertas.length > 0 && (
+        <p className="tz-camera-note" style={{ marginTop: 8, textAlign: "center" }}>
+          Llevas {MAX_REPARTOS} pedidos: entrega alguno para recibir más solicitudes.
+        </p>
+      )}
+
+      {!bloqueado &&
         ofertas.map((o) => {
           const transcurrido = o.oferta_creada_at ? ahora - new Date(o.oferta_creada_at).getTime() : 0;
           const pct = Math.max(0, Math.min(1, 1 - transcurrido / TIMEOUT_OFERTA_MS));
@@ -300,11 +364,15 @@ export default function EntregasRepartidorPanel({ conductorId, onEntregado }) {
           avanzar={avanzar}
           finalizar={finalizar}
           onEntregado={onEntregado}
-          onClose={() => setAbiertaId(null)}
+          noLeidos={noLeidos?.[entregaAbierta.id]}
+          onClose={() => {
+            setAbiertaId(null);
+            refresh?.();
+          }}
         />
       )}
 
-      {alertaOferta && !tieneEnRuta && (
+      {alertaOferta && !bloqueado && (
         <div className="tz-modal-backdrop">
           <div className="tz-senas-alert" onClick={(e) => e.stopPropagation()}>
             <span className="tz-senas-alert-icon" aria-hidden="true">
@@ -314,7 +382,10 @@ export default function EntregasRepartidorPanel({ conductorId, onEntregado }) {
             <button
               type="button"
               className="tz-scan-btn tz-senas-alert-btn"
-              onClick={() => setAlertaOferta(false)}
+              onClick={() => {
+                setAlertaOferta(false);
+                onVerPedido?.();
+              }}
             >
               Ver pedido
             </button>

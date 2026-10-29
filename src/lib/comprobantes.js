@@ -1,4 +1,5 @@
 import { supabase } from "../supabaseClient";
+import { BUCKET_PRIVADO, esImagenPrivada, valorPrivado } from "./imagenesPrivadas";
 
 // Sube la foto de un comprobante (gestor ⚡ del Admin) al bucket
 // ventas-comprobantes, COMPRIMIDA como en Caja Tonazo: 1280 px de lado
@@ -31,4 +32,50 @@ export async function subirComprobante(archivo, carpeta = "admin") {
     .upload(ruta, blob, { contentType: blob.type || "image/jpeg", upsert: false });
   if (error) return { error };
   return { url: supabase.storage.from("ventas-comprobantes").getPublicUrl(data.path).data.publicUrl };
+}
+
+// Comprobante que sube el propio conductor (Recargar): al bucket PRIVADO
+// 'verificaciones' (cualquiera con sesión sube; solo el Admin y quien lo
+// subió lo ven). Devuelve { valor: "privado:<archivo>" } o { error }.
+export async function subirComprobantePrivado(archivo, carpeta) {
+  let blob = archivo;
+  try {
+    blob = await comprimir(archivo);
+  } catch (err) {
+    console.error("[comprobantes] no se pudo comprimir, se sube el original:", err);
+  }
+  const ruta = `${carpeta}/${Date.now()}.jpg`;
+  const { data, error } = await supabase.storage
+    .from(BUCKET_PRIVADO)
+    .upload(ruta, blob, { contentType: blob.type || "image/jpeg", upsert: false });
+  if (error) return { error };
+  return { valor: valorPrivado(data.path) };
+}
+
+// Foto sosteniendo el DNI de "Recuperar cuenta" (SoporteModal.jsx): quien
+// la manda no tiene sesión, así que solo puede SUBIR a la carpeta
+// recuperaciones/ del bucket privado (migración 20261021100000); solo el
+// Admin la ve. Devuelve { valor: "privado:<archivo>" } o { error }.
+export async function subirFotoRecuperacion(archivo) {
+  let blob = archivo;
+  try {
+    blob = await comprimir(archivo);
+  } catch (err) {
+    console.error("[comprobantes] no se pudo comprimir, se sube el original:", err);
+  }
+  const ruta = `recuperaciones/${crypto.randomUUID()}.jpg`;
+  const { data, error } = await supabase.storage
+    .from(BUCKET_PRIVADO)
+    .upload(ruta, blob, { contentType: blob.type || "image/jpeg", upsert: false });
+  if (error) return { error };
+  return { valor: valorPrivado(data.path) };
+}
+
+// Al aprobar la petición, el Admin copia ese comprobante privado al bucket
+// de comprobantes de ventas (donde viven los de todas las ventas).
+export async function copiarComprobantePrivado(valor, carpeta = "admin") {
+  if (!esImagenPrivada(valor)) return { url: valor || null };
+  const { data, error } = await supabase.storage.from(BUCKET_PRIVADO).download(valor.slice("privado:".length));
+  if (error || !data) return { error: error || new Error("No se pudo leer el comprobante.") };
+  return subirComprobante(data, carpeta);
 }

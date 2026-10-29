@@ -1,20 +1,27 @@
-import { useState } from "react";
-import { LogOut, UserPlus, Wallet, Receipt, CreditCard, CalendarClock, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { LogOut, UserPlus, Wallet, Receipt, CreditCard, CalendarClock, Loader2, X } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useVentas } from "../hooks/useVentas";
+import TextoMaquina from "../components/TextoMaquina";
+import { useDescripcionesPublico } from "../hooks/useDescripciones";
 import { useConductores } from "../hooks/useConductores";
 import { useCrearConductorConUsuario } from "../hooks/useCrearConductorConUsuario";
 import { useUsuarios } from "../hooks/useUsuarios";
 import { useRecargas } from "../hooks/useRecargas";
 import { usePaquetes } from "../hooks/usePaquetes";
 import { usePaquetesRecolectores } from "../hooks/usePaquetesRecolectores";
-import { usePaquetesClientes } from "../hooks/usePaquetesClientes";
 import { useRecargasRecolector } from "../hooks/useRecargasRecolector";
-import { useGastosOperativos } from "../hooks/useGastosOperativos";
 import { useAnularVenta } from "../hooks/useAnularVenta";
 import { useCierresCaja } from "../hooks/useCierresCaja";
+import { useTurnoCaja } from "../hooks/useTurnoCaja";
 import { useBienvenidaNeon } from "../hooks/useBienvenidaNeon";
-import { startOfTodayISO } from "../lib/taxiEnums";
+import {
+  ESTADO_RECARGA_APROBADO,
+  ESTADO_VERIFICACION_EN_REVISION,
+  ESTADO_VERIFICACION_TEMPORAL,
+  startOfTodayISO,
+} from "../lib/taxiEnums";
+import VerificarRecolectorForm from "../components/VerificarRecolectorForm";
 import { formatSoles, formatDate } from "../utils/format";
 import Styles from "../components/Styles";
 import RecargaRapidaForm from "../components/recolector/RecargaRapidaForm";
@@ -27,6 +34,9 @@ import HistorialVentasModal from "../components/admin/HistorialVentasModal";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import logo from "../assets/logo.webp";
 import BotonSoporte from "../components/BotonSoporte";
+import BotonMensajes from "../components/mensajes/BotonMensajes";
+import AnuncioPopupModal from "../components/AnuncioPopupModal";
+import { useAnuncioActivo } from "../hooks/useAnuncioActivo";
 
 // Ruta /recolector — entra por RequireUsuarioRol rol="recolector".
 // Pantalla operativa de calle: widget de turno bien visible arriba,
@@ -37,8 +47,14 @@ import BotonSoporte from "../components/BotonSoporte";
 // Historial): el recolector es quien de verdad cierra su turno en la
 // calle, tiene sentido que vea lo mismo que el Admin ve de sus ventas.
 export default function RecolectorPage() {
-  const { usuario, logout } = useTaxiAuth();
-  const { ventas, ventasVigentes, ventasHoy, loading: ventasLoading, refresh: refreshVentas } = useVentas();
+  const { usuario, logout, updateUsuario } = useTaxiAuth();
+  // Pop-up de anuncios para recolectores (los crea el superadmin).
+  const { anuncio, anuncios, cerrar: cerrarAnuncio, alVer: alVerAnuncio } = useAnuncioActivo("recolectores");
+  const [verificandoCuenta, setVerificandoCuenta] = useState(false);
+  const { ventas, ventasVigentes, loading: ventasLoading, refresh: refreshVentas } = useVentas();
+  // Texto bajo el logo: el nombre y después las descripciones del Admin
+  // (primero las de "Todos", luego las de recolectores).
+  const descripcionesRecolector = useDescripcionesPublico("recolectores");
   const {
     conductores,
     categorias,
@@ -61,11 +77,6 @@ export default function RecolectorPage() {
 
   const { paquetes, glow: glowPaquetes } = usePaquetes();
   const { paquetes: paquetesRecolectores, glow: glowPaquetesRecolectores } = usePaquetesRecolectores();
-  const { paquetes: paquetesClientes, glow: glowPaquetesClientes } = usePaquetesClientes();
-  // Recarga a clientes (unificación pasajero/cliente): mismo `usuarios`
-  // ya cargado para el Historial, filtrado a rol pasajero — no hace
-  // falta una consulta aparte.
-  const usuariosClientes = usuarios.filter((u) => u.rol === "pasajero");
 
   // Animación de Bienvenida — una vez por acceso, como en todos los
   // roles (ver useBienvenidaNeon.js). Antes solo salía si había un
@@ -75,8 +86,7 @@ export default function RecolectorPage() {
     usuario?.id,
     !!usuario
   );
-  const { crearPeticion: crearAutorecarga } = useRecargasRecolector();
-  const { gastosHoy, totalGastosHoy } = useGastosOperativos();
+  const { peticiones: misCompras, crearPeticion: crearAutorecarga } = useRecargasRecolector();
   const { cierres, crearCierre } = useCierresCaja();
 
   const { registrarRecarga, saving, error } = useRecargas({
@@ -100,52 +110,51 @@ export default function RecolectorPage() {
   const [ventaPanel, setVentaPanel] = useState(null);
   const [autorecargaOpen, setAutorecargaOpen] = useState(false);
 
-  // Persistencia de Turno: antes el widget usaba `ventasHoy` (todo lo
-  // vendido en el día calendario) — nunca se reiniciaba con "Cerrar
-  // Turno" (esa acción solo guarda una instantánea para exportar, ver
-  // CierreCajaModal.jsx, "no reinicia ningún contador" está documentado
-  // ahí mismo), así que un recolector que cerraba turno y seguía
-  // trabajando el mismo día veía el contador viejo seguir sumando. Acá
-  // se guarda el INICIO real del turno actual en localStorage (por
-  // usuario, para no pisarse si comparten el mismo dispositivo/celular)
-  // — sobrevive a un F5 porque no es un simple useState, y solo se
-  // adelanta a "ahora" cuando de verdad se presiona Cerrar Turno (ver
-  // handleTurnoCerrado más abajo). Si todavía no hay nada guardado
-  // (primera vez que este usuario abre la pantalla), arranca en el
-  // inicio del día calendario — mismo comportamiento de antes por
-  // default, no un cambio brusco el primer uso.
-  const turnoStorageKey = `tz-turno-inicio-${usuario?.id ?? "anon"}`;
-  const [turnoInicio, setTurnoInicio] = useState(() => {
-    try {
-      return localStorage.getItem(turnoStorageKey) || startOfTodayISO();
-    } catch {
-      return startOfTodayISO();
-    }
-  });
-
-  const handleTurnoCerrado = () => {
-    const ahora = new Date().toISOString();
-    try {
-      localStorage.setItem(turnoStorageKey, ahora);
-    } catch {
-      // localStorage puede fallar (modo privado, cuota llena) — el
-      // turno igual se resetea en memoria para esta sesión, solo no
-      // sobrevive un F5 en ese caso puntual.
-    }
-    setTurnoInicio(ahora);
-  };
+  // Turno de caja (en la base, ver useTurnoCaja): empieza al cerrar el
+  // anterior y debe cerrarse a las 00:00 (hora de Perú). Si ya venció, el
+  // cierre se abre solo (y vuelve a abrirse mientras siga vencido) para
+  // contar el efectivo y cerrar, o extender el turno 30 minutos.
+  const {
+    desde: turnoDesde,
+    vencido: turnoVencido,
+    extensiones: turnoExtensiones,
+    maxExtensiones: turnoMaxExtensiones,
+    obligatorio: turnoObligatorio,
+    extender: extenderTurno,
+    refresh: refreshTurno,
+  } = useTurnoCaja();
+  const turnoInicio = turnoDesde ?? startOfTodayISO();
+  useEffect(() => {
+    if (turnoVencido) setCierreOpen(true);
+  }, [turnoVencido]);
+  // Sin extensiones: el cierre queda encima y no se puede cerrar.
+  const cierreVisible = cierreOpen || turnoObligatorio;
 
   // Base `ventasVigentes` (todo lo no-anulado, sin importar el día) en
   // vez de `ventasHoy` — un turno puede haber arrancado ayer (turno
   // nocturno) y el corte real es `turnoInicio`, no la medianoche.
   const ventasDelTurno = ventasVigentes.filter(
-    (v) => v.recolector_id === usuario?.id && v.created_at && v.created_at >= turnoInicio
+    (v) => v.recolector_id === usuario?.id && v.created_at && new Date(v.created_at) > new Date(turnoInicio)
   );
+  // Gastos operativos del turno = sus compras de créditos aprobadas en el
+  // turno (si no compró, no hay gastos).
+  const gastosDelTurno = misCompras
+    .filter((p) => p.estado === ESTADO_RECARGA_APROBADO && new Date(p.resuelto_at || p.created_at) > new Date(turnoInicio))
+    .map((p) => ({
+      id: p.id,
+      concepto: `Compra de créditos · ${p.paquete_nombre || "paquete"}`,
+      monto: p.monto,
+      metodo_pago: p.metodo_pago,
+      created_at: p.resuelto_at || p.created_at,
+    }));
+  const totalGastosDelTurno = gastosDelTurno.reduce((sum, g) => sum + Number(g.monto || 0), 0);
   const totalTurno = ventasDelTurno.reduce((sum, v) => sum + Number(v.monto || 0), 0);
   // Copia FRESCA de la sesión (usuario del contexto puede haber
   // quedado desactualizado desde el login) — mismo criterio que
   // ConductorPage con useConductorSesion.
   const miPerfil = usuarios.find((u) => u.id === usuario?.id) ?? usuario;
+  // Verificación: la fila de la base (se actualiza sola) antes que la sesión.
+  const estadoVerificacion = miPerfil?.estado_verificacion ?? usuario?.estado_verificacion;
   const diasMembresiaRestantes = miPerfil?.membresia_vencimiento
     ? Math.ceil((new Date(miPerfil.membresia_vencimiento) - new Date()) / 86400000)
     : null;
@@ -170,11 +179,17 @@ export default function RecolectorPage() {
               <UserPlus size={19} />
               <span className="tz-header-btn-label">Conductor nuevo</span>
             </button>
+            {usuario && <BotonMensajes usuarioId={usuario.id} />}
           </div>
 
           <div className="tz-header-center">
             <img src={logo} alt="TaxiP" className="tz-logo" />
-            <p className="tz-subtitle">Recolector{usuario?.nombre ? ` · ${usuario.nombre}` : ""}</p>
+            <div className="tz-subtitle-slot">
+              <TextoMaquina
+                mensajes={[usuario?.nombre ? `Recolector · ${usuario.nombre}` : "Recolector", ...descripcionesRecolector]}
+                className="tz-subtitle-usuario"
+              />
+            </div>
           </div>
 
           <div className="tz-header-side tz-header-side-right">
@@ -195,6 +210,22 @@ export default function RecolectorPage() {
           </div>
         ) : (
           <>
+            {estadoVerificacion === ESTADO_VERIFICACION_TEMPORAL && (
+              <div className="tz-cuenta-temporal">
+                <p>
+                  Tu cuenta es temporal: verifícala dentro de los 7 días desde tu registro o se eliminará. Podrás
+                  registrar recargas cuando el Admin la apruebe.
+                </p>
+                <button type="button" className="tz-scan-btn tz-payment-save" onClick={() => setVerificandoCuenta(true)}>
+                  Verificar mi cuenta
+                </button>
+              </div>
+            )}
+            {estadoVerificacion === ESTADO_VERIFICACION_EN_REVISION && (
+              <div className="tz-cuenta-temporal">
+                <p>Tu verificación está en revisión del Admin. Podrás registrar recargas cuando la apruebe.</p>
+              </div>
+            )}
             <section className="tz-stats" style={{ gridTemplateColumns: "repeat(2, 1fr)", marginBottom: 20 }}>
               <div className="tz-stat-chip tz-stat-chip-green" style={{ textAlign: "center", padding: "22px" }}>
                 <span className="tz-stat-label" style={{ justifyContent: "center" }}>
@@ -232,18 +263,15 @@ export default function RecolectorPage() {
 
             <RecargaRapidaForm
               conductores={conductores}
-              usuariosClientes={usuariosClientes}
               categorias={categorias}
               subgrupos={subgrupos}
-              recolectorId={usuario?.id}
+              saldoRecolector={miPerfil}
               registrarRecarga={registrarRecarga}
               crearConductorConUsuario={crearConductorConUsuario}
               saving={saving}
               error={error}
               paquetes={paquetes}
-              paquetesClientes={paquetesClientes}
               glowPaquetes={glowPaquetes}
-              glowPaquetesClientes={glowPaquetesClientes}
               onVentaRegistrada={({ venta, destinatario, montoRecibido }) =>
                 setVentaPanel(
                   ventaParaPanel(venta, destinatario, { cajero: usuario?.nombre || "Recolector", montoRecibido })
@@ -255,7 +283,7 @@ export default function RecolectorPage() {
       </main>
 
       <footer className="tz-page-footer">
-        <button className="tz-footer-btn tz-footer-btn-cierre" onClick={() => setCierreOpen(true)}>
+        <button className={`tz-footer-btn tz-footer-btn-cierre ${turnoVencido ? "tz-btn-aviso" : ""}`} onClick={() => setCierreOpen(true)}>
           <Receipt size={18} />
           Cerrar Caja
         </button>
@@ -297,17 +325,39 @@ export default function RecolectorPage() {
         />
       )}
 
-      {cierreOpen && (
+      {verificandoCuenta && (
+        <div className="tz-modal-backdrop">
+          <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="tz-modal-close" onClick={() => setVerificandoCuenta(false)} aria-label="Cerrar">
+              <X size={18} />
+            </button>
+            <VerificarRecolectorForm
+              usuario={usuario}
+              onVerificado={(actualizado) => {
+                updateUsuario(actualizado);
+                setVerificandoCuenta(false);
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {cierreVisible && (
         <CierreCajaModal
-          ventasHoy={ventasHoy}
-          gastosHoy={gastosHoy}
-          totalGastosHoy={totalGastosHoy}
+          ventasHoy={ventasDelTurno}
+          gastosHoy={gastosDelTurno}
+          totalGastosHoy={totalGastosDelTurno}
           cierres={cierres}
           crearCierre={crearCierre}
           esAdmin={false}
           cajeroNombre={usuario?.nombre || "Recolector"}
           onClose={() => setCierreOpen(false)}
-          onCerrado={handleTurnoCerrado}
+          onCerrado={refreshTurno}
+          vencido={turnoVencido}
+          extensiones={turnoExtensiones}
+          maxExtensiones={turnoMaxExtensiones}
+          obligatorio={turnoObligatorio}
+          onExtender={extenderTurno}
           telefonoDestino={usuario?.telefono}
           conductores={conductores}
           usuarios={usuarios}
@@ -323,9 +373,9 @@ export default function RecolectorPage() {
           anular={anular}
           busyId={anulandoId}
           onClose={() => setHistorialOpen(false)}
-          puedeAnular={false}
         />
       )}
+      {anuncio && <AnuncioPopupModal alVer={alVerAnuncio} anuncios={anuncios} onClose={cerrarAnuncio} canalChat="taxipe" />}
     </div>
   );
 }

@@ -4,9 +4,8 @@ import { LogIn, ShieldCheck, KeyRound } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useAvisoTop } from "../hooks/useAvisoTop";
 import AvisoTop from "./AvisoTop";
-import VerificarConductorForm from "./VerificarConductorForm";
-import { loginConPin, crearPin, MENSAJE_BLOQUEADO } from "../lib/pinAuth";
-import { esTelefonoValido, ESTADO_VERIFICACION_TEMPORAL } from "../lib/taxiEnums";
+import { loginConPin, crearPin, MENSAJE_BLOQUEADO, MENSAJE_CUENTA_BLOQUEADA } from "../lib/pinAuth";
+import { esTelefonoValido, ESTADO_CUENTA_PENDIENTE } from "../lib/taxiEnums";
 import { routeForRole } from "../lib/taxiAuth";
 
 // Bug reportado: mismo aviso chico arriba de la pantalla que
@@ -22,15 +21,10 @@ const ENTRAR_DELAY_MS = 700;
 // el mismo: entra a donde le corresponde de verdad. Reusado en
 // AccesoConductorModal.jsx, AccesoRecolectorModal.jsx y en /login.
 //
-// Primer login sin PIN: `usuarios.pin` puede nacer NULL por dos
-// caminos distintos, que se distinguen por `estado_verificacion`:
-//   - 'temporal' (solo Conductor, ver RegistroConductorTemporalForm.jsx
-//     y useConductorTemporal.js): registro exprés, todavía sin DNI/
-//     placa/fotos — acá se pide el formulario de verificación completo
-//     (VerificarConductorForm.jsx) en vez de solo el PIN.
-//   - 'permanente' (alta manual del Admin/Recolector, ver
-//     useCrearConductorConUsuario.js/useCrearRecolectorPendiente.js):
-//     ya tiene todos sus datos, solo falta el PIN — flujo de siempre.
+// Primer login sin PIN (alta manual del Admin/Recolector, o una cuenta
+// exprés de antes de que el registro pidiera PIN): solo se crea el PIN y
+// entra. La verificación de una cuenta temporal se hace desde su panel,
+// nunca para poder entrar.
 export default function StaffLoginForm({ onSuccess }) {
   const { loginUsuario } = useTaxiAuth();
   const navigate = useNavigate();
@@ -45,8 +39,16 @@ export default function StaffLoginForm({ onSuccess }) {
   const [nuevoPin, setNuevoPin] = useState("");
   const [confirmarNuevoPin, setConfirmarNuevoPin] = useState("");
   const [creandoPin, setCreandoPin] = useState(false);
+  // Recolector que ya verificó su cuenta y espera la aprobación del Admin:
+  // no entra a la app, se le avisa acá.
+  const [enRevision, setEnRevision] = useState(false);
 
   const entrar = (usuario, mensaje = "✓ Sesión iniciada correctamente") => {
+    if (usuario.rol === "recolector" && usuario.estado_cuenta === ESTADO_CUENTA_PENDIENTE) {
+      setUsuarioSinPin(null);
+      setEnRevision(true);
+      return;
+    }
     mostrar(mensaje, "exito");
     setTimeout(() => {
       loginUsuario(usuario, rememberMe);
@@ -87,6 +89,11 @@ export default function StaffLoginForm({ onSuccess }) {
       mostrar(MENSAJE_BLOQUEADO, "error");
       return;
     }
+    if (resultado?.estado === "bloqueada") {
+      setError(MENSAJE_CUENTA_BLOQUEADA);
+      mostrar("Cuenta bloqueada por seguridad.", "error");
+      return;
+    }
     if (resultado?.estado !== "ok") {
       setError("Teléfono o PIN incorrectos.");
       mostrar("Teléfono o PIN incorrectos.", "error");
@@ -125,15 +132,17 @@ export default function StaffLoginForm({ onSuccess }) {
     entrar(resultado.usuario);
   };
 
-  if (usuarioSinPin?.rol === "conductor" && usuarioSinPin.estado_verificacion === ESTADO_VERIFICACION_TEMPORAL) {
+  if (enRevision) {
     return (
       <>
         <AvisoTop aviso={aviso} />
-        <VerificarConductorForm
-          usuario={usuarioSinPin}
-          submitLabel="Enviar verificación e ingresar"
-          onVerificado={(usuario) => entrar(usuario, "✓ Verificación enviada — queda pendiente de revisión del Admin")}
-        />
+        <p className="tz-success">
+          ✓ Tu cuenta de recolector está en revisión. Podrás entrar cuando el Admin la apruebe en el Centro de
+          Peticiones.
+        </p>
+        <button type="button" className="tz-camera-cancel" style={{ width: "100%" }} onClick={() => setEnRevision(false)}>
+          Volver
+        </button>
       </>
     );
   }
@@ -239,7 +248,7 @@ export default function StaffLoginForm({ onSuccess }) {
         type="button"
         className="tz-metodo-pago-change"
         style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", margin: "10px 0 0" }}
-        onClick={() => navigate("/recuperar-pin")}
+        onClick={() => navigate("/recuperar-pin", { state: { telefono: telefono.trim() } })}
       >
         <KeyRound size={13} /> Olvidé mi PIN
       </button>

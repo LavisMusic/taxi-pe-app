@@ -52,7 +52,7 @@ export function useRecargasRecolector() {
 
   // Una autorecarga nueva del recolector tiene que aparecer en el
   // Centro de Peticiones sin F5.
-  useEffect(() => subscribeTable("peticiones_recarga_recolector", () => refresh()), [refresh]);
+  useEffect(() => subscribeTable("peticiones_recarga_recolector", () => refresh(), { respaldo: true }), [refresh]);
 
   const aplicarBeneficio = async (recolector, peticion) => {
     const patch = {};

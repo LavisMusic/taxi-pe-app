@@ -57,6 +57,7 @@ export default function ConductorPublicCard({ conductor, isLoggedIn = false, chi
                 {activo ? "Libre" : "En carrera"}
               </span>
             </div>
+            {isLoggedIn && conductor.descripcion && <p className="tz-card-desc-clamp">{conductor.descripcion}</p>}
             <div className="tz-card-priceqty">
               <div className="tz-price-block">
                 <span className="tz-price-label">Placa</span>
@@ -64,8 +65,6 @@ export default function ConductorPublicCard({ conductor, isLoggedIn = false, chi
               </div>
             </div>
           </div>
-
-          {isLoggedIn && conductor.descripcion && <p className="tz-card-desc-clamp">{conductor.descripcion}</p>}
 
           {isLoggedIn && children}
         </div>

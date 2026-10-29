@@ -48,8 +48,44 @@ function marcarComoVisto(anuncio) {
 // también entran los anuncios para "todos". Sin la migración
 // 20261007100000 (sin columna "publico") los anuncios son solo de
 // pasajeros, como antes.
+const ROL_DE_PUBLICO = { pasajeros: "pasajero", conductores: "conductor", recolectores: "recolector" };
+
+// Con sesión, lo visto es por PERSONA (anuncios_vistos): "Una sola vez" no
+// vuelve a salir en otro navegador ni en una ventana privada, y
+// "Una vez al día" sale cada 24 h; las dos, entre sus fechas programadas. Sin
+// sesión, por navegador como antes.
+async function vistosDeLaPersona(ids) {
+  const { data: sesion } = await supabase.auth.getSession();
+  const uid = sesion?.session?.user?.id;
+  if (!uid || ids.length === 0) return null;
+  const { data, error } = await supabase.from("anuncios_vistos").select("anuncio_id, visto_at").in("anuncio_id", ids);
+  if (error) return null;
+  return Object.fromEntries((data || []).map((v) => [v.anuncio_id, new Date(v.visto_at).getTime()]));
+}
+
+function tocaMostrarA(anuncio, vistos) {
+  if (!vistos) return tocaMostrar(anuncio);
+  const visto = vistos[anuncio.id];
+  if (anuncio.frecuencia_mostrar === "una_vez_total") return !visto;
+  if (anuncio.frecuencia_mostrar === "una_vez_dia") return !visto || Date.now() - visto >= VEINTICUATRO_HORAS_MS;
+  return true;
+}
+
+// Se llama apenas el anuncio se ve en pantalla (no al cerrarlo: si la
+// persona se va sin cerrar, igual cuenta como visto).
+async function registrarVisto(anuncio) {
+  marcarComoVisto(anuncio);
+  const { data: sesion } = await supabase.auth.getSession();
+  if (!sesion?.session?.user?.id) return;
+  await supabase
+    .from("anuncios_vistos")
+    .upsert({ anuncio_id: anuncio.id, visto_at: new Date().toISOString() }, { onConflict: "anuncio_id,usuario_id" })
+    .then(() => {}, () => {});
+}
+
 export function useAnuncioActivo(publico = "pasajeros") {
-  const [anuncio, setAnuncio] = useState(null);
+  // Todos los que tocan ahora (carrusel, AnuncioPopupModal `anuncios`).
+  const [anuncios, setAnuncios] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -60,31 +96,31 @@ export function useAnuncioActivo(publico = "pasajeros") {
         // Vigencia en la propia query (menos filas que traer): sin
         // fecha_inicio/fecha_fin en la fila, esa cota no aplica —
         // `.or()` con "is.null" cubre ese caso por cada extremo.
-        const consultar = (conPublico) => {
+        // Por rol (anuncios.roles, migración 20261022120000; los crea el
+        // superadmin desde Caja). Sin esa columna, por `publico` como antes.
+        const consultar = (filtro) => {
           let q = supabase
             .from("anuncios")
-            .select("id, titulo, descripcion, imagen_url, video_url, fecha_inicio, fecha_fin, frecuencia_mostrar, orden")
+            .select("id, titulo, descripcion, imagen_url, video_url, boton_url, boton_texto, fecha_inicio, fecha_fin, frecuencia_mostrar, orden")
             .eq("activo", true)
             .or(`fecha_inicio.is.null,fecha_inicio.lte.${ahora}`)
             .or(`fecha_fin.is.null,fecha_fin.gte.${ahora}`)
-            .order("orden", { ascending: true });
-          if (conPublico) q = q.in("publico", [publico, "todos"]);
+            .order("orden", { ascending: true })
+            .order("created_at", { ascending: true });
+          if (filtro === "roles") q = q.contains("roles", [ROL_DE_PUBLICO[publico] ?? "pasajero"]);
+          if (filtro === "publico") q = q.in("publico", [publico, "todos"]);
           return q;
         };
-        let { data, error } = await consultar(true);
-        if (error) {
-          // Sin la columna "publico": solo los pasajeros ven anuncios.
-          ({ data, error } = publico === "pasajeros" ? await consultar(false) : { data: [], error: null });
-        }
+        let { data, error } = await consultar("roles");
+        if (error) ({ data, error } = await consultar("publico"));
 
         if (cancelado) return;
-        if (error || !data) {
-          setAnuncio(null);
-        } else {
-          setAnuncio(data.find((a) => tocaMostrar(a)) ?? null);
-        }
+        const lista = error || !data ? [] : data;
+        const vistos = await vistosDeLaPersona(lista.map((a) => a.id));
+        if (cancelado) return;
+        setAnuncios(lista.filter((a) => tocaMostrarA(a, vistos)));
       } catch {
-        if (!cancelado) setAnuncio(null);
+        if (!cancelado) setAnuncios([]);
       }
       if (!cancelado) setLoading(false);
     })();
@@ -93,10 +129,8 @@ export function useAnuncioActivo(publico = "pasajeros") {
     };
   }, [publico]);
 
-  const cerrar = () => {
-    if (anuncio) marcarComoVisto(anuncio);
-    setAnuncio(null);
-  };
+  const cerrar = () => setAnuncios([]);
 
-  return { anuncio, loading, cerrar };
+  // `alVer`: para AnuncioPopupModal (cada anuncio del carrusel al mostrarse).
+  return { anuncio: anuncios[0] ?? null, anuncios, loading, cerrar, alVer: registrarVisto };
 }

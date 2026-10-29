@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Save, Loader2, Camera, Check } from "lucide-react";
+import ImagenGuardada from "../ImagenGuardada";
 import GestionImagenModal from "../admin/GestionImagenModal";
 import Dropdown from "../Dropdown";
 import { useLocalidades } from "../../hooks/useLocalidades";
@@ -94,7 +95,7 @@ export default function RegistroConductorForm({
     setError("");
 
     if (!esNombreCompletoValido(nombre)) {
-      setError("Escribe el nombre completo (nombre y apellido), ej. \"Daniela Rivas\".");
+      setError("Escribe el nombre completo (nombre y apellido), ej. \"Josue Ramos\".");
       return;
     }
     if (!placa.trim()) {
@@ -309,7 +310,7 @@ export default function RegistroConductorForm({
               >
                 <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   {fotos[f.key] ? (
-                    <img
+                    <ImagenGuardada
                       src={fotos[f.key]}
                       alt={f.label}
                       style={{ width: 22, height: 22, borderRadius: 6, objectFit: "cover" }}
@@ -343,6 +344,7 @@ export default function RegistroConductorForm({
           fotoUrl={gestionandoFoto.key === "perfil" ? fotoPerfilUrl : fotos[gestionandoFoto.key]}
           storageKey={`${fotoKey}-${gestionandoFoto.slug}`}
           isProfilePic={!!gestionandoFoto.isProfilePic}
+          privado={!gestionandoFoto.isProfilePic}
           onFotoUrlChange={(url) =>
             gestionandoFoto.key === "perfil"
               ? setFotoPerfilUrl(url)

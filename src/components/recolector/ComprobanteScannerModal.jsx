@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Camera, Check, AlertTriangle, X, Loader2, Paperclip } from "lucide-react";
 import { createWorker } from "tesseract.js";
 import { formatSoles } from "../../utils/format";
+import BotonPegarComprobante from "../BotonPegarComprobante";
 
 // Mismos patrones de la caja vieja (detectPaymentInfo en App.jsx) para
 // adivinar el ID de operación a partir del texto OCR — acá SOLO el ID:
@@ -189,6 +190,7 @@ export default function ComprobanteScannerModal({ precioEsperado, onConfirm, onC
                 >
                   <Paperclip size={15} /> Adjuntar comprobante
                 </button>
+                <BotonPegarComprobante onArchivo={(f) => processImage(f)} />
               </div>
             </div>
           )}

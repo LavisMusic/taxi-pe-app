@@ -6,6 +6,9 @@ import { buildWhatsappLink } from "../lib/whatsapp";
 import { supabase, moverSesionGuardada } from "../supabaseClient";
 import { cerrarSesion, rolDeSesion, abrirSesion } from "../lib/sesionTaxi";
 import { TAXI_ADMIN_KEY, TAXI_SESSION_KEY, leerTokenAdmin } from "../lib/taxiAuth";
+import TerminosAceptarModal from "../components/TerminosAceptarModal";
+import { cancelarPushDispositivo } from "../lib/push";
+import { TERMINOS_VERSION } from "../components/TerminosTexto";
 
 // Aviso a pantalla completa cuando el Admin elimina la cuenta MIENTRAS
 // la persona la sigue teniendo abierta en su dispositivo — sin esto,
@@ -13,9 +16,14 @@ import { TAXI_ADMIN_KEY, TAXI_SESSION_KEY, leerTokenAdmin } from "../lib/taxiAut
 // datos de una cuenta que ya no existe en la base, hasta que alguien
 // recargara a mano. Mismas clases tz-modal-backdrop/tz-modal que
 // cualquier otro modal de la app.
-function CuentaEliminadaOverlay({ onCerrar }) {
+// `bloqueada`: la cuenta tiene un bloqueo de emergencia (Soporte,
+// migración 20261021100000) — mismo aviso, otro texto.
+function CuentaEliminadaOverlay({ onCerrar, bloqueada = false }) {
   const { whatsapp_soporte } = useContactoPlataforma();
-  const linkSoporte = buildWhatsappLink(whatsapp_soporte, "Hola, eliminaron mi cuenta de Taxi-PE y creo que es un error.");
+  const linkSoporte = buildWhatsappLink(
+    whatsapp_soporte,
+    bloqueada ? "Hola, mi cuenta de Taxi-PE está bloqueada." : "Hola, eliminaron mi cuenta de Taxi-PE y creo que es un error."
+  );
   return (
     <div className="tz-modal-backdrop" style={{ zIndex: 999999 }}>
       <div
@@ -26,9 +34,13 @@ function CuentaEliminadaOverlay({ onCerrar }) {
         <div className="tz-cuenta-eliminada-icono">
           <ShieldAlert size={36} />
         </div>
-        <h2 style={{ marginTop: 14, color: "var(--danger, #ff5470)" }}>Tu cuenta ha sido eliminada</h2>
+        <h2 style={{ marginTop: 14, color: "var(--danger, #ff5470)" }}>
+          {bloqueada ? "Tu cuenta está bloqueada" : "Tu cuenta ha sido eliminada"}
+        </h2>
         <p className="tz-brand-sub" style={{ marginTop: 8 }}>
-          Un administrador eliminó esta cuenta. Si crees que es un error, comunícate con soporte.
+          {bloqueada
+            ? 'Se activó el bloqueo de emergencia de esta cuenta. Para reactivarla, entra a Soporte → "Recuperar cuenta".'
+            : "Un administrador eliminó esta cuenta. Si crees que es un error, comunícate con soporte."}
         </p>
         {linkSoporte && (
           <a
@@ -36,7 +48,18 @@ function CuentaEliminadaOverlay({ onCerrar }) {
             target="_blank"
             rel="noopener noreferrer"
             className="tz-scan-btn tz-payment-save"
-            style={{ marginTop: 16, width: "100%", display: "inline-flex", justifyContent: "center", gap: 8, textDecoration: "none" }}
+            style={{
+              marginTop: 16,
+              width: "100%",
+              boxSizing: "border-box",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              textDecoration: "none",
+              whiteSpace: "normal",
+              textAlign: "center",
+            }}
           >
             <Headset size={16} /> Escribir a soporte
           </a>
@@ -44,7 +67,7 @@ function CuentaEliminadaOverlay({ onCerrar }) {
         <button
           type="button"
           className="tz-scan-btn tz-cuenta-eliminada-salir-btn"
-          style={{ marginTop: 16, width: "100%" }}
+          style={{ marginTop: 12, width: "100%", boxSizing: "border-box" }}
           onClick={() => {
             onCerrar();
             window.location.href = "/";
@@ -99,6 +122,11 @@ export function TaxiAuthProvider({ children }) {
   const [usuario, setUsuario] = useState(readStoredUsuario);
   const [isAdminMaster, setIsAdminMaster] = useState(readStoredAdminMaster);
   const [cuentaEliminada, setCuentaEliminada] = useState(false);
+  const [cuentaBloqueada, setCuentaBloqueada] = useState(false);
+  // La cuenta todavía no aceptó la versión vigente de los Términos
+  // (migración 20261022100000): se bloquea la app con la ventana para
+  // aceptarlos.
+  const [requiereTerminos, setRequiereTerminos] = useState(false);
 
   // Login por DNI + Teléfono + PIN (recolector/conductor/pasajero).
   const loginUsuario = useCallback((row, remember = true) => {
@@ -146,6 +174,8 @@ export function TaxiAuthProvider({ children }) {
   const logout = useCallback(() => {
     const tokenAdmin = leerTokenAdmin();
     if (tokenAdmin) supabase.rpc("taxi_admin_salir", { p_token: tokenAdmin }).then(() => {}, () => {});
+    // Este dispositivo deja de recibir los avisos de esta cuenta.
+    cancelarPushDispositivo();
     cerrarSesion();
     reiniciarBienvenidas();
     setUsuario(null);
@@ -171,6 +201,15 @@ export function TaxiAuthProvider({ children }) {
     window.localStorage.removeItem(TAXI_SESSION_KEY);
     window.sessionStorage.removeItem(TAXI_SESSION_KEY);
     setCuentaEliminada(true);
+  }, []);
+
+  // Bloqueo de emergencia (Soporte): mismo cierre que una cuenta borrada.
+  const marcarCuentaBloqueada = useCallback(() => {
+    cerrarSesion();
+    setUsuario(null);
+    window.localStorage.removeItem(TAXI_SESSION_KEY);
+    window.sessionStorage.removeItem(TAXI_SESSION_KEY);
+    setCuentaBloqueada(true);
   }, []);
 
   // Cuenta eliminada por el Admin (cualquier rol: pasajero, conductor,
@@ -206,13 +245,17 @@ export function TaxiAuthProvider({ children }) {
     const validarCuentaExiste = () => {
       supabase
         .from("usuarios")
-        .select("id")
+        .select("id, terminos_version")
         .eq("id", usuario.id)
         .maybeSingle()
         .then(({ data, error }) => {
           if (!active || error) return;
-          if (!data) marcarCuentaEliminada();
+          if (!data) return marcarCuentaEliminada();
+          setRequiereTerminos(data.terminos_version !== TERMINOS_VERSION);
         });
+      supabase.rpc("taxi_cuenta_bloqueada", { p_usuario_id: usuario.id }).then(({ data, error }) => {
+        if (active && !error && data === true) marcarCuentaBloqueada();
+      });
     };
 
     validarCuentaExiste();
@@ -238,7 +281,7 @@ export function TaxiAuthProvider({ children }) {
       window.removeEventListener("pageshow", validarCuentaExiste);
       window.removeEventListener("focus", validarCuentaExiste);
     };
-  }, [usuario?.id, marcarCuentaEliminada]);
+  }, [usuario?.id, marcarCuentaEliminada, marcarCuentaBloqueada]);
 
   // Paso a sesión real (fase 2A) de quien ya estaba dentro antes de esta
   // versión: el Admin con su token válido la obtiene solo; una cuenta sin
@@ -308,6 +351,25 @@ export function TaxiAuthProvider({ children }) {
   return (
     <TaxiAuthContext.Provider value={value}>
       {cuentaEliminada && <CuentaEliminadaOverlay onCerrar={() => setCuentaEliminada(false)} />}
+      {usuario && requiereTerminos && !cuentaEliminada && !cuentaBloqueada && (
+        <TerminosAceptarModal
+          onAceptar={async () => {
+            const { data, error } = await supabase.rpc("taxi_aceptar_terminos", { p_version: TERMINOS_VERSION });
+            if (error || data !== true) return false;
+            setRequiereTerminos(false);
+            updateUsuario({ terminos_version: TERMINOS_VERSION });
+            return true;
+          }}
+          onSalir={() => {
+            setRequiereTerminos(false);
+            logout();
+            window.location.href = "/";
+          }}
+        />
+      )}
+      {cuentaBloqueada && !cuentaEliminada && (
+        <CuentaEliminadaOverlay bloqueada onCerrar={() => setCuentaBloqueada(false)} />
+      )}
       {children}
     </TaxiAuthContext.Provider>
   );

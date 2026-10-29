@@ -49,6 +49,8 @@ Deno.serve(async (req) => {
     .from("entregas")
     .insert({
       caja_sucursal: p.sucursal ?? null,
+      // Logo del negocio (Mensajes del conductor). Solo un enlace https.
+      caja_logo_url: typeof p.logo_url === "string" && /^https:\/\//.test(p.logo_url) ? p.logo_url : null,
       caja_pedido_ref: p.caja_pedido_ref ?? null,
       cliente_nombre: p.cliente_nombre ?? null,
       cliente_telefono: p.cliente_telefono ?? null,

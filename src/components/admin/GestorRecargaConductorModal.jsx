@@ -12,6 +12,9 @@ import {
 } from "../../lib/taxiEnums";
 import { ventaParaPanel } from "../../lib/ventaBoleta";
 import { subirComprobante } from "../../lib/comprobantes";
+import Dropdown from "../Dropdown";
+import Select from "../Select";
+import BotonPegarComprobante from "../BotonPegarComprobante";
 
 // Gestor de la membresía de UN conductor (botón ⚡ de su tarjeta en el
 // Directorio del Admin) — COMPLETAMENTE igual al gestor del plan de un
@@ -20,9 +23,9 @@ import { subirComprobante } from "../../lib/comprobantes";
 // uno con los datos de Taxi-PE:
 //   * Membresía y estado: tarjetas (membresía, vence, créditos,
 //     teléfono) + membresía asignada (sin cobrar) y estado operativo.
-//   * Recarga rápida: Membresía / Créditos (diferencia propia de
-//     Taxi-PE: los créditos se pueden recargar aunque la membresía siga
-//     activa); bloqueada si la membresía sigue vigente; filtro Mensual /
+//   * Recarga rápida: Membresía / Créditos; con la membresía vigente no
+//     se recarga ninguno de los dos (regla de créditos y membresías,
+//     migración 20261011120000); filtro Mensual /
 //     Anual / Otros; paquete; total; método; comprobante OBLIGATORIO si
 //     es digital (Tomar foto / Adjuntar — se comprime y se GUARDA); vuelto
 //     si es efectivo. Al registrar sube el desplegable de venta
@@ -129,7 +132,7 @@ function RecargaRapida({ conductor, paquetes, registrarRecarga, saving, errorExt
     return <p className="tz-error">Este conductor está pendiente de aprobación en el Centro de Peticiones.</p>;
   }
 
-  if (tipo === TIPO_ITEM_MEMBRESIA && membresiaVigente) {
+  if (membresiaVigente) {
     return (
       <>
         {selectorTipo}
@@ -143,7 +146,7 @@ function RecargaRapida({ conductor, paquetes, registrarRecarga, saving, errorExt
             hasta el {formatDate(conductor.vencimiento_suscripcion)}
           </h3>
           <p className="tz-stock-editor-sub">
-            No se puede recargar otra membresía mientras esta siga activa. Los créditos sí se pueden recargar.
+            Mientras la membresía siga activa no se le puede recargar otra membresía ni créditos.
           </p>
         </div>
       </>
@@ -225,15 +228,18 @@ function RecargaRapida({ conductor, paquetes, registrarRecarga, saving, errorExt
         </div>
       )}
       <label className="tz-field-label">Paquete</label>
-      <select className="tz-text-input" value={paqueteId} onChange={(e) => setPaqueteId(e.target.value)}>
-        <option value="">{visibles.length === 0 ? "No hay paquetes en este filtro" : "Elige un paquete…"}</option>
-        {visibles.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.nombre} —{" "}
-            {p.tipo_item === TIPO_ITEM_MEMBRESIA ? `${p.dias_membresia} días` : `${p.creditos} créditos`} · {formatSoles(p.precio)}
-          </option>
-        ))}
-      </select>
+      <Dropdown
+        value={paqueteId}
+        onChange={(v) => setPaqueteId(String(v))}
+        options={visibles.map((p) => ({
+          value: String(p.id),
+          label: `${p.nombre} — ${
+            p.tipo_item === TIPO_ITEM_MEMBRESIA ? `${p.dias_membresia} días` : `${p.creditos} créditos`
+          } · ${formatSoles(p.precio)}`,
+        }))}
+        placeholder={visibles.length === 0 ? "No hay paquetes en este filtro" : "Elige un paquete…"}
+        ariaLabel="Paquete"
+      />
       {paquete && (
         <p className="tz-plan-total" style={{ margin: "8px 0 0" }}>
           Total: <strong>{formatSoles(total)}</strong> ·{" "}
@@ -277,6 +283,7 @@ function RecargaRapida({ conductor, paquetes, registrarRecarga, saving, errorExt
               <input type="file" accept="image/*" hidden onChange={elegirArchivo} />
             </label>
           </div>
+          <BotonPegarComprobante onArchivo={(f) => elegirArchivo({ target: { files: [f], value: "" } })} />
           {preview && <img src={preview} alt="Comprobante" className="tz-renovar-comprobante" />}
         </div>
       )}
@@ -465,21 +472,22 @@ export default function GestorRecargaConductorModal({
             <div className="tz-plan-seccion">
               <label className="tz-plan-campo tz-plan-campo-ancho">
                 <span>Membresía asignada (sin cobrar)</span>
-                <select
-                  className="tz-text-input"
-                  value={vigente ? conductor.membresia_paquete_id || "" : ""}
-                  onChange={(e) => actualizar({ membresia_paquete_id: e.target.value || null }, "membresia")}
+                <Dropdown
+                  value={vigente ? String(conductor.membresia_paquete_id || "") : ""}
+                  onChange={(v) => actualizar({ membresia_paquete_id: v || null }, "membresia")}
                   disabled={guardando === "membresia" || !vigente}
-                >
-                  <option value="">Sin membresía</option>
-                  {membresias
-                    .filter((p) => p.activo !== false || String(p.id) === String(conductor.membresia_paquete_id))
-                    .map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.nombre} — {p.dias_membresia} días {formatSoles(p.precio)}
-                      </option>
-                    ))}
-                </select>
+                  options={[
+                    { value: "", label: "Sin membresía" },
+                    ...membresias
+                      .filter((p) => p.activo !== false || String(p.id) === String(conductor.membresia_paquete_id))
+                      .map((p) => ({
+                        value: String(p.id),
+                        label: `${p.nombre} — ${p.dias_membresia} días ${formatSoles(p.precio)}`,
+                      })),
+                  ]}
+                  placeholder="Sin membresía"
+                  ariaLabel="Membresía asignada"
+                />
                 {!vigente && (
                   <small className="tz-stock-editor-sub">
                     Sin membresía vigente: al registrar una recarga queda con el paquete que pague.
@@ -488,13 +496,13 @@ export default function GestorRecargaConductorModal({
               </label>
               <label className="tz-plan-campo tz-plan-campo-ancho">
                 <span>Estado</span>
-                <select className="tz-text-input" value={conductor.estado ?? ""} onChange={cambiarEstado} disabled={guardando === "estado"}>
+                <Select className="tz-text-input" value={conductor.estado ?? ""} onChange={cambiarEstado} disabled={guardando === "estado"}>
                   {ESTADOS_CONDUCTOR_OPERATIVOS.map((e) => (
                     <option key={e.value} value={e.value}>
                       {e.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
             </div>
           </>

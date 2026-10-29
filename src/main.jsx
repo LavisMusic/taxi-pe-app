@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
+import { registrarServiceWorker } from './lib/push'
 import { TaxiAuthProvider } from './contexts/TaxiAuthContext'
 import RequireAdminMaster from './components/RequireAdminMaster'
 import RequireUsuarioRol from './components/RequireUsuarioRol'
@@ -10,14 +11,23 @@ import LoginPage from './pages/LoginPage'
 import LoginAdminPage from './pages/LoginAdminPage'
 import RegistroConductorPage from './pages/RegistroConductorPage'
 import RecuperarPinPage from './pages/RecuperarPinPage'
+import RestablecerPinPage from "./pages/RestablecerPinPage";
+import TerminosPage from "./pages/TerminosPage";
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import RecolectorPage from './pages/RecolectorPage'
 import ConductorPage from './pages/ConductorPage'
+import { instalarDespliegueBotones } from './lib/despliegueBotones'
 
 // Router de TaxiP. El árbol viejo (AuthProvider + CatalogPage + App.jsx
 // "caja registradora") queda intacto en el repo sin importarse desde
 // acá — sirve de referencia para migrar piezas del dashboard de admin
 // en el siguiente paso, pero ya no es parte del flujo de rutas.
+// Botones de la cabecera: en el celular se despliegan manteniendo presionado.
+instalarDespliegueBotones()
+
+// Avisos emergentes (Web Push) e instalación de la app.
+registrarServiceWorker()
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <TaxiAuthProvider>
@@ -28,6 +38,8 @@ createRoot(document.getElementById('root')).render(
           <Route path="/login-admin" element={<LoginAdminPage />} />
           <Route path="/registro-conductor" element={<RegistroConductorPage />} />
           <Route path="/recuperar-pin" element={<RecuperarPinPage />} />
+          <Route path="/restablecer-pin" element={<RestablecerPinPage />} />
+          <Route path="/terminos" element={<TerminosPage />} />
           <Route
             path="/admin"
             element={

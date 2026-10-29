@@ -63,8 +63,9 @@ export function useRadarPublico() {
         // un conductor sin saldo cuyo `estado` sigue "activo" en la
         // base (columna vieja, todavía no la actualizó el auto-apagado)
         // igual aparecía sembrado acá en la carga inicial del Radar.
-        const vencida = c.vencimiento_suscripcion ? new Date(c.vencimiento_suscripcion) < new Date() : false;
-        const tieneAcceso = !vencida || (c.creditos ?? 0) > 0;
+        // (Sin fecha de membresía NO cuenta como vigente.)
+        const membresiaVigente = !!c.vencimiento_suscripcion && new Date(c.vencimiento_suscripcion) > new Date();
+        const tieneAcceso = membresiaVigente || (c.creditos ?? 0) > 0;
         if (!tieneAcceso) continue;
         iniciales[c.id] = { lat: c.ultima_lat, lng: c.ultima_lng };
       }

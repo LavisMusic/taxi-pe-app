@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LogIn, LogOut, Car, Users, MessageCircle, X, Loader2, MapPin } from "lucide-react";
+import { LogIn, LogOut, Car, Users, MessageCircle, X, Loader2, MapPin, Pencil } from "lucide-react";
+import PerfilPasajeroModal from "../components/PerfilPasajeroModal";
 import { supabase } from "../supabaseClient";
 import { useConductoresPublicos } from "../hooks/useConductoresPublicos";
-import { useCrearRecolectorPendiente } from "../hooks/useCrearRecolectorPendiente";
 import { useAnuncioActivo } from "../hooks/useAnuncioActivo";
 import { useLocalidades } from "../hooks/useLocalidades";
 import { useBienvenidaNeon } from "../hooks/useBienvenidaNeon";
@@ -13,7 +13,14 @@ import {
   ESTADO_OFERTA_ACEPTADA,
   ESTADO_OFERTA_EN_TRANSITO,
 } from "../hooks/useChatMensajes";
-import { TIPO_USUARIO_PASAJERO } from "../lib/taxiEnums";
+import { TIPO_USUARIO_PASAJERO, ESTADO_CONDUCTOR_ACTIVO } from "../lib/taxiEnums";
+import { useActividadChatsPasajero, useConductoresDeMisChats } from "../hooks/useActividadChatsPasajero";
+
+// Chats a la vez con conductores elegidos en el Radar, y cuánto tiempo sin
+// mensajes (de ningún lado) hasta que el conductor deja de estar en
+// contacto: se le quita el botón "Contactar" y vuelve a su lugar en la lista.
+const MAX_CHATS_SIMULTANEOS = 3;
+const INACTIVIDAD_CHAT_MS = 5 * 60 * 1000;
 import { agruparPorNivel } from "../lib/nivelServicio";
 import { reverseGeocode } from "../lib/reverseGeocode";
 import { distanciaMetros } from "../lib/haversine";
@@ -30,8 +37,13 @@ import TextoMaquina from "../components/TextoMaquina";
 import { useDescripcionesPublico } from "../hooks/useDescripciones";
 import RadarGlobal from "../components/RadarGlobal";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
+import AnimacionExitoNeon from "../components/AnimacionExitoNeon";
+import { useViajeFinalizadoAviso } from "../hooks/useViajeFinalizadoAviso";
 import logo from "../assets/logo.webp";
+import ContadorCreditos from "../components/ContadorCreditos";
+import { useMisCreditos } from "../hooks/useMisCreditos";
 import BotonSoporte from "../components/BotonSoporte";
+import BotonMensajes from "../components/mensajes/BotonMensajes";
 
 // Persistencia del filtro de localidad — sobrevive a un F5 (ver el
 // useState/useEffect de `localidad` más abajo). Es la única pieza de
@@ -60,13 +72,15 @@ export default function HomePage() {
   // navegador también tiene `usuario` truthy. El gate real es el ROL,
   // no la mera existencia de sesión.
   const esPasajero = usuario?.rol === TIPO_USUARIO_PASAJERO;
+  // Créditos del pasajero (puntos por sus compras en Caja Tonazo): el
+  // contador con diamante arriba de la pantalla principal.
+  const misCreditos = useMisCreditos(esPasajero ? usuario?.id : null);
   const { conductores, categorias, loading, error } = useConductoresPublicos();
-  const { crear: crearRecolectorPendiente } = useCrearRecolectorPendiente();
   // Pop-up de marketing — ver useAnuncioActivo.js para la lógica de
   // vigencia (fecha_inicio/fecha_fin) + frecuencia (localStorage). Se
   // muestra a CUALQUIER visitante de la Home, con o sin sesión de
   // Pasajero — es publicidad, no contenido privado.
-  const { anuncio, cerrar: cerrarAnuncio } = useAnuncioActivo("pasajeros");
+  const { anuncio, anuncios, cerrar: cerrarAnuncio, alVer: alVerAnuncio } = useAnuncioActivo("pasajeros");
   // Texto bajo el logo: "Tu taxi, al toque" y después las descripciones
   // del Admin para pasajeros.
   const descripcionesPasajero = useDescripcionesPublico("pasajeros");
@@ -111,6 +125,8 @@ export default function HomePage() {
   // `localidades` se recarga por Realtime mientras la pantalla sigue
   // abierta.
   const geolocalizacionIntentada = useRef(false);
+  // Para ordenar la lista por cercanía (solo en este celular, no se envía).
+  const [pasajeroPos, setPasajeroPos] = useState(null);
   useEffect(() => {
     if (geolocalizacionIntentada.current) return;
     if (localidades.length === 0) return;
@@ -120,6 +136,7 @@ export default function HomePage() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
+        setPasajeroPos({ lat: latitude, lng: longitude });
         const masCercana = localidades.reduce((mejor, l) => {
           const d = distanciaMetros(latitude, longitude, l.lat, l.lon);
           return d < mejor.distancia ? { fila: l, distancia: d } : mejor;
@@ -152,7 +169,30 @@ export default function HomePage() {
   // apaga. Se limpia solo al finalizar o cancelar el viaje (mismo gancho
   // que ya limpia `destinoSeleccionado`, ver `onLimpiarDestino` más
   // abajo — ChatWindow.jsx ya lo dispara en los dos casos).
-  const [conductorActivoId, setConductorActivoId] = useState(null);
+  // Ahora pueden ser hasta MAX_CHATS_SIMULTANEOS conductores en contacto a la
+  // vez: los elegidos en el Radar o con mensajes en los últimos
+  // INACTIVIDAD_CHAT_MS. Apenas el pasajero acepta la oferta de uno, solo
+  // queda ese (los demás pierden el botón).
+  const [seleccionados, setSeleccionados] = useState({}); // { conductorId: ms en que se eligió }
+  const { ultimaActividad, ultimos, noLeidos, viajeTerminado, conductorAcordadoId } = useActividadChatsPasajero(
+    esPasajero ? usuario?.id : null
+  );
+  const [ahora, setAhora] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setAhora(Date.now()), 15000);
+    return () => clearInterval(t);
+  }, []);
+  const actividadDe = (id) => Math.max(seleccionados[id] || 0, ultimaActividad[id] || 0);
+  // Viaje terminado (finalizado o cancelado) con ese conductor: se va su
+  // botón para contactarlo — hasta que lo vuelva a elegir en el Radar. El
+  // chat sigue en Mensajes (24 h).
+  const terminoCon = (id) => viajeTerminado[id] && !(seleccionados[id] > viajeTerminado[id]);
+  const chatsActivos = conductorAcordadoId
+    ? [conductorAcordadoId]
+    : [...new Set([...Object.keys(seleccionados), ...Object.keys(ultimaActividad)])]
+        .filter((id) => ahora - actividadDe(id) < INACTIVIDAD_CHAT_MS && !terminoCon(id))
+        .sort((a, b) => actividadDe(b) - actividadDe(a))
+        .slice(0, MAX_CHATS_SIMULTANEOS);
 
   // Flujo de Contacto (Fase 0): "Contactar" desde la tarjeta del
   // directorio general NO manda ningún mensaje solo — abre el chat
@@ -183,13 +223,21 @@ export default function HomePage() {
     // hay OTRO en curso; el manual (lista general) nunca fija uno nuevo,
     // solo puede reabrir el que ya está activo.
     if (auto) {
-      if (conductorActivoId && conductorId !== conductorActivoId) {
-        setAvisoDestino("⚠️ Ya tienes una negociación activa con otro conductor");
+      if (conductorAcordadoId && conductorId !== conductorAcordadoId) {
+        setAvisoDestino("⚠️ Ya aceptaste el viaje con otro conductor");
         setTimeout(() => setAvisoDestino(""), 3500);
         return;
       }
-      setConductorActivoId(conductorId);
-    } else if (conductorId !== conductorActivoId) {
+      if (!chatsActivos.includes(conductorId) && chatsActivos.length >= MAX_CHATS_SIMULTANEOS) {
+        setAvisoDestino(
+          `⚠️ Ya hablas con ${MAX_CHATS_SIMULTANEOS} conductores. Espera a que alguno quede inactivo (${INACTIVIDAD_CHAT_MS / 60000} min sin mensajes).`
+        );
+        setTimeout(() => setAvisoDestino(""), 4000);
+        return;
+      }
+      setSeleccionados((prev) => ({ ...prev, [conductorId]: Date.now() }));
+      setAhora(Date.now());
+    } else if (!chatsActivos.includes(conductorId)) {
       // Ningún conductor activo todavía, o es uno DISTINTO al ya activo
       // — la lista general solo puede reabrir el hilo del que ya está
       // en curso, nunca arrancar uno nuevo.
@@ -215,7 +263,7 @@ export default function HomePage() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [accesoConductorOpen, setAccesoConductorOpen] = useState(false);
   const [accesoRecolectorOpen, setAccesoRecolectorOpen] = useState(false);
-  const [avisoPeticion, setAvisoPeticion] = useState("");
+  const [perfilOpen, setPerfilOpen] = useState(false);
   // Se guarda solo el ID, no una copia del objeto — `conductores` ya
   // está suscrito a Realtime (useConductoresPublicos.js), así que
   // derivar el conductor actual de ahí en cada render (en vez de
@@ -224,7 +272,36 @@ export default function HomePage() {
   // ChatConductorHeader se actualice sola — sin esto quedaba una foto
   // fija del momento en que se abrió el chat, ver ChatModal.jsx.
   const [chatConductorId, setChatConductorId] = useState(null);
-  const chatConductor = chatConductorId ? conductores.find((c) => c.id === chatConductorId) ?? null : null;
+  // Viaje finalizado con el chat cerrado (o la app cerrada): se festeja al
+  // volver a la pantalla principal.
+  const viajeFinalizado = useViajeFinalizadoAviso({
+    campo: "pasajero_id",
+    valor: esPasajero ? usuario?.id : null,
+    chatAbierto: !!chatConductorId,
+  });
+  // Conductores de sus chats (24 h) con nombre y foto aunque ya no estén
+  // conectados (la lista pública solo trae a los activos).
+  const idsChats = Object.keys(ultimaActividad).sort().join(",");
+  const conductoresDeChats = useConductoresDeMisChats(esPasajero, idsChats);
+  const conductorPorId = (id) => conductores.find((c) => c.id === id) ?? conductoresDeChats[id] ?? null;
+  const chatConductor = chatConductorId ? conductorPorId(chatConductorId) : null;
+  // Mensajes del pasajero: todos sus chats de las últimas 24 h, el más
+  // reciente arriba, con el último mensaje, la hora y los no leídos.
+  const chatsMensajes = Object.keys(ultimaActividad)
+    .sort((a, b) => ultimaActividad[b] - ultimaActividad[a])
+    .map((id) => ({
+      ...(conductorPorId(id) ?? { id }),
+      ultimo: ultimos[id] ?? null,
+      noLeidos: noLeidos[id] || 0,
+      enViaje: id === conductorAcordadoId,
+      terminado: !!terminoCon(id),
+    }));
+  // Desde Mensajes se abre cualquier chat de las últimas 24 h (uno de un
+  // viaje ya terminado queda de solo lectura dentro de ChatWindow).
+  const verChat = (id) => {
+    setChatAuto(false);
+    setChatConductorId(id);
+  };
 
   // Persistencia de sesión (recuperación ante recargas o apagados): sin
   // esto, recargar la página perdía el viaje activo del lado del
@@ -310,16 +387,42 @@ export default function HomePage() {
   const conductoresDeLaTab = conductores.filter(
     (c) => c.categoria_id === activeTab && (!localidad || c.localidad === localidad)
   );
-  const grupos = agruparPorNivel(conductoresDeLaTab);
-
-  const avisarPeticionEnviada = (mensaje) => {
-    setAvisoPeticion(mensaje);
-    setTimeout(() => setAvisoPeticion(""), 6000);
-  };
+  // Orden dentro de cada nivel: los que están en contacto (el más reciente
+  // primero), libres antes que en carrera, verificados antes que cuentas
+  // temporales y, si el pasajero compartió su ubicación, el más cercano.
+  const distanciaA = (c) =>
+    pasajeroPos && c.ultima_lat != null && c.ultima_lng != null
+      ? distanciaMetros(pasajeroPos.lat, pasajeroPos.lng, Number(c.ultima_lat), Number(c.ultima_lng))
+      : Infinity;
+  const ordenarConductores = (lista) =>
+    lista.slice().sort((a, b) => {
+      const ia = chatsActivos.indexOf(a.id);
+      const ib = chatsActivos.indexOf(b.id);
+      if (ia >= 0 || ib >= 0) {
+        if (ia < 0) return 1;
+        if (ib < 0) return -1;
+        return ia - ib;
+      }
+      const libre = (c) => (c.estado === ESTADO_CONDUCTOR_ACTIVO ? 0 : 1);
+      if (libre(a) !== libre(b)) return libre(a) - libre(b);
+      const verificado = (c) => (c.aprobado ? 0 : 1);
+      if (verificado(a) !== verificado(b)) return verificado(a) - verificado(b);
+      const da = distanciaA(a);
+      const db = distanciaA(b);
+      return da === db ? 0 : da - db;
+    });
+  const grupos = agruparPorNivel(conductoresDeLaTab).map((g) => ({ ...g, conductores: ordenarConductores(g.conductores) }));
 
   return (
     <div className="tz-root">
       <Styles />
+      {!mostrarBienvenida && viajeFinalizado.festejar && (
+        <AnimacionExitoNeon
+          titulo="¡Viaje finalizado!"
+          descripcion="Gracias por viajar con Taxi-PE."
+          onTerminar={viajeFinalizado.cerrar}
+        />
+      )}
       {mostrarBienvenida && (
         <AnimacionNeonBienvenida
           eyebrow="✦ Bienvenido a TaxiPE ✦"
@@ -331,22 +434,36 @@ export default function HomePage() {
       <header className="tz-header">
         <div className="tz-header-row">
           <div className="tz-header-side tz-header-side-left">
-            <button
-              className="tz-header-btn"
-              onClick={() => setAccesoConductorOpen(true)}
-              aria-label="Acceso de conductor"
-            >
-              <Car size={19} />
-              <span className="tz-header-btn-label">Conductores</span>
-            </button>
-            <button
-              className="tz-header-btn"
-              onClick={() => setAccesoRecolectorOpen(true)}
-              aria-label="Acceso de recolector"
-            >
-              <Users size={19} />
-              <span className="tz-header-btn-label">Recolectores</span>
-            </button>
+            {/* Con sesión de pasajero: solo su perfil y sus Mensajes (los
+                accesos de conductor/recolector son para entrar). */}
+            {usuario && esPasajero ? (
+              <>
+                <button className="tz-header-btn" onClick={() => setPerfilOpen(true)} aria-label="Editar perfil" title="Editar perfil">
+                  <Pencil size={19} />
+                  <span className="tz-header-btn-label">Editar Perfil</span>
+                </button>
+                <BotonMensajes usuarioId={usuario.id} conductores={chatsMensajes} onAbrirConductor={verChat} />
+              </>
+            ) : (
+              <>
+                <button
+                  className="tz-header-btn"
+                  onClick={() => setAccesoConductorOpen(true)}
+                  aria-label="Acceso de conductor"
+                >
+                  <Car size={19} />
+                  <span className="tz-header-btn-label">Conductores</span>
+                </button>
+                <button
+                  className="tz-header-btn"
+                  onClick={() => setAccesoRecolectorOpen(true)}
+                  aria-label="Acceso de recolector"
+                >
+                  <Users size={19} />
+                  <span className="tz-header-btn-label">Recolectores</span>
+                </button>
+              </>
+            )}
           </div>
 
           <div className="tz-header-center">
@@ -372,6 +489,10 @@ export default function HomePage() {
           </div>
         </div>
       </header>
+      {perfilOpen && <PerfilPasajeroModal onClose={() => setPerfilOpen(false)} />}
+      {/* Banda con brillo bajo la cabecera, detrás del filtro de localidad
+         (igual que la barra de filtros de Caja Tonazo): solo fondo. */}
+      <div className="tz-banda-filtros" aria-hidden="true" />
 
       <main className="tz-main">
         {/* Restauración de layout: el filtro de localidad vuelve a la
@@ -379,14 +500,35 @@ export default function HomePage() {
            centrados (ver .tz-radar-bar en Styles.jsx) — antes vivía
            suelto más abajo, entre las pestañas y la lista. */}
         <div className="tz-radar-bar">
-          {localidades.length > 0 && (
-            <div className="tz-localidad-filtro-wrap">
-              <Dropdown
-                value={localidad}
-                onChange={setLocalidad}
-                options={[{ value: "", label: "Todas las localidades" }, ...localidades.map((l) => ({ value: l.nombre, label: l.nombre }))]}
-                ariaLabel="Filtrar por localidad"
-              />
+          {/* Pasajero con sesión: el filtro de localidad a la izquierda y
+             sus créditos a la derecha (centrados en su mitad). */}
+          {(localidades.length > 0 || (esPasajero && misCreditos != null)) && (
+            <div className={esPasajero && misCreditos != null ? "tz-fila-saldo-localidad" : "tz-fila-localidad"}>
+              {localidades.length > 0 && (
+                <div className="tz-localidad-filtro-wrap">
+                  <Dropdown
+                    value={localidad}
+                    onChange={setLocalidad}
+                    options={[{ value: "", label: "Todas las localidades" }, ...localidades.map((l) => ({ value: l.nombre, label: l.nombre }))]}
+                    ariaLabel="Filtrar por localidad"
+                  />
+                </div>
+              )}
+              {esPasajero && misCreditos != null && (
+                <div className="tz-fila-saldo">
+                  <div className="tz-stat-chip tz-gemas">
+                    <span className="tz-gemas-label">Gemas</span>
+                    <span className="tz-stat-value">
+                      <ContadorCreditos
+                        valor={misCreditos}
+                        clave={`tz-creditos-visto-${usuario.id}`}
+                        titulo="Gemas"
+                        className="tz-cc-heredado"
+                      />
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           {/* El Buscador Inteligente se mudó adentro de <RadarGlobal/> —
@@ -396,6 +538,22 @@ export default function HomePage() {
             <div className="tz-destino-actual-pill">
               <MapPin size={14} />
               <span>{destinoSeleccionado.nombre}</span>
+              {/* Borra el destino y abre el Radar para elegir otro (no con
+                 un viaje ya acordado: ese destino es el del viaje). */}
+              {!conductorAcordadoId && (
+                <button
+                  type="button"
+                  className="tz-destino-borrar"
+                  onClick={() => {
+                    setDestinoSeleccionado(null);
+                    handleAbrirRadar();
+                  }}
+                  aria-label="Borrar destino y elegir otro"
+                  title="Borrar destino y elegir otro"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
           )}
           <button type="button" className="tz-radar-btn" onClick={handleAbrirRadar}>
@@ -472,7 +630,7 @@ export default function HomePage() {
                              mismo hilo. `null`, no un botón deshabilitado
                              — el pasajero no debe ni verlo en el resto de
                              las tarjetas. */}
-                          {c.id === conductorActivoId && (
+                          {chatsActivos.includes(c.id) && (
                             <button
                               type="button"
                               className="tz-scan-btn tz-payment-save"
@@ -509,15 +667,7 @@ export default function HomePage() {
       {accesoConductorOpen && <AccesoConductorModal onClose={() => setAccesoConductorOpen(false)} />}
 
       {accesoRecolectorOpen && (
-        <AccesoRecolectorModal
-          crearRecolector={crearRecolectorPendiente}
-          onClose={() => setAccesoRecolectorOpen(false)}
-          onCreated={() =>
-            avisarPeticionEnviada(
-              "Tu solicitud de recolector fue enviada. El Admin la va a revisar en el Centro de Peticiones."
-            )
-          }
-        />
+        <AccesoRecolectorModal onClose={() => setAccesoRecolectorOpen(false)} />
       )}
 
       {chatConductor && esPasajero && (
@@ -547,7 +697,7 @@ export default function HomePage() {
           // no hace falta un callback aparte para esto.
           onLimpiarDestino={() => {
             setDestinoSeleccionado(null);
-            setConductorActivoId(null);
+            setSeleccionados({});
           }}
           onClose={() => setChatConductorId(null)}
         />
@@ -599,22 +749,11 @@ export default function HomePage() {
         />
       )}
 
-      {anuncio && <AnuncioPopupModal anuncio={anuncio} onClose={cerrarAnuncio} />}
+      {anuncio && (
+        <AnuncioPopupModal alVer={alVerAnuncio} anuncios={anuncios} onClose={cerrarAnuncio} canalChat={usuario && esPasajero ? "taxipe" : null} />
+      )}
 
       {avisoDestino && <div className="tz-toast-flotante">{avisoDestino}</div>}
-
-      {avisoPeticion && (
-        <div className="tz-modal-backdrop">
-          <div className="tz-modal" onClick={(e) => e.stopPropagation()} style={{ textAlign: "center" }}>
-            <button className="tz-modal-close" onClick={() => setAvisoPeticion("")} aria-label="Cerrar">
-              <X size={18} />
-            </button>
-            <p className="tz-success" style={{ margin: "20px 0 0" }}>
-              {avisoPeticion}
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

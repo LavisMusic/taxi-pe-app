@@ -81,7 +81,8 @@ export function useDescripciones() {
 }
 
 // App (pasajero o conductor): textos activos para ese público (o para
-// ambos), en orden, en tiempo real. Si la tabla todavía no existe
+// ambos), en tiempo real. Primero las de "Ambos" y después las propias
+// de ese público, cada grupo en el orden de la lista del Admin. Si la tabla todavía no existe
 // (migración sin correr) devuelve [] y queda la frase de siempre.
 export function useDescripcionesPublico(publico) {
   const [textos, setTextos] = useState([]);
@@ -91,13 +92,16 @@ export function useDescripcionesPublico(publico) {
     const cargar = async () => {
       const { data, error } = await supabase
         .from("descripciones_app")
-        .select("texto, orden, created_at")
+        .select("texto, publico, orden, created_at")
         .eq("activo", true)
         .in("publico", [publico, "todos"])
         .order("orden", { ascending: true })
         .order("created_at", { ascending: true });
       if (!vivo) return;
-      setTextos(error || !data ? [] : data.map((d) => d.texto).filter(Boolean));
+      const filas = error || !data ? [] : data;
+      const ambos = filas.filter((d) => d.publico === "todos");
+      const propias = filas.filter((d) => d.publico !== "todos");
+      setTextos([...ambos, ...propias].map((d) => d.texto).filter(Boolean));
     };
     cargar();
     const canal = supabase

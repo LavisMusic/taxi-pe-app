@@ -1,6 +1,7 @@
 // Receptor de eventos de espejo de cuenta (Caja -> Taxi-PE). Ver
 // migración 20260918140000_mirror_cuenta_caja.sql (alta/PIN) y
-// 20260922130000_mirror_cuenta_eliminar.sql (borrado).
+// 20260922130000_mirror_cuenta_eliminar.sql (borrado) y
+// 20261027120000_perfil_espejo_caja.sql (perfil).
 //
 // Flujo: verificar HMAC -> despachar al RPC correspondiente (idempotencia
 // + upsert/delete en 'usuarios'). Toda la lógica de dominio vive en el RPC.
@@ -17,6 +18,9 @@ const WEBHOOK_SECRET = Deno.env.get("WEBHOOK_SECRET_CAJA_TO_TAXI")!;
 const RPC_POR_EVENTO: Record<string, string> = {
   "caja.mirror_cliente": "rpc_webhook_caja_mirror_cliente",
   "caja.mirror_cliente_eliminado": "rpc_webhook_caja_eliminar_cliente",
+  // Perfil (foto y nombre de usuario) cambiado o leído desde Caja; responde
+  // cómo quedó (migración 20261027120000).
+  "caja.perfil_cliente": "rpc_webhook_caja_perfil_cliente",
 };
 
 Deno.serve(async (req) => {

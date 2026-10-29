@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { ESTADO_CONDUCTOR_ACTIVO, ESTADO_CONDUCTOR_OCUPADO } from "../lib/taxiEnums";
+import { useEscribiendo } from "./useEscribiendo";
 
 export const REMITENTE_PASAJERO = "pasajero";
 export const REMITENTE_CONDUCTOR = "conductor";
@@ -73,50 +73,12 @@ export const ESTADO_OFERTA_FINALIZADO = "finalizado";
 // número correcto de pasajeros a bordo/reservados.
 async function sincronizarAsientosYEstado(conductorId) {
   if (!conductorId) return;
-  try {
-    const [{ data: ofertasActivas, error: ofertasError }, { data: filaConductor, error: conductorFetchError }] =
-      await Promise.all([
-        supabase
-          .from("chat_mensajes")
-          .select("pasajero_id")
-          .eq("conductor_id", conductorId)
-          .eq("tipo", TIPO_MENSAJE_OFERTA)
-          .in("estado_oferta", [ESTADO_OFERTA_ACEPTADA, ESTADO_OFERTA_EN_TRANSITO]),
-        supabase.from("conductores").select("asientos_totales, estado").eq("id", conductorId).single(),
-      ]);
-    if (ofertasError || conductorFetchError) {
-      console.error("No se pudo recalcular asientos/estado del conductor:", ofertasError || conductorFetchError);
-      return;
-    }
-
-    const totales = filaConductor?.asientos_totales ?? 4;
-    const ocupados = Math.min(new Set((ofertasActivas ?? []).map((o) => o.pasajero_id)).size, totales);
-    // Aislamiento real: el conductor solo vuelve a 'activo' (libre de
-    // verdad) cuando NINGÚN pasajero le queda a bordo/reservado — con
-    // uno solo que siga (`ocupados > 0`), se queda 'ocupado' aunque el
-    // que acaba de cancelar/finalizar haya sido otro. Si ya estaba
-    // 'desconectado'/'pendiente'/'rechazado' (estados que no son de
-    // radar), no lo tocamos — esto solo gestiona el switch activo/ocupado.
-    const estadoActual = filaConductor?.estado;
-    const patch = { asientos_ocupados: ocupados };
-    if (estadoActual === ESTADO_CONDUCTOR_ACTIVO || estadoActual === ESTADO_CONDUCTOR_OCUPADO) {
-      patch.estado = ocupados > 0 ? ESTADO_CONDUCTOR_OCUPADO : ESTADO_CONDUCTOR_ACTIVO;
-    }
-    const { error: updateError } = await supabase.from("conductores").update(patch).eq("id", conductorId);
-    if (updateError) console.error("No se pudo sincronizar asientos/estado del conductor:", updateError);
-  } catch (err) {
-    console.error("Error al sincronizar asientos/estado del conductor:", err);
-  }
+  // La base hace el cálculo (taxi_sincronizar_asientos): el pasajero no
+  // puede escribir en la fila del conductor.
+  const { error } = await supabase.rpc("taxi_sincronizar_asientos", { p_conductor_id: conductorId });
+  if (error) console.error("No se pudo sincronizar asientos/estado del conductor:", error);
 }
 
-// Cuánto dura visible el indicador de "escribiendo…" después del
-// último aviso recibido — si no llega uno nuevo en este lapso, se
-// asume que la otra persona paró (no hay evento explícito de "dejé de
-// escribir", solo se infiere por silencio).
-const TYPING_TIMEOUT_MS = 2500;
-// No se manda un broadcast por cada tecla — alcanza con uno cada tanto
-// mientras haya tipeo activo, mucho menos tráfico en el canal.
-const TYPING_THROTTLE_MS = 1500;
 
 // Chat interno de un hilo (conductor, pasajero) — reemplaza al viejo
 // "Contactar" por wa.me: acá el número de ninguno de los dos sale nunca
@@ -133,11 +95,21 @@ export function useChatMensajes(conductorId, pasajeroId) {
   const [mensajes, setMensajes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [otroEscribiendo, setOtroEscribiendo] = useState(false);
+  // "Escribiendo…" por un canal propio con el MISMO nombre en los dos
+  // lados (el de abajo lleva un sufijo por ventana y el aviso nunca le
+  // llegaba al otro).
+  const {
+    escribiendo: rolEscribiendo,
+    avisar: avisarEscribiendo,
+    apagar: apagarEscribiendo,
+  } = useEscribiendo(
+    conductorId && pasajeroId ? supabase : null,
+    conductorId && pasajeroId ? `viaje-${conductorId}-${pasajeroId}` : null,
+    null
+  );
+  const otroEscribiendo = !!rolEscribiendo;
 
   const channelRef = useRef(null);
-  const typingTimeoutRef = useRef(null);
-  const lastTypingSentRef = useRef(0);
   // Sufijo único por INSTANCIA del hook (no por conductorId/pasajeroId)
   // — causa raíz real del crash reportado: ConductorPage (badge de no
   // leídos) y ConductorChatInboxModal (bandeja completa) llaman este
@@ -234,22 +206,14 @@ export function useChatMensajes(conductorId, pasajeroId) {
           setMensajes((prev) => (prev.some((m) => m.id === payload.new.id) ? prev : [...prev, payload.new]));
           // Si llegó un mensaje de verdad, el "escribiendo…" ya cumplió
           // su función — lo apagamos aunque el timeout todavía no venza.
-          clearTimeout(typingTimeoutRef.current);
-          setOtroEscribiendo(false);
+          apagarEscribiendo();
         }
       )
-      .on("broadcast", { event: "typing" }, ({ payload }) => {
-        if (payload?.remitente === undefined) return;
-        setOtroEscribiendo(true);
-        clearTimeout(typingTimeoutRef.current);
-        typingTimeoutRef.current = setTimeout(() => setOtroEscribiendo(false), TYPING_TIMEOUT_MS);
-      })
       .subscribe();
 
     channelRef.current = channel;
 
     return () => {
-      clearTimeout(typingTimeoutRef.current);
       supabase.removeChannel(channel);
       channelRef.current = null;
     };
@@ -498,12 +462,7 @@ export function useChatMensajes(conductorId, pasajeroId) {
   // filtrar del lado del listener si hiciera falta — Supabase Realtime
   // ya no reenvía el broadcast al mismo cliente que lo emitió, pero
   // igual es un dato barato de incluir por si acaso.
-  const notificarEscribiendo = useCallback((remitente) => {
-    const ahora = Date.now();
-    if (ahora - lastTypingSentRef.current < TYPING_THROTTLE_MS) return;
-    lastTypingSentRef.current = ahora;
-    channelRef.current?.send({ type: "broadcast", event: "typing", payload: { remitente } });
-  }, []);
+  const notificarEscribiendo = useCallback(() => avisarEscribiendo(), [avisarEscribiendo]);
 
   // Lo llama SOLO el lado Conductor al abrir este hilo (ver
   // ConductorChatInboxModal.jsx) — marca como leídos los mensajes que
@@ -605,11 +564,25 @@ export function useHilosChatConductor(conductorId) {
     setLoading(true);
     setError("");
     try {
-      const { data, error: fetchError } = await supabase
-        .from("chat_mensajes")
-        .select("id, pasajero_id, remitente, mensaje, tipo, estado_oferta, leido, created_at")
-        .eq("conductor_id", conductorId)
-        .order("created_at", { ascending: false });
+      const [{ data, error: fetchError }, { data: turno }] = await Promise.all([
+        supabase
+          .from("chat_mensajes")
+          .select("id, pasajero_id, remitente, mensaje, tipo, estado_oferta, leido, created_at")
+          .eq("conductor_id", conductorId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("taxi_conductor_turnos")
+          .select("hasta")
+          .eq("conductor_id", conductorId)
+          .order("hasta", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+      // Regla de las 24 h (migración 20261027140000): la bandeja muestra
+      // solo lo de las últimas 24 h y nada de antes de su último turno
+      // cerrado (al cerrar caja se limpian SUS chats; el pasajero los sigue
+      // viendo). Los viajes en curso se calculan con todo igual.
+      const corte = Math.max(Date.now() - 24 * 60 * 60 * 1000, turno?.hasta ? new Date(turno.hasta).getTime() : 0);
 
       if (fetchError) {
         setError("No se pudo cargar la bandeja de mensajes.");
@@ -617,12 +590,20 @@ export function useHilosChatConductor(conductorId) {
         setUnreadCount(0);
         setPasajerosEnCarrera([]);
       } else {
-        const filas = data ?? [];
+        const todas = data ?? [];
+        const filas = todas.filter((m) => new Date(m.created_at).getTime() >= corte);
         const porPasajero = new Map();
         for (const m of filas) {
           if (m?.pasajero_id && !porPasajero.has(m.pasajero_id)) porPasajero.set(m.pasajero_id, m);
         }
-        setHilos([...porPasajero.entries()].map(([pasajeroId, ultimo]) => ({ pasajeroId, ultimo })));
+        // (noLeidos: lo que mandó ese pasajero y el conductor no abrió.)
+        setHilos(
+          [...porPasajero.entries()].map(([pasajeroId, ultimo]) => ({
+            pasajeroId,
+            ultimo,
+            noLeidos: filas.filter((m) => m?.pasajero_id === pasajeroId && m?.remitente === REMITENTE_PASAJERO && !m?.leido).length,
+          }))
+        );
         setUnreadCount(filas.filter((m) => m?.remitente === REMITENTE_PASAJERO && !m?.leido).length);
         // Fase 5: TODAS las ofertas 'aceptada'/'en_transito', no solo la
         // primera que se encuentre — un conductor puede tener varios
@@ -631,7 +612,7 @@ export function useHilosChatConductor(conductorId) {
         // resuelta por pasajero, ver el comentario de
         // `sincronizarAsientosYEstado` en useChatMensajes.js — pero es
         // gratis blindarse acá también).
-        const ofertasEnCurso = filas.filter(
+        const ofertasEnCurso = todas.filter(
           (m) =>
             m?.tipo === TIPO_MENSAJE_OFERTA &&
             (m?.estado_oferta === ESTADO_OFERTA_ACEPTADA || m?.estado_oferta === ESTADO_OFERTA_EN_TRANSITO)

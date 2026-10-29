@@ -187,8 +187,13 @@ export default function Styles() {
         box-sizing: border-box;
         overflow: visible;
         padding: 20px 14px 22px;
-        background: rgba(10, 7, 22, 0.85);
-        border-bottom: 1px solid rgba(43,232,255,0.15);
+        /* Borde inferior tipo láser (igual que Caja Tonazo): 1.5 px,
+           brillante al centro y que se desvanece en punta hacia los
+           costados. */
+        background:
+          linear-gradient(90deg, transparent 0%, rgba(43,232,255,0.22) 14%, rgba(43,232,255,0.75) 50%, rgba(43,232,255,0.22) 86%, transparent 100%) center bottom / 100% 1.5px no-repeat,
+          rgba(10, 7, 22, 0.85);
+        border-bottom: none;
       }
       /* Cabecera INAMOVIBLE: las 3 zonas son 'position:absolute' contra
          '.tz-header-row', que a su vez tiene una altura FIJA
@@ -249,11 +254,15 @@ export default function Styles() {
         pointer-events: none;
       }
       .tz-header-center * { pointer-events: auto; }
+      /* Brillo de siempre (contorno del logo). translateZ(0): lo pinta en
+         su propia capa — evita que Safari del iPhone dibuje la zona del
+         filtro como un recuadro oscuro al cargar (no cambia cómo se ve). */
       .tz-logo {
         max-width: 130px;
         width: 100%;
         height: auto;
         overflow: visible;
+        transform: translateZ(0);
         filter:
           drop-shadow(0 0 18px rgba(43,232,255,0.55))
           drop-shadow(0 0 34px rgba(255,47,158,0.35));
@@ -279,9 +288,10 @@ export default function Styles() {
         color: var(--yellow);
         text-align: center;
         white-space: nowrap;
-        /* Aura limón — se estira sola con el texto, sea cual sea su
-           largo, porque text-shadow no tiene ancho propio. */
-        text-shadow: 0 0 8px rgba(215,255,59,0.85), 0 0 18px rgba(215,255,59,0.55);
+        /* Brillo sutil de las letras, de su mismo color (antes un aura
+           neón de hasta 18 px que, recortada por el límite de 2 líneas,
+           se veía como un recuadro). */
+        text-shadow: 0 0 6px rgba(215,255,59,0.8), 0 0 12px rgba(215,255,59,0.45);
       }
       /* Pasajero y conductor: el texto va justo debajo del logo, como en
          Caja Tonazo (--tz-sub-ajuste; negativo = más arriba). Solo se
@@ -312,7 +322,11 @@ export default function Styles() {
         top: 50%;
         transform: translate(-50%, -50%);
         width: max-content;
-        max-width: min(230px, 60vw);
+        /* +24 px de aire interno: el brillo de las letras cabe dentro
+           de la caja (que recorta para limitar a 2 líneas) y no se ve
+           como un recuadro. */
+        max-width: calc(min(230px, 60vw) + 24px);
+        padding: 8px 12px;
         margin: 0;
         box-sizing: border-box;
         white-space: pre-wrap;
@@ -333,10 +347,17 @@ export default function Styles() {
       .tz-header-btn {
         flex: 0 0 auto;
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         align-items: center;
         justify-content: center;
-        gap: 3px;
+        gap: 0;
+        position: relative;
+        /* Celular: mantener presionado + deslizar (lib/despliegueBotones)
+           sin que la página se desplace ni salga el menú del navegador. */
+        touch-action: none;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
         background: rgba(255,149,0,0.06);
         border: 1px solid rgba(255,149,0,0.45);
         color: var(--orange);
@@ -350,22 +371,43 @@ export default function Styles() {
       .tz-header-btn svg {
         filter: drop-shadow(0 0 4px var(--orange-glow));
       }
-      .tz-header-btn-badge {
-        position: absolute;
-        top: -6px;
-        right: -6px;
-        min-width: 16px;
-        height: 16px;
-        padding: 0 4px;
-        border-radius: 999px;
-        background: var(--danger);
-        color: #2b0006;
-        font-size: 10px;
+      /* Contador de no leídos de la cabecera: por FUERA de la esquina
+         superior derecha del botón (mismo diseño que Caja Tonazo). */
+      .tz-header-btn { overflow: visible !important; }
+      .tz-header-btn .tz-header-btn-badge {
+        position: absolute !important;
+        top: -10px !important;
+        right: -10px !important;
+        left: auto !important;
+        bottom: auto !important;
+        transform: none !important;
+        z-index: 6;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 5px;
+        border-radius: 999px !important;
+        background: #ff2d55 !important;
+        color: #ffffff !important;
+        border: 2px solid var(--bg-1, #0b0e14) !important;
+        font-size: 10.5px;
         font-weight: 800;
+        line-height: 1;
+        letter-spacing: 0;
+        text-shadow: none !important;
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 0 8px rgba(255,84,112,0.6);
+        box-shadow: 0 0 8px rgba(255,45,85,0.65) !important;
+        pointer-events: none;
+      }
+      /* Sin no leídos pero con un reparto en curso: solo el punto. */
+      .tz-header-btn .tz-header-btn-badge.is-punto {
+        top: -6px !important;
+        right: -6px !important;
+        min-width: 0;
+        width: 13px;
+        height: 13px;
+        padding: 0;
       }
       .tz-header-btn:hover {
         color: var(--orange);
@@ -373,13 +415,33 @@ export default function Styles() {
         background: rgba(255,149,0,0.16);
         box-shadow: 0 0 16px rgba(255,149,0,0.4);
       }
+      /* Botones de la cabecera: solo el ícono; el nombre se DESPLIEGA
+         (el botón se estira con animación). PC: al pasar el cursor.
+         Celular: manteniendo presionado (y deslizando por los demás) —
+         clase .tz-hbtn-abierto, ver lib/despliegueBotones.js. Los de la
+         izquierda se abren a la derecha y los de la derecha a la
+         izquierda, por encima del logo. */
       .tz-header-btn-label {
-        display: none;
-        font-size: 9px;
+        display: inline-block;
+        max-width: 0;
+        opacity: 0;
+        overflow: hidden;
+        margin-left: 0;
+        vertical-align: middle;
+        font-size: 10px;
         letter-spacing: 0.04em;
         text-transform: uppercase;
         font-weight: 700;
         white-space: nowrap;
+        transition: max-width 0.28s ease, opacity 0.2s ease, margin-left 0.28s ease;
+      }
+      .tz-header-btn.tz-hbtn-abierto,
+      .tz-header-btn:focus-visible { z-index: 30; }
+      .tz-header-btn.tz-hbtn-abierto .tz-header-btn-label,
+      .tz-header-btn:focus-visible .tz-header-btn-label { max-width: 220px; opacity: 1; margin-left: 7px; }
+      @media (hover: hover) and (pointer: fine) {
+        .tz-header-btn:hover { z-index: 30; }
+        .tz-header-btn:hover .tz-header-btn-label { max-width: 220px; opacity: 1; margin-left: 7px; }
       }
 
       .tz-header-payment-wrap { position: relative; flex: 0 0 auto; }
@@ -698,6 +760,36 @@ export default function Styles() {
         margin-bottom: 20px;
       }
       .tz-localidad-filtro-wrap { width: 100%; max-width: 320px; }
+      /* Banda con brillo bajo la cabecera (como la barra de filtros de Caja
+         Tonazo): degradado cian que se desvanece hacia abajo, detrás del
+         filtro de localidad. Alto 0 en el flujo: no mueve nada. */
+      .tz-banda-filtros { position: relative; height: 0; }
+      .tz-banda-filtros::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 130px;
+        background: linear-gradient(180deg, rgba(43,232,255,0.06), rgba(10,7,22,0.4));
+        box-shadow: 0 4px 24px rgba(43,232,255,0.08) inset;
+        -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 40px), transparent);
+        mask-image: linear-gradient(to bottom, #000 calc(100% - 40px), transparent);
+        pointer-events: none;
+      }
+      /* position sin z-index: queda encima de la banda por orden, sin crear
+         un contexto que deje los modales del contenido bajo el pie. */
+      .tz-banda-filtros + .tz-main { position: relative; }
+      /* El filtro de localidad con el mismo borde y brillo que en Caja. */
+      .tz-localidad-filtro-wrap .tz-dropdown-trigger {
+        background: #140d28;
+        border-color: rgba(43,232,255,0.45);
+        box-shadow: 0 0 14px rgba(43,232,255,0.18);
+      }
+      .tz-localidad-filtro-wrap .tz-dropdown-trigger:hover {
+        border-color: var(--cyan);
+        box-shadow: 0 0 20px rgba(43,232,255,0.4);
+      }
       /* Envuelve el input para poder anclar el dropdown de sugerencias
          justo debajo (position:relative acá, absolute en el dropdown). */
       .tz-buscador-wrap {
@@ -737,7 +829,27 @@ export default function Styles() {
         font-size: 13.5px;
       }
       .tz-destino-actual-pill svg { flex-shrink: 0; color: var(--cyan); }
+      /* Destino elegido: 5 px más cerca del filtro de localidad (antes 10). */
+      .tz-fila-saldo-localidad + .tz-destino-actual-pill,
+      .tz-fila-localidad + .tz-destino-actual-pill { margin-top: -5px; }
       .tz-destino-actual-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .tz-destino-borrar {
+        flex-shrink: 0;
+        margin-left: auto;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        border: 1px solid rgba(255,84,112,0.45);
+        background: rgba(255,84,112,0.1);
+        color: var(--danger);
+        cursor: pointer;
+        padding: 0;
+      }
+      .tz-destino-borrar svg { color: var(--danger); }
+      .tz-destino-borrar:hover { background: rgba(255,84,112,0.22); }
       .tz-radar-input::placeholder { color: var(--text-dim); }
       .tz-radar-input:focus {
         outline: none;
@@ -856,6 +968,44 @@ export default function Styles() {
       }
       .tz-dropdown-item { border-bottom: 1px solid var(--border-soft); }
       .tz-dropdown-item.tz-dropdown-item-activo { background: rgba(43,232,255,0.12); color: var(--cyan); }
+
+      /* Desplegable propio en lugar de un <select> (Select.jsx): el botón
+         toma la clase del select que reemplaza; acá solo el acomodo y la
+         flecha. :where() = sin especificidad, la clase del select manda. */
+      :where(.tz-dropdown-nativo) {
+        font: inherit;
+        color: inherit;
+        background: transparent;
+        border: 1px solid transparent;
+      }
+      .tz-dropdown-nativo {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        width: 100%;
+        box-sizing: border-box;
+        text-align: left;
+        cursor: pointer;
+        background-image: none !important;
+        min-width: 0;
+      }
+      .tz-dropdown .tz-dropdown-nativo { padding-right: 10px; }
+      .tz-dropdown-nativo:disabled { opacity: 0.55; cursor: not-allowed; }
+      .tz-dropdown-nativo .tz-dropdown-chevron { color: currentColor; opacity: 0.75; }
+      .tz-dropdown-nativo .tz-dropdown-valor,
+      .tz-dropdown-nativo .tz-dropdown-placeholder { min-width: 0; }
+      /* La lista flota sobre todo (portal con posición fija): no la recorta
+         el scroll de un modal ni de una tabla. */
+      .tz-dropdown-list.tz-dropdown-flotante {
+        position: fixed;
+        top: auto;
+        right: auto;
+        z-index: 10050;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+      }
+      .tz-dropdown-item:disabled { opacity: 0.45; cursor: not-allowed; }
       .tz-buscador-empty {
         display: flex;
         align-items: center;
@@ -1939,6 +2089,14 @@ export default function Styles() {
         display: flex;
         flex-direction: column;
       }
+      /* La X va por encima del mapa (Leaflet pinta sus capas con z-index
+         400+) y con fondo propio para que se vea sobre cualquier zona. */
+      .tz-ruta-preview-card > .tz-modal-close {
+        z-index: 1200;
+        background: rgba(10, 7, 22, 0.85);
+        border-color: rgba(43, 232, 255, 0.6);
+        box-shadow: 0 0 12px rgba(43, 232, 255, 0.45);
+      }
       .tz-ruta-preview-map { flex: 1 1 auto; width: 100%; }
       .tz-ruta-preview-map .leaflet-container { background: #10141c; }
       .tz-ruta-preview-caption {
@@ -2337,6 +2495,265 @@ export default function Styles() {
       .tz-pink-cell { color: var(--pink); font-weight: 700; }
       .tz-dim-cell { color: var(--text-dim); }
 
+      /* ---------- PANELES DEL CONDUCTOR (Viajes / Delivery en cubo 3D) ---------- */
+      .tz-paneles-wrap { width: 100%; }
+      .tz-paneles-tabs {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin: 0 auto 14px;
+      }
+      .tz-paneles-tabs button {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid var(--border-soft);
+        background: transparent;
+        color: var(--text-dim);
+        border-radius: 999px;
+        padding: 6px 14px;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 700;
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+      .tz-paneles-tabs button::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: currentColor;
+        opacity: 0.6;
+      }
+      .tz-paneles-tabs button.is-activa {
+        color: var(--cyan);
+        border-color: var(--cyan);
+        box-shadow: 0 0 12px rgba(43,232,255,0.35);
+      }
+      .tz-paneles-tabs button.is-activa::before { opacity: 1; box-shadow: 0 0 8px currentColor; }
+      /* touch-action: pan-y — el scroll vertical sigue siendo del navegador;
+         el horizontal llega como pointer events y gira el cubo. */
+      .tz-paneles { touch-action: pan-y; }
+      /* El 3D solo mientras gira (ver PanelesConductor.jsx): quieto no debe
+         haber perspective / preserve-3d / transform, o los avisos fixed de
+         adentro quedan encerrados en la columna. */
+      .tz-paneles.is-3d { perspective: 1100px; }
+      .tz-paneles-cubo {
+        position: relative;
+        display: grid;
+      }
+      .tz-paneles.is-3d .tz-paneles-cubo { transform-style: preserve-3d; }
+      .tz-panel-cara {
+        grid-area: 1 / 1;
+        min-width: 0;
+      }
+      .tz-paneles.is-3d .tz-panel-cara {
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+      }
+      .tz-panel-cara.is-oculta {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 0;
+        overflow: hidden;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      .tz-panel-cara.is-oculta .tz-modal-backdrop {
+        visibility: visible;
+        pointer-events: auto;
+      }
+      .tz-reparto-vacio {
+        margin: 18px 0 6px;
+        padding: 22px 12px;
+        border: 1px dashed var(--border-soft);
+        border-radius: 14px;
+        text-align: center;
+        color: var(--text-dim);
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 600;
+        font-size: 14px;
+      }
+      /* Repartiendo / en carrera: el switch se ve encendido pero bloqueado
+         (no se apaga ni cambia hasta terminar). */
+      .tz-estado-toggle[data-estado="repartiendo"],
+      .tz-delivery-toggle.tz-delivery-repartiendo {
+        border-color: var(--cyan);
+        animation: tz-estado-glow-repartiendo 2.2s ease-in-out infinite;
+      }
+      .tz-estado-toggle[data-estado="repartiendo"] .tz-estado-toggle-label,
+      .tz-delivery-toggle.tz-delivery-repartiendo .tz-estado-toggle-label { color: var(--cyan); }
+      @keyframes tz-estado-glow-repartiendo {
+        0%, 100% { box-shadow: 0 0 12px rgba(43,232,255,0.45), 0 0 20px rgba(57,255,176,0.2); }
+        50% { box-shadow: 0 0 20px rgba(43,232,255,0.8), 0 0 32px rgba(57,255,176,0.35); }
+      }
+      .tz-delivery-toggle.tz-delivery-carrera {
+        border-color: var(--orange);
+        animation: tz-estado-glow-ocupado 2.2s ease-in-out infinite;
+      }
+      .tz-delivery-toggle.tz-delivery-carrera .tz-estado-toggle-label { color: var(--orange) !important; }
+      .tz-estado-toggle.tz-estado-toggle-trabajando:disabled,
+      .tz-delivery-toggle.tz-delivery-repartiendo:disabled { opacity: 1; cursor: not-allowed; }
+
+      /* Repartos aceptados: entran desde abajo y, al entregarse, salen
+         deslizándose a la derecha mientras los de abajo suben. */
+      .tz-entrega-item {
+        margin-top: 8px;
+        max-height: 140px;
+        animation: tz-entrega-entra 0.35s ease-out;
+      }
+      .tz-entrega-item.is-saliendo {
+        overflow: hidden;
+        pointer-events: none;
+        animation: tz-entrega-sale 0.65s ease-in forwards;
+      }
+      @keyframes tz-entrega-entra {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: none; }
+      }
+      @keyframes tz-entrega-sale {
+        0% { opacity: 1; transform: none; max-height: 140px; margin-top: 8px; }
+        55% { opacity: 0; transform: translateX(70%); max-height: 140px; margin-top: 8px; }
+        100% { opacity: 0; transform: translateX(70%); max-height: 0; margin-top: 0; }
+      }
+
+      /* Meta del día */
+      .tz-meta-progreso { margin-top: 4px; }
+      .tz-meta-progreso-cifras {
+        display: flex;
+        align-items: baseline;
+        justify-content: center;
+        gap: 8px;
+        font-family: 'Orbitron', sans-serif;
+      }
+      .tz-meta-progreso-cifras strong { font-size: 24px; }
+      .tz-meta-progreso-cifras span { color: var(--text-dim); font-size: 13px; }
+      .tz-meta-track {
+        width: 100%;
+        height: 10px;
+        margin-top: 10px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.1);
+        overflow: hidden;
+      }
+      .tz-meta-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--cyan), var(--green));
+        box-shadow: 0 0 10px rgba(43,232,255,0.6);
+        transition: width 0.6s ease;
+      }
+      .tz-meta-fill.is-cumplida { background: var(--green); box-shadow: 0 0 14px rgba(57,255,176,0.8); }
+
+      .tz-delivery-toggle.is-on {
+        border-color: var(--green);
+        animation: tz-estado-glow-activo 2.2s ease-in-out infinite;
+      }
+      .tz-delivery-toggle.is-on .tz-estado-toggle-label { color: var(--green); }
+      .tz-delivery-toggle .tz-estado-toggle-label { font-size: 19px; text-align: center; }
+
+      /* ---------- TURNOS Y ESTADÍSTICAS DEL CONDUCTOR ---------- */
+      .tz-turno-ver-detalle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 6px auto 4px;
+        border: none;
+        background: transparent;
+        color: var(--cyan);
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .tz-turno-ver-detalle svg { transition: transform 0.2s ease; }
+      .tz-turno-detalle {
+        list-style: none;
+        margin: 4px 0 10px;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .tz-turno-detalle li {
+        display: grid;
+        grid-template-columns: auto auto 1fr auto;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.04);
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 13px;
+      }
+      .tz-turno-detalle li svg { color: var(--cyan); }
+      .tz-turno-detalle-hora { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+      .tz-turno-detalle-texto { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .tz-turno-detalle li strong { color: var(--green); }
+      .tz-estad-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 10px;
+        margin-top: 8px;
+      }
+      .tz-estad-card {
+        border: 1px solid var(--border-soft);
+        border-radius: 14px;
+        padding: 10px 12px;
+        background: rgba(255,255,255,0.03);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .tz-estad-card > .tz-stat-label {
+        color: var(--cyan);
+        text-shadow: 0 0 8px rgba(43,232,255,0.6);
+      }
+      .tz-estad-card > .tz-stat-label svg {
+        color: var(--cyan);
+        filter: drop-shadow(0 0 4px rgba(43,232,255,0.7));
+      }
+      /* Hoy y Semana arriba, Mes abajo al centro (triángulo). */
+      .tz-estad-periodos {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+      }
+      .tz-estad-periodo:nth-child(3) {
+        grid-column: 1 / -1;
+        justify-self: center;
+        width: calc(50% - 3px);
+      }
+      .tz-estad-periodo {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        padding: 6px 4px;
+        border-radius: 10px;
+        background: rgba(57,255,176,0.08);
+        border: 1px solid rgba(57,255,176,0.28);
+      }
+      .tz-estad-periodo span {
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 11px;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .tz-estad-periodo strong {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 13px;
+        color: var(--green);
+        text-shadow: 0 0 8px rgba(57,255,176,0.45);
+        white-space: nowrap;
+      }
+
       /* ---------- PIE DE PÁGINA (Cerrar Caja / Gastos / Editar Stock) ---------- */
       /* Flujo normal del documento (NO fixed): así nunca puede tapar el
          formulario de checkout, sin importar cuánto crezca. */
@@ -2436,14 +2853,17 @@ export default function Styles() {
          en la última fila para tener que centrarlo a mano — 3+3+2
          arriba, 2+2+2+2 en mobile (grid de 2 columnas), las dos
          reparticiones caen parejas solas. */
+      /* 3 botones por fila (2 en celular) y la última fila, si queda
+         incompleta, CENTRADA (antes era un grid y quedaba a la izquierda). */
       .tz-page-footer-admin-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        flex-wrap: nowrap;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px !important;
       }
-      .tz-page-footer-admin-grid .tz-footer-btn { max-width: none; }
+      .tz-page-footer-admin-grid .tz-footer-btn { max-width: none; flex: 0 0 calc((100% - 20px) / 3); }
       @media (max-width: 640px) {
-        .tz-page-footer-admin-grid { grid-template-columns: repeat(2, 1fr); }
+        .tz-page-footer-admin-grid .tz-footer-btn { flex-basis: calc((100% - 10px) / 2); }
       }
 
       /* ---- Historial de ventas (mismo diseño que el super admin de Caja) ---- */
@@ -3071,7 +3491,11 @@ export default function Styles() {
         min-height: 0;
         overflow-y: auto;
         overflow-x: hidden;
-        padding: 4px 6px;
+        padding: 14px 6px;
+        /* Bordes suaves arriba y abajo: los mensajes se desvanecen al
+           entrar y salir del área visible en vez de cortarse en seco. */
+        -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+        mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
         /* #root (index.css, plantilla de Vite) hereda text-align:center
            a todo el árbol — sin este reset, cada burbuja seguía
            parada a la izquierda/derecha por 'align-self' (eso ya
@@ -3093,12 +3517,28 @@ export default function Styles() {
       /* Aviso de cancelación remota (ChatWindow.jsx) — flota arriba de
          todo lo demás del chat un momento antes de que el modal se
          cierre solo, para que no sea un cierre sorpresivo. */
+      /* Aviso de viaje cancelado: va a document.body (portal) y queda por
+         encima de todo — modales, mapa y avisos. La capa .tz-root solo
+         aporta los colores del tema (sin fondo ni alto propios). */
+      .tz-root.tz-chat-toast-capa {
+        min-height: 0;
+        width: 0;
+        height: 0;
+        background: none;
+        overflow: visible;
+      }
+      .tz-chat-toast-capa .tz-chat-toast {
+        background: rgba(40, 8, 18, 0.94);
+        box-shadow: 0 0 18px rgba(255, 84, 112, 0.55);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+      }
       .tz-chat-toast {
-        position: absolute;
-        top: 8px;
+        position: fixed;
+        top: max(16px, env(safe-area-inset-top));
         left: 50%;
         transform: translateX(-50%);
-        z-index: 30;
+        z-index: 100000;
         max-width: 92%;
         padding: 8px 16px;
         border-radius: 999px;
@@ -3372,8 +3812,8 @@ export default function Styles() {
          a ser el protagonista visual. Va DESPUÉS de .tz-chat-messages
          en la hoja para poder pisar su 'flex:1 1 auto'. */
       .tz-chat-messages-mini {
-        flex: 0 0 90px;
-        max-height: 90px;
+        flex: 1 1 auto;
+        min-height: 150px;
       }
       @keyframes tzChatBubbleIn {
         from { opacity: 0; transform: translateY(8px); }
@@ -3442,6 +3882,39 @@ export default function Styles() {
       }
       .tz-chat-check-leido {
         color: var(--cyan);
+      }
+      /* ---- "Escribiendo…": tres puntitos (PuntosEscribiendo.jsx) ---- */
+      .tz-escribiendo {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        align-self: flex-start;
+        margin: 4px 0 2px;
+        padding: 9px 12px;
+        border-radius: 14px 14px 14px 4px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.08);
+        width: fit-content;
+      }
+      .tz-escribiendo-puntos { display: inline-flex; gap: 4px; }
+      .tz-escribiendo-puntos i {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--pink);
+        animation: tz-escribiendo-salto 1.1s ease-in-out infinite;
+      }
+      .tz-escribiendo-puntos i:nth-child(2) { animation-delay: 0.15s; }
+      .tz-escribiendo-puntos i:nth-child(3) { animation-delay: 0.3s; }
+      .tz-escribiendo-quien {
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-dim);
+      }
+      @keyframes tz-escribiendo-salto {
+        0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+        30% { transform: translateY(-4px); opacity: 1; }
       }
       .tz-chat-typing {
         display: flex;
@@ -3534,6 +4007,7 @@ export default function Styles() {
          pase con el alto de los mensajes — es lo que faltaba antes y
          causaba que los chips de tarifa se aplastaran/superpusieran. */
       .tz-chat-footer {
+        position: relative;
         flex-shrink: 0;
         /* Refuerzo Fase 2: redundante con el 'flex:1' de .tz-chat-messages
            (ese ya empuja al footer hasta el fondo en cualquier navegador
@@ -3569,8 +4043,18 @@ export default function Styles() {
            recorta cualquier cosa que se salga de esta caja, glow
            incluido — sin aire alrededor, el box-shadow de
            .tz-chat-senas-btn se veía cortado en vez de difuminarse. */
-        padding: 8px 4px;
-        width: 100%;
+        /* Flota centrada sobre el final del chat, como el botón de
+           señas del pasajero. 14px de aire alrededor: el glow de los
+           chips no se recorta (por eso 'bottom' descuenta ese aire). */
+        position: absolute;
+        bottom: calc(100% - 3px);
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2;
+        width: max-content;
+        max-width: calc(100% + 20px);
+        padding: 14px;
+        box-sizing: border-box;
         scrollbar-width: none;
       }
       .tz-chat-quickrow::-webkit-scrollbar { display: none; }
@@ -3595,39 +4079,72 @@ export default function Styles() {
       }
       .tz-chat-quickreply-btn:hover:not(:disabled) { background: rgba(43,232,255,0.2); box-shadow: 0 0 12px rgba(43,232,255,0.3); }
       .tz-chat-quickreply-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-      /* "Tonazo" (Pasajero, ChatWindow.jsx) — solo el logo, circular;
+      /* Vibración sutil cada pocos segundos (señas y tarifas rápidas). */
+      @keyframes tz-vibrar-sutil {
+        0%, 82%, 100% { transform: translate(0, 0) rotate(0); }
+        85% { transform: translate(-1px, 0) rotate(-2deg); }
+        88% { transform: translate(1px, 0) rotate(2deg); }
+        91% { transform: translate(-1px, 0) rotate(-1.5deg); }
+        94% { transform: translate(1px, 0) rotate(1deg); }
+        97% { transform: translate(0, 0) rotate(-0.5deg); }
+      }
+      .tz-chat-tonazo-btn:not(:disabled),
+      .tz-chat-quickreply-btn:not(:disabled) {
+        animation: tz-vibrar-sutil 3.2s ease-in-out infinite;
+      }
+      .tz-chat-quickreply-btn:nth-child(2) { animation-delay: 0.15s; }
+      .tz-chat-quickreply-btn:nth-child(3) { animation-delay: 0.3s; }
+      .tz-chat-quickreply-btn:nth-child(4) { animation-delay: 0.45s; }
+      /* "Tonazo" (Pasajero, ChatWindow.jsx) — solo el logo, en píldora;
          el contador de restantes vive en el atributo title (tooltip),
          acá abajo solo se muestra el cooldown mientras está activo. */
+      /* Flota sobre el final del chat (sin franja propia en el footer). */
       .tz-chat-tonazo-row {
+        position: absolute;
+        bottom: calc(100% + 11px);
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2;
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 4px;
-        padding: 0 4px 8px;
+        pointer-events: none;
       }
+      .tz-chat-tonazo-row > * { pointer-events: auto; }
+      /* Espacio al final de los mensajes para que el botón flotante no
+         tape el último. */
+      .tz-chat-messages-con-tonazo { padding-bottom: 74px; }
+      /* Solo el logo (sin cuadro), 20 px más grande que antes; un brillo
+         rosa propio para que se lea sobre cualquier fondo del chat. */
       .tz-chat-tonazo-btn {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 42px;
-        height: 42px;
         padding: 0;
         flex-shrink: 0;
-        border-radius: 50%;
-        border: 1px solid rgba(255,47,158,0.4);
-        background: rgba(255,47,158,0.1);
+        border: none;
+        background: none;
+        box-shadow: none;
         color: var(--pink);
         cursor: pointer;
-        transition: background 0.15s, box-shadow 0.15s;
+        transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), filter 0.2s;
       }
-      .tz-chat-tonazo-btn:hover:not(:disabled) { background: rgba(255,47,158,0.2); box-shadow: 0 0 12px rgba(255,47,158,0.3); }
-      .tz-chat-tonazo-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .tz-chat-tonazo-btn:hover:not(:disabled) { transform: scale(1.08); filter: brightness(1.12); }
+      .tz-chat-tonazo-btn:active:not(:disabled) { transform: scale(0.94); }
+      /* En espera entre avisos: apenas más tenue, nunca oscuro. */
+      .tz-chat-tonazo-btn:disabled { opacity: 0.85; cursor: not-allowed; }
       /* Sin destino (Lógica de Negocio) — a propósito NO usa el
          atributo disabled nativo (ver el comentario en ChatWindow.jsx):
-         se ve apagado igual, pero sigue recibiendo el click para poder
-         mostrar el toast de aviso. */
-      .tz-chat-tonazo-btn-bloqueado { opacity: 0.5; cursor: pointer; }
-      .tz-chat-tonazo-logo { width: 20px; height: 20px; object-fit: contain; border-radius: 4px; }
+         sigue recibiendo el click para mostrar el toast de aviso. Ya no se
+         apaga: se veía oscuro justo cuando el pasajero más lo usa. */
+      .tz-chat-tonazo-btn-bloqueado { cursor: pointer; }
+      .tz-chat-tonazo-logo {
+        width: 68px;
+        height: 52px;
+        object-fit: contain;
+        filter: brightness(1.12) saturate(1.15) drop-shadow(0 0 10px rgba(255,47,158,0.8));
+      }
       .tz-chat-tonazo-cooldown {
         font-family: 'Rajdhani', sans-serif;
         font-size: 11px;
@@ -3731,18 +4248,29 @@ export default function Styles() {
         align-items: center;
         justify-content: center;
         border-radius: 12px;
-        border: 1px solid rgba(255,47,158,0.45);
-        background: rgba(255,47,158,0.14);
-        color: var(--pink);
+        border: 1px solid #ff6ac1;
+        background: linear-gradient(135deg, #ff2f9e, #ff6ac1);
+        color: #ffffff;
         cursor: pointer;
-        transition: background 0.15s, box-shadow 0.15s;
+        box-shadow: 0 0 12px rgba(255,47,158,0.55);
+        transition: filter 0.15s, box-shadow 0.15s;
       }
-      .tz-chat-send-btn:hover:not(:disabled) { background: rgba(255,47,158,0.22); box-shadow: 0 0 12px rgba(255,47,158,0.35); }
-      .tz-chat-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+      .tz-chat-send-btn:hover:not(:disabled) { filter: brightness(1.1); box-shadow: 0 0 16px rgba(255,47,158,0.75); }
+      /* Sin texto: el mismo botón, apenas más tenue (antes quedaba casi negro). */
+      .tz-chat-send-btn:disabled { opacity: 0.7; box-shadow: none; cursor: not-allowed; }
       /* Nombre de un hilo en la bandeja del Conductor — a propósito NO
          usa .tz-history-row-method (esa sí lleva uppercase, es correcta
          para lo demás que la usa) para no forzar mayúsculas acá. */
       .tz-chat-thread-name { font-size: 13px; font-weight: 700; color: var(--pink); }
+      /* Nombre del pasajero arriba del chat abierto (Conductor). */
+      .tz-chat-thread-titulo {
+        margin: 0 0 8px;
+        text-align: center;
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--cyan);
+        text-shadow: 0 0 8px rgba(43, 232, 255, 0.75), 0 0 18px rgba(43, 232, 255, 0.45);
+      }
       .tz-chat-thread-preview { color: var(--text-dim); font-weight: 400; }
       /* Fase 5 (Motor de Viajes Simultáneos) — Selector de Hilos: fila
          deslizable de pestañas chicas arriba del chat abierto, para
@@ -4516,10 +5044,14 @@ export default function Styles() {
       /* react-easy-crop se posiciona absolute llenando el contenedor
          padre — necesita un alto fijo y position:relative explícitos,
          si no colapsa a 0px. */
+      /* Cuadrado (como el recorte): con "cover" el lado corto de la foto
+         coincide con el cuadro de recorte y con la silueta guía. */
       .tz-cropper-container {
         position: relative;
-        width: 100%;
-        height: 280px;
+        width: min(100%, 320px);
+        aspect-ratio: 1 / 1;
+        margin-left: auto !important;
+        margin-right: auto !important;
         border-radius: 14px;
         overflow: hidden;
         background: #000;
@@ -5263,6 +5795,165 @@ export default function Styles() {
         font-weight: 600;
         line-height: 1.4;
       }
+      /* Turno vencido (useTurnoCaja): aviso arriba del cierre con el botón
+         para extender 30 minutos. */
+      /* Turno sin extensiones: el cierre va encima de cualquier otro modal. */
+      .tz-modal-backdrop.tz-cierre-obligatorio {
+        z-index: 450;
+      }
+      /* Historial de verificaciones (Centro de Peticiones). */
+      .tz-historial-verif-buscar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+        color: var(--text-dim);
+      }
+      .tz-historial-verif-buscar .tz-text-input { flex: 1 1 auto; }
+      .tz-historial-verif-cabecera {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .tz-historial-verif-rol {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 999px;
+        color: var(--cyan);
+        border: 1px solid rgba(43, 232, 255, 0.4);
+        background: rgba(43, 232, 255, 0.08);
+      }
+      .tz-historial-verif-foto {
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: zoom-in;
+        color: inherit;
+        font: inherit;
+      }
+      /* Peticiones: datos del conductor que el Admin confirma al aprobar. */
+      .tz-peticion-datos {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px 8px;
+        margin-top: 6px;
+      }
+      .tz-peticion-datos label {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+      .tz-peticion-datos label > span {
+        font-size: 11px;
+        color: var(--text-dim);
+      }
+      /* Contador de créditos del pasajero (ContadorCreditos.jsx). */
+      /* Fila del pasajero: el filtro de localidad ocupa el 70 % desde la
+         izquierda y los créditos el 30 % restante, centrados ahí. 13 px
+         más de aire antes del botón del Radar. Sin sesión, el filtro solo
+         y centrado como siempre. */
+      .tz-fila-localidad { width: 100%; display: flex; justify-content: center; }
+      .tz-fila-saldo-localidad {
+        width: 100%;
+        max-width: 560px;
+        display: grid;
+        grid-template-columns: 7fr 3fr;
+        align-items: center;
+        gap: 10px;
+        padding: 0 6px;
+      }
+      /* Alto 0: las gemas (más altas que el desplegable) se centran sobre la
+         fila sin agrandarla, así el destino y el botón del Radar quedan a la
+         misma altura con o sin sesión. */
+      .tz-fila-saldo { display: flex; justify-content: center; align-items: center; min-width: 0; height: 0; overflow: visible; }
+      .tz-fila-saldo .tz-cc { top: 0; }
+      /* Gemas (créditos): en su recuadro, la palabra centrada encima de la
+         gema y el número. */
+      .tz-gemas { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+      .tz-fila-saldo .tz-stat-chip.tz-gemas { min-width: 80px; padding: 6px 10px; position: relative; left: -2px; border: none; background: transparent; box-shadow: none; }
+      .tz-fila-saldo .tz-gemas .tz-stat-value { font-size: 15px; }
+      /* La palabra va del color de las gemas que representa (cliente:
+         celeste; conductor: verde). */
+      .tz-gemas-label {
+        font-size: 9.5px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--cyan);
+        text-shadow: 0 0 6px rgba(43, 232, 255, 0.45);
+      }
+      /* Recuadros del conductor (Gemas / Vigencia) con todo centrado. */
+      .tz-stats-centrados .tz-stat-chip { align-items: center; text-align: center; }
+      .tz-stats-centrados .tz-stat-label { justify-content: center; }
+      .tz-stat-label-gemas-verde { color: var(--green); text-shadow: 0 0 6px rgba(57, 255, 176, 0.4); }
+      /* Sin localidades cargadas: los créditos solos, centrados. */
+      .tz-fila-saldo:only-child { grid-column: 1 / -1; }
+      .tz-fila-saldo-localidad .tz-localidad-filtro-wrap { max-width: none; min-width: 0; }
+      /* Panel del conductor / recolector con la cuenta sin verificar. */
+      .tz-cuenta-temporal {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin: 0 0 12px;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(215, 255, 59, 0.45);
+        background: rgba(215, 255, 59, 0.06);
+      }
+      .tz-cuenta-temporal.tz-cuenta-rechazada {
+        border-color: rgba(255, 77, 109, 0.6);
+        background: rgba(255, 77, 109, 0.1);
+      }
+      .tz-cuenta-rechazada strong {
+        color: var(--danger);
+      }
+      .tz-btn-reenviar {
+        background: var(--danger);
+        color: #fff;
+        border-color: var(--danger);
+      }
+      .tz-cuenta-temporal p {
+        margin: 0;
+        font-size: 13px;
+        color: var(--text);
+      }
+      .tz-cuenta-temporal .tz-field-label {
+        margin: 2px 0 0;
+      }
+      .tz-cierre-extensiones {
+        margin: 0;
+        font-size: 12px;
+        color: var(--text-dim);
+      }
+      .tz-cierre-vencido {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin: 0 0 12px;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(215, 255, 59, 0.45);
+        background: rgba(215, 255, 59, 0.06);
+      }
+      /* Punto amarillo de aviso en un botón (caja sin cerrar). */
+      .tz-btn-aviso {
+        position: relative;
+      }
+      .tz-btn-aviso::after {
+        content: "";
+        position: absolute;
+        top: -3px;
+        right: -3px;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: var(--yellow);
+        box-shadow: 0 0 8px rgba(215, 255, 59, 0.9);
+        animation: tz-subtitle-parpadeo 1.2s steps(1) infinite;
+      }
 
       /* ---------- CRM WHATSAPP EN EL COBRO ---------- */
       .tz-checkout-crm {
@@ -5702,11 +6393,8 @@ export default function Styles() {
           max-width: 700px;
           margin: 0 auto;
         }
-        .tz-header-btn {
-          flex-direction: row;
-          padding: 9px 14px;
-        }
-        .tz-header-btn-label { display: inline; font-size: 11px; }
+        .tz-header-btn { padding: 9px 12px; }
+        .tz-header-btn-label { font-size: 11px; }
         .tz-main {
           max-width: 700px;
           margin: 0 auto;
@@ -6061,6 +6749,61 @@ export default function Styles() {
            - Solo multimedia / sin texto (típicamente 9:16 vertical): el
              media llena el modal entero, sin recorte a 16:9, la 'X'
              flota encima. Ver .tz-anuncio-layout-fill. */
+      /* Botón con enlace del anuncio: al centro del pie, con margen; esquinas
+         redondas y se pinta de celeste al pasar el cursor. Encima de la
+         imagen/video cuando el anuncio es solo multimedia. */
+      .tz-anuncio-boton-pie { display: flex; justify-content: center; padding: 4px 16px 28px; }
+      .tz-anuncio-boton-pie.is-encima { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; padding-bottom: 30px; pointer-events: none; }
+      .tz-anuncio-boton-pie.is-encima .tz-anuncio-boton { pointer-events: auto; }
+      .tz-anuncio-boton {
+        display: inline-flex; align-items: center; gap: 8px; padding: 11px 26px; border-radius: 999px;
+        font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none;
+        color: #ffffff; background: #0c0a1c; border: 1.5px solid #2be8ff;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.45), 0 0 14px rgba(43,232,255,0.35);
+        backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+        transition: background 0.25s, color 0.25s, transform 0.3s cubic-bezier(.34,1.56,.64,1), box-shadow 0.25s;
+      }
+      .tz-anuncio-boton:hover {
+        background: #2be8ff; color: #04121a; border-color: #2be8ff; transform: translateY(-2px) scale(1.04);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.45), 0 0 22px rgba(43,232,255,0.75);
+      }
+      .tz-anuncio-puntos.is-arriba { bottom: 10px; }
+      /* Carrusel de anuncios: flechas a los lados, puntos abajo y un cambio
+         con deslizamiento suave (entra desde el lado hacia el que se va). */
+      .tz-anuncio-carrusel { gap: 10px; }
+      .tz-anuncio-flecha {
+        flex-shrink: 0; width: 42px; height: 42px; border-radius: 999px; z-index: 2;
+        display: flex; align-items: center; justify-content: center; cursor: pointer;
+        border: 1px solid rgba(255,255,255,0.3); background: rgba(10,7,22,0.7); color: #fff;
+        backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+        box-shadow: 0 0 14px rgba(0,0,0,0.5);
+        transition: transform 0.3s cubic-bezier(.34,1.56,.64,1), background 0.2s, box-shadow 0.2s;
+      }
+      .tz-anuncio-flecha:hover { transform: scale(1.12); background: rgba(255,47,158,0.75); box-shadow: 0 0 18px rgba(255,47,158,0.6); }
+      .tz-anuncio-flecha:active { transform: scale(0.92); }
+      @media (max-width: 560px) {
+        .tz-anuncio-flecha { position: absolute; top: 50%; margin-top: -21px; }
+        .tz-anuncio-flecha.is-izq { left: 6px; }
+        .tz-anuncio-flecha.is-der { right: 6px; }
+      }
+      .tz-anuncio-entra-der { animation: tz-anuncio-entra-der 0.45s cubic-bezier(.22,.9,.3,1) both; }
+      .tz-anuncio-entra-izq { animation: tz-anuncio-entra-izq 0.45s cubic-bezier(.22,.9,.3,1) both; }
+      @keyframes tz-anuncio-entra-der {
+        from { opacity: 0; transform: translateX(42px) scale(0.97); filter: blur(4px); }
+        to { opacity: 1; transform: none; filter: none; }
+      }
+      @keyframes tz-anuncio-entra-izq {
+        from { opacity: 0; transform: translateX(-42px) scale(0.97); filter: blur(4px); }
+        to { opacity: 1; transform: none; filter: none; }
+      }
+      .tz-anuncio-puntos {
+        position: absolute; left: 0; right: 0; bottom: 8px; z-index: 3; display: flex; justify-content: center; gap: 6px; pointer-events: none;
+      }
+      .tz-anuncio-puntos span {
+        width: 7px; height: 7px; border-radius: 999px; background: rgba(255,255,255,0.35);
+        transition: width 0.35s cubic-bezier(.34,1.56,.64,1), background 0.3s;
+      }
+      .tz-anuncio-puntos span.is-activo { width: 20px; background: var(--pink, #ff2f9e); box-shadow: 0 0 8px rgba(255,47,158,0.7); }
       .tz-anuncio-modal {
         position: relative;
         width: 100%;
@@ -6155,6 +6898,7 @@ export default function Styles() {
         box-shadow: 0 0 8px var(--cyan);
         transition: width 0.2s linear;
       }
+      .tz-barra-fluida { width: 100%; transform: scaleX(0); transform-origin: left center; transition: none; will-change: transform; }
       /* Caso "con texto" (default): fuerza el media a una caja 16:9
          arriba, el texto va abajo — columna siempre, en cualquier ancho. */
       .tz-anuncio-layout:not(.tz-anuncio-layout-fill) .tz-anuncio-media {
@@ -6261,6 +7005,11 @@ export default function Styles() {
       .tz-select-glow-neon {
         animation: tz-select-glow-neon-pulse 0.55s ease-in-out infinite;
         border-radius: 10px;
+      }
+      /* En el Dropdown propio el parpadeo va en el botón, no en el contenedor. */
+      .tz-dropdown.tz-select-glow-neon { animation: none; }
+      .tz-dropdown.tz-select-glow-neon .tz-dropdown-trigger {
+        animation: tz-select-glow-neon-pulse 0.55s ease-in-out infinite;
       }
       @keyframes tz-select-glow-neon-pulse {
         0%, 100% {
@@ -6403,6 +7152,10 @@ export default function Styles() {
         min-width: 0;   /* sin esto el input no cede ancho y el botón lo aplasta */
       }
       .tz-entrega-chat-input .tz-scan-btn {
+        background: linear-gradient(135deg, #ff2f9e, #ff6ac1);
+        border-color: #ff6ac1;
+        color: #ffffff;
+        box-shadow: 0 0 12px rgba(255,47,158,0.55);
         flex: 0 0 42px;
         width: 42px;
         height: 42px;
@@ -6489,6 +7242,573 @@ export default function Styles() {
         background: var(--danger);
         border-color: var(--danger);
         color: #05030c;
+      }
+
+      /* Aviso del conductor sin GPS (ConductorPage.jsx): ubicación
+         apagada o sin permiso mientras debería aparecer en el radar. */
+      .tz-aviso-ubicacion {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin: 0 0 12px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--danger);
+        background: rgba(255,84,112,0.1);
+        color: var(--text);
+        font-size: 13px;
+        line-height: 1.45;
+        animation: tz-cuenta-eliminada-glow 2s ease-in-out infinite;
+      }
+      .tz-aviso-ubicacion > svg { color: var(--danger); flex-shrink: 0; margin-top: 1px; }
+      .tz-aviso-ubicacion p { margin: 0; }
+
+      /* Chats fijados "Taxi PE" y "Tonazo" (mensajes/ChatsFijados.jsx). */
+      .tz-mensajes-modal { max-width: 480px; }
+      .tz-chatfijo-row { padding: 0; }
+      .tz-chatfijo-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 10px 12px;
+        background: transparent;
+        border: 0;
+        color: var(--text);
+        text-align: left;
+        cursor: pointer;
+        font: inherit;
+      }
+      .tz-chatfijo-logo {
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+        object-fit: contain;
+      }
+      /* Mensajes del pasajero: su(s) conductor(es) actual(es). */
+      .tz-chatneg-seccion { list-style: none; margin: 10px 2px 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); }
+      .tz-chatcond-foto { border-radius: 50%; object-fit: cover; }
+      /* Mensajes y los chats (pasajero y bandeja del conductor) en formato
+         vertical 9:16, como un teléfono, en PC y celular. */
+      .tz-modal.tz-mensajes-modal,
+      .tz-modal.tz-chat-modal-shell {
+        height: min(88vh, 820px);
+        max-height: min(88vh, 820px);
+        width: min(calc(min(88vh, 820px) * 9 / 16), 94vw);
+        max-width: none;
+      }
+      .tz-modal.tz-mensajes-modal { display: flex; flex-direction: column; overflow-y: auto; }
+      .tz-mensajes-modal > .tz-chatfijo-abierto { flex: 1 1 auto; min-height: 0; }
+      .tz-mensajes-modal .tz-chatfijo-abierto .tz-chatfijo-mensajes { flex: 1 1 auto; min-height: 0; max-height: none; }
+      /* Bandeja del conductor con el estilo de Mensajes. */
+      .tz-chatneg-avatar {
+        width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: rgba(var(--cyan-rgb), 0.14); border: 1px solid rgba(var(--cyan-rgb), 0.4);
+        color: var(--cyan); font-weight: 800; font-size: 16px;
+      }
+      /* "Pegar comprobante" (BotonPegarComprobante.jsx), debajo de adjuntar. */
+      .tz-pegar-comprobante { margin-top: 8px; width: 100%; justify-content: center; }
+      .tz-pegar-comprobante-aviso { margin: 6px 2px 0; font-size: 12px; color: var(--text-dim); }
+      /* ===== Chats: escribir con fotos y notas de voz (chat/EntradaChat.jsx) ===== */
+      .tz-entrada { position: relative; display: flex; align-items: center; gap: 8px; width: 100%; flex-wrap: wrap; }
+      .tz-entrada-campo { position: relative; flex: 1 1 auto; min-width: 0; }
+      .tz-dlv-chat-input > .tz-entrada, .tz-chatneg-escribir > .tz-entrada, .tz-entrega-chat-input > .tz-entrada, .tz-chat-input-row > .tz-entrada { flex: 1 1 auto; min-width: 0; }
+      .tz-entrada-input { width: 100%; margin: 0 !important; padding-right: 44px !important; text-transform: none; }
+      .tz-entrada-mas {
+        position: absolute; right: 6px; top: 50%; width: 30px; height: 30px; margin-top: -15px; border-radius: 999px;
+        display: flex; align-items: center; justify-content: center; cursor: pointer;
+        border: 1px solid rgba(43,232,255,0.55); background: rgba(43,232,255,0.12); color: var(--cyan, #2be8ff);
+        transition: transform 0.45s cubic-bezier(.34,1.56,.64,1), background 0.25s, box-shadow 0.25s;
+      }
+      .tz-entrada-mas:hover:not(:disabled) { box-shadow: 0 0 12px rgba(43,232,255,0.55); }
+      .tz-entrada-mas.is-abierto { transform: rotate(135deg) scale(1.08); background: rgba(255,47,158,0.22); border-color: #ff6ac1; color: #ff6ac1; }
+      .tz-entrada-menu {
+        position: absolute; right: 0; bottom: calc(100% + 10px); z-index: 5;
+        transform-origin: 90% 100%; display: flex; flex-direction: column; align-items: stretch; gap: 6px;
+        animation: tz-entrada-menu-in 0.5s cubic-bezier(.34,1.56,.64,1) both;
+      }
+      @keyframes tz-entrada-menu-in {
+        0% { opacity: 0; transform: translateY(14px) scale(0.55); filter: blur(6px); }
+        60% { opacity: 1; filter: blur(0); }
+        100% { opacity: 1; transform: none; filter: none; }
+      }
+      .tz-entrada-menu-btn {
+        display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 14px; cursor: pointer;
+        font: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; color: #fff;
+        /* Sólidos (no translúcidos): se leen sobre cualquier foto o burbuja. */
+        border: 1px solid #2be8ff;
+        background: linear-gradient(135deg, #0e5f74, #3d2391);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.55), 0 0 18px rgba(43,232,255,0.35);
+        transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
+      }
+      .tz-entrada-menu-btn:hover { transform: translateY(-2px) scale(1.04); }
+      .tz-entrada-accion {
+        flex: 0 0 44px; width: 44px; height: 44px; border-radius: 999px; padding: 0; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; color: #fff; border: 1px solid transparent;
+        animation: tz-entrada-morph 0.42s cubic-bezier(.34,1.56,.64,1) both;
+        touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+      }
+      @keyframes tz-entrada-morph {
+        from { opacity: 0; transform: rotate(-110deg) scale(0.35); filter: blur(3px); }
+        to { opacity: 1; transform: none; filter: none; }
+      }
+      .tz-entrada-accion.is-enviar { background: linear-gradient(135deg, #ff2f9e, #ff6ac1); border-color: #ff6ac1; box-shadow: 0 0 14px rgba(255,47,158,0.6); }
+      .tz-entrada-accion.is-enviar:disabled { opacity: 0.75; box-shadow: none; }
+      .tz-entrada-accion.is-mic { background: linear-gradient(135deg, #12b5cf, #2be8ff); border-color: #7cf3ff; color: #03141b; box-shadow: 0 0 14px rgba(43,232,255,0.55); }
+      .tz-entrada-accion.is-mic.is-grabando { background: linear-gradient(135deg, #ff2f6d, #ff6a8e); color: #fff; animation: tz-entrada-latido 1s ease-in-out infinite; }
+      @keyframes tz-entrada-latido {
+        0%, 100% { transform: scale(1.12); box-shadow: 0 0 0 0 rgba(255,47,109,0.6); }
+        50% { transform: scale(1.22); box-shadow: 0 0 0 14px rgba(255,47,109,0); }
+      }
+      .tz-entrada-accion.is-subiendo { background: rgba(255,255,255,0.08); color: var(--cyan, #2be8ff); }
+      .tz-entrada-error { flex-basis: 100%; margin: 2px 4px 0; font-size: 12px; color: var(--danger, #ff5470); }
+      /* Grabando: el aura (AuraVoz) en el medio del chat, sin recuadro; el
+         contador al centro y una ayuda corta debajo. */
+      .tz-grabacion {
+        position: fixed; left: 50%; top: 50%; z-index: 4000; transform: translate(-50%, -50%);
+        display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; text-align: center;
+        animation: tz-grabacion-in 0.5s cubic-bezier(.34,1.56,.64,1) both;
+      }
+      @keyframes tz-grabacion-in {
+        from { opacity: 0; transform: translate(-50%, -46%) scale(0.6); filter: blur(8px); }
+        to { opacity: 1; transform: translate(-50%, -50%); filter: none; }
+      }
+      .tz-aura { position: relative; }
+      .tz-aura canvas { display: block; }
+      .tz-aura-centro { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; }
+      .tz-grabacion-tiempo { font-weight: 800; font-size: 26px; color: #fff; font-variant-numeric: tabular-nums; text-shadow: 0 0 12px rgba(255,255,255,0.6); }
+      .tz-grabacion.is-cancelar .tz-aura-centro { color: #ff8fa3; }
+      .tz-grabacion-ayuda {
+        margin: 0; padding: 5px 12px; border-radius: 999px; font-size: 12px; color: rgba(255,255,255,0.85);
+        background: #0c0a1c; border: 1px solid rgba(43,232,255,0.45);
+      }
+      /* Nota de voz (chat/NotaDeVoz.jsx): sin el cuadro del mensaje; la
+         píldora lleva las clases de la burbuja del chat (el color del tema). */
+      .tz-dlv-bubble.is-nota, .tz-chatfijo-burbuja.is-nota, .tz-chat-bubble.is-nota, .tz-entrega-msg.is-nota {
+        background: none !important; border: none !important; box-shadow: none !important; padding: 0 !important;
+      }
+      .tz-nota {
+        position: relative; display: flex !important; align-items: center; gap: 10px;
+        width: 250px; max-width: 100% !important; min-width: 200px; margin: 0 0 3px !important;
+        padding: 7px 12px 7px 7px !important; border-radius: 999px !important;
+        -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation;
+      }
+      .tz-nota-play {
+        flex: 0 0 34px; width: 34px; height: 34px; border-radius: 999px; padding: 0; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        border: none; background: rgba(255,255,255,0.18); color: inherit;
+        transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), background 0.2s;
+      }
+      .tz-nota-play:hover { transform: scale(1.08); background: rgba(255,255,255,0.28); }
+      .tz-nota-barra { position: relative; flex: 1; height: 22px; cursor: pointer; touch-action: none; }
+      .tz-nota-barra::before {
+        content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 4px; margin-top: -2px;
+        border-radius: 999px; background: currentColor; opacity: 0.28;
+      }
+      .tz-nota-barra-relleno { position: absolute; left: 0; top: 50%; height: 4px; margin-top: -2px; border-radius: 999px; background: currentColor; }
+      .tz-nota-barra-punto {
+        position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%;
+        background: currentColor; box-shadow: 0 0 8px rgba(255,255,255,0.5);
+      }
+      /* Sonando: botón y barra con el color principal del tema del negocio. */
+      .tz-nota-barra-relleno, .tz-nota-barra-punto { transition: background 0.3s, box-shadow 0.3s; }
+      .tz-nota.is-sonando .tz-nota-play { background: var(--cyan); color: #04121a; box-shadow: 0 0 14px var(--cyan); }
+      .tz-nota.is-sonando .tz-nota-barra-relleno { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+      .tz-nota.is-sonando .tz-nota-barra-punto { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
+      .tz-nota-tiempo { flex-shrink: 0; font-size: 12px; font-weight: 700; opacity: 0.85; font-variant-numeric: tabular-nums; }
+      .tz-nota-tiempo b { margin-right: 2px; }
+      .tz-nota-menu { right: auto; left: 0; display: flex; flex-direction: column; gap: 6px; transform-origin: 10% 100%; }
+      /* Foto y nota de voz dentro de un mensaje (chat/AdjuntoMensaje.jsx). */
+      .tz-adjunto-foto { display: block; padding: 0; margin: 0 0 4px; border: none; background: none; cursor: zoom-in; border-radius: 10px; overflow: hidden; }
+      .tz-adjunto-foto img { display: block; max-width: 220px; max-height: 260px; width: auto; height: auto; object-fit: cover; border-radius: 10px; }
+      .tz-adjunto-audio { display: block; width: 230px; max-width: 100%; height: 40px; margin: 2px 0 4px; }
+      .tz-adjunto-visor {
+        position: fixed; inset: 0; z-index: 4000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+        padding: 16px; background: rgba(5,3,12,0.92); cursor: zoom-out;
+        animation: tz-adjunto-visor-in 0.35s cubic-bezier(.22,.9,.3,1) both;
+      }
+      @keyframes tz-adjunto-visor-in { from { opacity: 0; backdrop-filter: blur(0); } to { opacity: 1; } }
+      .tz-adjunto-visor img {
+        max-width: 100%; max-height: 78vh; border-radius: 14px; cursor: default; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+        animation: tz-adjunto-foto-in 0.45s cubic-bezier(.34,1.56,.64,1) both;
+      }
+      @keyframes tz-adjunto-foto-in { from { opacity: 0; transform: scale(0.85); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+      .tz-adjunto-visor-acciones { display: flex; gap: 10px; cursor: default; }
+      /* Descargar y X del visor: mismos botones (y entrada con resorte) que
+         Subir foto / Descargar del chat. */
+      .tz-adjunto-visor-acciones { animation: tz-entrada-menu-in 0.5s cubic-bezier(.34,1.56,.64,1) 0.12s both; }
+      .tz-adjunto-visor-acciones .tz-entrada-menu-btn:disabled { cursor: default; opacity: 0.8; }
+      .tz-adjunto-visor-nota { margin: 0; font-size: 12px; color: rgba(255,255,255,0.65); text-align: center; }
+      /* Caras en los chats (personas y tiendas): la foto sola, sin marco ni
+         fondo, como los logos de Taxi PE y Tonazo; sin foto, solo el sticker. */
+      .tz-chat-cara { width: 40px; height: 40px; flex-shrink: 0; object-fit: contain; border: none; border-radius: 0; background: none; }
+      .tz-chat-sticker {
+        width: 40px; height: 40px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+        color: var(--cyan); background: none; border: none; filter: drop-shadow(0 0 6px rgba(43,232,255,0.45));
+      }
+      .tz-chatneg-avatar-logo { object-fit: contain; padding: 4px; background: #ffffff; }
+      .tz-chatneg-estado { font-size: 10.5px; font-weight: 600; color: var(--text-dim); display: inline-flex; align-items: center; gap: 4px; }
+      .tz-chatneg-estado::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.6; }
+      .tz-chatneg-estado.is-en-linea { color: var(--green); }
+      .tz-chatneg-estado.is-en-linea::before { opacity: 1; box-shadow: 0 0 6px var(--green); }
+      .tz-chat-inbox-row.tz-chatfijo-row { display: flex; align-items: stretch; gap: 6px; }
+      .tz-chat-inbox-row .tz-chatfijo-btn { flex: 1 1 auto; min-width: 0; }
+      /* Círculo rojo con el número de mensajes sin leer (mismo de Caja). */
+      .tz-badge-dot {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        min-width: 16px;
+        height: 16px;
+        padding: 0 4px;
+        border-radius: 999px;
+        background: var(--danger, #ff3b5c);
+        color: #fff;
+        font-size: 10px;
+        font-weight: 800;
+        line-height: 16px;
+        text-align: center;
+        box-shadow: 0 0 0 2px var(--bg, #0b0e14);
+      }
+      /* "Tus entregas" (conductor en modo delivery): la tienda y, agrupado
+         debajo (se despliega solo), el cliente; un brillo verde recorre el
+         borde de los dos juntos — mismo diseño que "Tus pedidos" en Caja. */
+      .tz-chatent-row, .tz-chatpas-row { position: relative; display: flex; flex-direction: column; gap: 6px; border-radius: 14px; overflow: visible !important; }
+      .tz-chatent-row.is-activo, .tz-chatpas-row.is-activo { box-shadow: 0 0 14px rgba(57,255,176,0.25) !important; }
+      .tz-chatent-row.is-activo::before, .tz-chatpas-row.is-activo::before {
+        content: "";
+        position: absolute;
+        inset: -1px;
+        border-radius: inherit;
+        padding: 2px;
+        background: linear-gradient(90deg, rgba(57,255,176,0.1), rgba(57,255,176,1), rgba(57,255,176,0.1));
+        background-size: 300% 100%;
+        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        animation: tz-chatent-brillo 2.6s linear infinite;
+        pointer-events: none;
+        z-index: 1;
+      }
+      @keyframes tz-chatent-brillo {
+        from { background-position: 0% 0; }
+        to { background-position: 300% 0; }
+      }
+      .tz-chatent-despliegue { overflow: hidden; animation: tz-chatent-desplegar 0.5s cubic-bezier(.2,.8,.2,1) both; }
+      @keyframes tz-chatent-desplegar {
+        from { max-height: 0; opacity: 0; transform: translateY(-8px); }
+        to { max-height: 90px; opacity: 1; transform: none; }
+      }
+      .tz-chatent-estado { color: var(--green); font-weight: 700; }
+      .tz-entrega-chat-input .tz-scan-btn:disabled { opacity: 0.7; box-shadow: none; }
+      .tz-paneles-tabs button:disabled { opacity: 0.45; cursor: not-allowed; }
+      /* "Mi perfil" del pasajero. */
+      .tz-perfil-pasajero { max-width: 380px; text-align: center; }
+      .tz-perfil-pasajero-foto {
+        position: relative; width: 104px; height: 104px; margin: 6px auto 14px; padding: 0;
+        border-radius: 50%; border: 2px solid var(--cyan); background: rgba(43,232,255,0.1);
+        color: var(--cyan); font-size: 40px; font-weight: 800; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; box-shadow: 0 0 16px rgba(43,232,255,0.35);
+      }
+      .tz-perfil-pasajero-foto img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+      .tz-perfil-pasajero-camara {
+        position: absolute; right: 2px; bottom: 2px; width: 30px; height: 30px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--cyan); color: #04121a; border: 2px solid var(--bg-1, #0b0e14);
+      }
+      .tz-perfil-pasajero-form { text-align: left; }
+      .tz-perfil-pasajero-fila { display: flex; gap: 8px; }
+      .tz-perfil-pasajero-fila .tz-text-input { flex: 1; min-width: 0; margin: 0; }
+      .tz-perfil-usuario-input { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; }
+      .tz-perfil-usuario-input svg { position: absolute; left: 11px; color: var(--cyan); pointer-events: none; }
+      .tz-perfil-usuario-input .tz-text-input { padding-left: 32px; text-transform: none; }
+      .tz-perfil-usuario-estado {
+        margin: 6px 2px 0; font-size: 12px; display: flex; align-items: center; gap: 4px; color: var(--text-dim);
+        animation: tz-perfil-estado-in 0.35s cubic-bezier(.34,1.56,.64,1) both;
+      }
+      .tz-perfil-usuario-estado.is-libre, .tz-perfil-usuario-estado.is-sugerido { color: var(--green); }
+      .tz-perfil-usuario-estado.is-tomado, .tz-perfil-usuario-estado.is-invalido, .tz-perfil-usuario-estado.is-sinrevisar { color: var(--danger, #ff5470); }
+      @keyframes tz-perfil-estado-in {
+        from { opacity: 0; transform: translateY(-6px) scale(0.96); filter: blur(2px); }
+        to { opacity: 1; transform: none; filter: none; }
+      }
+      .tz-perfil-pasajero-fila .tz-scan-btn { flex: 0 0 46px; width: 46px; padding: 0; margin: 0; }
+      /* Entrega en curso: botones que abren su chat en Mensajes. */
+      .tz-entrega-chats-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+      .tz-entrega-chats-btns > button { display: inline-flex; }
+      /* Chat de una entrega abierto en la bandeja: ocupa todo el alto del
+         modal 9:16 (antes quedaba encogido en 220px). */
+      .tz-chat-modal-shell .tz-payment-modal > .tz-entrega-chat {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      .tz-chat-modal-shell .tz-entrega-chat-scroll { flex: 1 1 auto; min-height: 0; max-height: none; }
+      .tz-chatent-cliente { margin-left: 18px; width: calc(100% - 18px); border-top: 1px dashed var(--border-soft); padding-top: 8px; }
+      .tz-chatcond-foto-vacia { display: inline-flex; align-items: center; justify-content: center; background: rgba(var(--cyan-rgb),0.12); border: 1px solid rgba(var(--cyan-rgb),0.35); color: var(--cyan); }
+      .tz-chatfijo-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+      .tz-chatfijo-nombre { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 5px; }
+      .tz-chatfijo-pin { color: var(--cyan); }
+      .tz-chatfijo-preview { font-size: 12px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .tz-chatfijo-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+      .tz-chatfijo-hora { font-size: 11px; color: var(--text-dim); }
+      .tz-chatfijo-badge {
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        border-radius: 999px;
+        background: var(--pink);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 10px rgba(255,47,158,0.6);
+      }
+      .tz-chatfijo-avisos {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 11px;
+        border-radius: 999px;
+        border: 1px solid var(--border-soft);
+        background: transparent;
+        color: var(--text-dim);
+        font: inherit;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .tz-chatfijo-avisos.is-activo { border-color: rgba(57,255,176,0.5); color: var(--green); }
+      .tz-chatfijo-avisos:not(.is-activo) { border-color: rgba(255,84,112,0.55); color: var(--danger); }
+      .tz-chatfijo-avisos-fila { display: flex; justify-content: flex-end; }
+      .tz-chatfijo-avisos-fila .tz-chatfijo-avisos {
+        width: 25%;
+        min-width: max-content;
+        justify-content: flex-start;
+        margin: 0;
+      }
+      .tz-chatfijo-abierto { display: flex; flex-direction: column; min-height: 0; }
+      .tz-chatfijo-cabecera {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-bottom: 10px;
+        margin-bottom: 10px;
+        border-bottom: 1px solid var(--border-soft);
+        padding-right: 36px;
+      }
+      .tz-chatfijo-cabecera strong { display: block; font-size: 15px; }
+      .tz-chatfijo-cabecera small { display: block; font-size: 11px; color: var(--text-dim); }
+      .tz-chatfijo-volver {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        border: 1px solid var(--border-soft);
+        background: transparent;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .tz-chatfijo-mensajes { display: flex; flex-direction: column; gap: 10px; max-height: 60vh; overflow-y: auto; padding: 2px; }
+      .tz-chatfijo-burbuja {
+        align-self: flex-start;
+        max-width: 88%;
+        padding: 10px 12px;
+        border-radius: 4px 14px 14px 14px;
+        background: rgba(43,232,255,0.08);
+        border: 1px solid rgba(43,232,255,0.25);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .tz-chatfijo-burbuja strong { display: block; margin-bottom: 3px; color: var(--cyan); }
+      .tz-enlace { color: var(--cyan); text-decoration: underline; word-break: break-all; }
+      .tz-anuncio-media-tocable { cursor: pointer; }
+      /* Imagen o video del mensaje con su resolución original: sin estirar ni
+         franjas negras (un video vertical se ve vertical). */
+      .tz-chatfijo-media { display: block; width: auto; height: auto; max-width: 100%; max-height: 360px; border-radius: 10px; margin-bottom: 6px; }
+      /* Video de un anuncio en el chat: se reproduce solo al verse, sin
+         sonido, con el botón para activarlo (VideoEnChat.jsx). */
+      .tz-chatfijo-video-caja { position: relative; max-width: 100%; margin-bottom: 6px; border-radius: 14px; overflow: hidden; line-height: 0; }
+      .tz-chatfijo-video-caja video { cursor: zoom-in; }
+      .tz-chatfijo-video-caja .tz-anuncio-progreso-track { height: 3px; }
+      .tz-chatfijo-video-botones { position: absolute; right: 8px; bottom: 10px; z-index: 6; display: flex; gap: 6px; line-height: normal; }
+      .tz-chatfijo-video-botones .tz-chatfijo-sonido { position: static; }
+      .tz-chatfijo-video-caja.is-youtube .tz-chatfijo-video-botones { top: 8px; bottom: auto; }
+      /* Visor aparte del video, con todos los controles (VideoEnChat.jsx). */
+      /* Reproductor propio del visor de video (mensajes/ReproductorVideo.jsx):
+         nada del diseño del navegador. */
+      .tz-repro {
+        position: relative; max-width: 100%; border-radius: 14px; overflow: visible; cursor: default; line-height: 0;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.6); animation: tz-adjunto-foto-in 0.45s cubic-bezier(.34,1.56,.64,1) both;
+      }
+      .tz-repro video { display: block; max-width: 100%; max-height: 80vh; border-radius: 14px; background: #000; cursor: pointer; }
+      .tz-repro.is-oculto, .tz-repro.is-oculto video { cursor: none; }
+      .tz-repro.is-completa { display: flex; align-items: center; justify-content: center; width: 100vw; height: 100vh; max-width: none; border-radius: 0; background: #000; }
+      .tz-repro.is-completa video { width: 100%; height: 100%; max-height: none; object-fit: contain; border-radius: 0; }
+      .tz-repro-grande {
+        position: absolute; left: 50%; top: 50%; width: 68px; height: 68px; margin: -34px 0 0 -34px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center; cursor: pointer; color: #04121a;
+        border: none; background: var(--cyan); box-shadow: 0 0 28px var(--cyan);
+        animation: tz-entrada-menu-in 0.45s cubic-bezier(.34,1.56,.64,1) both;
+        transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
+      }
+      .tz-repro-grande:hover { transform: scale(1.1); }
+      .tz-repro-grande svg { margin-left: 4px; }
+      .tz-repro-controles {
+        position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 12px 10px; line-height: normal; color: #fff;
+        border-radius: 0 0 14px 14px; background: linear-gradient(to top, rgba(0,0,0,0.78), rgba(0,0,0,0));
+        transition: opacity 0.35s ease, transform 0.35s cubic-bezier(.22,.9,.3,1);
+      }
+      .tz-repro.is-completa .tz-repro-controles { border-radius: 0; padding: 40px 24px 18px; }
+      .tz-repro.is-oculto .tz-repro-controles { opacity: 0; transform: translateY(10px); pointer-events: none; }
+      .tz-repro-barra { position: relative; height: 18px; cursor: pointer; touch-action: none; }
+      .tz-repro-barra::before {
+        content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 4px; margin-top: -2px; border-radius: 999px; background: rgba(255,255,255,0.3);
+      }
+      .tz-repro-barra-relleno {
+        position: absolute; left: 0; top: 50%; height: 4px; margin-top: -2px; border-radius: 999px;
+        background: var(--cyan); box-shadow: 0 0 8px var(--cyan);
+      }
+      .tz-repro-barra-punto {
+        position: absolute; top: 50%; width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; border-radius: 50%;
+        background: var(--cyan); box-shadow: 0 0 10px var(--cyan); transition: transform 0.2s cubic-bezier(.34,1.56,.64,1);
+      }
+      .tz-repro-barra:hover .tz-repro-barra-punto { transform: scale(1.3); }
+      .tz-repro-fila { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+      .tz-repro-espacio { flex: 1; }
+      .tz-repro-tiempo { font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; margin-left: 4px; }
+      .tz-repro-tiempo b { color: var(--cyan); }
+      .tz-repro-btn {
+        flex: 0 0 36px; width: 36px; height: 36px; border-radius: 999px; padding: 0; cursor: pointer; color: #fff;
+        display: flex; align-items: center; justify-content: center; border: none; background: rgba(255,255,255,0.14);
+        transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), background 0.2s, color 0.2s, box-shadow 0.2s;
+      }
+      .tz-repro-btn:hover { transform: scale(1.1); background: rgba(255,255,255,0.26); }
+      .tz-repro-btn.is-activo { background: var(--cyan); color: #04121a; box-shadow: 0 0 14px var(--cyan); }
+      .tz-repro-mas-caja { position: relative; display: flex; }
+      .tz-repro-menu { right: 0; left: auto; bottom: calc(100% + 12px); transform-origin: 90% 100%; }
+      .tz-video-visor-yt {
+        width: min(94vw, 960px); aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; cursor: default; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+        animation: tz-adjunto-foto-in 0.45s cubic-bezier(.34,1.56,.64,1) both;
+      }
+      .tz-video-visor-yt iframe { width: 100%; height: 100%; border: 0; }
+      /* Chat fijo: la imagen/video de un mensaje va sola (sin el cuadro) y el
+         texto en su burbuja debajo. */
+      .tz-chatfijo-item { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; max-width: 88%; }
+      .tz-chatfijo-item > .tz-chatfijo-burbuja { max-width: 100%; }
+      .tz-chatfijo-item > .tz-chatfijo-video-caja, .tz-chatfijo-media-suelta { margin: 0; border-radius: 14px; }
+      .tz-chatfijo-item > .tz-chatfijo-video-caja.is-youtube { width: 100%; }
+      .tz-chatfijo-video-caja .tz-chatfijo-media, .tz-chatfijo-video-caja .tz-chatfijo-video { margin-bottom: 0; }
+      .tz-chatfijo-sonido {
+        position: absolute; right: 8px; bottom: 8px; z-index: 2; width: 32px; height: 32px; border-radius: 999px;
+        display: flex; align-items: center; justify-content: center; cursor: pointer;
+        border: 1px solid rgba(255,255,255,0.35); background: rgba(0,0,0,0.6); color: #fff;
+        transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), background 0.2s;
+      }
+      .tz-chatfijo-sonido:hover { transform: scale(1.1); }
+      .tz-chatfijo-sonido.is-activo { background: var(--pink, #ff2f9e); border-color: transparent; }
+      .tz-chatfijo-video { position: relative; width: 100%; aspect-ratio: 16 / 9; margin-bottom: 6px; border-radius: 10px; overflow: hidden; }
+      .tz-chatfijo-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+      .tz-chatfijo-burbuja p { margin: 0; white-space: pre-wrap; }
+      .tz-chatfijo-boton { align-self: flex-start; order: 1; margin-top: 2px; text-decoration: none; animation: tz-entrada-menu-in 0.5s cubic-bezier(.34,1.56,.64,1) backwards; }
+      .tz-chatfijo-burbuja span { display: block; margin-top: 5px; font-size: 10.5px; color: var(--text-dim); text-align: right; }
+
+      /* Avisos emergentes del dispositivo e "Instalar la app"
+         (mensajes/AvisosDispositivo.jsx). */
+      .tz-avisos-dispositivo { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; margin-top: 8px; }
+      .tz-avisos-dispositivo p { margin: 0; font-size: 12px; color: var(--text-dim); text-align: right; }
+      .tz-avisos-dispositivo-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(43,232,255,0.5);
+        background: rgba(43,232,255,0.08);
+        color: var(--cyan);
+        font: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .tz-avisos-dispositivo-btn.is-instalar { border-color: rgba(215,255,59,0.5); background: rgba(215,255,59,0.08); color: var(--yellow); }
+      .tz-guia-instalar ol { margin: 8px 0 16px; padding-left: 20px; font-size: 14px; line-height: 1.6; }
+      .tz-guia-instalar li { margin: 6px 0; }
+
+      /* Términos y Condiciones (TerminosTexto / TerminosAceptarModal /
+         /terminos). */
+      .tz-terminos-modal { max-width: 560px; }
+      .tz-terminos-scroll {
+        max-height: 46vh;
+        overflow-y: auto;
+        padding: 4px 12px 4px 4px;
+        border: 1px solid var(--border-soft);
+        border-radius: 12px;
+        background: rgba(0,0,0,0.18);
+      }
+      .tz-terminos-pagina { max-width: 760px; }
+      .tz-terminos-texto { font-size: 13px; line-height: 1.55; color: var(--text); }
+      .tz-terminos-texto h2 { font-size: 17px; margin: 10px 0 6px; }
+      .tz-terminos-texto h3 { font-size: 14px; margin: 16px 0 6px; color: var(--cyan); }
+      .tz-terminos-texto p { margin: 6px 0; }
+      .tz-terminos-texto ol, .tz-terminos-texto ul { margin: 6px 0; padding-left: 20px; }
+      .tz-terminos-texto li { margin: 4px 0; }
+      .tz-terminos-link { color: var(--cyan); text-decoration: underline; }
+
+      /* Modal de Soporte (SoporteModal.jsx): tres opciones grandes —
+         conversar, bloqueo de emergencia (rojo) y recuperar cuenta. */
+      .tz-soporte-opciones { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+      .tz-soporte-opcion {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid var(--border-soft);
+        background: rgba(255,255,255,0.03);
+        color: var(--text);
+        text-align: left;
+        cursor: pointer;
+        font: inherit;
+      }
+      .tz-soporte-opcion:hover { border-color: var(--cyan); }
+      .tz-soporte-opcion strong { display: block; font-size: 14px; }
+      .tz-soporte-opcion small { display: block; color: var(--text-dim); font-size: 12px; margin-top: 2px; }
+      .tz-soporte-opcion > svg { flex-shrink: 0; }
+      .tz-soporte-opcion-peligro { border-color: rgba(255,84,112,0.55); }
+      .tz-soporte-opcion-peligro > svg { color: var(--danger); }
+      .tz-soporte-opcion-peligro:hover { border-color: var(--danger); box-shadow: 0 0 14px rgba(255,84,112,0.35); }
+      .tz-soporte-aviso {
+        border: 1px solid var(--danger);
+        background: rgba(255,84,112,0.08);
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-size: 13px;
+        line-height: 1.5;
+        margin-bottom: 14px;
+      }
+      .tz-soporte-aviso strong { color: var(--danger); }
+      .tz-soporte-foto {
+        width: 100%;
+        max-height: 180px;
+        object-fit: contain;
+        border-radius: 10px;
+        margin-top: 8px;
+        background: rgba(0,0,0,0.25);
+      }
+      .tz-soporte-razones { display: flex; flex-wrap: wrap; gap: 6px; }
+      .tz-soporte-razones .tz-gasto-tipo-btn { flex: 1 1 45%; min-width: 0; white-space: normal; line-height: 1.3; }
+      .tz-soporte-boton-peligro {
+        background: var(--danger) !important;
+        border-color: var(--danger) !important;
+        color: #05030c !important;
       }
 
       /* Serpentinas (Confetti.jsx) — overlay a pantalla completa,
