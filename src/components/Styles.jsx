@@ -6749,6 +6749,25 @@ export default function Styles() {
            - Solo multimedia / sin texto (típicamente 9:16 vertical): el
              media llena el modal entero, sin recorte a 16:9, la 'X'
              flota encima. Ver .tz-anuncio-layout-fill. */
+      /* Botón con enlace del anuncio: al centro del pie, con margen; esquinas
+         redondas y se pinta de celeste al pasar el cursor. Encima de la
+         imagen/video cuando el anuncio es solo multimedia. */
+      .tz-anuncio-boton-pie { display: flex; justify-content: center; padding: 4px 16px 28px; }
+      .tz-anuncio-boton-pie.is-encima { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; padding-bottom: 30px; pointer-events: none; }
+      .tz-anuncio-boton-pie.is-encima .tz-anuncio-boton { pointer-events: auto; }
+      .tz-anuncio-boton {
+        display: inline-flex; align-items: center; gap: 8px; padding: 11px 26px; border-radius: 999px;
+        font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none;
+        color: #ffffff; background: rgba(10,7,22,0.78); border: 1.5px solid rgba(43,232,255,0.7);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.45), 0 0 14px rgba(43,232,255,0.35);
+        backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+        transition: background 0.25s, color 0.25s, transform 0.3s cubic-bezier(.34,1.56,.64,1), box-shadow 0.25s;
+      }
+      .tz-anuncio-boton:hover {
+        background: #2be8ff; color: #04121a; border-color: #2be8ff; transform: translateY(-2px) scale(1.04);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.45), 0 0 22px rgba(43,232,255,0.75);
+      }
+      .tz-anuncio-puntos.is-arriba { bottom: 10px; }
       /* Carrusel de anuncios: flechas a los lados, puntos abajo y un cambio
          con deslizamiento suave (entra desde el lado hacia el que se va). */
       .tz-anuncio-carrusel { gap: 10px; }

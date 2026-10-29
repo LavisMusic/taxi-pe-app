@@ -41,6 +41,9 @@ function camposAnuncio(d: Datos) {
     fecha_fin: fecha(d.fecha_fin),
     frecuencia_mostrar: FRECUENCIAS.includes(String(d.frecuencia_mostrar)) ? String(d.frecuencia_mostrar) : "una_vez_total",
     activo: d.activo !== false,
+    // Botón opcional con enlace al pie del anuncio (migración 20261029110000).
+    boton_url: /^https?:\/\/\S+$/i.test(String(d.boton_url || "")) ? String(d.boton_url).slice(0, 1000) : null,
+    boton_texto: /^https?:\/\//i.test(String(d.boton_url || "")) ? (texto(d.boton_texto, 16) || "VAMOS") : null,
     roles: r,
     // Compatibilidad con la columna vieja (ya no decide nada).
     publico: r.length === 1 && r[0] === "pasajero" ? "pasajeros" : r.length === 1 && r[0] === "conductor" ? "conductores" : "todos",

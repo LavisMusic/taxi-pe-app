@@ -50,6 +50,39 @@ function marcarComoVisto(anuncio) {
 // pasajeros, como antes.
 const ROL_DE_PUBLICO = { pasajeros: "pasajero", conductores: "conductor", recolectores: "recolector" };
 
+// Con sesión, lo visto es por PERSONA (anuncios_vistos): "Una sola vez" no
+// vuelve a salir en otro navegador ni en una ventana privada, y
+// "Programado (una vez al día)" sale cada 24 h hasta su fecha de fin. Sin
+// sesión, por navegador como antes.
+async function vistosDeLaPersona(ids) {
+  const { data: sesion } = await supabase.auth.getSession();
+  const uid = sesion?.session?.user?.id;
+  if (!uid || ids.length === 0) return null;
+  const { data, error } = await supabase.from("anuncios_vistos").select("anuncio_id, visto_at").in("anuncio_id", ids);
+  if (error) return null;
+  return Object.fromEntries((data || []).map((v) => [v.anuncio_id, new Date(v.visto_at).getTime()]));
+}
+
+function tocaMostrarA(anuncio, vistos) {
+  if (!vistos) return tocaMostrar(anuncio);
+  const visto = vistos[anuncio.id];
+  if (anuncio.frecuencia_mostrar === "una_vez_total") return !visto;
+  if (anuncio.frecuencia_mostrar === "una_vez_dia") return !visto || Date.now() - visto >= VEINTICUATRO_HORAS_MS;
+  return true;
+}
+
+// Se llama apenas el anuncio se ve en pantalla (no al cerrarlo: si la
+// persona se va sin cerrar, igual cuenta como visto).
+async function registrarVisto(anuncio) {
+  marcarComoVisto(anuncio);
+  const { data: sesion } = await supabase.auth.getSession();
+  if (!sesion?.session?.user?.id) return;
+  await supabase
+    .from("anuncios_vistos")
+    .upsert({ anuncio_id: anuncio.id, visto_at: new Date().toISOString() }, { onConflict: "anuncio_id,usuario_id" })
+    .then(() => {}, () => {});
+}
+
 export function useAnuncioActivo(publico = "pasajeros") {
   // Todos los que tocan ahora (carrusel, AnuncioPopupModal `anuncios`).
   const [anuncios, setAnuncios] = useState([]);
@@ -68,7 +101,7 @@ export function useAnuncioActivo(publico = "pasajeros") {
         const consultar = (filtro) => {
           let q = supabase
             .from("anuncios")
-            .select("id, titulo, descripcion, imagen_url, video_url, fecha_inicio, fecha_fin, frecuencia_mostrar, orden")
+            .select("id, titulo, descripcion, imagen_url, video_url, boton_url, boton_texto, fecha_inicio, fecha_fin, frecuencia_mostrar, orden")
             .eq("activo", true)
             .or(`fecha_inicio.is.null,fecha_inicio.lte.${ahora}`)
             .or(`fecha_fin.is.null,fecha_fin.gte.${ahora}`)
@@ -82,7 +115,10 @@ export function useAnuncioActivo(publico = "pasajeros") {
         if (error) ({ data, error } = await consultar("publico"));
 
         if (cancelado) return;
-        setAnuncios(error || !data ? [] : data.filter((a) => tocaMostrar(a)));
+        const lista = error || !data ? [] : data;
+        const vistos = await vistosDeLaPersona(lista.map((a) => a.id));
+        if (cancelado) return;
+        setAnuncios(lista.filter((a) => tocaMostrarA(a, vistos)));
       } catch {
         if (!cancelado) setAnuncios([]);
       }
@@ -93,11 +129,8 @@ export function useAnuncioActivo(publico = "pasajeros") {
     };
   }, [publico]);
 
-  // Cerrar el carrusel cuenta como visto para todos los que mostró.
-  const cerrar = () => {
-    anuncios.forEach(marcarComoVisto);
-    setAnuncios([]);
-  };
+  const cerrar = () => setAnuncios([]);
 
-  return { anuncio: anuncios[0] ?? null, anuncios, loading, cerrar };
+  // `alVer`: para AnuncioPopupModal (cada anuncio del carrusel al mostrarse).
+  return { anuncio: anuncios[0] ?? null, anuncios, loading, cerrar, alVer: registrarVisto };
 }

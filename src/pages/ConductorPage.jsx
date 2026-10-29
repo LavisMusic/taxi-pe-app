@@ -84,7 +84,7 @@ export default function ConductorPage() {
   // Texto bajo el logo: el nombre y después las descripciones del Admin
   // para conductores; y los anuncios para conductores (o para ambos).
   const descripcionesConductor = useDescripcionesPublico("conductores");
-  const { anuncio, anuncios, cerrar: cerrarAnuncio } = useAnuncioActivo("conductores");
+  const { anuncio, anuncios, cerrar: cerrarAnuncio, alVer: alVerAnuncio } = useAnuncioActivo("conductores");
   // Panel de Categorías e Íconos: la propia categoría del conductor —
   // el mismo ícono que ya se ve en RadarGlobal.jsx ahora también en el
   // mapa interno de SU bandeja de chats (ConductorChatInboxModal.jsx).
@@ -870,7 +870,7 @@ export default function ConductorPage() {
         </div>
       )}
 
-      {anuncio && !mostrarBienvenida && <AnuncioPopupModal anuncios={anuncios} onClose={cerrarAnuncio} canalChat="taxipe" />}
+      {anuncio && !mostrarBienvenida && <AnuncioPopupModal alVer={alVerAnuncio} anuncios={anuncios} onClose={cerrarAnuncio} canalChat="taxipe" />}
     </div>
   );
 }

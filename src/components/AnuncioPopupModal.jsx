@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 import { toYoutubeEmbedUrl } from "../lib/youtube";
 import TextoConEnlaces from "./TextoConEnlaces";
 
@@ -27,7 +27,17 @@ import TextoConEnlaces from "./TextoConEnlaces";
 // `anuncios`: todos los que tocan ahora → carrusel con flechas a los lados
 // (y deslizando en el celular), puntos abajo y un cambio con
 // deslizamiento suave. Sin él, el `anuncio` suelto de siempre.
-export default function AnuncioPopupModal({ anuncio: anuncioSuelto, anuncios = null, onClose, canalChat = null, alTocar: alTocarProp = null }) {
+// `alVer(anuncio)`: cada anuncio apenas se muestra (cuenta como visto,
+// useAnuncioActivo). Si el anuncio trae `boton_url`, un botón al pie
+// (centrado, con margen) abre ese enlace en otra pestaña.
+export default function AnuncioPopupModal({
+  anuncio: anuncioSuelto,
+  anuncios = null,
+  onClose,
+  canalChat = null,
+  alTocar: alTocarProp = null,
+  alVer = null,
+}) {
   const lista = anuncios?.length ? anuncios : anuncioSuelto ? [anuncioSuelto] : [];
   const [indice, setIndice] = useState(0);
   const [direccion, setDireccion] = useState(0); // -1 anterior, 1 siguiente
@@ -40,6 +50,11 @@ export default function AnuncioPopupModal({ anuncio: anuncioSuelto, anuncios = n
   };
   const deslizar = useRef(null);
   const alTocar = typeof alTocarProp === "function" ? (anuncio ? alTocarProp(anuncio) : null) : alTocarProp;
+  const alVerRef = useRef(alVer);
+  alVerRef.current = alVer;
+  useEffect(() => {
+    if (anuncio) alVerRef.current?.(anuncio);
+  }, [anuncio?.id]);
   const [esVertical, setEsVertical] = useState(false);
   // `terminado` ya NO controla si la "X" existe (ver el bug reportado:
   // el usuario debe poder cerrar el anuncio cuando quiera) — solo
@@ -238,8 +253,21 @@ export default function AnuncioPopupModal({ anuncio: anuncioSuelto, anuncios = n
             </div>
           )}
         </div>
+        {anuncio.boton_url && (
+          <div className={`tz-anuncio-boton-pie ${soloMultimedia ? "is-encima" : ""}`}>
+            <a
+              className="tz-anuncio-boton"
+              href={anuncio.boton_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {anuncio.boton_texto || "VAMOS"} <ExternalLink size={15} />
+            </a>
+          </div>
+        )}
         {varios && (
-          <div className="tz-anuncio-puntos" aria-hidden="true">
+          <div className={`tz-anuncio-puntos ${anuncio.boton_url && soloMultimedia ? "is-arriba" : ""}`} aria-hidden="true">
             {lista.map((a, i) => (
               <span key={a.id} className={i === indice ? "is-activo" : ""} />
             ))}
