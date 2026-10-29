@@ -73,8 +73,9 @@ const TEXTO = {
 };
 
 // `children`: lo que va a la derecha del campo (ej. el botón Guardar).
-export default function CampoUsuario({ campo, id = "campo-usuario", children }) {
-  const texto = TEXTO[campo.estado];
+// `bloqueadoHasta` (texto de fecha): ya lo cambió esta semana — no se edita.
+export default function CampoUsuario({ campo, id = "campo-usuario", children, bloqueadoHasta = null }) {
+  const texto = bloqueadoHasta ? `Ya lo cambiaste esta semana: podrás cambiarlo de nuevo el ${bloqueadoHasta}.` : TEXTO[campo.estado];
   return (
     <>
       <label className="tz-field-label" htmlFor={id}>Nombre de usuario</label>
@@ -91,12 +92,13 @@ export default function CampoUsuario({ campo, id = "campo-usuario", children }) 
             spellCheck={false}
             placeholder={campo.estado === "sugiriendo" ? "…" : "tu.usuario"}
             onChange={(e) => campo.cambiar(e.target.value)}
+            disabled={!!bloqueadoHasta}
           />
         </span>
         {children}
       </div>
       {texto && (
-        <p key={campo.estado} className={`tz-perfil-usuario-estado is-${campo.estado}`}>
+        <p key={bloqueadoHasta ? "bloqueado" : campo.estado} className={`tz-perfil-usuario-estado is-${bloqueadoHasta ? "invalido" : campo.estado}`}>
           {campo.estado === "sugerido" && <Sparkles size={12} />} {texto}
         </p>
       )}

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../supabaseClient";
 import {
   LogOut,
   Pencil,
@@ -40,7 +39,7 @@ import {
 } from "../lib/taxiEnums";
 import { formatDate, formatSoles } from "../utils/format";
 import Styles from "../components/Styles";
-import PerfilModal from "../components/PerfilModal";
+import PerfilConductorModal from "../components/PerfilConductorModal";
 import ConductorPublicCard from "../components/ConductorPublicCard";
 import ConductorChatInboxModal from "../components/ConductorChatInboxModal";
 import { useMensajesPlataforma } from "../hooks/useMensajesPlataforma";
@@ -786,26 +785,7 @@ export default function ConductorPage() {
           abre el gestor de imágenes) va a su fila de conductor; el nombre
           de usuario, a su cuenta (usuarios). */}
       {editandoPerfil && conductor && (
-        <PerfilModal
-          fotoUrl={conductor.foto_url}
-          nombre={conductor.nombre}
-          nombreUsuario={usuario?.nombre_usuario}
-          telefono={usuario?.telefono}
-          usuarioId={usuario?.id}
-          storageKey={conductor.id}
-          onGuardarFoto={async (url) => {
-            const { error: e } = await actualizar(conductor.id, { foto_url: url });
-            if (!e) window.dispatchEvent(new CustomEvent("tz-perfil-actualizado", { detail: { conductorId: conductor.id, foto_url: url } }));
-            return !e;
-          }}
-          onGuardarUsuario={async (nombreUsuario) => {
-            const { error: e } = await supabase.from("usuarios").update({ nombre_usuario: nombreUsuario }).eq("id", usuario.id);
-            if (e) return e.code === "23505" ? "Ya lo usa otra persona." : "No se pudo guardar. Intenta de nuevo.";
-            updateUsuario({ nombre_usuario: nombreUsuario });
-            return null;
-          }}
-          onClose={() => setEditandoPerfil(false)}
-        />
+        <PerfilConductorModal conductor={conductor} actualizar={actualizar} onClose={() => setEditandoPerfil(false)} />
       )}
 
       {mensajesOpen && conductor && (

@@ -11,6 +11,9 @@ import { esUsuarioProvisional } from "../lib/nombreUsuario";
 // uno libre).
 //   onGuardarFoto(url)        → Promise<boolean>
 //   onGuardarUsuario(nombre)  → Promise<string | null> (mensaje de error)
+//   usuarioHasta / fotoHasta  → ms hasta cuando no se pueden volver a
+//                               cambiar (una vez por semana; migración
+//                               20261029100000)
 export default function PerfilModal({
   titulo = "Mi perfil",
   fotoUrl,
@@ -21,14 +24,22 @@ export default function PerfilModal({
   storageKey,
   onGuardarFoto,
   onGuardarUsuario,
+  usuarioHasta = null,
+  fotoHasta = null,
   onClose,
 }) {
+  const fecha = (ms) =>
+    ms && ms > Date.now()
+      ? new Date(ms).toLocaleString("es-PE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+      : null;
+  const usuarioBloqueado = fecha(usuarioHasta);
+  const fotoBloqueada = fecha(fotoHasta);
   const campo = useCampoUsuario({ nombre, nombreUsuario, telefono, usuarioId });
   const [editandoFoto, setEditandoFoto] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [aviso, setAviso] = useState("");
   const [error, setError] = useState("");
-  const puedeGuardar = campo.listo && campo.cambio;
+  const puedeGuardar = campo.listo && campo.cambio && !usuarioBloqueado;
 
   const guardarUsuario = async (e) => {
     e.preventDefault();
@@ -50,7 +61,12 @@ export default function PerfilModal({
           <X size={18} />
         </button>
         <h2>{titulo}</h2>
-        <button type="button" className="tz-perfil-pasajero-foto" onClick={() => setEditandoFoto(true)} aria-label="Cambiar foto">
+        <button
+          type="button"
+          className="tz-perfil-pasajero-foto"
+          onClick={() => (fotoBloqueada ? setError(`Ya cambiaste tu foto esta semana: podrás cambiarla de nuevo el ${fotoBloqueada}.`) : setEditandoFoto(true))}
+          aria-label="Cambiar foto"
+        >
           {fotoUrl ? (
             <img src={fotoUrl} alt="" />
           ) : (
@@ -61,7 +77,7 @@ export default function PerfilModal({
           </span>
         </button>
         <form onSubmit={guardarUsuario} className="tz-perfil-pasajero-form">
-          <CampoUsuario campo={campo} id="perfil-usuario">
+          <CampoUsuario campo={campo} id="perfil-usuario" bloqueadoHasta={usuarioBloqueado}>
             <button type="submit" className="tz-scan-btn tz-payment-save" disabled={guardando || !puedeGuardar} aria-label="Guardar nombre de usuario">
               {guardando ? <Loader2 size={16} className="tz-spin" /> : <Check size={16} />}
             </button>

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import PerfilModal from "./PerfilModal";
@@ -8,11 +9,37 @@ import PerfilModal from "./PerfilModal";
 // (usuarios_publicos).
 export default function PerfilPasajeroModal({ onClose }) {
   const { usuario, updateUsuario } = useTaxiAuth();
+  // Último cambio de usuario y de foto (una vez por semana) y lo que hay
+  // en la base: la sesión guardada puede traer un nombre viejo (antes del
+  // nombre de usuario automático).
+  const [cambios, setCambios] = useState({});
+  const leerCambios = () =>
+    supabase
+      .from("usuarios")
+      .select("nombre_usuario, foto_url, nombre_usuario_cambiado_at, foto_cambiada_at")
+      .eq("id", usuario.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setCambios(data);
+        if (data.nombre_usuario !== usuario.nombre_usuario || data.foto_url !== usuario.foto_url) {
+          updateUsuario({ nombre_usuario: data.nombre_usuario, foto_url: data.foto_url });
+        }
+      });
+  useEffect(() => {
+    if (usuario?.id) leerCambios();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuario?.id]);
+  const mas7 = (iso) => (iso ? new Date(iso).getTime() + 7 * 24 * 60 * 60 * 1000 : null);
 
   const guardar = async (patch) => {
     const { error } = await supabase.from("usuarios").update(patch).eq("id", usuario.id);
-    if (error) return error.code === "23505" ? "Ya lo usa otra persona." : "No se pudo guardar. Intenta de nuevo.";
+    if (error) {
+      if (error.code === "23505") return "Ya lo usa otra persona.";
+      return error.code === "42501" ? error.message : "No se pudo guardar. Intenta de nuevo.";
+    }
     updateUsuario(patch);
+    leerCambios();
     // Las demás pantallas abiertas (chat del conductor, etc.) se enteran.
     window.dispatchEvent(new CustomEvent("tz-perfil-actualizado", { detail: { id: usuario.id, ...patch } }));
     return null;
@@ -29,6 +56,8 @@ export default function PerfilPasajeroModal({ onClose }) {
       storageKey={`pasajero-${usuario.id}`}
       onGuardarFoto={async (url) => !(await guardar({ foto_url: url }))}
       onGuardarUsuario={(nombreUsuario) => guardar({ nombre_usuario: nombreUsuario })}
+      usuarioHasta={mas7(cambios.nombre_usuario_cambiado_at)}
+      fotoHasta={mas7(cambios.foto_cambiada_at)}
       onClose={onClose}
     />
   );
