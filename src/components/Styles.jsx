@@ -7641,10 +7641,58 @@ export default function Styles() {
       .tz-chatfijo-video-botones .tz-chatfijo-sonido { position: static; }
       .tz-chatfijo-video-caja.is-youtube .tz-chatfijo-video-botones { top: 8px; bottom: auto; }
       /* Visor aparte del video, con todos los controles (VideoEnChat.jsx). */
-      .tz-video-visor video {
-        max-width: 100%; max-height: 80vh; border-radius: 14px; cursor: default; background: #000; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-        animation: tz-adjunto-foto-in 0.45s cubic-bezier(.34,1.56,.64,1) both;
+      /* Reproductor propio del visor de video (mensajes/ReproductorVideo.jsx):
+         nada del diseño del navegador. */
+      .tz-repro {
+        position: relative; max-width: 100%; border-radius: 14px; overflow: visible; cursor: default; line-height: 0;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.6); animation: tz-adjunto-foto-in 0.45s cubic-bezier(.34,1.56,.64,1) both;
       }
+      .tz-repro video { display: block; max-width: 100%; max-height: 80vh; border-radius: 14px; background: #000; cursor: pointer; }
+      .tz-repro.is-oculto, .tz-repro.is-oculto video { cursor: none; }
+      .tz-repro.is-completa { display: flex; align-items: center; justify-content: center; width: 100vw; height: 100vh; max-width: none; border-radius: 0; background: #000; }
+      .tz-repro.is-completa video { width: 100%; height: 100%; max-height: none; object-fit: contain; border-radius: 0; }
+      .tz-repro-grande {
+        position: absolute; left: 50%; top: 50%; width: 68px; height: 68px; margin: -34px 0 0 -34px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center; cursor: pointer; color: #04121a;
+        border: none; background: var(--cyan); box-shadow: 0 0 28px var(--cyan);
+        animation: tz-entrada-menu-in 0.45s cubic-bezier(.34,1.56,.64,1) both;
+        transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
+      }
+      .tz-repro-grande:hover { transform: scale(1.1); }
+      .tz-repro-grande svg { margin-left: 4px; }
+      .tz-repro-controles {
+        position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 12px 10px; line-height: normal; color: #fff;
+        border-radius: 0 0 14px 14px; background: linear-gradient(to top, rgba(0,0,0,0.78), rgba(0,0,0,0));
+        transition: opacity 0.35s ease, transform 0.35s cubic-bezier(.22,.9,.3,1);
+      }
+      .tz-repro.is-completa .tz-repro-controles { border-radius: 0; padding: 40px 24px 18px; }
+      .tz-repro.is-oculto .tz-repro-controles { opacity: 0; transform: translateY(10px); pointer-events: none; }
+      .tz-repro-barra { position: relative; height: 18px; cursor: pointer; touch-action: none; }
+      .tz-repro-barra::before {
+        content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 4px; margin-top: -2px; border-radius: 999px; background: rgba(255,255,255,0.3);
+      }
+      .tz-repro-barra-relleno {
+        position: absolute; left: 0; top: 50%; height: 4px; margin-top: -2px; border-radius: 999px;
+        background: var(--cyan); box-shadow: 0 0 8px var(--cyan);
+      }
+      .tz-repro-barra-punto {
+        position: absolute; top: 50%; width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; border-radius: 50%;
+        background: var(--cyan); box-shadow: 0 0 10px var(--cyan); transition: transform 0.2s cubic-bezier(.34,1.56,.64,1);
+      }
+      .tz-repro-barra:hover .tz-repro-barra-punto { transform: scale(1.3); }
+      .tz-repro-fila { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+      .tz-repro-espacio { flex: 1; }
+      .tz-repro-tiempo { font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; margin-left: 4px; }
+      .tz-repro-tiempo b { color: var(--cyan); }
+      .tz-repro-btn {
+        flex: 0 0 36px; width: 36px; height: 36px; border-radius: 999px; padding: 0; cursor: pointer; color: #fff;
+        display: flex; align-items: center; justify-content: center; border: none; background: rgba(255,255,255,0.14);
+        transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), background 0.2s, color 0.2s, box-shadow 0.2s;
+      }
+      .tz-repro-btn:hover { transform: scale(1.1); background: rgba(255,255,255,0.26); }
+      .tz-repro-btn.is-activo { background: var(--cyan); color: #04121a; box-shadow: 0 0 14px var(--cyan); }
+      .tz-repro-mas-caja { position: relative; display: flex; }
+      .tz-repro-menu { right: 0; left: auto; bottom: calc(100% + 12px); transform-origin: 90% 100%; }
       .tz-video-visor-yt {
         width: min(94vw, 960px); aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; cursor: default; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
         animation: tz-adjunto-foto-in 0.45s cubic-bezier(.34,1.56,.64,1) both;

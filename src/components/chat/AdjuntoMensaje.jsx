@@ -44,7 +44,7 @@ export default function AdjuntoMensaje({ texto, children, claseBurbuja = "" }) {
       </button>
       {abierta &&
         createPortal(
-          <div className="tz-adjunto-visor" onClick={() => setAbierta(false)}>
+          <div className="tz-adjunto-visor tz-portal" onClick={() => setAbierta(false)}>
             <img src={adjunto.url} alt="" onClick={(e) => e.stopPropagation()} />
             <div className="tz-adjunto-visor-acciones" onClick={(e) => e.stopPropagation()}>
               <button type="button" className="tz-entrada-menu-btn" onClick={descargar} disabled={bajando}>

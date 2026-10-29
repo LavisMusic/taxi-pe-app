@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Play, Pause, Download, Gauge } from "lucide-react";
 import { minSeg } from "../../lib/adjuntosChat";
+import { useAvanceFluido } from "../../lib/avanceFluido";
 
 // Nota de voz dentro del chat: una píldora con el color de las burbujas del
 // tema (`claseBurbuja`: las mismas clases que la burbuja de ese chat), sin
@@ -8,6 +9,7 @@ import { minSeg } from "../../lib/adjuntosChat";
 // tocar y arrastrar) y el tiempo. Manteniéndola presionada se despliega el
 // menú (Descargar / Velocidad), con el mismo diseño que "Subir foto".
 // `duracion` viene del mensaje: las grabaciones webm no traen su duración.
+// La barra avanza a la frecuencia de la pantalla (lib/avanceFluido).
 const VELOCIDADES = [1, 1.5, 2];
 const MANTENER_MS = 480;
 
@@ -21,6 +23,14 @@ export default function NotaDeVoz({ url, duracion = 0, claseBurbuja = "" }) {
   const [menu, setMenu] = useState(false);
   const mantener = useRef(null);
   const arrastrando = useRef(false);
+  const rellenoRef = useRef(null);
+  const puntoRef = useRef(null);
+
+  const pintar = (f) => {
+    if (rellenoRef.current) rellenoRef.current.style.width = `${f * 100}%`;
+    if (puntoRef.current) puntoRef.current.style.left = `${f * 100}%`;
+  };
+  useAvanceFluido(audioRef, (f) => !arrastrando.current && pintar(f), { activo: sonando, duracion: total });
 
   useEffect(() => {
     if (!menu) return undefined;
@@ -45,6 +55,7 @@ export default function NotaDeVoz({ url, duracion = 0, claseBurbuja = "" }) {
     const p = Math.min(1, Math.max(0, (clientX - barra.left) / barra.width));
     a.currentTime = p * total;
     setActual(p * total);
+    pintar(p);
   };
 
   const empezarMantener = () => {
@@ -76,8 +87,6 @@ export default function NotaDeVoz({ url, duracion = 0, claseBurbuja = "" }) {
     if (audioRef.current) audioRef.current.playbackRate = sig;
   };
 
-  const progreso = total ? Math.min(1, actual / total) : 0;
-
   return (
     <div
       className={`tz-nota ${claseBurbuja} ${sonando ? "is-sonando" : ""}`}
@@ -96,9 +105,11 @@ export default function NotaDeVoz({ url, duracion = 0, claseBurbuja = "" }) {
         preload="metadata"
         onPlay={() => setSonando(true)}
         onPause={() => setSonando(false)}
-        onEnded={() => {
+        onEnded={(e) => {
           setSonando(false);
           setActual(0);
+          e.currentTarget.currentTime = 0;
+          pintar(0);
         }}
         onTimeUpdate={(e) => !arrastrando.current && setActual(e.currentTarget.currentTime)}
         onLoadedMetadata={(e) => {
@@ -124,8 +135,8 @@ export default function NotaDeVoz({ url, duracion = 0, claseBurbuja = "" }) {
           arrastrando.current = false;
         }}
       >
-        <span className="tz-nota-barra-relleno" style={{ width: `${progreso * 100}%` }} />
-        <span className="tz-nota-barra-punto" style={{ left: `${progreso * 100}%` }} />
+        <span ref={rellenoRef} className="tz-nota-barra-relleno" style={{ width: 0 }} />
+        <span ref={puntoRef} className="tz-nota-barra-punto" style={{ left: 0 }} />
       </div>
       <span className="tz-nota-tiempo">
         {velocidad !== 1 && <b>{velocidad}×</b>} {minSeg(sonando || actual ? actual : total)}

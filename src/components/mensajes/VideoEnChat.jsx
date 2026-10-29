@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Maximize2, Volume2, VolumeX, X } from "lucide-react";
 import { toYoutubeEmbedUrl } from "../../lib/youtube";
 import BarraAvance from "../BarraAvance";
+import ReproductorVideo from "./ReproductorVideo";
 
 // Video de un mensaje dentro del chat (fijados "Taxi PE" / "Tonazo"): se
 // reproduce solo apenas se ve en pantalla y se pausa al salir. Arranca sin
@@ -104,20 +105,21 @@ export default function VideoEnChat({ url, titulo }) {
   );
 }
 
-// Visor aparte: el video con todos sus controles (play, barra, volumen,
-// pantalla completa, ventana flotante…) y con sonido.
+// Visor aparte: el video con sonido y todos sus controles, con el
+// reproductor propio (nada del diseño del navegador). YouTube trae los suyos.
 function VisorVideo({ url, embed, titulo, desde, onCerrar }) {
   const ref = useRef(null);
   const cerrar = () => onCerrar(ref.current?.currentTime);
 
   useEffect(() => {
-    const alTeclado = (e) => e.key === "Escape" && cerrar();
+    // En pantalla completa, Escape solo sale de ella.
+    const alTeclado = (e) => e.key === "Escape" && !document.fullscreenElement && cerrar();
     window.addEventListener("keydown", alTeclado);
     return () => window.removeEventListener("keydown", alTeclado);
   });
 
   return createPortal(
-    <div className="tz-adjunto-visor tz-video-visor" onClick={cerrar}>
+    <div className="tz-adjunto-visor tz-video-visor tz-portal" onClick={cerrar}>
       {embed ? (
         <div className="tz-video-visor-yt" onClick={(e) => e.stopPropagation()}>
           <iframe
@@ -128,17 +130,7 @@ function VisorVideo({ url, embed, titulo, desde, onCerrar }) {
           />
         </div>
       ) : (
-        <video
-          ref={ref}
-          src={url}
-          controls
-          autoPlay
-          playsInline
-          onClick={(e) => e.stopPropagation()}
-          onLoadedMetadata={(e) => {
-            if (desde) e.currentTarget.currentTime = desde;
-          }}
-        />
+        <ReproductorVideo url={url} desde={desde} videoRef={ref} />
       )}
       <div className="tz-adjunto-visor-acciones" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="tz-entrada-menu-btn" onClick={cerrar} aria-label="Cerrar">

@@ -28,14 +28,14 @@ function previa(c) {
 // Mensajes del cliente en Caja (foto, último mensaje, hora y no leídos;
 // `conductores`: [{ id, nombre, foto_url, ultimo, noLeidos, enViaje,
 // terminado }]; tocar uno cierra Mensajes y abre ese chat con
-// `onAbrirConductor`). Al pasajero no se le muestra ningún negocio: solo el
-// fijado "Taxi PE" y sus conductores. El conductor ve los fijados dentro de
-// su bandeja de chats.
+// `onAbrirConductor`). Pasajero y recolector solo tienen el fijado "Taxi PE"
+// (ni "Tonazo" ni negocios); el pasajero además sus conductores. El
+// conductor ve los fijados dentro de su bandeja de chats.
+const CANALES_VISIBLES = ["taxipe"];
 export default function BotonMensajes({ usuarioId, conductores = [], onAbrirConductor = null }) {
   const datos = useMensajesPlataforma(usuarioId);
-  const esPasajero = !!onAbrirConductor;
-  const canalesVisibles = esPasajero ? ["taxipe"] : null;
-  const noLeidosFijados = (canalesVisibles ?? Object.keys(datos.canales)).reduce(
+  const canalesVisibles = CANALES_VISIBLES;
+  const noLeidosFijados = canalesVisibles.reduce(
     (s, c) => s + (datos.canales[c]?.noLeidos || 0),
     0
   );
@@ -45,7 +45,7 @@ export default function BotonMensajes({ usuarioId, conductores = [], onAbrirCond
   // Tocar una notificación emergente abre Mensajes en ese chat.
   useAbrirMensajesDesdeAviso((c) => {
     setAbierto(true);
-    setCanal(c);
+    setCanal(canalesVisibles.includes(c) ? c : null);
   }, !!usuarioId);
 
   const cerrar = () => {
