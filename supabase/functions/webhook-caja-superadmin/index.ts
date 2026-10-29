@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
     case "mensajes.listar": {
       const { data, error } = await db
         .from("mensajes_plataforma")
-        .select("id, canal, titulo, mensaje, roles, programado_para, vence_at, created_at")
+        .select("id, canal, titulo, mensaje, imagen_url, video_url, roles, programado_para, vence_at, created_at")
         .order("created_at", { ascending: false })
         .limit(300);
       if (error) return jsonResponse(500, { error: error.message });
@@ -78,9 +78,11 @@ Deno.serve(async (req) => {
       const id = uuid(d.id);
       const r = roles(d.roles);
       const mensaje = texto(d.mensaje, 2000);
-      // Con video el texto es opcional (migración 20261029130000).
+      // Con imagen o video (subido o de YouTube) el texto es opcional
+      // (migraciones 20261029130000 y 20261029140000).
       const videoUrl = /^https:\/\/\S+$/i.test(String(d.video_url || "")) ? String(d.video_url).slice(0, 1000) : null;
-      if (!id || !CANALES.includes(String(d.canal)) || (!mensaje && !videoUrl) || r.length === 0) {
+      const imagenUrl = /^https:\/\/\S+$/i.test(String(d.imagen_url || "")) ? String(d.imagen_url).slice(0, 1000) : null;
+      if (!id || !CANALES.includes(String(d.canal)) || (!mensaje && !videoUrl && !imagenUrl) || r.length === 0) {
         return jsonResponse(400, { error: "datos inválidos" });
       }
       const { error } = await db.from("mensajes_plataforma").insert({
@@ -89,6 +91,7 @@ Deno.serve(async (req) => {
         titulo: texto(d.titulo, 200),
         mensaje: mensaje ?? "",
         video_url: videoUrl,
+        imagen_url: imagenUrl,
         roles: r,
         programado_para: fecha(d.programado_para) ?? new Date().toISOString(),
         vence_at: fecha(d.vence_at),
@@ -142,6 +145,22 @@ Deno.serve(async (req) => {
         if (error) return jsonResponse(500, { error: error.message });
       }
       return jsonResponse(200, { ok: true });
+    }
+    // Limpieza diaria (Edge Function limpiar-anuncios de Caja): borra los
+    // anuncios que ya caducaron y devuelve las imágenes/videos que se siguen
+    // usando acá (anuncios y notificaciones), para que Caja borre del
+    // almacenamiento solo lo que nadie usa.
+    case "anuncios.limpiar": {
+      const ahora = new Date().toISOString();
+      const { error: errBorrar } = await db.from("anuncios").delete().lt("fecha_fin", ahora);
+      if (errBorrar) return jsonResponse(500, { error: errBorrar.message });
+      const [a, m] = await Promise.all([
+        db.from("anuncios").select("imagen_url, video_url"),
+        db.from("mensajes_plataforma").select("imagen_url, video_url"),
+      ]);
+      if (a.error || m.error) return jsonResponse(500, { error: (a.error || m.error)!.message });
+      const urls = [...(a.data ?? []), ...(m.data ?? [])].flatMap((f) => [f.imagen_url, f.video_url]).filter(Boolean);
+      return jsonResponse(200, { ok: true, urls });
     }
     case "anuncios.eliminar": {
       const id = uuid(d.id);

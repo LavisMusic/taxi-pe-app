@@ -47,10 +47,10 @@ export default function AdjuntoMensaje({ texto, children, claseBurbuja = "" }) {
           <div className="tz-adjunto-visor" onClick={() => setAbierta(false)}>
             <img src={adjunto.url} alt="" onClick={(e) => e.stopPropagation()} />
             <div className="tz-adjunto-visor-acciones" onClick={(e) => e.stopPropagation()}>
-              <button type="button" onClick={descargar} disabled={bajando}>
+              <button type="button" className="tz-entrada-menu-btn" onClick={descargar} disabled={bajando}>
                 <Download size={17} /> {bajando ? "Descargando…" : "Descargar"}
               </button>
-              <button type="button" onClick={() => setAbierta(false)} aria-label="Cerrar">
+              <button type="button" className="tz-entrada-menu-btn" onClick={() => setAbierta(false)} aria-label="Cerrar">
                 <X size={17} />
               </button>
             </div>

@@ -39,7 +39,9 @@ export function FilasChatsFijados({ canales, onAbrir, soloCanales = null }) {
               {info.nombre} <Pin size={11} className="tz-chatfijo-pin" aria-label="Fijado" />
             </span>
             <span className="tz-chatfijo-preview">
-              {ultimo ? ultimo.titulo || ultimo.mensaje || "📢 Anuncio" : "Sin mensajes todavía"}
+              {ultimo
+                ? ultimo.titulo || ultimo.mensaje || (ultimo.video_url ? "🎬 Video" : ultimo.imagen_url ? "📷 Imagen" : "📢 Anuncio")
+                : "Sin mensajes todavía"}
             </span>
           </span>
           <span className="tz-chatfijo-meta">

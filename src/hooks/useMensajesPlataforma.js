@@ -50,12 +50,16 @@ export function useMensajesPlataforma(usuarioId) {
 
   const cargar = useCallback(async () => {
     if (!usuarioId) return;
+    // Si a la base le falta una columna nueva (migración sin correr), igual
+    // se cargan los mensajes con las columnas de siempre.
+    const traerMensajes = async () => {
+      const consulta = (columnas) =>
+        supabase.from("mensajes_plataforma").select(columnas).order("programado_para", { ascending: true }).limit(300);
+      const r = await consulta("id, canal, titulo, mensaje, imagen_url, video_url, programado_para");
+      return r.error ? consulta("id, canal, titulo, mensaje, programado_para") : r;
+    };
     const [msj, lei, usu] = await Promise.all([
-      supabase
-        .from("mensajes_plataforma")
-        .select("id, canal, titulo, mensaje, video_url, programado_para")
-        .order("programado_para", { ascending: true })
-        .limit(300),
+      traerMensajes(),
       supabase.from("mensajes_plataforma_leidos").select("canal, leido_hasta"),
       supabase.from("usuarios").select("notificaciones_activas, rol").eq("id", usuarioId).maybeSingle(),
     ]);

@@ -80,7 +80,7 @@ export default function NotaDeVoz({ url, duracion = 0, claseBurbuja = "" }) {
 
   return (
     <div
-      className={`tz-nota ${claseBurbuja}`}
+      className={`tz-nota ${claseBurbuja} ${sonando ? "is-sonando" : ""}`}
       onPointerDown={empezarMantener}
       onPointerUp={soltarMantener}
       onPointerLeave={soltarMantener}

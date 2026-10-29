@@ -7410,6 +7410,11 @@ export default function Styles() {
         position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%;
         background: currentColor; box-shadow: 0 0 8px rgba(255,255,255,0.5);
       }
+      /* Sonando: botón y barra con el color principal del tema del negocio. */
+      .tz-nota-barra-relleno, .tz-nota-barra-punto { transition: background 0.3s, box-shadow 0.3s; }
+      .tz-nota.is-sonando .tz-nota-play { background: var(--cyan); color: #04121a; box-shadow: 0 0 14px var(--cyan); }
+      .tz-nota.is-sonando .tz-nota-barra-relleno { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+      .tz-nota.is-sonando .tz-nota-barra-punto { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
       .tz-nota-tiempo { flex-shrink: 0; font-size: 12px; font-weight: 700; opacity: 0.85; font-variant-numeric: tabular-nums; }
       .tz-nota-tiempo b { margin-right: 2px; }
       .tz-nota-menu { right: auto; left: 0; display: flex; flex-direction: column; gap: 6px; transform-origin: 10% 100%; }
@@ -7429,10 +7434,11 @@ export default function Styles() {
       }
       @keyframes tz-adjunto-foto-in { from { opacity: 0; transform: scale(0.85); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
       .tz-adjunto-visor-acciones { display: flex; gap: 10px; cursor: default; }
-      .tz-adjunto-visor-acciones button {
-        display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 999px; cursor: pointer; font: inherit; font-weight: 700;
-        border: 1px solid #2be8ff; background: linear-gradient(135deg, #0e5f74, #3d2391); color: #fff;
-      }
+      /* Descargar y X del visor: mismos botones (y entrada con resorte) que
+         Subir foto / Descargar del chat. */
+      .tz-adjunto-visor-acciones .tz-entrada-menu-btn { animation: tz-entrada-menu-in 0.5s cubic-bezier(.34,1.56,.64,1) 0.12s both; }
+      .tz-adjunto-visor-acciones .tz-entrada-menu-btn + .tz-entrada-menu-btn { animation-delay: 0.2s; }
+      .tz-adjunto-visor-acciones .tz-entrada-menu-btn:disabled { cursor: default; opacity: 0.8; }
       .tz-adjunto-visor-nota { margin: 0; font-size: 12px; color: rgba(255,255,255,0.65); text-align: center; }
       /* Caras en los chats (personas y tiendas): la foto sola, sin marco ni
          fondo, como los logos de Taxi PE y Tonazo; sin foto, solo el sticker. */
@@ -7623,15 +7629,33 @@ export default function Styles() {
       .tz-chatfijo-burbuja strong { display: block; margin-bottom: 3px; color: var(--cyan); }
       .tz-enlace { color: var(--cyan); text-decoration: underline; word-break: break-all; }
       .tz-anuncio-media-tocable { cursor: pointer; }
-      .tz-chatfijo-media { display: block; width: 100%; max-height: 320px; object-fit: contain; border-radius: 10px; margin-bottom: 6px; background: #000; }
+      /* Imagen o video del mensaje con su resolución original: sin estirar ni
+         franjas negras (un video vertical se ve vertical). */
+      .tz-chatfijo-media { display: block; width: auto; height: auto; max-width: 100%; max-height: 360px; border-radius: 10px; margin-bottom: 6px; }
       /* Video de un anuncio en el chat: se reproduce solo al verse, sin
          sonido, con el botón para activarlo (VideoEnChat.jsx). */
-      .tz-chatfijo-video-caja { position: relative; margin-bottom: 6px; }
+      .tz-chatfijo-video-caja { position: relative; max-width: 100%; margin-bottom: 6px; border-radius: 14px; overflow: hidden; line-height: 0; }
+      .tz-chatfijo-video-caja video { cursor: zoom-in; }
+      .tz-chatfijo-video-caja .tz-anuncio-progreso-track { height: 3px; }
+      .tz-chatfijo-video-botones { position: absolute; right: 8px; bottom: 10px; z-index: 6; display: flex; gap: 6px; line-height: normal; }
+      .tz-chatfijo-video-botones .tz-chatfijo-sonido { position: static; }
+      .tz-chatfijo-video-caja.is-youtube .tz-chatfijo-video-botones { top: 8px; bottom: auto; }
+      /* Visor aparte del video, con todos los controles (VideoEnChat.jsx). */
+      .tz-video-visor video {
+        max-width: 100%; max-height: 80vh; border-radius: 14px; cursor: default; background: #000; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+        animation: tz-adjunto-foto-in 0.45s cubic-bezier(.34,1.56,.64,1) both;
+      }
+      .tz-video-visor-yt {
+        width: min(94vw, 960px); aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; cursor: default; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+        animation: tz-adjunto-foto-in 0.45s cubic-bezier(.34,1.56,.64,1) both;
+      }
+      .tz-video-visor-yt iframe { width: 100%; height: 100%; border: 0; }
       /* Chat fijo: la imagen/video de un mensaje va sola (sin el cuadro) y el
          texto en su burbuja debajo. */
       .tz-chatfijo-item { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; max-width: 88%; }
       .tz-chatfijo-item > .tz-chatfijo-burbuja { max-width: 100%; }
-      .tz-chatfijo-item > .tz-chatfijo-video-caja, .tz-chatfijo-media-suelta { width: 100%; margin: 0; border-radius: 14px; }
+      .tz-chatfijo-item > .tz-chatfijo-video-caja, .tz-chatfijo-media-suelta { margin: 0; border-radius: 14px; }
+      .tz-chatfijo-item > .tz-chatfijo-video-caja.is-youtube { width: 100%; }
       .tz-chatfijo-video-caja .tz-chatfijo-media, .tz-chatfijo-video-caja .tz-chatfijo-video { margin-bottom: 0; }
       .tz-chatfijo-sonido {
         position: absolute; right: 8px; bottom: 8px; z-index: 2; width: 32px; height: 32px; border-radius: 999px;
