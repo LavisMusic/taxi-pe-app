@@ -10,6 +10,7 @@ import { guardarNombreUsuario } from "../lib/nombreUsuario";
 import { useCategoriasPublicas } from "../hooks/useCategoriasPublicas";
 import { useLocalidades } from "../hooks/useLocalidades";
 import { esEdadValida, SEXOS, NIVELES_SERVICIO, NIVEL_SERVICIO_ECONOMICO } from "../lib/taxiEnums";
+import CampoCodigoActivacion, { codigoCompleto } from "./CampoCodigoActivacion";
 
 // Las mismas 3 fotos obligatorias que RegistroConductorForm.jsx (mismo
 // criterio: sin "Mejorar con IA", son evidencia que revisa el Admin).
@@ -52,6 +53,7 @@ export default function VerificarConductorForm({ usuario, conductor = null, onVe
   const [fotoKey] = useState(() => `conductor-${Date.now()}-${Math.round(Math.random() * 1e6)}`);
   const [nuevoPin, setNuevoPin] = useState("");
   const [confirmarNuevoPin, setConfirmarNuevoPin] = useState("");
+  const [codigo, setCodigo] = useState("");
   const [error, setError] = useState("");
 
   // Lo que ya dio (vehículo en su panel, localidad en el registro) no se
@@ -89,6 +91,7 @@ export default function VerificarConductorForm({ usuario, conductor = null, onVe
     if (!fotoPerfilUrl) return setError("La foto de perfil es obligatoria.");
     if (faltanFotos) return setError("Las 3 fotos de verificación (general, interior y tú con tu DNI) son obligatorias.");
     if (!tienePin) {
+      if (!codigoCompleto(codigo)) return setError("Escribe el código de activación de 6 caracteres que te dieron.");
       if (!/^\d{6}$/.test(nuevoPin)) return setError("El PIN debe tener 6 dígitos.");
       if (nuevoPin !== confirmarNuevoPin) return setError("Los PIN no coinciden.");
     }
@@ -112,6 +115,7 @@ export default function VerificarConductorForm({ usuario, conductor = null, onVe
       fotoUrl: fotoPerfilUrl,
       ...fotos,
       pin: tienePin ? null : nuevoPin,
+      codigo: tienePin ? null : codigo,
     });
     if (!actualizado) {
       setError(message);
@@ -290,6 +294,7 @@ export default function VerificarConductorForm({ usuario, conductor = null, onVe
 
         {!tienePin && (
           <>
+            <CampoCodigoActivacion value={codigo} onChange={setCodigo} />
             <label className="tz-field-label" htmlFor="verif-pin">
               Crea tu PIN (6 dígitos)
             </label>

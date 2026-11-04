@@ -32,14 +32,38 @@ export async function loginConPin(telefono, pin, roles) {
   return conSesion(data);
 }
 
-// Primer PIN de una cuenta que nació sin uno. `datos` (opcional) guarda a
-// la vez los datos de verificación (nombre, apellido, edad, sexo,
-// estado_verificacion, expira_en). Devuelve { estado, usuario }: 'ok' |
-// 'ya_tiene_pin' | 'no_existe'.
-export async function crearPin(usuarioId, pin, datos = null) {
-  const { data, error } = await supabase.rpc("taxi_crear_pin", { p_usuario_id: usuarioId, p_pin: pin, p_datos: datos });
+// Primer PIN de una cuenta que nació sin uno. Exige el código de
+// activación de un solo uso que generó el Admin o el recolector (antes
+// bastaba el id de la cuenta). `datos` (opcional) guarda a la vez los
+// datos de verificación; la base decide el estado de verificación.
+// Devuelve { estado, usuario }: 'ok' | 'ya_tiene_pin' | 'no_existe' |
+// 'requiere_codigo' | 'codigo_invalido' | 'codigo_vencido' |
+// 'codigo_bloqueado' | 'pin_invalido' | 'dni_duplicado' | 'ruc_invalido'.
+export async function crearPin(usuarioId, pin, datos = null, codigo = null) {
+  const { data, error } = await supabase.rpc("taxi_crear_pin", {
+    p_usuario_id: usuarioId,
+    p_pin: pin,
+    p_datos: datos,
+    p_codigo: codigo,
+  });
   if (error) throw error;
   return conSesion(data);
+}
+
+// Mensaje para el usuario según lo que respondió taxi_crear_pin.
+export function mensajeCrearPin(estado) {
+  return (
+    {
+      requiere_codigo: "Tu cuenta necesita un código de activación. Pídeselo a quien creó tu cuenta.",
+      codigo_invalido: "El código de activación no es correcto.",
+      codigo_vencido: "Tu código de activación venció. Pide uno nuevo.",
+      codigo_bloqueado: "Demasiados intentos con ese código. Pide uno nuevo.",
+      pin_invalido: "El PIN debe tener 6 dígitos.",
+      ya_tiene_pin: "Esta cuenta ya tiene PIN. Ingresa normalmente.",
+      dni_duplicado: "Ese DNI ya está registrado en otra cuenta.",
+      ruc_invalido: "El RUC debe tener 11 dígitos.",
+    }[estado] || "No se pudo guardar el PIN. Intenta de nuevo."
+  );
 }
 
 // Registro exprés (pasajero o conductor temporal, sin PIN todavía): la

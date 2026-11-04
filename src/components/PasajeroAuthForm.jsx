@@ -6,6 +6,7 @@ import { usePasajeroAuth } from "../hooks/usePasajeroAuth";
 import { useAvisoTop } from "../hooks/useAvisoTop";
 import AvisoTop from "./AvisoTop";
 import Dropdown from "./Dropdown";
+import CampoCodigoActivacion, { codigoCompleto } from "./CampoCodigoActivacion";
 import {
   esTelefonoValido,
   esEdadValida,
@@ -61,6 +62,8 @@ export default function PasajeroAuthForm({ onSuccess }) {
   const [confirmarNuevoPin, setConfirmarNuevoPin] = useState("");
   const [creandoPin, setCreandoPin] = useState(false);
   const [nombreVerif, setNombreVerif] = useState("");
+  // Código de activación de un solo uso: sin él no se crea el primer PIN.
+  const [codigo, setCodigo] = useState("");
 
   // `remember` explícito (no siempre el checkbox del login): el
   // registro nunca mostró ese checkbox y siempre recordaba la sesión
@@ -102,6 +105,10 @@ export default function PasajeroAuthForm({ onSuccess }) {
   const handleCrearPin = async (e) => {
     e.preventDefault();
     setError("");
+    if (!codigoCompleto(codigo)) {
+      setError("Escribe el código de activación de 6 caracteres que te dieron.");
+      return;
+    }
     if (!/^\d{6}$/.test(nuevoPin)) {
       setError("El PIN debe tener 6 dígitos.");
       return;
@@ -111,7 +118,7 @@ export default function PasajeroAuthForm({ onSuccess }) {
       return;
     }
     setCreandoPin(true);
-    const { usuario, message } = await crearPin({ usuarioId: usuarioSinPin.id, nuevoPin });
+    const { usuario, message } = await crearPin({ usuarioId: usuarioSinPin.id, nuevoPin, codigo });
     setCreandoPin(false);
     if (!usuario) {
       setError(message);
@@ -139,6 +146,10 @@ export default function PasajeroAuthForm({ onSuccess }) {
       setError("Selecciona tu sexo.");
       return;
     }
+    if (!codigoCompleto(codigo)) {
+      setError("Escribe el código de activación de 6 caracteres que te dieron.");
+      return;
+    }
     if (!/^\d{6}$/.test(nuevoPin)) {
       setError("El PIN debe tener 6 dígitos.");
       return;
@@ -155,6 +166,7 @@ export default function PasajeroAuthForm({ onSuccess }) {
       edad: Number(edad),
       sexo,
       pin: nuevoPin,
+      codigo,
     });
     setCreandoPin(false);
     if (!usuario) {
@@ -226,6 +238,7 @@ export default function PasajeroAuthForm({ onSuccess }) {
             ariaLabel="Sexo"
           />
         </div>
+        <CampoCodigoActivacion value={codigo} onChange={setCodigo} />
         <div className="tz-login-field">
           <label className="tz-field-label" htmlFor="pax-verif-pin">
             Crea tu PIN (6 dígitos)
@@ -272,6 +285,7 @@ export default function PasajeroAuthForm({ onSuccess }) {
         <p className="tz-stock-editor-sub">
           Es tu primer ingreso, {usuarioSinPin.nombre} — crea tu PIN de acceso para las próximas veces.
         </p>
+        <CampoCodigoActivacion value={codigo} onChange={setCodigo} autoFocus />
         <div className="tz-login-field">
           <label className="tz-field-label" htmlFor="pax-nuevo-pin">
             Nuevo PIN (6 dígitos)
@@ -281,7 +295,6 @@ export default function PasajeroAuthForm({ onSuccess }) {
             type="password"
             inputMode="numeric"
             maxLength={6}
-            autoFocus
             className="tz-text-input"
             value={nuevoPin}
             onChange={(e) => setNuevoPin(e.target.value)}

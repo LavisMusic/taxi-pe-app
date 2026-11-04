@@ -94,7 +94,7 @@ export function useUsuarios() {
       }
     }
     if (!insertError) await refresh();
-    return { error: insertError };
+    return { error: insertError, id: nuevo?.id ?? null };
   }, [refresh]);
 
   // Edición: mismo chequeo anti-duplicado que crearUsuario, pero con

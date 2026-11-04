@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { crearPin, registrarTemporal as registrarTemporalBase } from "../lib/pinAuth";
+import { crearPin, mensajeCrearPin, registrarTemporal as registrarTemporalBase } from "../lib/pinAuth";
 import {
   ESTADO_CONDUCTOR_RECHAZADO,
   ESTADO_VERIFICACION_EN_REVISION,
@@ -22,11 +22,16 @@ import {
 // antigua): van junto con el PIN nuevo en taxi_crear_pin, que abre la
 // sesión. Con PIN (ya tiene sesión, o reenvía tras un rechazo): se
 // actualiza su propia fila. Devuelve { usuario, error }.
-export async function guardarDatosVerificacion(usuarioId, pin, datos) {
+export async function guardarDatosVerificacion(usuarioId, pin, datos, codigo = null) {
   if (pin) {
     try {
-      const resultado = await crearPin(usuarioId, pin, datos);
-      if (resultado?.estado !== "ok") return { usuario: null, error: new Error(resultado?.estado || "pin") };
+      // Cuenta sin PIN: exige el código de activación de un solo uso.
+      const resultado = await crearPin(usuarioId, pin, datos, codigo);
+      if (resultado?.estado !== "ok") {
+        const err = new Error(resultado?.estado || "pin");
+        err.mensaje = mensajeCrearPin(resultado?.estado);
+        return { usuario: null, error: err };
+      }
       return { usuario: resultado.usuario, error: null };
     } catch (err) {
       return { usuario: null, error: err };
@@ -103,6 +108,7 @@ export function useConductorTemporal() {
       fotoInteriorUrl,
       fotoConductorDniUrl,
       pin,
+      codigo,
     }) => {
       setLoading(true);
 
@@ -121,10 +127,13 @@ export function useConductorTemporal() {
       }
 
       const datosCuenta = { edad, sexo, dni, estado_verificacion: ESTADO_VERIFICACION_EN_REVISION };
-      const { usuario, error: cuentaError } = await guardarDatosVerificacion(usuarioId, pin, datosCuenta);
+      const { usuario, error: cuentaError } = await guardarDatosVerificacion(usuarioId, pin, datosCuenta, codigo);
       if (cuentaError || !usuario) {
         setLoading(false);
-        return { error: cuentaError || new Error("cuenta"), message: "No se pudo guardar tu verificación. Intenta de nuevo." };
+        return {
+          error: cuentaError || new Error("cuenta"),
+          message: cuentaError?.mensaje || "No se pudo guardar tu verificación. Intenta de nuevo.",
+        };
       }
 
       const { data: conductorExistente } = await supabase
