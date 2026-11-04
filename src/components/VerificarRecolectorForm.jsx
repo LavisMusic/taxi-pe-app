@@ -6,6 +6,7 @@ import ImagenGuardada from "./ImagenGuardada";
 import { supabase } from "../supabaseClient";
 import { guardarDatosVerificacion } from "../hooks/useConductorTemporal";
 import { esEdadValida, SEXOS, ESTADO_VERIFICACION_EN_REVISION } from "../lib/taxiEnums";
+import CampoCodigoActivacion, { codigoCompleto } from "./CampoCodigoActivacion";
 
 // Verificación de cuenta del RECOLECTOR (desde su panel, después del
 // registro exprés): como la del conductor (VerificarConductorForm.jsx)
@@ -26,6 +27,7 @@ export default function VerificarRecolectorForm({ usuario, onVerificado, submitL
   const [fotoKey] = useState(() => `recolector-${Date.now()}-${Math.round(Math.random() * 1e6)}`);
   const [nuevoPin, setNuevoPin] = useState("");
   const [confirmarNuevoPin, setConfirmarNuevoPin] = useState("");
+  const [codigo, setCodigo] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
   // El PIN solo si la cuenta todavía no tiene uno (cuentas exprés antiguas).
@@ -40,6 +42,7 @@ export default function VerificarRecolectorForm({ usuario, onVerificado, submitL
     if (ruc.trim() && !/^\d{11}$/.test(ruc.trim())) return setError("El RUC debe tener 11 dígitos (o déjalo vacío).");
     if (!fotoDniUrl) return setError("La foto sosteniendo tu DNI es obligatoria.");
     if (!tienePin) {
+      if (!codigoCompleto(codigo)) return setError("Escribe el código de activación de 6 caracteres que te dieron.");
       if (!/^\d{6}$/.test(nuevoPin)) return setError("El PIN debe tener 6 dígitos.");
       if (nuevoPin !== confirmarNuevoPin) return setError("Los PIN no coinciden.");
     }
@@ -58,7 +61,7 @@ export default function VerificarRecolectorForm({ usuario, onVerificado, submitL
       foto_dni_url: fotoDniUrl,
       ...(fotoPerfilUrl ? { foto_url: fotoPerfilUrl } : {}),
       estado_verificacion: ESTADO_VERIFICACION_EN_REVISION,
-    });
+    }, tienePin ? null : codigo);
     setEnviando(false);
     if (guardarError || !actualizado) {
       return setError(
@@ -66,7 +69,7 @@ export default function VerificarRecolectorForm({ usuario, onVerificado, submitL
           ? "Ya existe una cuenta con ese DNI."
           : guardarError?.message === "ruc_invalido"
             ? "El RUC debe tener 11 dígitos (o déjalo vacío)."
-            : "No se pudo guardar tu verificación. Intenta de nuevo."
+            : guardarError?.mensaje || "No se pudo guardar tu verificación. Intenta de nuevo."
       );
     }
     onVerificado(actualizado);
@@ -171,6 +174,7 @@ export default function VerificarRecolectorForm({ usuario, onVerificado, submitL
 
         {!tienePin && (
           <>
+            <CampoCodigoActivacion value={codigo} onChange={setCodigo} />
             <label className="tz-field-label" htmlFor="verif-rec-pin">
               Crea tu PIN (6 dígitos)
             </label>

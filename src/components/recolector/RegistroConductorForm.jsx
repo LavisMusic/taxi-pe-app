@@ -3,6 +3,8 @@ import { Save, Loader2, Camera, Check } from "lucide-react";
 import ImagenGuardada from "../ImagenGuardada";
 import GestionImagenModal from "../admin/GestionImagenModal";
 import Dropdown from "../Dropdown";
+import { usePinPrivado } from "../PinPrivado";
+import { activarCuentaNueva } from "../../lib/altaConPin";
 import { useLocalidades } from "../../hooks/useLocalidades";
 import {
   NIVELES_SERVICIO,
@@ -49,6 +51,7 @@ export default function RegistroConductorForm({
   initialNombre = "",
 }) {
   const { localidades } = useLocalidades();
+  const { pedirPin, mostrarCodigo, modalesPin } = usePinPrivado();
   const [nombre, setNombre] = useState(initialNombre);
   const [placa, setPlaca] = useState("");
   const [telefono, setTelefono] = useState("");
@@ -139,19 +142,38 @@ export default function RegistroConductorForm({
       aprobado,
     };
 
-    setSaving(true);
     if (requiereLogin) {
+      // El conductor escribe su PIN en este celular (o recibe un código de
+      // activación si no está): quien lo registra nunca lo conoce.
+      const pinConductor = await pedirPin(nombre.trim());
+      if (!pinConductor) return;
+      setSaving(true);
       const { error: createError, message, usuario, conductor } = await crearConductorConUsuario(payload);
-      setSaving(false);
       if (createError) {
+        setSaving(false);
         setError(message || "No se pudo registrar al conductor.");
         return;
       }
-      onCreatedUsuario?.(usuario, conductor);
-      onCreated?.(nombre.trim(), conductor);
-      onClose();
+      const { codigo, error: activarError } = await activarCuentaNueva(usuario.id, pinConductor);
+      setSaving(false);
+      const terminar = () => {
+        onCreatedUsuario?.(usuario, conductor);
+        onCreated?.(nombre.trim(), conductor);
+        onClose();
+      };
+      if (activarError) {
+        setError(activarError);
+        return;
+      }
+      if (codigo) {
+        mostrarCodigo({ codigo, nombre: nombre.trim(), celular: telefono.trim(), alCerrar: terminar });
+        return;
+      }
+      terminar();
       return;
     }
+
+    setSaving(true);
 
     const { error: createError, conductor } = await crearConductor(payload);
     setSaving(false);
@@ -170,10 +192,11 @@ export default function RegistroConductorForm({
           Queda pendiente de aprobación hasta que el Admin revise sus fotos en el Centro de Peticiones.
         </p>
       )}
+      {modalesPin}
       {requiereLogin && (
         <p className="tz-stock-editor-sub">
-          El PIN de acceso se crea en el primer login, no acá — no hace falta inventar una contraseña
-          ahora.
+          Al registrar, el conductor escribe su propio PIN en este celular (o le envías un código de
+          activación si no está).
         </p>
       )}
 

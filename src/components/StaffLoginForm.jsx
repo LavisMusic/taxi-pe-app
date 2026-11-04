@@ -4,7 +4,8 @@ import { LogIn, ShieldCheck, KeyRound } from "lucide-react";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useAvisoTop } from "../hooks/useAvisoTop";
 import AvisoTop from "./AvisoTop";
-import { loginConPin, crearPin, MENSAJE_BLOQUEADO, MENSAJE_CUENTA_BLOQUEADA } from "../lib/pinAuth";
+import { loginConPin, crearPin, mensajeCrearPin, MENSAJE_BLOQUEADO, MENSAJE_CUENTA_BLOQUEADA } from "../lib/pinAuth";
+import CampoCodigoActivacion, { codigoCompleto } from "./CampoCodigoActivacion";
 import { esTelefonoValido, ESTADO_CUENTA_PENDIENTE } from "../lib/taxiEnums";
 import { routeForRole } from "../lib/taxiAuth";
 
@@ -39,6 +40,8 @@ export default function StaffLoginForm({ onSuccess }) {
   const [nuevoPin, setNuevoPin] = useState("");
   const [confirmarNuevoPin, setConfirmarNuevoPin] = useState("");
   const [creandoPin, setCreandoPin] = useState(false);
+  // Código de activación de un solo uso: sin él no se crea el primer PIN.
+  const [codigo, setCodigo] = useState("");
   // Recolector que ya verificó su cuenta y espera la aprobación del Admin:
   // no entra a la app, se le avisa acá.
   const [enRevision, setEnRevision] = useState(false);
@@ -106,6 +109,10 @@ export default function StaffLoginForm({ onSuccess }) {
   const handleCrearPin = async (e) => {
     e.preventDefault();
     setError("");
+    if (!codigoCompleto(codigo)) {
+      setError("Escribe el código de activación de 6 caracteres que te dieron.");
+      return;
+    }
     if (!/^\d{6}$/.test(nuevoPin)) {
       setError("El PIN debe tener 6 dígitos.");
       return;
@@ -118,14 +125,15 @@ export default function StaffLoginForm({ onSuccess }) {
     setCreandoPin(true);
     let resultado;
     try {
-      resultado = await crearPin(usuarioSinPin.id, nuevoPin);
+      resultado = await crearPin(usuarioSinPin.id, nuevoPin, null, codigo);
     } catch {
       resultado = null;
     }
     setCreandoPin(false);
     if (resultado?.estado !== "ok") {
-      setError("No se pudo guardar el PIN. Intenta de nuevo.");
-      mostrar("No se pudo guardar el PIN.", "error");
+      const mensaje = mensajeCrearPin(resultado?.estado);
+      setError(mensaje);
+      mostrar(mensaje, "error");
       return;
     }
 
@@ -154,6 +162,7 @@ export default function StaffLoginForm({ onSuccess }) {
         <p className="tz-stock-editor-sub">
           Es tu primer ingreso, {usuarioSinPin.nombre} — crea tu PIN de acceso para las próximas veces.
         </p>
+        <CampoCodigoActivacion value={codigo} onChange={setCodigo} autoFocus />
         <div className="tz-login-field">
           <label className="tz-field-label" htmlFor="staff-nuevo-pin">
             Nuevo PIN (6 dígitos)
@@ -163,7 +172,6 @@ export default function StaffLoginForm({ onSuccess }) {
             type="password"
             inputMode="numeric"
             maxLength={6}
-            autoFocus
             className="tz-text-input"
             value={nuevoPin}
             onChange={(e) => setNuevoPin(e.target.value)}

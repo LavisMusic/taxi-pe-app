@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Users, Plus, Save, Pencil, Trash2, X, Loader2, Image as ImageIcon } from "lucide-react";
+import { Users, Plus, Save, Pencil, Trash2, X, Loader2, KeyRound, Image as ImageIcon } from "lucide-react";
+import { usePinPrivado } from "../PinPrivado";
+import { activarCuentaNueva, generarCodigoActivacion } from "../../lib/altaConPin";
 import { formatTelefono } from "../../utils/format";
 import { esTelefonoValido } from "../../lib/taxiEnums";
 import RegistroConductorModal from "../recolector/RegistroConductorModal";
@@ -15,7 +17,7 @@ const TABS = [
 // mismo patrón que ConductorCard en el Directorio. Solo edita
 // `usuarios` (nombre/dni/teléfono de login) — los datos operativos de
 // un conductor (placa/categoría/estado) se editan en el Directorio.
-function UsuarioRow({ usuario, onUpdate, onDelete }) {
+function UsuarioRow({ usuario, onUpdate, onDelete, onGenerarCodigo, generandoCodigo }) {
   const [editing, setEditing] = useState(false);
   const [nombre, setNombre] = useState(usuario.nombre);
   const [telefono, setTelefono] = useState(usuario.telefono);
@@ -143,6 +145,19 @@ function UsuarioRow({ usuario, onUpdate, onDelete }) {
           <span style={{ marginLeft: 8 }}>DNI {usuario.dni} · {formatTelefono(usuario.telefono)}</span>
         </span>
         <span style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+          {/* Cuenta sin PIN: código de activación para que lo cree ella misma. */}
+          {!usuario.pin && (
+            <button
+              type="button"
+              className="tz-vis-edit-btn"
+              onClick={() => onGenerarCodigo(usuario)}
+              disabled={generandoCodigo}
+              aria-label="Generar código de activación"
+              title="Generar código de activación"
+            >
+              {generandoCodigo ? <Loader2 size={14} className="tz-spin" /> : <KeyRound size={14} />}
+            </button>
+          )}
           <button type="button" className="tz-vis-edit-btn" onClick={startEdit} aria-label="Editar usuario" title="Editar">
             <Pencil size={14} />
           </button>
@@ -188,6 +203,18 @@ export default function UsuariosModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [creadoMsg, setCreadoMsg] = useState("");
+  // PIN privado: la persona escribe el suyo en este celular, o recibe un
+  // código de activación si no está (PinPrivado.jsx / lib/altaConPin.js).
+  const { pedirPin, mostrarCodigo, modalesPin } = usePinPrivado();
+  const [generandoCodigoId, setGenerandoCodigoId] = useState(null);
+  const generarCodigo = async (u) => {
+    setError("");
+    setGenerandoCodigoId(u.id);
+    const { codigo, error: err } = await generarCodigoActivacion(u.id);
+    setGenerandoCodigoId(null);
+    if (err) return setError(err);
+    mostrarCodigo({ codigo, nombre: u.nombre, celular: u.telefono });
+  };
 
   const usuariosDelTab = usuarios.filter((u) => u.rol === tab);
   const esConductor = tab === "conductor";
@@ -201,9 +228,8 @@ export default function UsuariosModal({
     setError("");
   };
 
-  // Sin PIN acá — nace en NULL a propósito (ver useUsuarios.js): la
-  // persona lo crea sola en su primer login, el Admin ya no
-  // inventa/tipea una contraseña por ella.
+  // El Admin nunca inventa ni ve el PIN: la persona lo escribe en el
+  // teclado privado, o recibe un código de activación si no está.
   const handleCrear = async () => {
     if (!nombre.trim()) {
       setError("Ingresa el nombre.");
@@ -218,25 +244,33 @@ export default function UsuariosModal({
       return;
     }
 
+    const pinPersona = await pedirPin(nombre.trim());
+    if (!pinPersona) return;
+
     setSaving(true);
     setError("");
-    const { error: createError, message } = await crearUsuario({
+    const { error: createError, message, id } = await crearUsuario({
       dni: dni.trim(),
       telefono: telefono.trim(),
       nombre: nombre.trim(),
       rol: tab,
       fotoUrl,
     });
-    setSaving(false);
-    if (createError) {
-      setError(message || createError.message || "No se pudo crear la cuenta.");
+    if (createError || !id) {
+      setSaving(false);
+      setError(message || createError?.message || "No se pudo crear la cuenta.");
       return;
     }
+    const { codigo, error: activarError } = await activarCuentaNueva(id, pinPersona);
+    setSaving(false);
+    if (codigo) mostrarCodigo({ codigo, nombre: nombre.trim(), celular: telefono.trim() });
     resetForm();
+    if (activarError) setCreadoMsg(activarError);
   };
 
   return (
     <div className="tz-modal-backdrop">
+      {modalesPin}
       <div className="tz-modal tz-modal-wide" onClick={(e) => e.stopPropagation()}>
         <button className="tz-modal-close" onClick={onClose} aria-label="Cerrar">
           <X size={18} />
@@ -308,7 +342,7 @@ export default function UsuariosModal({
                 </button>
               </div>
               <p className="tz-camera-note" style={{ margin: "-4px 0 0" }}>
-                Sin PIN — la persona crea el suyo en su primer ingreso.
+                Al crearla, la persona escribe su PIN en este celular (o le envías un código de activación).
               </p>
 
               {error && <p className="tz-error">{error}</p>}
@@ -329,7 +363,14 @@ export default function UsuariosModal({
           ) : (
             <ul className="tz-history-rows">
               {usuariosDelTab.map((u) => (
-                <UsuarioRow key={u.id} usuario={u} onUpdate={actualizarUsuario} onDelete={eliminarUsuario} />
+                <UsuarioRow
+                  key={u.id}
+                  usuario={u}
+                  onUpdate={actualizarUsuario}
+                  onDelete={eliminarUsuario}
+                  onGenerarCodigo={generarCodigo}
+                  generandoCodigo={generandoCodigoId === u.id}
+                />
               ))}
             </ul>
           )}

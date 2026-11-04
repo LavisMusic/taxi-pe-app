@@ -7343,6 +7343,75 @@ export default function Styles() {
         transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
       }
       .tz-entrada-menu-btn:hover { transform: translateY(-2px) scale(1.04); }
+      /* PIN privado y código de activación (PinPrivado.jsx). */
+      .tz-pinp-fondo { animation: tz-pinp-fondo-in 0.3s ease both; }
+      .tz-modal-backdrop.tz-pinp-fondo { z-index: 70; }
+      @keyframes tz-pinp-fondo-in { from { opacity: 0; } to { opacity: 1; } }
+      .tz-pinp {
+        max-width: 360px; text-align: center; padding: 28px 22px 22px;
+        animation: tz-pinp-in 0.55s cubic-bezier(.34,1.56,.64,1) both;
+      }
+      @keyframes tz-pinp-in {
+        0% { opacity: 0; transform: translateY(24px) scale(0.86); filter: blur(6px); }
+        60% { opacity: 1; filter: blur(0); }
+        100% { opacity: 1; transform: none; filter: none; }
+      }
+      .tz-pinp-icono {
+        width: 54px; height: 54px; margin: 0 auto 10px; border-radius: 999px;
+        display: flex; align-items: center; justify-content: center; color: var(--cyan);
+        background: rgba(43, 232, 255, 0.12); box-shadow: 0 0 22px rgba(43, 232, 255, 0.35);
+        animation: tz-pinp-icono 2.4s ease-in-out infinite;
+      }
+      @keyframes tz-pinp-icono {
+        0%, 100% { box-shadow: 0 0 14px rgba(43, 232, 255, 0.25); }
+        50% { box-shadow: 0 0 28px rgba(43, 232, 255, 0.55); }
+      }
+      .tz-pinp-titulo { margin: 0 0 4px; font-size: 18px; color: var(--text); }
+      .tz-pinp-sub { margin: 0 0 18px; font-size: 13px; color: var(--text-dim); }
+      .tz-pinp-puntos { display: flex; justify-content: center; gap: 12px; margin-bottom: 8px; }
+      .tz-pinp-puntos.is-error { animation: tz-pinp-sacudir 0.45s cubic-bezier(.36,.07,.19,.97) both; }
+      @keyframes tz-pinp-sacudir {
+        10%, 90% { transform: translateX(-2px); } 20%, 80% { transform: translateX(4px); }
+        30%, 50%, 70% { transform: translateX(-7px); } 40%, 60% { transform: translateX(7px); }
+      }
+      .tz-pinp-punto {
+        width: 15px; height: 15px; border-radius: 999px; border: 1.5px solid rgba(43, 232, 255, 0.45);
+        transition: transform 0.32s cubic-bezier(.34,1.56,.64,1), background 0.2s, box-shadow 0.25s, border-color 0.2s;
+      }
+      .tz-pinp-punto.is-lleno {
+        background: var(--cyan); border-color: var(--cyan); transform: scale(1.18);
+        box-shadow: 0 0 12px rgba(43, 232, 255, 0.75);
+      }
+      .tz-pinp-puntos.is-error .tz-pinp-punto { border-color: var(--danger); }
+      .tz-pinp-aviso { min-height: 18px; margin: 0 0 14px; font-size: 12.5px; color: var(--text-dim); transition: color 0.2s; }
+      .tz-pinp-aviso.is-error { color: var(--danger); }
+      .tz-pinp-teclado { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .tz-pinp-tecla {
+        height: 54px; border-radius: 16px; cursor: pointer; font: inherit; font-size: 22px; font-weight: 700;
+        color: var(--text); background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(43, 232, 255, 0.22);
+        display: flex; align-items: center; justify-content: center;
+        transition: transform 0.22s cubic-bezier(.34,1.56,.64,1), background 0.18s, box-shadow 0.2s;
+        -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+      }
+      .tz-pinp-tecla:hover { background: rgba(43, 232, 255, 0.1); box-shadow: 0 0 14px rgba(43, 232, 255, 0.25); }
+      .tz-pinp-tecla:active { transform: scale(0.9); background: rgba(43, 232, 255, 0.22); }
+      .tz-pinp-tecla.is-borrar { color: var(--text-dim); }
+      .tz-pinp-ausente { margin-top: 18px; width: 100%; justify-content: center; white-space: normal; }
+      .tz-pinp-codigo {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 30px; font-weight: 800;
+        letter-spacing: 6px; color: var(--cyan); padding: 14px 0; margin-bottom: 16px; border-radius: 14px;
+        background: rgba(43, 232, 255, 0.08); border: 1px solid rgba(43, 232, 255, 0.3);
+        text-shadow: 0 0 14px rgba(43, 232, 255, 0.6);
+        animation: tz-pinp-codigo-in 0.7s 0.15s cubic-bezier(.34,1.56,.64,1) both;
+      }
+      @keyframes tz-pinp-codigo-in {
+        0% { opacity: 0; transform: scale(0.7); letter-spacing: 18px; filter: blur(8px); }
+        100% { opacity: 1; transform: none; letter-spacing: 6px; filter: none; }
+      }
+      .tz-pinp-acciones { display: flex; flex-direction: column; gap: 10px; }
+      .tz-pinp-accion { justify-content: center; text-decoration: none; }
+      .tz-pinp-nota { margin: 14px 0 0; font-size: 12px; color: var(--text-dim); }
+      .tz-codigo-activacion-input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 4px; text-transform: uppercase; }
       .tz-entrada-accion {
         flex: 0 0 44px; width: 44px; height: 44px; border-radius: 999px; padding: 0; cursor: pointer;
         display: flex; align-items: center; justify-content: center; color: #fff; border: 1px solid transparent;

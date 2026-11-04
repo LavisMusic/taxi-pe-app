@@ -3,6 +3,7 @@ import { ShieldCheck } from "lucide-react";
 import Dropdown from "./Dropdown";
 import { usePasajeroAuth } from "../hooks/usePasajeroAuth";
 import { esEdadValida, SEXOS } from "../lib/taxiEnums";
+import CampoCodigoActivacion, { codigoCompleto } from "./CampoCodigoActivacion";
 
 // Paso 2 del registro exprés de Pasajero: completa nombre/apellido/
 // edad/sexo/PIN de la cuenta 'temporal' (nombre_usuario+teléfono nomás)
@@ -22,6 +23,9 @@ export default function VerificarPasajeroForm({ usuario, onVerificado, submitLab
   const [sexo, setSexo] = useState("");
   const [nuevoPin, setNuevoPin] = useState("");
   const [confirmarNuevoPin, setConfirmarNuevoPin] = useState("");
+  // Cuenta sin PIN: el primer PIN exige el código de activación.
+  const [codigo, setCodigo] = useState("");
+  const sinPin = !usuario.pin;
   const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
@@ -39,6 +43,10 @@ export default function VerificarPasajeroForm({ usuario, onVerificado, submitLab
       setError("Selecciona tu sexo.");
       return;
     }
+    if (sinPin && !codigoCompleto(codigo)) {
+      setError("Escribe el código de activación de 6 caracteres que te dieron.");
+      return;
+    }
     if (!/^\d{6}$/.test(nuevoPin)) {
       setError("El PIN debe tener 6 dígitos.");
       return;
@@ -54,6 +62,7 @@ export default function VerificarPasajeroForm({ usuario, onVerificado, submitLab
       edad: Number(edad),
       sexo,
       pin: nuevoPin,
+      codigo: sinPin ? codigo : null,
     });
     if (!actualizado) {
       setError(message);
@@ -114,6 +123,7 @@ export default function VerificarPasajeroForm({ usuario, onVerificado, submitLab
         <label className="tz-field-label">Sexo</label>
         <Dropdown value={sexo} onChange={setSexo} options={SEXOS} placeholder="Selecciona" ariaLabel="Sexo" />
       </div>
+      {sinPin && <CampoCodigoActivacion value={codigo} onChange={setCodigo} />}
       <div className="tz-login-field">
         <label className="tz-field-label" htmlFor="pax-verif-pin">
           Crea tu PIN (6 dígitos)

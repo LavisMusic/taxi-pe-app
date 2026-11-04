@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { loginConPin, crearPin as crearPinBase, registrarTemporal as registrarTemporalBase, MENSAJE_BLOQUEADO, MENSAJE_CUENTA_BLOQUEADA } from "../lib/pinAuth";
+import { loginConPin, crearPin as crearPinBase, mensajeCrearPin, registrarTemporal as registrarTemporalBase, MENSAJE_BLOQUEADO, MENSAJE_CUENTA_BLOQUEADA } from "../lib/pinAuth";
 import { mirrorCuentaACaja } from "../lib/mirrorCaja";
 import { ESTADO_VERIFICACION_PERMANENTE } from "../lib/taxiEnums";
 import { supabase } from "../supabaseClient";
@@ -53,20 +53,24 @@ export function usePasajeroAuth() {
 
   // Segundo paso del registro exprés: completa los datos reales y crea
   // el PIN — de acá en más la cuenta ya no vence a los 7 días.
-  const verificarCuenta = useCallback(async ({ usuarioId, nombre, apellido, edad, sexo, pin }) => {
-    // Datos + PIN en un solo paso en la base (taxi_crear_pin): el PIN
-    // nunca se escribe desde acá.
+  const verificarCuenta = useCallback(async ({ usuarioId, nombre, apellido, edad, sexo, pin, codigo }) => {
+    // Datos + PIN en un solo paso en la base (taxi_crear_pin, con el código
+    // de activación): el PIN nunca se escribe desde acá.
     setLoading(true);
     let resultado;
     try {
-      resultado = await crearPinBase(usuarioId, pin, {
-        nombre,
-        apellido,
-        edad,
-        sexo,
-        estado_verificacion: ESTADO_VERIFICACION_PERMANENTE,
-        expira_en: null,
-      });
+      resultado = await crearPinBase(
+        usuarioId,
+        pin,
+        {
+          nombre,
+          apellido,
+          edad,
+          sexo,
+          estado_verificacion: ESTADO_VERIFICACION_PERMANENTE,
+        },
+        codigo
+      );
     } catch (rpcError) {
       setLoading(false);
       return { error: rpcError, message: "No se pudo guardar tu verificación. Intenta de nuevo." };
@@ -74,7 +78,7 @@ export function usePasajeroAuth() {
 
     setLoading(false);
     if (resultado?.estado !== "ok") {
-      return { error: new Error(resultado?.estado || "error"), message: "No se pudo guardar tu verificación. Intenta de nuevo." };
+      return { error: new Error(resultado?.estado || "error"), message: mensajeCrearPin(resultado?.estado) };
     }
     const data = resultado.usuario;
     mirrorCuentaACaja({ telefono: data.telefono, pin, nombre: data.nombre });
@@ -121,18 +125,18 @@ export function usePasajeroAuth() {
   // Paso 2 del primer ingreso: crea y guarda el PIN de una cuenta que
   // nació sin uno (alta manual del Admin) — mismo patrón que
   // StaffLoginForm.jsx/handleCrearPin.
-  const crearPin = useCallback(async ({ usuarioId, nuevoPin }) => {
+  const crearPin = useCallback(async ({ usuarioId, nuevoPin, codigo }) => {
     setLoading(true);
     let resultado;
     try {
-      resultado = await crearPinBase(usuarioId, nuevoPin);
+      resultado = await crearPinBase(usuarioId, nuevoPin, null, codigo);
     } catch (rpcError) {
       setLoading(false);
       return { error: rpcError, message: "No se pudo guardar el PIN. Intenta de nuevo." };
     }
     setLoading(false);
     if (resultado?.estado !== "ok") {
-      return { error: new Error(resultado?.estado || "error"), message: "No se pudo guardar el PIN. Intenta de nuevo." };
+      return { error: new Error(resultado?.estado || "error"), message: mensajeCrearPin(resultado?.estado) };
     }
     const data = resultado.usuario;
     mirrorCuentaACaja({ telefono: data.telefono, pin: nuevoPin, nombre: data.nombre });
