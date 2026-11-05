@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, Wallet, Camera, ImagePlus, Loader2, Check, Clock, XCircle } from "lucide-react";
+import { X, Wallet, Loader2, Check, Clock, XCircle } from "lucide-react";
 import { formatSoles, formatDate } from "../../utils/format";
 import {
   TIPO_ITEM_MEMBRESIA,
@@ -13,7 +13,8 @@ import {
 import { usePaquetes } from "../../hooks/usePaquetes";
 import { useMiRecargaConductor } from "../../hooks/useRecargasConductor";
 import Dropdown from "../Dropdown";
-import BotonPegarComprobante from "../BotonPegarComprobante";
+import DatosPagoComprobante from "../DatosPagoComprobante";
+import { useContactoPlataforma } from "../../hooks/useContactoPlataforma";
 
 // "Recargar" del pie de página del conductor: pide membresía o gemas por
 // su cuenta (Yape/Plin/Otros + foto del comprobante, obligatoria). La
@@ -40,6 +41,7 @@ export default function RecargarConductorModal({ conductor, onClose }) {
   const [preview, setPreview] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
+  const contacto = useContactoPlataforma();
 
   useEffect(() => () => preview && URL.revokeObjectURL(preview), [preview]);
 
@@ -155,7 +157,7 @@ export default function RecargarConductorModal({ conductor, onClose }) {
         )}
 
         <label className="tz-field-label" style={{ marginTop: 12 }}>
-          ¿Cómo pagaste?
+          ¿Cómo pagas?
         </label>
         <div className="tz-gasto-tipo-buttons">
           {METODOS.map((m) => (
@@ -173,35 +175,30 @@ export default function RecargarConductorModal({ conductor, onClose }) {
           ))}
         </div>
 
-        <div className="tz-recarga-comprobante">
-          <label className="tz-field-label" style={{ marginTop: 12 }}>
-            Comprobante (obligatorio)
-          </label>
-          <div className="tz-recarga-comprobante-botones">
-            <label className="tz-scan-btn" style={{ cursor: "pointer" }}>
-              <Camera size={16} /> Tomar foto
-              <input type="file" accept="image/*" capture="environment" hidden onChange={elegirArchivo} />
-            </label>
-            <label className="tz-scan-btn" style={{ cursor: "pointer" }}>
-              <ImagePlus size={16} /> Adjuntar
-              <input type="file" accept="image/*" hidden onChange={elegirArchivo} />
-            </label>
-          </div>
-          <BotonPegarComprobante onArchivo={(f) => elegirArchivo({ target: { files: [f], value: "" } })} />
-          {preview && <img src={preview} alt="Comprobante" className="tz-renovar-comprobante" />}
-        </div>
+        {/* Datos de pago de la plataforma según el método + las dos
+            opciones de comprobante (se despliegan al elegir el método). */}
+        <DatosPagoComprobante
+          metodo={metodo}
+          datos={{ yape_plin: contacto.yape_plin, titular: contacto.titular, cuenta: contacto.cuenta_bancaria }}
+          archivo={archivo}
+          preview={preview}
+          onArchivo={(f) => elegirArchivo({ target: { files: [f], value: "" } })}
+          sinDatosTexto="Todavía no hay datos de pago configurados. Escríbenos a soporte."
+        />
 
         {error && <p className="tz-error">{error}</p>}
-        <button
-          type="button"
-          className="tz-scan-btn tz-payment-save"
-          style={{ width: "100%", marginTop: 14 }}
-          onClick={enviar}
-          disabled={enviando}
-        >
-          {enviando ? <Loader2 size={15} className="tz-spin" /> : <Wallet size={15} />} Enviar solicitud
-          {paquete ? ` de ${formatSoles(paquete.precio)}` : ""}
-        </button>
+        {(archivo || enviando) && (
+          <button
+            type="button"
+            className="tz-scan-btn tz-payment-save tz-pagoc-enviar"
+            style={{ width: "100%", marginTop: 14 }}
+            onClick={enviar}
+            disabled={enviando}
+          >
+            {enviando ? <Loader2 size={15} className="tz-spin" /> : <Wallet size={15} />} Enviar solicitud
+            {paquete ? ` de ${formatSoles(paquete.precio)}` : ""}
+          </button>
+        )}
       </>
     );
   }

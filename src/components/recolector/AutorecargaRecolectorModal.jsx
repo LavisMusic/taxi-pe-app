@@ -4,6 +4,8 @@ import ComprobanteScannerModal from "./ComprobanteScannerModal";
 import { formatSoles } from "../../utils/format";
 import { METODOS_PAGO, METODO_PAGO_EFECTIVO, TIPO_ITEM_CREDITOS } from "../../lib/taxiEnums";
 import Dropdown from "../Dropdown";
+import DatosPagoComprobante from "../DatosPagoComprobante";
+import { useContactoPlataforma } from "../../hooks/useContactoPlataforma";
 
 const METODOS_AUTORECARGA = METODOS_PAGO.filter((m) => m.key !== METODO_PAGO_EFECTIVO);
 
@@ -27,6 +29,7 @@ export default function AutorecargaRecolectorModal({ recolector, paquetes, glowP
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const contacto = useContactoPlataforma();
 
   // `activo !== false` acá porque usePaquetesRecolectores.js ahora
   // trae TODO (activos e inactivos, ver su comentario) para que el
@@ -36,10 +39,12 @@ export default function AutorecargaRecolectorModal({ recolector, paquetes, glowP
   const paquetesDelTipo = paquetes.filter((p) => p.tipo_item === tipoItem && p.activo !== false);
   const paquete = paquetesDelTipo.find((p) => String(p.id) === String(paqueteId)) || null;
 
+  // Ya no abre el escáner de una: primero se muestran los datos de pago
+  // de la plataforma (para poder copiar el número y pagar), y el escáner se
+  // abre con "Ya pagué, escanear comprobante".
   const elegirMetodo = (key) => {
     setMetodoPago(key);
     setComprobante(null);
-    setScannerOpen(true);
   };
 
   const handleEnviar = async () => {
@@ -125,8 +130,16 @@ export default function AutorecargaRecolectorModal({ recolector, paquetes, glowP
             ))}
           </div>
 
+          {/* Datos de pago de la plataforma (Yape/Plin o cuenta + titular). */}
+          <DatosPagoComprobante
+            metodo={metodoPago}
+            datos={{ yape_plin: contacto.yape_plin, titular: contacto.titular, cuenta: contacto.cuenta_bancaria }}
+            pedirComprobante={false}
+            sinDatosTexto="Todavía no hay datos de pago configurados. Escríbenos a soporte."
+          />
+
           {metodoPago && (
-            <div className="tz-add-entry" style={{ marginTop: 4 }}>
+            <div className="tz-add-entry tz-pagoc-comprobante" style={{ marginTop: 4 }}>
               {comprobante ? (
                 <div className="tz-scan-result">
                   <p className="tz-scan-result-title">Comprobante listo</p>
@@ -144,8 +157,8 @@ export default function AutorecargaRecolectorModal({ recolector, paquetes, glowP
                   </button>
                 </div>
               ) : (
-                <button type="button" className="tz-scan-btn" onClick={() => setScannerOpen(true)}>
-                  <Camera size={16} /> Escanear comprobante
+                <button type="button" className="tz-scan-btn tz-pagoc-adjuntar" onClick={() => setScannerOpen(true)}>
+                  <Camera size={16} /> Ya pagué, escanear comprobante
                 </button>
               )}
             </div>
@@ -154,16 +167,19 @@ export default function AutorecargaRecolectorModal({ recolector, paquetes, glowP
           {error && <p className="tz-error">{error}</p>}
           {successMsg && <p className="tz-success">{successMsg}</p>}
 
-          <button
-            type="button"
-            className="tz-scan-btn tz-payment-save"
-            disabled={saving}
-            onClick={handleEnviar}
-            style={{ marginTop: 14 }}
-          >
-            {saving ? <Loader2 size={16} className="tz-spin" /> : <Wallet size={16} />}
-            {saving ? "Enviando…" : "Enviar Solicitud"}
-          </button>
+          {/* Aparece cuando ya hay comprobante escaneado. */}
+          {(comprobante || saving) && (
+            <button
+              type="button"
+              className="tz-scan-btn tz-payment-save tz-pagoc-enviar"
+              disabled={saving}
+              onClick={handleEnviar}
+              style={{ marginTop: 14 }}
+            >
+              {saving ? <Loader2 size={16} className="tz-spin" /> : <Wallet size={16} />}
+              {saving ? "Enviando…" : "Enviar Solicitud"}
+            </button>
+          )}
         </div>
       </div>
 
