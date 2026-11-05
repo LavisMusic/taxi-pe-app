@@ -8,14 +8,17 @@ import { supabase } from "../supabaseClient";
 // agotadas, `obligatorio`: solo queda cerrar el turno). `vencido` se recalcula solo cada 30 s para que el
 // aviso salga a la hora, y el estado se vuelve a pedir cada minuto y al
 // volver a la pestaña.
-export function useTurnoCaja() {
+// `estadoRpc` / `extenderRpc`: por defecto la caja del Admin o el recolector;
+// el conductor usa taxi_estado_turno_conductor / taxi_extender_turno_conductor
+// (migración 20261105130000).
+export function useTurnoCaja({ estadoRpc = "taxi_estado_caja", extenderRpc = "taxi_extender_turno" } = {}) {
   const [estado, setEstado] = useState(null);
   const [ahora, setAhora] = useState(() => Date.now());
 
   const refresh = useCallback(async () => {
-    const { data, error } = await supabase.rpc("taxi_estado_caja");
+    const { data, error } = await supabase.rpc(estadoRpc);
     if (!error) setEstado(data ?? null);
-  }, []);
+  }, [estadoRpc]);
 
   useEffect(() => {
     refresh();
@@ -36,13 +39,13 @@ export function useTurnoCaja() {
   }, [refresh]);
 
   const extender = useCallback(async () => {
-    const { data, error } = await supabase.rpc("taxi_extender_turno");
+    const { data, error } = await supabase.rpc(extenderRpc);
     if (data?.estado === "limite") setEstado(data);
     if (error || data?.estado !== "ok") return { error: error || new Error(data?.estado || "error") };
     setEstado(data);
     setAhora(Date.now());
     return { error: null };
-  }, []);
+  }, [extenderRpc]);
 
   const limite = estado
     ? Math.max(new Date(estado.vence).getTime(), estado.extendido_hasta ? new Date(estado.extendido_hasta).getTime() : 0)
