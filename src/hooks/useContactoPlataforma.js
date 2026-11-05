@@ -9,7 +9,9 @@ import { supabase } from "../supabaseClient";
 // todos los componentes que lo usan: cuando el super admin guarda un
 // cambio, cada botón/aviso montado se actualiza al instante, sin
 // recargar la página.
-const CAMPOS = "whatsapp_pagos, whatsapp_soporte, whatsapp_afiliacion";
+// Datos de pago (yape_plin, titular, cuenta_bancaria): migración
+// 20261104130000, llegan desde Caja con webhook-caja-contacto.
+const CAMPOS = "whatsapp_pagos, whatsapp_soporte, whatsapp_afiliacion, yape_plin, titular, cuenta_bancaria";
 let cache = null;
 let enVuelo = null;
 let canal = null;

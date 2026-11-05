@@ -2951,6 +2951,51 @@ export default function Styles() {
       .tz-recarga-vuelto-resultado { margin: 8px 0 0; font-family: 'Orbitron', sans-serif; font-size: 18px; color: var(--green); }
       .tz-recarga-vuelto-falta { color: var(--danger); }
       .tz-renovar-comprobante { display: block; max-width: 100%; max-height: 260px; margin: 10px auto 0; border-radius: 12px; border: 1px solid var(--border-soft); }
+      .tz-renovar-datos { display: flex; flex-direction: column; gap: 8px; }
+      .tz-renovar-copiar {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-areas: "etiqueta accion" "valor accion";
+        align-items: center;
+        gap: 2px 12px;
+        width: 100%;
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 1.5px dashed rgba(43, 232, 255,0.55);
+        background: rgba(43, 232, 255,0.06);
+        color: var(--text);
+        text-align: left;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .tz-renovar-copiar-ok { border-style: solid; border-color: var(--green); background: rgba(57, 255, 176,0.1); }
+      .tz-renovar-copiar-etiqueta { grid-area: etiqueta; font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+      .tz-renovar-copiar-valor { grid-area: valor; font-size: 16px; font-weight: 700; letter-spacing: 0.03em; word-break: break-all; }
+      .tz-renovar-copiar-accion { grid-area: accion; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: var(--cyan); }
+      .tz-renovar-copiar-ok .tz-renovar-copiar-accion { color: var(--green); }
+      /* Datos de pago + comprobante (DatosPagoComprobante.jsx): se despliega
+         al elegir el método, primero los datos y después las dos opciones. */
+      .tz-pagoc { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+      .tz-pagoc-datos, .tz-pagoc-sin-datos { animation: tz-pagoc-in 0.5s cubic-bezier(.34,1.56,.64,1) both; }
+      .tz-pagoc-datos { display: flex; flex-direction: column; gap: 6px; }
+      .tz-pagoc-titular { margin: 0; font-size: 12.5px; color: var(--text-dim); }
+      .tz-pagoc-comprobante {
+        display: flex; flex-direction: column; gap: 8px;
+        animation: tz-pagoc-in 0.55s 0.12s cubic-bezier(.34,1.56,.64,1) both;
+      }
+      .tz-pagoc-comprobante .tz-scan-btn { width: 100%; justify-content: center; cursor: pointer; }
+      .tz-pagoc-adjuntar { box-shadow: 0 0 16px rgba(43, 232, 255, 0.25); }
+      .tz-pagoc-preview {
+        display: block; max-width: 100%; max-height: 260px; margin: 2px auto 0; border-radius: 12px;
+        border: 1px solid var(--border-soft); animation: tz-pagoc-in 0.5s cubic-bezier(.34,1.56,.64,1) both;
+      }
+      @keyframes tz-pagoc-in {
+        0% { opacity: 0; transform: translateY(12px) scale(0.96); filter: blur(4px); }
+        60% { opacity: 1; filter: blur(0); }
+        100% { opacity: 1; transform: none; filter: none; }
+      }
+      /* El botón de enviar aparece recién cuando ya está todo. */
+      .tz-pagoc-enviar { animation: tz-pagoc-in 0.5s cubic-bezier(.34,1.56,.64,1) both; }
       .tz-renovar-estado { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 10px 0; }
       .tz-renovar-estado h3 { margin: 0; color: var(--yellow); }
       .tz-renovar-estado-icono {

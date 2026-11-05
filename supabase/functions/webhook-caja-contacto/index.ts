@@ -4,7 +4,9 @@
 // panel /superadmin de Caja → se copian a public.plataforma_contacto de
 // Taxi-PE (una sola fila, id = 1).
 //
-//   data = { whatsapp_pagos, whatsapp_soporte, whatsapp_afiliacion }
+//   data = { whatsapp_pagos, whatsapp_soporte, whatsapp_afiliacion,
+//            yape_plin, titular, cuenta_bancaria }
+// (los datos de pago se muestran en los modales de recarga y compra).
 //
 // Deploy: supabase functions deploy webhook-caja-contacto --no-verify-jwt --project-ref silfhbdmfdryjdzpwzvh
 
@@ -19,6 +21,11 @@ const EXPECTED_EVENT = "caja.contacto_plataforma";
 
 const limpiar = (v: unknown): string | null => {
   const s = typeof v === "string" ? v.replace(/\D/g, "") : "";
+  return s ? s : null;
+};
+// Texto libre (titular, cuenta con banco/CCI): solo se recorta.
+const texto = (v: unknown, max: number): string | null => {
+  const s = typeof v === "string" ? v.trim().slice(0, max) : "";
   return s ? s : null;
 };
 
@@ -40,6 +47,9 @@ Deno.serve(async (req) => {
     whatsapp_pagos: limpiar(data.whatsapp_pagos),
     whatsapp_soporte: limpiar(data.whatsapp_soporte),
     whatsapp_afiliacion: limpiar(data.whatsapp_afiliacion),
+    yape_plin: limpiar(data.yape_plin),
+    titular: texto(data.titular, 80),
+    cuenta_bancaria: texto(data.cuenta_bancaria, 120),
     updated_at: new Date().toISOString(),
   });
 
