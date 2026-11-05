@@ -2840,7 +2840,7 @@ export default function App() {
      (ej. "bucket not found" si falta correr el SQL de la Fase 2, o un
      error de policy si falta la política de INSERT para 'anon'). ---- */
   const uploadReceiptImage = async (blob, method) => {
-    const fileName = `${method}-${Date.now()}-${Math.round(Math.random() * 1e6)}.jpg`;
+    const fileName = `${method}-${crypto.randomUUID()}.jpg`;
     const { error: uploadError } = await supabase.storage
       .from("comprobantes-fotos")
       .upload(fileName, blob, { contentType: "image/jpeg", upsert: false });

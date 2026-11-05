@@ -26,7 +26,9 @@ export async function subirComprobante(archivo, carpeta = "admin") {
   } catch (err) {
     console.error("[comprobantes] no se pudo comprimir, se sube el original:", err);
   }
-  const ruta = `${carpeta}/${Date.now()}.jpg`;
+  // Nombre al azar: la foto solo se ve con su enlace exacto, que no debe
+  // poder adivinarse (antes era la hora).
+  const ruta = `${carpeta}/${crypto.randomUUID()}.jpg`;
   const { data, error } = await supabase.storage
     .from("ventas-comprobantes")
     .upload(ruta, blob, { contentType: blob.type || "image/jpeg", upsert: false });
@@ -44,7 +46,9 @@ export async function subirComprobantePrivado(archivo, carpeta) {
   } catch (err) {
     console.error("[comprobantes] no se pudo comprimir, se sube el original:", err);
   }
-  const ruta = `${carpeta}/${Date.now()}.jpg`;
+  // Nombre al azar: la foto solo se ve con su enlace exacto, que no debe
+  // poder adivinarse (antes era la hora).
+  const ruta = `${carpeta}/${crypto.randomUUID()}.jpg`;
   const { data, error } = await supabase.storage
     .from(BUCKET_PRIVADO)
     .upload(ruta, blob, { contentType: blob.type || "image/jpeg", upsert: false });
