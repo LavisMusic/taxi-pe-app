@@ -17,6 +17,7 @@ import { formatSoles } from "../../utils/format";
 import RegistroConductorModal from "./RegistroConductorModal";
 import ComprobanteScannerModal from "./ComprobanteScannerModal";
 import Dropdown from "../Dropdown";
+import { supabase } from "../../supabaseClient";
 
 const DURACIONES_MEMBRESIA = [
   { id: "mensual", label: "Mensual" },
@@ -99,10 +100,31 @@ export default function RecargaRapidaForm({
   // se suma al mismo texto combinado en vez de armar un filtro aparte,
   // así una sola caja de búsqueda sirve para las tres formas de ubicar
   // al conductor.
+  // El recolector solo recibe los últimos 3 dígitos del DNI (migración
+  // 20261105110000): con los 8 dígitos completos, la base dice de quién es.
+  const [idPorDni, setIdPorDni] = useState(null);
+  useEffect(() => {
+    const q = search.trim();
+    if (!/^\d{8}$/.test(q)) {
+      setIdPorDni(null);
+      return undefined;
+    }
+    let vigente = true;
+    supabase.rpc("taxi_conductor_por_dni", { p_dni: q }).then(({ data }) => {
+      if (vigente) setIdPorDni(data || null);
+    });
+    return () => {
+      vigente = false;
+    };
+  }, [search]);
   const resultados = !search.trim()
     ? []
     : conductores
-        .filter((c) => `${c.nombre} ${c.placa} ${c.dni ?? ""}`.toLowerCase().includes(search.trim().toLowerCase()))
+        .filter(
+          (c) =>
+            c.id === idPorDni ||
+            `${c.nombre} ${c.placa} ${c.dni ?? ""}`.toLowerCase().includes(search.trim().toLowerCase())
+        )
         .slice(0, 8);
   const sinResultados = search.trim().length > 0 && resultados.length === 0;
 

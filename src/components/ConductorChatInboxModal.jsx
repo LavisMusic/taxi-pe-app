@@ -154,9 +154,10 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
     let cancelado = false;
     (async () => {
       try {
-        // "*": con la migración 20261027110000 la vista trae nombre_usuario,
-        // que es lo que se muestra de cada persona (si no, su nombre).
-        const { data, error } = await supabase.from("usuarios_publicos").select("*").in("id", ids);
+        // Solo los pasajeros con los que este conductor tiene chat
+        // (migración 20261105110000; la lista pública de usuarios se cerró).
+        // Trae nombre_usuario, que es lo que se muestra (si no, su nombre).
+        const { data, error } = await supabase.rpc("taxi_usuarios_de_mis_chats", { p_ids: ids });
         if (cancelado || error) return;
         const map = {};
         const fotos = {};
