@@ -54,6 +54,7 @@ import PanelesConductor from "../components/conductor/PanelesConductor";
 import PanelDelivery from "../components/conductor/PanelDelivery";
 import { CerrarTurnoModal, HistorialTurnosModal, EstadisticasModal } from "../components/conductor/TurnoConductorModales";
 import { useTurnoConductor, useEstadisticasConductor } from "../hooks/useTurnoConductor";
+import { useTurnoCaja } from "../hooks/useTurnoCaja";
 import { useEntregasRepartidor } from "../hooks/useEntregasRepartidor";
 import RecargarConductorModal from "../components/conductor/RecargarConductorModal";
 import MetaDiaModal, { gananciaHoy } from "../components/conductor/MetaDiaModal";
@@ -277,6 +278,18 @@ export default function ConductorPage() {
   const [deliveryError, setDeliveryError] = useState("");
   const [modalTurno, setModalTurno] = useState(null); // "cerrar" | "historial" | "estadisticas" | "recargar" | "meta"
   const turno = useTurnoConductor(conductor?.id);
+  // Aviso de las 23:30 (migración 20261105130000): se abre solo "Cerrar
+  // turno", con hasta 3 extensiones de 30 min. Nunca a mitad de una carrera
+  // o de un reparto: el aviso espera a que termine.
+  const avisoTurno = useTurnoCaja({
+    estadoRpc: "taxi_estado_turno_conductor",
+    extenderRpc: "taxi_extender_turno_conductor",
+  });
+  const enOperacion = enCarrera || repartiendo;
+  useEffect(() => {
+    if (avisoTurno.vencido && !enOperacion) setModalTurno("cerrar");
+  }, [avisoTurno.vencido, enOperacion]);
+  const cierreTurnoObligatorio = avisoTurno.obligatorio && !enOperacion;
   const { estadisticas, refrescar: refrescarEstadisticas } = useEstadisticasConductor(conductor?.id);
 
   const handleToggleDelivery = async () => {
@@ -746,15 +759,21 @@ export default function ConductorPage() {
         </footer>
       )}
 
-      {modalTurno === "cerrar" && conductor && (
+      {(modalTurno === "cerrar" || cierreTurnoObligatorio) && conductor && (
         <CerrarTurnoModal
           turnoActual={turno.turnoActual}
           cerrarTurno={turno.cerrarTurno}
           onCerrado={() => {
             turno.refrescarHistorial();
             refrescarEstadisticas();
+            avisoTurno.refresh();
           }}
           onClose={() => setModalTurno(null)}
+          vencido={avisoTurno.vencido && !enOperacion}
+          extensiones={avisoTurno.extensiones}
+          maxExtensiones={avisoTurno.maxExtensiones}
+          obligatorio={cierreTurnoObligatorio}
+          onExtender={avisoTurno.extender}
         />
       )}
       {modalTurno === "historial" && conductor && (

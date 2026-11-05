@@ -101,9 +101,12 @@ function Marco({ titulo, icono, onClose, children }) {
   return (
     <div className="tz-modal-backdrop">
       <div className="tz-modal tz-modal-wide" onClick={(e) => e.stopPropagation()}>
-        <button className="tz-modal-close" onClick={onClose} aria-label="Cerrar">
-          <X size={18} />
-        </button>
+        {/* Sin onClose (cierre obligatorio): no hay X. */}
+        {onClose && (
+          <button className="tz-modal-close" onClick={onClose} aria-label="Cerrar">
+            <X size={18} />
+          </button>
+        )}
         <div className="tz-payment-modal">
           <h2>
             {icono} {titulo}
@@ -115,7 +118,34 @@ function Marco({ titulo, icono, onClose, children }) {
   );
 }
 
-export function CerrarTurnoModal({ turnoActual, cerrarTurno, onCerrado, onClose }) {
+// Aviso de las 23:30 (migración 20261105130000): `vencido` abre el modal
+// solo y ofrece extender 30 min (`onExtender`, hasta `maxExtensiones`);
+// `obligatorio` (agotadas, y el conductor no está en carrera ni repartiendo):
+// sin X, solo se puede cerrar el turno.
+export function CerrarTurnoModal({
+  turnoActual,
+  cerrarTurno,
+  onCerrado,
+  onClose,
+  vencido = false,
+  extensiones = 0,
+  maxExtensiones = 0,
+  obligatorio = false,
+  onExtender = null,
+}) {
+  const [extendiendo, setExtendiendo] = useState(false);
+  const [errorExtender, setErrorExtender] = useState("");
+  const extender = async () => {
+    setExtendiendo(true);
+    setErrorExtender("");
+    const { error: err } = await onExtender();
+    setExtendiendo(false);
+    if (err) {
+      setErrorExtender(err.message === "limite" ? "Ya usaste todas tus extensiones: cierra el turno." : "No se pudo extender el turno.");
+      return;
+    }
+    onClose?.();
+  };
   const [turno, setTurno] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [confirmando, setConfirmando] = useState(false);
@@ -149,7 +179,28 @@ export function CerrarTurnoModal({ turnoActual, cerrarTurno, onCerrado, onClose 
   };
 
   return (
-    <Marco titulo="Cerrar turno" icono={<Receipt size={17} />} onClose={onClose}>
+    <Marco titulo="Cerrar turno" icono={<Receipt size={17} />} onClose={obligatorio && !listo ? null : onClose}>
+      {vencido && !listo && (
+        <div className="tz-cierre-vencido">
+          <p className="tz-cierre-warning" style={{ margin: 0 }}>
+            <Clock size={14} />{" "}
+            {obligatorio
+              ? "Tu turno terminó y ya usaste todas tus extensiones. Cierra el turno para seguir."
+              : "Ya casi es otro día: cierra tu turno para guardarlo, o extiéndelo 30 minutos."}
+          </p>
+          {maxExtensiones > 0 && (
+            <p className="tz-cierre-extensiones">
+              Extensiones usadas: {extensiones} de {maxExtensiones}
+            </p>
+          )}
+          {onExtender && !obligatorio && (
+            <button type="button" className="tz-camera-cancel" onClick={extender} disabled={extendiendo}>
+              {extendiendo ? <Loader2 size={15} className="tz-spin" /> : <Clock size={15} />} Extender 30 min
+            </button>
+          )}
+          {errorExtender && <p className="tz-error">{errorExtender}</p>}
+        </div>
+      )}
       {cargando ? (
         <p className="tz-method-history-empty">
           <Loader2 size={14} className="tz-spin" /> Calculando tu turno…
