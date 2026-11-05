@@ -32,7 +32,10 @@ import {
 // login) — `aprobado` viaja como parámetro porque el mismo
 // RegistroConductorModal se reusa en los 4 contextos y solo el caller
 // sabe cuál es cuál.
-export function useConductores() {
+// `recolector`: la lista sale de taxi_conductores_para_recolector (sin
+// teléfono, DNI, fotos de verificación ni ubicación — migración
+// 20261105120000); el recolector ya no lee la tabla. El Admin sí.
+export function useConductores({ recolector = false } = {}) {
   const [conductores, setConductores] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [subgrupos, setSubgrupos] = useState([]);
@@ -48,12 +51,14 @@ export function useConductores() {
     if (!yaCargoUnaVez.current) setLoading(true);
     setError("");
     const [conductoresRes, categoriasRes, subgruposRes, privadosRes] = await Promise.all([
-      supabase
-        .from("conductores")
-        .select(
-          "id, nombre, placa, telefono, localidad, foto_url, foto_portada_url, descripcion, estado, creditos, vencimiento_suscripcion, categoria_id, subgrupo_id, nivel_servicio, aprobado, asientos_totales, asientos_ocupados, membresia_paquete_id, nivel_servicio_solicitado, created_at"
-        )
-        .order("created_at", { ascending: false }),
+      recolector
+        ? supabase.rpc("taxi_conductores_para_recolector")
+        : supabase
+            .from("conductores")
+            .select(
+              "id, nombre, placa, telefono, localidad, foto_url, foto_portada_url, descripcion, estado, creditos, vencimiento_suscripcion, categoria_id, subgrupo_id, nivel_servicio, aprobado, asientos_totales, asientos_ocupados, membresia_paquete_id, nivel_servicio_solicitado, created_at"
+            )
+            .order("created_at", { ascending: false }),
       supabase.from("categorias").select("id, nombre, orden, icono_url").order("orden", { ascending: true }),
       // Solo lectura acá — el CRUD completo de subgrupos vive en
       // useCategorias.js (usado por CategoriasModal). Esto es para
@@ -85,7 +90,7 @@ export function useConductores() {
     }
     yaCargoUnaVez.current = true;
     setLoading(false);
-  }, []);
+  }, [recolector]);
 
   useEffect(() => {
     refresh();
@@ -95,7 +100,17 @@ export function useConductores() {
   // un conductor nuevo pendiente — todo eso son filas de `conductores`,
   // así que un solo canal cubre el Directorio Y el badge del Centro de
   // Peticiones sin que el Admin tenga que darle F5.
-  useEffect(() => subscribeTable("conductores", () => refresh(), { respaldo: true }), [refresh]);
+  useEffect(() => {
+    if (!recolector) return subscribeTable("conductores", () => refresh(), { respaldo: true });
+    // El recolector no lee la tabla (no le llegan sus cambios por Realtime):
+    // usa el aviso público de cambios de conductores (estado, saldo, alta,
+    // datos del directorio — fn_conductores_aviso_publico).
+    const canal = supabase
+      .channel("conductores-publico")
+      .on("broadcast", { event: "cambio" }, () => refresh())
+      .subscribe();
+    return () => supabase.removeChannel(canal);
+  }, [refresh, recolector]);
 
   // .select() después del update + chequear que volvió al menos 1 fila:
   // sin esto, un UPDATE bloqueado en silencio por RLS (0 filas
