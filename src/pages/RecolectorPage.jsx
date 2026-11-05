@@ -61,7 +61,7 @@ export default function RecolectorPage() {
     subgrupos,
     loading: conductoresLoading,
     refresh: refreshConductores,
-  } = useConductores();
+  } = useConductores({ recolector: true }); // sin teléfonos (migración 20261105120000)
   // Bug de sincronía (registrar conductor -> no puede loguearse):
   // useConductores().crearConductor solo insertaba en `conductores`,
   // nunca en `usuarios` — así que un conductor dado de alta desde acá
