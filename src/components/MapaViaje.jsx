@@ -208,7 +208,8 @@ export default function MapaViaje({
     if (!soyPasajero || !conductorId) return undefined;
     let cancelado = false;
     (async () => {
-      const { data, error } = await supabase.from("conductores").select("ultima_lat, ultima_lng").eq("id", conductorId).maybeSingle();
+      // Vista pública: el pasajero ya no lee la tabla de conductores.
+      const { data, error } = await supabase.from("conductores_publicos").select("ultima_lat, ultima_lng").eq("id", conductorId).maybeSingle();
       if (cancelado || error || !data) return;
       if (data.ultima_lat != null && data.ultima_lng != null) {
         // Funcional con `prev`: si ya llegó algo más fresco por

@@ -29,10 +29,12 @@ export function useConductoresPublicos() {
     if (!yaCargoUnaVez.current) setLoading(true);
     setError("");
     const [conductoresRes, categoriasRes] = await Promise.all([
+      // Vista pública (migración 20261104110000): solo lo del directorio,
+      // sin teléfono ni saldo, y la ubicación solo si es reciente.
       supabase
-        .from("conductores")
+        .from("conductores_publicos")
         .select(
-          "id, nombre, placa, telefono, foto_url, foto_portada_url, descripcion, estado, categoria_id, localidad, nivel_servicio, subgrupo_id, asientos_totales, asientos_ocupados, ultima_actualizacion, ultima_lat, ultima_lng, aprobado"
+          "id, nombre, placa, foto_url, foto_portada_url, descripcion, estado, categoria_id, localidad, nivel_servicio, subgrupo_id, asientos_totales, asientos_ocupados, ultima_actualizacion, ultima_lat, ultima_lng, aprobado"
         )
         .in("estado", [ESTADO_CONDUCTOR_ACTIVO, ESTADO_CONDUCTOR_OCUPADO]),
       supabase.from("categorias").select("id, nombre, orden, icono_url").order("orden", { ascending: true }),

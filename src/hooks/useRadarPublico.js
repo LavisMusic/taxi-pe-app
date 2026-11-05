@@ -29,11 +29,11 @@ export function useRadarPublico() {
   useEffect(() => {
     let cancelado = false;
     (async () => {
+      // Vista pública (migración 20261104110000): ya filtra a quien tiene
+      // acceso (membresía vigente o créditos) sin exponer su saldo.
       const { data, error } = await supabase
-        .from("conductores")
-        .select(
-          "id, ultima_lat, ultima_lng, ultima_actualizacion, asientos_ocupados, asientos_totales, creditos, vencimiento_suscripcion"
-        )
+        .from("conductores_publicos")
+        .select("id, ultima_lat, ultima_lng, ultima_actualizacion, asientos_ocupados, asientos_totales")
         .in("estado", [ESTADO_CONDUCTOR_ACTIVO, ESTADO_CONDUCTOR_OCUPADO])
         .not("ultima_lat", "is", null)
         .not("ultima_lng", "is", null);
@@ -58,15 +58,8 @@ export function useRadarPublico() {
         // conductor tampoco estaría transmitiendo al público — no
         // resucitarlo acá con una posición vieja.
         if (ocupados >= totales) continue;
-        // Paywall Estricto: mismo criterio que ConductorPage.jsx
-        // (tieneAcceso) — membresía vigente O créditos > 0. Sin esto,
-        // un conductor sin saldo cuyo `estado` sigue "activo" en la
-        // base (columna vieja, todavía no la actualizó el auto-apagado)
-        // igual aparecía sembrado acá en la carga inicial del Radar.
-        // (Sin fecha de membresía NO cuenta como vigente.)
-        const membresiaVigente = !!c.vencimiento_suscripcion && new Date(c.vencimiento_suscripcion) > new Date();
-        const tieneAcceso = membresiaVigente || (c.creditos ?? 0) > 0;
-        if (!tieneAcceso) continue;
+        // Paywall Estricto (membresía vigente O créditos > 0): lo aplica
+        // la vista conductores_publicos en la base.
         iniciales[c.id] = { lat: c.ultima_lat, lng: c.ultima_lng };
       }
       // El Broadcast pudo haber llegado ANTES de que este fetch

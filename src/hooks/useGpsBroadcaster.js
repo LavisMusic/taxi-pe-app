@@ -115,11 +115,32 @@ export function useGpsBroadcaster({
         )
       : new Map();
 
+    // Bug del Radar Ciego: además del Broadcast (en vivo mientras el Radar
+    // sigue abierto), se guarda la última posición en la propia fila del
+    // conductor — así el radar y el directorio tienen algo real que traer
+    // apenas se montan. Solo mientras haya lugar público (mismo criterio
+    // que decide si se transmite o no) y con throttle.
+    let ultimaPos = null;
+    const guardarPosicion = (lat, lng) => {
+      if (!(vaAlPublico || modoDelivery)) return;
+      const ahora = Date.now();
+      if (ahora - ultimaEscrituraDbRef.current <= DB_WRITE_THROTTLE_MS) return;
+      ultimaEscrituraDbRef.current = ahora;
+      supabase
+        .from("conductores")
+        .update({ ultima_lat: lat, ultima_lng: lng, ultima_actualizacion: new Date().toISOString() })
+        .eq("id", conductorId)
+        .then(({ error }) => {
+          if (error) console.error("No se pudo guardar la última posición del conductor:", error);
+        });
+    };
+
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         setProblemaGps(null);
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
+        ultimaPos = { lat, lng };
         // Público: hace falta identificar DE QUIÉN es cada punto (muchos
         // conductores comparten el canal). Privado: sobra, son los
         // únicos dos ahí — mismo formato exacto que pide la Fase 3
@@ -128,28 +149,7 @@ export function useGpsBroadcaster({
         // pasajero a bordo/reservado la necesita igual.
         canalPublico?.send({ type: "broadcast", event: "gps_update", payload: { conductorId, lat, lng } });
         canalesPrivados.forEach((canal) => canal.send({ type: "broadcast", event: "gps_update", payload: { lat, lng } }));
-
-        // Bug del Radar Ciego: además del Broadcast (en vivo mientras el
-        // Radar sigue abierto), se guarda la última posición en la
-        // propia fila del conductor — así useRadarPublico.js tiene algo
-        // real que traer con un SELECT apenas se monta, en vez de
-        // depender 100% de que llegue un tick nuevo justo después de
-        // que el pasajero se suscribió. Solo mientras haya lugar
-        // público (mismo criterio que decide si se transmite o no) y
-        // con throttle — no hace falta un UPDATE por cada tick del GPS.
-        if (vaAlPublico || modoDelivery) {
-          const ahora = Date.now();
-          if (ahora - ultimaEscrituraDbRef.current > DB_WRITE_THROTTLE_MS) {
-            ultimaEscrituraDbRef.current = ahora;
-            supabase
-              .from("conductores")
-              .update({ ultima_lat: lat, ultima_lng: lng, ultima_actualizacion: new Date().toISOString() })
-              .eq("id", conductorId)
-              .then(({ error }) => {
-                if (error) console.error("No se pudo guardar la última posición del conductor:", error);
-              });
-          }
-        }
+        guardarPosicion(lat, lng);
       },
       (err) => {
         // Sin GPS no hay nada que transmitir — el radar simplemente no
@@ -164,11 +164,20 @@ export function useGpsBroadcaster({
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
 
+    // "Sigo aquí": con el celular quieto el GPS puede pasar minutos sin
+    // emitir nada, y la base desconecta sola a quien lleva 20 minutos sin
+    // señal (taxi_desconectar_inactivos). Cada minuto se vuelve a guardar
+    // la última posición conocida mientras la app siga abierta.
+    const latido = setInterval(() => {
+      if (ultimaPos) guardarPosicion(ultimaPos.lat, ultimaPos.lng);
+    }, 60_000);
+
     // Limpieza estricta de TODOS los canales (público + cada privado) —
     // se ejecuta ANTES de que el efecto vuelva a correr (cambió el
     // estado, los asientos, o la lista de pasajeros a bordo) y también
     // al desmontar del todo.
     return () => {
+      clearInterval(latido);
       setProblemaGps(null);
       navigator.geolocation.clearWatch(watchId);
       if (canalPublico) supabase.removeChannel(canalPublico);
