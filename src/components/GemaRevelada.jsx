@@ -6,30 +6,34 @@ import { createPortal } from "react-dom";
 //
 // Después del conteo tipo casino (ContadorCreditos), un relleno neón sube
 // y cubre toda la pantalla; al llenarse, destella y revela una gema 3D de
-// verdad (corona, mesa y pabellón octogonales en CSS 3D) girando y
-// brillando, con la cantidad ganada. Se cierra sola o tocando.
+// verdad girando y brillando, con la cantidad ganada. Se cierra sola o
+// tocando.
+//
+// La gema es el MISMO diamante punta a punta del contador (el rombo
+// vertical de ContadorCreditos), en 3D: dos pirámides octogonales unidas
+// por la base, con las mismas proporciones (arriba 13,8 / abajo 18,6 /
+// ancho 22,4).
 //
 // `color`: "verde" (compras en negocios) o "celeste" (viajes en Taxi-PE).
 
 const LADOS = 8;
-// Medidas de la gema (px): radio del filetín, de la mesa, alto de la
-// corona y fondo del pabellón.
-const R = 70;
-const R_MESA = 38;
-const ALTO_CORONA = 34;
-const FONDO_PABELLON = 88;
+// Medidas (px): radio del filetín, alto de la punta de arriba y de abajo.
+const R = 56;
+const ALTO_ARRIBA = 69;
+const ALTO_ABAJO = 93;
+// La caja de la gema y dónde cae el filetín (para centrarla).
+const ANCHO_CAJA = 160;
+const ALTO_CAJA = 180;
+const Y_FILETIN = (ALTO_CAJA - (ALTO_ARRIBA + ALTO_ABAJO)) / 2 + ALTO_ARRIBA;
 
 const COS = Math.cos(Math.PI / LADOS);
 const TAN = Math.tan(Math.PI / LADOS);
 const APOTEMA = R * COS;
-const APOTEMA_MESA = R_MESA * COS;
 const ANCHO_LADO = 2 * APOTEMA * TAN;
-const ANCHO_MESA_LADO = 2 * APOTEMA_MESA * TAN;
-const LARGO_CORONA = Math.hypot(APOTEMA - APOTEMA_MESA, ALTO_CORONA);
-const ANG_CORONA = (Math.atan((APOTEMA - APOTEMA_MESA) / ALTO_CORONA) * 180) / Math.PI;
-const LARGO_PABELLON = Math.hypot(APOTEMA, FONDO_PABELLON);
-const ANG_PABELLON = (Math.atan(APOTEMA / FONDO_PABELLON) * 180) / Math.PI;
-const RECORTE_CORONA = (((ANCHO_LADO - ANCHO_MESA_LADO) / 2 / ANCHO_LADO) * 100).toFixed(2);
+const LARGO_ARRIBA = Math.hypot(APOTEMA, ALTO_ARRIBA);
+const ANG_ARRIBA = (Math.atan(APOTEMA / ALTO_ARRIBA) * 180) / Math.PI;
+const LARGO_ABAJO = Math.hypot(APOTEMA, ALTO_ABAJO);
+const ANG_ABAJO = (Math.atan(APOTEMA / ALTO_ABAJO) * 180) / Math.PI;
 // Brillo de cada faceta (fijo a la gema: al girar, las facetas destellan).
 const LUZ = [1.35, 1.1, 0.8, 0.62, 0.72, 0.95, 1.2, 1.45];
 
@@ -47,10 +51,14 @@ function reducirMovimiento() {
 }
 
 // La gema sola (también se usa fuera de la animación, ej. en la
-// configuración del superadmin). `tam`: escala; ocupa 160 px × tam.
+// configuración del superadmin). `tam`: escala; ocupa 160 × 180 px × tam.
 export function Gema3D({ color = "verde", tam = 1 }) {
   return (
-    <span className="tz-g3d-caja" style={{ width: `${160 * tam}px`, height: `${160 * tam}px` }} aria-hidden="true">
+    <span
+      className="tz-g3d-caja"
+      style={{ width: `${ANCHO_CAJA * tam}px`, height: `${ALTO_CAJA * tam}px` }}
+      aria-hidden="true"
+    >
       <style>{ESTILO}</style>
       <GemaCuerpo color={color} tam={tam} />
     </span>
@@ -61,43 +69,34 @@ function GemaCuerpo({ color, tam }) {
   return (
     <span className={`tz-g3d tz-g3d-${color}`} style={{ "--tz-g3d-escala": tam }}>
       <span className="tz-g3d-halo" />
-      <span className="tz-g3d-escena">
+      <span className="tz-g3d-escena" style={{ top: `${Y_FILETIN}px` }}>
         <span className="tz-g3d-cuerpo">
+          {/* Mitad de arriba: punta hacia arriba. */}
           {Array.from({ length: LADOS }, (_, k) => (
             <span
-              key={`c${k}`}
-              className="tz-g3d-cara tz-g3d-corona"
+              key={`a${k}`}
+              className="tz-g3d-cara tz-g3d-arriba"
               style={{
                 width: `${ANCHO_LADO}px`,
-                height: `${LARGO_CORONA}px`,
+                height: `${LARGO_ARRIBA}px`,
                 left: `${-ANCHO_LADO / 2}px`,
-                top: `${-LARGO_CORONA}px`,
-                clipPath: `polygon(${RECORTE_CORONA}% 0, ${100 - RECORTE_CORONA}% 0, 100% 100%, 0 100%)`,
-                transform: `rotateY(${k * (360 / LADOS)}deg) translateZ(${APOTEMA - 0.4}px) rotateX(${ANG_CORONA}deg)`,
+                top: `${-LARGO_ARRIBA}px`,
+                transform: `rotateY(${k * (360 / LADOS)}deg) translateZ(${APOTEMA - 0.4}px) rotateX(${ANG_ARRIBA}deg)`,
                 filter: `brightness(${LUZ[k]})`,
               }}
             />
           ))}
-          <span
-            className="tz-g3d-cara tz-g3d-mesa"
-            style={{
-              width: `${2 * APOTEMA_MESA}px`,
-              height: `${2 * APOTEMA_MESA}px`,
-              left: `${-APOTEMA_MESA}px`,
-              top: `${-APOTEMA_MESA}px`,
-              transform: `translateY(${-ALTO_CORONA}px) rotateX(90deg)`,
-            }}
-          />
+          {/* Mitad de abajo: punta hacia abajo, un poco más larga. */}
           {Array.from({ length: LADOS }, (_, k) => (
             <span
-              key={`p${k}`}
-              className="tz-g3d-cara tz-g3d-pabellon"
+              key={`b${k}`}
+              className="tz-g3d-cara tz-g3d-abajo"
               style={{
                 width: `${ANCHO_LADO}px`,
-                height: `${LARGO_PABELLON}px`,
+                height: `${LARGO_ABAJO}px`,
                 left: `${-ANCHO_LADO / 2}px`,
                 top: 0,
-                transform: `rotateY(${k * (360 / LADOS)}deg) translateZ(${APOTEMA - 0.4}px) rotateX(${-ANG_PABELLON}deg)`,
+                transform: `rotateY(${k * (360 / LADOS)}deg) translateZ(${APOTEMA - 0.4}px) rotateX(${-ANG_ABAJO}deg)`,
                 filter: `brightness(${LUZ[(k + 3) % LADOS] * 0.85})`,
               }}
             />
@@ -153,7 +152,7 @@ export default function GemaRevelada({ color = "verde", cantidad = 1, onCerrar }
         <div className="tz-gema-centro">
           <div className="tz-gema-rayos" />
           <div className="tz-gema-pieza">
-            <span className="tz-g3d-caja" style={{ width: 160, height: 160 }} aria-hidden="true">
+            <span className="tz-g3d-caja" style={{ width: ANCHO_CAJA, height: ALTO_CAJA }} aria-hidden="true">
               <GemaCuerpo color={color} tam={1} />
             </span>
           </div>
@@ -259,7 +258,7 @@ const ESTILO = `
   pointer-events: none;
 }
 .tz-gema-pieza {
-  height: 240px;
+  height: 230px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -313,10 +312,11 @@ const ESTILO = `
   --g3d-oscuro: #064d22;
   position: relative;
   display: inline-block;
-  width: 160px;
-  height: 160px;
+  width: ${ANCHO_CAJA}px;
+  height: ${ALTO_CAJA}px;
   transform: scale(var(--tz-g3d-escala, 1));
   transform-origin: 0 0;
+  filter: drop-shadow(0 0 6px rgba(var(--g3d-rgb), 0.9)) drop-shadow(0 0 22px rgba(var(--g3d-rgb), 0.55));
 }
 .tz-g3d-caja { position: relative; display: inline-block; flex-shrink: 0; }
 .tz-g3d-celeste {
@@ -336,7 +336,6 @@ const ESTILO = `
 .tz-g3d-escena {
   position: absolute;
   left: 50%;
-  top: 38%;
   width: 0;
   height: 0;
   perspective: 700px;
@@ -352,27 +351,23 @@ const ESTILO = `
   position: absolute;
   backface-visibility: visible;
 }
-.tz-g3d-corona {
+/* Mitad de arriba: claro hacia la punta, como el rombo del contador. */
+.tz-g3d-arriba {
   transform-origin: 50% 100%;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
   background:
-    linear-gradient(200deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0) 38%),
-    linear-gradient(180deg, var(--g3d-claro), var(--g3d-c) 45%, var(--g3d-medio));
-  opacity: 0.93;
+    linear-gradient(200deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0) 42%),
+    linear-gradient(0deg, var(--g3d-c), var(--g3d-claro) 75%, #fff);
+  opacity: 0.94;
 }
-.tz-g3d-mesa {
-  clip-path: polygon(29.29% 0, 70.71% 0, 100% 29.29%, 100% 70.71%, 70.71% 100%, 29.29% 100%, 0 70.71%, 0 29.29%);
-  background:
-    radial-gradient(circle at 40% 35%, #fff, rgba(255, 255, 255, 0) 45%),
-    conic-gradient(from 22.5deg, var(--g3d-claro), var(--g3d-c), var(--g3d-medio), var(--g3d-c), var(--g3d-claro), var(--g3d-c), var(--g3d-medio), var(--g3d-c), var(--g3d-claro));
-  opacity: 0.95;
-}
-.tz-g3d-pabellon {
+/* Mitad de abajo: se oscurece hacia la punta. */
+.tz-g3d-abajo {
   transform-origin: 50% 0;
   clip-path: polygon(0 0, 100% 0, 50% 100%);
   background:
-    linear-gradient(170deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 30%),
+    linear-gradient(170deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 32%),
     linear-gradient(180deg, var(--g3d-c), var(--g3d-medio) 45%, var(--g3d-oscuro));
-  opacity: 0.9;
+  opacity: 0.92;
 }
 .tz-g3d-chispa {
   position: absolute;
