@@ -16,6 +16,8 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const WEBHOOK_SECRET = Deno.env.get("WEBHOOK_SECRET_CAJA_TO_TAXI")!;
 
 const EXPECTED_EVENT = "caja.puntos_cliente";
+// Gemas cruzadas (migración 20261106100000_gemas.sql): mismo receptor.
+const EVENTOS_GEMAS = ["caja.gema_verde", "caja.gemas_celestes", "caja.gemas_config"];
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return jsonResponse(405, { error: "method not allowed" });
@@ -24,12 +26,13 @@ Deno.serve(async (req) => {
   if (!v.ok) return jsonResponse(v.status, { error: v.error });
 
   const env = v.envelope!;
-  if (env.event_type !== EXPECTED_EVENT) {
+  const esGemas = EVENTOS_GEMAS.includes(env.event_type);
+  if (env.event_type !== EXPECTED_EVENT && !esGemas) {
     return jsonResponse(400, { error: `event_type inesperado: ${env.event_type}` });
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-  const { data, error } = await supabase.rpc("rpc_webhook_caja_puntos", {
+  const { data, error } = await supabase.rpc(esGemas ? "rpc_webhook_caja_gemas" : "rpc_webhook_caja_puntos", {
     p_event_id: env.event_id,
     p_payload: env,
   });

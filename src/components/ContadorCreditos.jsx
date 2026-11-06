@@ -14,7 +14,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "re
 // (`clave`), así la animación sale una sola vez por cambio aunque los
 // créditos hayan llegado con la app cerrada.
 
-const CAPAS_ENCIMA = ".tz-modal-backdrop, .tz-exito-overlay, .tz-neon-bienvenida-overlay";
+const CAPAS_ENCIMA = ".tz-modal-backdrop, .tz-exito-overlay, .tz-neon-bienvenida-overlay, .tz-gema-overlay";
 const ALTO_DIGITO = 1.2; // em
 const GOTAS = 12;
 const ANCHO_CIFRA = 0.86; // em
@@ -209,7 +209,18 @@ function Diamante() {
 // `variante`: "celeste" (créditos del cliente) o "verde" (créditos del
 // conductor). Toma el tamaño de letra de donde se pone (1em) si se le pasa
 // `className="tz-cc-heredado"` (ej. dentro de un recuadro de saldo).
-export default function ContadorCreditos({ valor, clave, titulo = "Créditos", variante = "celeste", className = "" }) {
+// `onSubio(cuanto)`: al terminar un conteo hacia arriba (ahí se muestra la
+// gema ganada, ver GemaRevelada.jsx).
+export default function ContadorCreditos({
+  valor,
+  clave,
+  titulo = "Créditos",
+  variante = "celeste",
+  className = "",
+  onSubio,
+}) {
+  const onSubioRef = useRef(onSubio);
+  onSubioRef.current = onSubio;
   const actual = Math.max(0, Math.round(Number(valor) || 0));
   const visible = useInterfazPrincipalVisible();
   const [mostrado, setMostrado] = useState(() => {
@@ -258,7 +269,12 @@ export default function ContadorCreditos({ valor, clave, titulo = "Créditos", v
     const dur = Math.max(0, ...giro.rodillos.map((r) => r.dur)) + 120;
     const t = setTimeout(() => {
       guardarVisto(clave, giro.hasta);
-      if (giro.hasta > giro.desde) setGotas((g) => g + 1);
+      if (giro.hasta > giro.desde) {
+        setGotas((g) => g + 1);
+        const cuanto = giro.hasta - giro.desde;
+        // Las gotas saltan primero; la gema llega un instante después.
+        setTimeout(() => onSubioRef.current?.(cuanto), 650);
+      }
       setMostrado(giro.hasta);
       setGiro(null);
     }, dur);

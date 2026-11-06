@@ -5930,6 +5930,17 @@ export default function Styles() {
         color: var(--cyan);
         text-shadow: 0 0 6px rgba(43, 232, 255, 0.45);
       }
+      /* Gemas cruzadas del pasajero: verde y celeste lado a lado; la
+         palabra de los dos colores. */
+      .tz-gemas-fila { display: inline-flex; align-items: center; gap: 12px; }
+      .tz-gemas-label.tz-gemas-label-dual {
+        background: linear-gradient(90deg, #39ffb0, #2be8ff);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: none;
+        filter: drop-shadow(0 0 4px rgba(43, 232, 255, 0.45));
+      }
       /* Recuadros del conductor (Gemas / Vigencia) con todo centrado. */
       .tz-stats-centrados .tz-stat-chip { align-items: center; text-align: center; }
       .tz-stats-centrados .tz-stat-label { justify-content: center; }
