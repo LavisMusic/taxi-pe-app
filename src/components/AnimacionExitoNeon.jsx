@@ -230,7 +230,11 @@ export default function AnimacionExitoNeon({ titulo = "¡Listo!", descripcion, o
             .tz-exito-overlay .tz-exito-titulo {
               position: relative;
               z-index: 2;
-              margin: 6px 0 0;
+              /* El degradado se recorta a la caja del texto: sin este
+                 espacio abajo, la cola de la "g" quedaba sin pintar. */
+              margin: 6px 0 -0.18em;
+              padding: 0.04em 0.12em 0.18em;
+              line-height: 1.2;
               text-align: center;
               font-family: 'Orbitron', sans-serif;
               font-weight: 900;

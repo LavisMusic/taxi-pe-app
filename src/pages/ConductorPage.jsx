@@ -50,6 +50,8 @@ import { useViajeFinalizadoAviso } from "../hooks/useViajeFinalizadoAviso";
 import VerificarConductorForm from "../components/VerificarConductorForm";
 import Dropdown from "../components/Dropdown";
 import ContadorCreditos from "../components/ContadorCreditos";
+import GemasRecolectadas from "../components/GemasRecolectadas";
+import { supabase } from "../supabaseClient";
 import PanelesConductor from "../components/conductor/PanelesConductor";
 import PanelDelivery from "../components/conductor/PanelDelivery";
 import { CerrarTurnoModal, HistorialTurnosModal, EstadisticasModal } from "../components/conductor/TurnoConductorModales";
@@ -307,6 +309,23 @@ export default function ConductorPage() {
 
   // Meta del día: festejo una sola vez por día al alcanzarla.
   const ganadoHoy = gananciaHoy(estadisticas);
+
+  // Gemas verdes que le pagaron los pasajeros (fase 2): caja con su tope.
+  const [gemasCobradas, setGemasCobradas] = useState(null);
+  useEffect(() => {
+    if (!conductor?.id) return undefined;
+    let cancel = false;
+    const leer = () =>
+      supabase.rpc("taxi_mis_gemas_conductor").then(({ data, error }) => {
+        if (!cancel && !error && data) setGemasCobradas(data);
+      });
+    leer();
+    const t = setInterval(leer, 30000);
+    return () => {
+      cancel = true;
+      clearInterval(t);
+    };
+  }, [conductor?.id]);
   const metaDiaria = Number(conductor?.meta_diaria) || 0;
   const [festejarMeta, setFestejarMeta] = useState(false);
   useEffect(() => {
@@ -586,6 +605,16 @@ export default function ConductorPage() {
                 )}
               </div>
             </section>
+            {gemasCobradas && (
+              <GemasRecolectadas
+                color="verde"
+                recolectadas={gemasCobradas.recolectadas}
+                apartadas={gemasCobradas.apartadas}
+                tope={gemasCobradas.tope}
+                valor={Number(gemasCobradas.valor) || 0.1}
+                activo={gemasCobradas.activo}
+              />
+            )}
 
             <button
               type="button"
