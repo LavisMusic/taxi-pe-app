@@ -7,7 +7,6 @@ import {
   METODOS_PAGO,
   METODOS_CON_COMPROBANTE,
   METODO_PAGO_EFECTIVO,
-  TIPO_ITEM_CREDITOS,
   TIPO_ITEM_MEMBRESIA,
 } from "../../lib/taxiEnums";
 import { ventaParaPanel } from "../../lib/ventaBoleta";
@@ -46,10 +45,7 @@ const DURACIONES = [
   { id: "anual", label: "Anual" },
   { id: "otros", label: "Otros" },
 ];
-const TIPOS = [
-  { id: TIPO_ITEM_MEMBRESIA, label: "Membresía" },
-  { id: TIPO_ITEM_CREDITOS, label: "Créditos" },
-];
+// Los créditos ya no existen (fase 3b): solo membresías.
 const CLASE_METODO = { efectivo: "efectivo", yape: "yape", plin: "plin", otros: "otros", fiado: "otros" };
 const DIAS_AVISO = 7;
 
@@ -133,20 +129,7 @@ function RecargaRapida({ conductor, paquetes, registrarRecarga, saving, errorExt
     setError("");
   };
 
-  const selectorTipo = (
-    <div className="tz-plan-filtros">
-      {TIPOS.map((t) => (
-        <button
-          key={t.id}
-          type="button"
-          className={`tz-gasto-tipo-btn ${tipo === t.id ? "tz-gasto-tipo-active" : ""}`}
-          onClick={() => cambiarTipo(t.id)}
-        >
-          {t.label}
-        </button>
-      ))}
-    </div>
-  );
+  const selectorTipo = null;
 
   if (conductor.aprobado === false) {
     return <p className="tz-error">Este conductor está pendiente de aprobación en el Centro de Peticiones.</p>;
@@ -255,7 +238,7 @@ function RecargaRapida({ conductor, paquetes, registrarRecarga, saving, errorExt
         options={visibles.map((p) => ({
           value: String(p.id),
           label: `${p.nombre} — ${
-            p.tipo_item === TIPO_ITEM_MEMBRESIA ? `${p.dias_membresia} días` : `${p.creditos} créditos`
+            `${p.dias_membresia} días`
           } · ${formatSoles(p.precio)}`,
         }))}
         placeholder={visibles.length === 0 ? "No hay paquetes en este filtro" : "Elige un paquete…"}
@@ -265,7 +248,7 @@ function RecargaRapida({ conductor, paquetes, registrarRecarga, saving, errorExt
         <p className="tz-plan-total" style={{ margin: "8px 0 0" }}>
           Total: <strong>{formatSoles(total)}</strong>
           {descuentoGemas > 0 && <span style={{ color: "#39ffb0" }}> (gemas −{formatSoles(descuentoGemas)})</span>} ·{" "}
-          {paquete.tipo_item === TIPO_ITEM_MEMBRESIA ? `${paquete.dias_membresia} días` : `${paquete.creditos} créditos`}
+          {`${paquete.dias_membresia} días`}
         </p>
       )}
 
@@ -382,7 +365,6 @@ export default function GestorRecargaConductorModal({
   const [guardando, setGuardando] = useState("");
   const [verComprobante, setVerComprobante] = useState(null);
   const [fecha, setFecha] = useState(aFechaInput(conductor.vencimiento_suscripcion));
-  const [creditos, setCreditos] = useState(String(conductor.creditos ?? 0));
 
   const estado = estadoMembresia(conductor);
   const vigente = (diasHasta(conductor.vencimiento_suscripcion) ?? -1) >= 0;
@@ -415,13 +397,10 @@ export default function GestorRecargaConductorModal({
   };
 
   const corregir = async () => {
-    const cred = Number(creditos);
-    if (!Number.isInteger(cred) || cred < 0) return setError("Los créditos deben ser un número entero (0 o más).");
     const ok = await actualizar(
       {
         // Fin del día elegido (hora de Perú, UTC-5); vacío = sin membresía.
         vencimiento_suscripcion: fecha ? new Date(`${fecha}T23:59:59-05:00`).toISOString() : null,
-        creditos: cred,
       },
       "fecha"
     );
@@ -466,7 +445,6 @@ export default function GestorRecargaConductorModal({
                 setAviso("");
                 if (a.id === "vencimiento") {
                   setFecha(aFechaInput(conductor.vencimiento_suscripcion));
-                  setCreditos(String(conductor.creditos ?? 0));
                 }
               }}
             >
@@ -485,10 +463,6 @@ export default function GestorRecargaConductorModal({
               <div className="tz-gestor-recarga-dato">
                 <span>Vence</span>
                 <strong>{conductor.vencimiento_suscripcion ? formatDate(conductor.vencimiento_suscripcion) : "—"}</strong>
-              </div>
-              <div className="tz-gestor-recarga-dato">
-                <span>Créditos</span>
-                <strong>{conductor.creditos ?? 0}</strong>
               </div>
               <div className="tz-gestor-recarga-dato">
                 <span>Teléfono</span>
@@ -553,18 +527,6 @@ export default function GestorRecargaConductorModal({
               <span>Vence el</span>
               <input type="date" className="tz-text-input" value={fecha} onChange={(e) => setFecha(e.target.value)} />
             </label>
-            <label className="tz-plan-campo">
-              <span>Créditos</span>
-              <input
-                type="number"
-                min={0}
-                step={1}
-                inputMode="numeric"
-                className="tz-text-input"
-                value={creditos}
-                onChange={(e) => setCreditos(e.target.value)}
-              />
-            </label>
             <button type="button" className="tz-cliente-action-btn" onClick={corregir} disabled={guardando === "fecha"}>
               {guardando === "fecha" ? <Loader2 size={13} className="tz-spin" /> : <CalendarClock size={13} />} Guardar fecha
             </button>
@@ -589,7 +551,7 @@ export default function GestorRecargaConductorModal({
                   </div>
                   <div className="tz-receipt-divider" />
                   <div className="tz-receipt-row">
-                    <span>{v.detalle || (v.tipo_item === TIPO_ITEM_MEMBRESIA ? "Membresía" : "Créditos")}</span>
+                    <span>{v.detalle || "Membresía"}</span>
                     <strong>{formatSoles(v.monto)}</strong>
                   </div>
                   <div className="tz-receipt-row tz-plan-pagos-nota">

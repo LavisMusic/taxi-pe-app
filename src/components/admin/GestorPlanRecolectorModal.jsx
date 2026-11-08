@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { X, Zap, Loader2, Check, CreditCard, Camera, ImagePlus } from "lucide-react";
+import { X, Zap, Loader2, CreditCard, Camera, ImagePlus } from "lucide-react";
 import { formatSoles, formatDate, formatTime } from "../../utils/format";
 import {
   METODOS_PAGO,
   METODOS_CON_COMPROBANTE,
   METODO_PAGO_EFECTIVO,
   METODO_PAGO_FIADO,
-  TIPO_ITEM_CREDITOS,
   TIPO_ITEM_MEMBRESIA,
   ESTADO_RECARGA_APROBADO,
   ESTADO_RECARGA_RECHAZADO,
@@ -14,23 +13,22 @@ import {
 import { subirComprobante } from "../../lib/comprobantes";
 import Dropdown from "../Dropdown";
 import BotonPegarComprobante from "../BotonPegarComprobante";
+import CanjeGemas from "../CanjeGemas";
+import { supabase } from "../../supabaseClient";
 
 // Gestor del plan de UN recolector (botón ⚡ de su tarjeta en el
 // Directorio del Admin, categoría "Recolectores") — el mismo diseño que el
-// gestor del conductor (GestorRecargaConductorModal). Los recolectores
-// solo compran paquetes de CRÉDITOS (su mercadería: vender una membresía
-// de N días le cuesta N créditos); la membresía que ya tuvieran sigue
-// hasta que venza.
-//   * Créditos y estado: tarjetas (membresía, vence, créditos, teléfono).
-//   * Recarga rápida: paquetes de créditos de recolectores; comprobante
-//     OBLIGATORIO si es digital; vuelto si es efectivo. Queda como compra
-//     aprobada (peticiones_recarga_recolector).
-//   * Corregir créditos: sin registrar venta.
-//   * Pagos: sus compras de saldo (solo consulta).
+// gestor del conductor (GestorRecargaConductorModal). Fase 3b de gemas:
+// los recolectores compran una MEMBRESÍA con días y cupo de conductores
+// distintos que pueden atender en su periodo (los créditos ya no existen).
+//   * Membresía y cupo: tarjetas (vence, cupo usado, teléfono).
+//   * Vender membresía: paquetes de recolectores con canje de sus gemas
+//     verdes; comprobante OBLIGATORIO si es digital; vuelto si es
+//     efectivo. La base la aprueba en el acto (empieza un periodo nuevo).
+//   * Pagos: sus compras (solo consulta).
 const APARTADOS = [
-  { id: "estado", label: "Créditos y estado" },
-  { id: "recarga", label: "Recarga rápida" },
-  { id: "vencimiento", label: "Corregir créditos" },
+  { id: "estado", label: "Membresía y cupo" },
+  { id: "recarga", label: "Vender membresía" },
   { id: "pagos", label: "Pagos" },
 ];
 const CLASE_METODO = { efectivo: "efectivo", yape: "yape", plin: "plin", otros: "otros" };
@@ -66,9 +64,27 @@ function RecargaRapida({ recolector, paquetes, crearPeticion, onHecho }) {
 
   useEffect(() => () => preview && URL.revokeObjectURL(preview), [preview]);
 
-  const activos = paquetes.filter((p) => p.activo !== false && p.tipo_item === TIPO_ITEM_CREDITOS);
+  const activos = paquetes.filter((p) => p.activo !== false && p.tipo_item === TIPO_ITEM_MEMBRESIA);
   const paquete = activos.find((p) => String(p.id) === String(paqueteId)) || null;
-  const total = Number(paquete?.precio) || 0;
+  // Canje de sus gemas verdes (encendido por defecto) y si ya puede comprar.
+  const [canje, setCanje] = useState(null);
+  const [usarGemas, setUsarGemas] = useState(true);
+  useEffect(() => {
+    setCanje(null);
+    if (!paquete) return undefined;
+    let vigente = true;
+    supabase
+      .rpc("taxi_gemas_canje_recolector", { p_recolector_id: recolector.id, p_paquete_id: String(paquete.id) })
+      .then(({ data, error: e }) => {
+        if (vigente && !e && data) setCanje(data);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [paquete?.id, recolector.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const descuento = usarGemas && Number(canje?.n) > 0 ? Number(canje.monto) || 0 : 0;
+  const noPuede = canje && canje.puede === false;
+  const total = Math.max(Math.round(((Number(paquete?.precio) || 0) - descuento) * 100) / 100, 0);
   const esEfectivo = metodo === METODO_PAGO_EFECTIVO;
   const esDigital = METODOS_CON_COMPROBANTE.includes(metodo);
   const recibidoNum = Number(String(recibido).replace(",", "."));
@@ -85,7 +101,8 @@ function RecargaRapida({ recolector, paquetes, crearPeticion, onHecho }) {
 
   const registrar = async () => {
     setError("");
-    if (!paquete) return setError("Elige el paquete que compró.");
+    if (!paquete) return setError("Elige la membresía que compró.");
+    if (noPuede) return setError("Su membresía sigue vigente y con cupo: podrá comprar otra cuando se le acabe el cupo o venza.");
     if (!metodo) return setError("Elige el método de pago.");
     if (esDigital && !archivo) return setError("Con Yape/Plin/Otros el comprobante es obligatorio: toma la foto o adjúntalo.");
     if (esEfectivo && recibido !== "" && (!Number.isFinite(recibidoNum) || recibidoNum < total)) {
@@ -101,33 +118,44 @@ function RecargaRapida({ recolector, paquetes, crearPeticion, onHecho }) {
       }
       comprobanteUrl = url;
     }
-    const { error: err } = await crearPeticion({ recolector, paquete, metodoPago: metodo, comprobanteUrl, autoAprobar: true });
+    const { error: err } = await crearPeticion({
+      recolector,
+      paquete,
+      metodoPago: metodo,
+      comprobanteUrl,
+      usarGemas: descuento > 0,
+      autoAprobar: true,
+    });
     setEnviando(false);
-    if (err) return setError(err.message || "No se pudo registrar la recarga.");
+    if (err) return setError(err.message || "No se pudo registrar la membresía.");
     setArchivo(null);
     setPreview("");
     setRecibido("");
     setMetodo("");
     setPaqueteId("");
-    onHecho?.(`Recarga aplicada a ${recolector.nombre}: ${paquete.nombre}.`);
+    onHecho?.(`Membresía activada para ${recolector.nombre}: ${paquete.nombre}.`);
   };
 
   return (
     <>
-      <label className="tz-field-label">Paquete de créditos</label>
+      <label className="tz-field-label">Membresía</label>
       <Dropdown
         value={paqueteId}
         onChange={(v) => setPaqueteId(String(v))}
         options={activos.map((p) => ({
           value: String(p.id),
-          label: `${p.nombre} — ${p.creditos} créditos · ${formatSoles(p.precio)}`,
+          label: `${p.nombre} — ${p.dias_membresia} días · ${p.cupo_conductores || 0} conductores · ${formatSoles(p.precio)}`,
         }))}
-        placeholder={activos.length === 0 ? "No hay paquetes de créditos" : "Elige un paquete…"}
-        ariaLabel="Paquete"
+        placeholder={activos.length === 0 ? "No hay membresías de recolector" : "Elige una membresía…"}
+        ariaLabel="Membresía"
       />
+      {noPuede && <p className="tz-error">Su membresía sigue vigente y con cupo: podrá comprar otra cuando se le acabe el cupo o venza.</p>}
+      {paquete && !noPuede && (
+        <CanjeGemas color="verde" quien="sus" canje={canje} precio={paquete.precio} activo={usarGemas} onCambiar={setUsarGemas} />
+      )}
       {paquete && (
         <p className="tz-plan-total" style={{ margin: "8px 0 0" }}>
-          Total: <strong>{formatSoles(total)}</strong> · {paquete.creditos} créditos
+          Total: <strong>{formatSoles(total)}</strong> · {paquete.dias_membresia} días · {paquete.cupo_conductores || 0} conductores
         </p>
       )}
 
@@ -211,21 +239,30 @@ function RecargaRapida({ recolector, paquetes, crearPeticion, onHecho }) {
         className="tz-scan-btn tz-payment-save"
         style={{ width: "100%", marginTop: 14 }}
         onClick={registrar}
-        disabled={enviando}
+        disabled={enviando || noPuede}
       >
-        {enviando ? <Loader2 size={15} className="tz-spin" /> : <Zap size={15} />} Registrar recarga
+        {enviando ? <Loader2 size={15} className="tz-spin" /> : <Zap size={15} />} Activar membresía
         {paquete ? ` de ${formatSoles(total)}` : ""}
       </button>
     </>
   );
 }
 
-export default function GestorPlanRecolectorModal({ recolector, paquetes = [], peticiones = [], crearPeticion, onUpdate, onClose }) {
+export default function GestorPlanRecolectorModal({ recolector, paquetes = [], peticiones = [], crearPeticion, onClose }) {
   const [apartado, setApartado] = useState("estado");
   const [aviso, setAviso] = useState("");
   const [error, setError] = useState("");
-  const [guardando, setGuardando] = useState("");
-  const [creditos, setCreditos] = useState(String(recolector.creditos_disponibles ?? 0));
+  // Cupo del periodo (conductores distintos atendidos).
+  const [cupo, setCupo] = useState(null);
+  useEffect(() => {
+    let vigente = true;
+    supabase.rpc("taxi_cupo_recolector", { p_recolector_id: recolector.id }).then(({ data, error: e }) => {
+      if (vigente && !e && data) setCupo(data);
+    });
+    return () => {
+      vigente = false;
+    };
+  }, [recolector.id, aviso]);
 
   const estado = estadoMembresia(recolector);
   const vigente = (diasHasta(recolector.membresia_vencimiento) ?? -1) >= 0;
@@ -239,22 +276,6 @@ export default function GestorPlanRecolectorModal({ recolector, paquetes = [], p
     [peticiones, recolector.id]
   );
 
-  const actualizar = async (campos, etiqueta) => {
-    setError("");
-    setAviso("");
-    setGuardando(etiqueta);
-    const { error: err } = await onUpdate(recolector.id, campos);
-    setGuardando("");
-    if (err) setError(err.message || "No se pudo guardar.");
-    return !err;
-  };
-
-  const corregir = async () => {
-    const cred = Number(creditos);
-    if (!Number.isInteger(cred) || cred < 0) return setError("Los créditos deben ser un número entero (0 o más).");
-    const ok = await actualizar({ creditos_disponibles: cred }, "creditos");
-    if (ok) setAviso("Corrección guardada.");
-  };
 
   return (
     <div className="tz-modal-backdrop">
@@ -263,7 +284,7 @@ export default function GestorPlanRecolectorModal({ recolector, paquetes = [], p
           <X size={18} />
         </button>
         <h2>
-          <CreditCard size={17} /> Créditos · {recolector.nombre}
+          <CreditCard size={17} /> Membresía · {recolector.nombre}
         </h2>
         <p className="tz-brand-sub" style={{ marginBottom: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <span className="tz-plan-badge" style={{ "--tz-plan-color": estado.color }}>
@@ -282,7 +303,6 @@ export default function GestorPlanRecolectorModal({ recolector, paquetes = [], p
                 setApartado(a.id);
                 setError("");
                 setAviso("");
-                if (a.id === "vencimiento") setCreditos(String(recolector.creditos_disponibles ?? 0));
               }}
             >
               {a.label}
@@ -302,8 +322,8 @@ export default function GestorPlanRecolectorModal({ recolector, paquetes = [], p
                 <strong>{recolector.membresia_vencimiento ? formatDate(recolector.membresia_vencimiento) : "—"}</strong>
               </div>
               <div className="tz-gestor-recarga-dato">
-                <span>Créditos</span>
-                <strong>{recolector.creditos_disponibles ?? 0}</strong>
+                <span>Cupo usado</span>
+                <strong>{cupo ? `${cupo.usado} de ${cupo.cupo}` : "—"}</strong>
               </div>
               <div className="tz-gestor-recarga-dato">
                 <span>Teléfono</span>
@@ -311,8 +331,8 @@ export default function GestorPlanRecolectorModal({ recolector, paquetes = [], p
               </div>
             </div>
             <p className="tz-stock-editor-sub" style={{ margin: "8px 0 0" }}>
-              Los recolectores solo compran créditos: vender una membresía de N días les cuesta N créditos.
-              {vigente ? " Su membresía actual sigue hasta que venza." : ""}
+              Cada conductor distinto al que le vende membresía en su periodo usa 1 cupo. Al acabarse el cupo o vencer,
+              puede comprar otra membresía en el acto.
             </p>
           </>
         )}
@@ -321,32 +341,10 @@ export default function GestorPlanRecolectorModal({ recolector, paquetes = [], p
           <RecargaRapida recolector={recolector} paquetes={paquetes} crearPeticion={crearPeticion} onHecho={setAviso} />
         )}
 
-        {apartado === "vencimiento" && (
-          <div className="tz-plan-seccion" style={{ alignItems: "flex-end" }}>
-            <label className="tz-plan-campo">
-              <span>Créditos</span>
-              <input
-                type="number"
-                min={0}
-                step={1}
-                inputMode="numeric"
-                className="tz-text-input"
-                value={creditos}
-                onChange={(e) => setCreditos(e.target.value)}
-              />
-            </label>
-            <button type="button" className="tz-cliente-action-btn" onClick={corregir} disabled={guardando === "creditos"}>
-              {guardando === "creditos" ? <Loader2 size={13} className="tz-spin" /> : <Check size={13} />} Guardar créditos
-            </button>
-            <p className="tz-stock-editor-sub" style={{ flexBasis: "100%", margin: 0 }}>
-              Solo para corregir un error: no registra ninguna venta.
-            </p>
-          </div>
-        )}
 
         {apartado === "pagos" &&
           (susCompras.length === 0 ? (
-            <p className="tz-stock-editor-sub">Todavía no compró saldo.</p>
+            <p className="tz-stock-editor-sub">Todavía no compró membresía.</p>
           ) : (
             <div className="tz-cierre-list">
               {susCompras.map((p) => (
@@ -359,7 +357,10 @@ export default function GestorPlanRecolectorModal({ recolector, paquetes = [], p
                   </div>
                   <div className="tz-receipt-divider" />
                   <div className="tz-receipt-row">
-                    <span>{p.tipo_item === TIPO_ITEM_MEMBRESIA ? `Membresía · ${p.dias_membresia} días` : `${p.creditos} créditos`}</span>
+                    <span>
+                      Membresía · {p.dias_membresia} días{p.cupo_conductores ? ` · ${p.cupo_conductores} conductores` : ""}
+                      {Number(p.gemas_usadas) > 0 ? ` · ${p.gemas_usadas} gemas` : ""}
+                    </span>
                     <strong>{formatSoles(p.monto)}</strong>
                   </div>
                   <div className="tz-receipt-row tz-plan-pagos-nota">

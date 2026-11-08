@@ -81,6 +81,32 @@ $$;
 revoke execute on function public.taxi_mi_membresia_recolector() from public, anon;
 grant execute on function public.taxi_mi_membresia_recolector() to authenticated;
 
+-- Admin: el cupo de un recolector (gestor ⚡ y su tarjeta).
+create or replace function public.taxi_cupo_recolector(p_recolector_id uuid)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_u public.usuarios;
+begin
+  if not public.taxi_es_admin() then
+    raise exception 'Solo el admin.' using errcode = '42501';
+  end if;
+  select * into v_u from public.usuarios where id = p_recolector_id;
+  return jsonb_build_object(
+    'activa', v_u.membresia_vencimiento is not null and v_u.membresia_vencimiento > now(),
+    'vence', v_u.membresia_vencimiento,
+    'cupo', coalesce(v_u.membresia_cupo, 0),
+    'usado', public.taxi__cupo_usado_recolector(v_u.id)
+  );
+end;
+$$;
+revoke execute on function public.taxi_cupo_recolector(uuid) from public, anon;
+grant execute on function public.taxi_cupo_recolector(uuid) to authenticated;
+
 -- ¿Puede comprar otra ahora? Vencida, sin membresía o con el cupo agotado.
 create or replace function public.taxi__recolector_puede_renovar(p_uid uuid)
 returns boolean

@@ -7,7 +7,7 @@ import { formatSoles } from "../../utils/format";
 // pone un único .tz-stats (CSS grid) que envuelve esto + UsuarioEstrellaChip,
 // para no anidar dos grids una dentro de otra.
 export default function StatsSection({ metrics, totalGastosHoy = 0 }) {
-  const { recaudadoHoy, membresiasActivas, creditosVendidosHoy } = metrics;
+  const { recaudadoHoy, membresiasActivas } = metrics;
   // Ganancia neta = lo recaudado hoy − los gastos cargados a mano hoy
   // (ya no hay un costo operativo fijo predefinido).
   const gananciaNetaHoy = recaudadoHoy - Number(totalGastosHoy || 0);
@@ -34,12 +34,6 @@ export default function StatsSection({ metrics, totalGastosHoy = 0 }) {
         <span className="tz-stat-value tz-cyan">{membresiasActivas}</span>
       </div>
 
-      <div className="tz-stat-chip">
-        <span className="tz-stat-label">
-          <CreditCard size={13} /> Créditos Vendidos (hoy)
-        </span>
-        <span className="tz-stat-value tz-yellow">{formatSoles(creditosVendidosHoy)}</span>
-      </div>
     </>
   );
 }

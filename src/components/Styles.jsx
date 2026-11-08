@@ -7703,6 +7703,16 @@ export default function Styles() {
          debajo (se despliega solo), el cliente; un brillo verde recorre el
          borde de los dos juntos — mismo diseño que "Tus pedidos" en Caja. */
       .tz-chatent-row, .tz-chatpas-row { position: relative; display: flex; flex-direction: column; gap: 6px; border-radius: 14px; overflow: visible !important; }
+      /* Cupo de conductores del recolector (fase 3b). */
+      .tz-cupo-barra { display: block; height: 8px; margin: 8px auto 2px; width: 80%; border-radius: 999px; overflow: hidden; background: rgba(43,232,255,0.14); }
+      .tz-cupo-barra > span {
+        display: block; height: 100%; border-radius: 999px;
+        background: linear-gradient(90deg, #39ffb0, #2be8ff, #39ffb0); background-size: 200% 100%;
+        box-shadow: 0 0 10px rgba(43,232,255,0.7);
+        transition: width 1s cubic-bezier(.2,.9,.3,1);
+        animation: tz-cupo-flujo 2.4s linear infinite;
+      }
+      @keyframes tz-cupo-flujo { from { background-position: 0% 0; } to { background-position: 200% 0; } }
       /* Chat con algo pendiente al entrar a Mensajes: el relleno late en
          verde 3 s (mismo pulso que los pedidos del cliente en Caja). */
       .tz-chatped-pulso {

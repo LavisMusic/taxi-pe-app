@@ -49,7 +49,6 @@ import AnimacionExitoNeon from "../components/AnimacionExitoNeon";
 import { useViajeFinalizadoAviso } from "../hooks/useViajeFinalizadoAviso";
 import VerificarConductorForm from "../components/VerificarConductorForm";
 import Dropdown from "../components/Dropdown";
-import ContadorCreditos from "../components/ContadorCreditos";
 import GemasRecolectadas from "../components/GemasRecolectadas";
 import { supabase } from "../supabaseClient";
 import PanelesConductor from "../components/conductor/PanelesConductor";
@@ -183,7 +182,7 @@ export default function ConductorPage() {
     await actualizar(conductor.id, { categoria_id: categoriaId });
     setGuardandoVehiculo(false);
   };
-  const tieneAcceso = !inhabilitadoPorAdmin && (tieneMembresiaVigente || (conductor?.creditos ?? 0) > 0);
+  const tieneAcceso = !inhabilitadoPorAdmin && tieneMembresiaVigente;
 
   // En carrera (pasajero con oferta aceptada o en tránsito): el switch de
   // taxi queda bloqueado y no recibe repartos. Repartiendo (pedidos de
@@ -591,20 +590,8 @@ export default function ConductorPage() {
                 />
               </div>
             )}
-            <section className="tz-stats tz-stats-centrados" style={{ gridTemplateColumns: "repeat(2, 1fr)", marginBottom: 4 }}>
-              <div className="tz-stat-chip">
-                <span className="tz-stat-label tz-stat-label-gemas-verde">Gemas</span>
-                <span className="tz-stat-value">
-                  <ContadorCreditos
-                    valor={conductor.creditos ?? 0}
-                    clave={`tz-creditos-conductor-${conductor.id}`}
-                    variante="verde"
-                    titulo="Gemas"
-                    className="tz-cc-heredado"
-                  />
-                </span>
-              </div>
-
+            {/* Solo la vigencia: los créditos ya no existen (fase 3b). */}
+            <section className="tz-stats tz-stats-centrados" style={{ gridTemplateColumns: "1fr", marginBottom: 4 }}>
               <div className={`tz-stat-chip ${vencida ? "" : "tz-stat-chip-green"}`}>
                 <span className="tz-stat-label">
                   <CalendarClock size={13} /> Vigencia

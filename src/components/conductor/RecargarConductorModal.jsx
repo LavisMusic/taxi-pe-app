@@ -3,7 +3,6 @@ import { X, Wallet, Loader2, Check, Clock, XCircle } from "lucide-react";
 import { formatSoles, formatDate } from "../../utils/format";
 import {
   TIPO_ITEM_MEMBRESIA,
-  TIPO_ITEM_CREDITOS,
   METODO_PAGO_YAPE,
   METODO_PAGO_PLIN,
   METODO_PAGO_OTROS,
@@ -24,10 +23,7 @@ import IconoGema from "../IconoGema";
 // solicitud queda en revisión hasta que el Admin la aprueba en el Centro
 // de Peticiones. Misma regla que la recarga del Admin: con la membresía
 // vigente no se recarga ni membresía ni gemas.
-const TIPOS = [
-  { id: TIPO_ITEM_MEMBRESIA, label: "Membresía" },
-  { id: TIPO_ITEM_CREDITOS, label: "Gemas" },
-];
+// Solo membresías (los créditos ya no existen, fase 3b).
 const METODOS = [
   { key: METODO_PAGO_YAPE, label: "Yape" },
   { key: METODO_PAGO_PLIN, label: "Plin" },
@@ -136,7 +132,7 @@ export default function RecargarConductorModal({ conductor, onClose }) {
           <br />
           hasta el {formatDate(conductor.vencimiento_suscripcion)}
         </h3>
-        <p className="tz-stock-editor-sub">Podrás recargar membresía o gemas cuando termine.</p>
+        <p className="tz-stock-editor-sub">Podrás renovar tu membresía cuando termine.</p>
       </div>
     );
   } else {
@@ -150,22 +146,6 @@ export default function RecargarConductorModal({ conductor, onClose }) {
         {ultima?.estado === ESTADO_RECARGA_APROBADO && (
           <p className="tz-success">Tu última solicitud ({ultima.paquete_nombre}) fue aprobada.</p>
         )}
-        <div className="tz-plan-filtros">
-          {TIPOS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              className={`tz-gasto-tipo-btn ${tipo === t.id ? "tz-gasto-tipo-active" : ""}`}
-              onClick={() => {
-                setTipo(t.id);
-                setPaqueteId("");
-                setError("");
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
         <label className="tz-field-label">Paquete</label>
         <Dropdown
           value={paqueteId}
@@ -173,7 +153,7 @@ export default function RecargarConductorModal({ conductor, onClose }) {
           options={activos.map((p) => ({
             value: String(p.id),
             label: `${p.nombre} — ${
-              p.tipo_item === TIPO_ITEM_MEMBRESIA ? `${p.dias_membresia} días` : `${p.creditos} gemas`
+              `${p.dias_membresia} días`
             } · ${formatSoles(p.precio)}`,
           }))}
           placeholder={activos.length === 0 ? "No hay paquetes disponibles" : "Elige un paquete…"}

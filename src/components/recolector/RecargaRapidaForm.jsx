@@ -5,7 +5,6 @@ import {
   METODOS_CON_COMPROBANTE,
   METODO_PAGO_EFECTIVO,
   METODO_PAGO_FIADO,
-  TIPO_ITEM_CREDITOS,
   TIPO_ITEM_MEMBRESIA,
   NIVELES_SERVICIO,
   NIVEL_SERVICIO_ECONOMICO,
@@ -76,13 +75,24 @@ export default function RecargaRapidaForm({
   // Dentro del gestor ⚡ (admin) el título ya lo pone el gestor.
   sinTitulo = false,
 }) {
-  const recolectorConMembresia =
-    !!saldoRecolector?.membresia_vencimiento && new Date(saldoRecolector.membresia_vencimiento) > new Date();
-  const creditosRecolector = Number(saldoRecolector?.creditos_disponibles || 0);
+  // Fase 3b: el recolector vende con su membresía vigente y su cupo de
+  // conductores distintos (la base lo vuelve a validar).
+  const [membresiaRec, setMembresiaRec] = useState(null); // { activa, cupo, usado, vence }
+  const [membresiaTick, setMembresiaTick] = useState(0);
+  useEffect(() => {
+    if (!saldoRecolector) return undefined;
+    let vigente = true;
+    supabase.rpc("taxi_mi_membresia_recolector").then(({ data, error: e }) => {
+      if (vigente && !e && data) setMembresiaRec(data);
+    });
+    return () => {
+      vigente = false;
+    };
+  }, [saldoRecolector, membresiaTick]);
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [conductorId, setConductorId] = useState(lockedConductor?.id ?? "");
-  const [tipoItem, setTipoItem] = useState(TIPO_ITEM_MEMBRESIA);
+  const tipoItem = TIPO_ITEM_MEMBRESIA;
   const [duracion, setDuracion] = useState("mensual");
   const [paqueteId, setPaqueteId] = useState("");
   const [metodoPago, setMetodoPago] = useState("");
@@ -207,7 +217,6 @@ export default function RecargaRapidaForm({
   const resetForm = () => {
     setSearch("");
     setConductorId(lockedConductor?.id ?? "");
-    setTipoItem(TIPO_ITEM_MEMBRESIA);
     setPaqueteId("");
     setMetodoPago("");
     setComprobante(null);
@@ -230,31 +239,22 @@ export default function RecargaRapidaForm({
   const membresiaActivaVigente = !!destinatario && !!vencimientoActualStr && new Date(vencimientoActualStr) > new Date();
   const bloqueadoPorMembresiaVigente = tipoItem === TIPO_ITEM_MEMBRESIA && membresiaActivaVigente;
 
-  // Reglas de saldo (la base las vuelve a validar): con membresía vigente
-  // el conductor no compra créditos; el recolector sin membresía gasta 1
-  // crédito suyo por cada crédito que vende y, por una membresía, 1
-  // crédito por cada día (30 días = 30 créditos).
-  const costoRecolector = paquete
-    ? tipoItem === TIPO_ITEM_MEMBRESIA
-      ? Number(paquete.dias_membresia || 0)
-      : Number(paquete.creditos || 0)
-    : 0;
+  // Reglas del recolector (la base las vuelve a validar): cuenta aprobada
+  // y membresía vigente. El cupo lo decide la base (venderle otra vez a un
+  // conductor ya atendido en el periodo no usa cupo): acá solo se avisa.
   const bloqueoSaldo = (() => {
-    // Recolector sin aprobar (cuenta temporal o en revisión): no recarga.
     if (saldoRecolector?.estado_verificacion && saldoRecolector.estado_verificacion !== ESTADO_VERIFICACION_PERMANENTE) {
-      return "Tu cuenta debe estar aprobada por el Admin para registrar recargas.";
+      return "Tu cuenta debe estar aprobada por el Admin para registrar ventas.";
     }
-    if (saldoRecolector && !recolectorConMembresia) {
-      if (creditosRecolector <= 0) return "Necesitas créditos para recargar.";
-      if (paquete && costoRecolector > creditosRecolector) {
-        return `Te faltan créditos: tienes ${creditosRecolector} y este paquete necesita ${costoRecolector}.`;
-      }
-    }
-    if (tipoItem === TIPO_ITEM_CREDITOS && membresiaActivaVigente) {
-      return `${conductor.nombre} tiene una membresía activa hasta el ${new Date(vencimientoActualStr).toLocaleDateString("es-PE")}: no puede comprar créditos hasta que termine.`;
+    if (saldoRecolector && membresiaRec && !membresiaRec.activa) {
+      return "Necesitas una membresía activa para vender. Cómprala en «Mi membresía».";
     }
     return "";
   })();
+  const avisoCupo =
+    saldoRecolector && membresiaRec?.activa && Number(membresiaRec.usado) >= Number(membresiaRec.cupo)
+      ? "Se te acabó el cupo de conductores: solo puedes venderle a quien ya atendiste en este periodo. Compra otra membresía en «Mi membresía» para seguir."
+      : "";
 
   const puedeEnviar =
     !!destinatario &&
@@ -316,7 +316,9 @@ export default function RecargaRapidaForm({
     });
 
     if (!submitError) {
-      setSuccessMsg(`Recarga registrada para ${destinatario.nombre}.`);
+      setMembresiaTick((n) => n + 1);
+      window.dispatchEvent(new Event("tz-cupo-cambio"));
+      setSuccessMsg(`Membresía registrada para ${destinatario.nombre}.`);
       resetForm();
       if (ventaCreada) {
         onVentaRegistrada?.({
@@ -457,26 +459,11 @@ export default function RecargaRapidaForm({
           </div>
         )}
 
-        <label className="tz-field-label" style={{ marginTop: 12 }}>
-          Tipo de venta
-        </label>
-        <div className="tz-gasto-tipo-buttons">
-          <button
-            type="button"
-            className={`tz-gasto-tipo-btn ${tipoItem === TIPO_ITEM_MEMBRESIA ? "tz-gasto-tipo-active" : ""}`}
-            onClick={() => setTipoItem(TIPO_ITEM_MEMBRESIA)}
-          >
-            Membresía
-          </button>
-          <button
-            type="button"
-            className={`tz-gasto-tipo-btn ${tipoItem === TIPO_ITEM_CREDITOS ? "tz-gasto-tipo-active" : ""}`}
-            onClick={() => setTipoItem(TIPO_ITEM_CREDITOS)}
-          >
-            Paquete de Créditos
-          </button>
-        </div>
-
+        {avisoCupo && (
+          <p className="tz-camera-note" style={{ marginTop: 8, color: "var(--yellow)" }}>
+            ⚠️ {avisoCupo}
+          </p>
+        )}
         {bloqueoSaldo && (
           <p className="tz-error" style={{ marginTop: 8 }}>
             ⚠️ {bloqueoSaldo}
@@ -510,7 +497,7 @@ export default function RecargaRapidaForm({
         )}
 
         <label className="tz-field-label" style={{ marginTop: 12 }}>
-          {tipoItem === TIPO_ITEM_MEMBRESIA ? "Membresía" : "Paquete de créditos"}
+          Membresía
         </label>
         <Dropdown
           className={glowPaquetesActivo ? "tz-select-glow-neon" : ""}
@@ -520,7 +507,7 @@ export default function RecargaRapidaForm({
           options={paquetesDelTipo.map((p) => ({
             value: String(p.id),
             label: `${p.nombre} — ${formatSoles(p.precio)}${
-              p.tipo_item === TIPO_ITEM_CREDITOS ? ` (${p.creditos} créditos)` : ` (${p.dias_membresia} días)`
+              ` (${p.dias_membresia} días)`
             }`,
           }))}
           placeholder={paquetesDelTipo.length === 0 ? "Ninguna por ahora" : "Elige una opción…"}
@@ -565,7 +552,7 @@ export default function RecargaRapidaForm({
             <div className="tz-scan-result-row">
               <span>Otorga:</span>
               <strong>
-                {tipoItem === TIPO_ITEM_CREDITOS ? `${paquete.creditos} créditos` : `${paquete.dias_membresia} días`}
+                {`${paquete.dias_membresia} días`}
               </strong>
             </div>
           </div>

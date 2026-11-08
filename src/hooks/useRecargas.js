@@ -20,10 +20,10 @@ function mensajeRecarga(r) {
   switch (r?.estado) {
     case "membresia_activa":
       return `Ya tiene una membresía activa hasta el ${fecha} — no se puede recargar otra hasta que esta termine.`;
-    case "conductor_con_membresia":
-      return `Tiene una membresía activa hasta el ${fecha}: no puede comprar créditos hasta que termine.`;
-    case "recolector_sin_creditos":
-      return `Te faltan créditos: tienes ${r.disponibles ?? 0} y este paquete necesita ${r.necesarios ?? 0}.`;
+    case "recolector_sin_membresia":
+      return "Necesitas una membresía activa para vender. Cómprala en «Mi membresía».";
+    case "recolector_sin_cupo":
+      return `Se te acabó el cupo: ya atendiste ${r.usado ?? 0} de ${r.cupo ?? 0} conductores en este periodo. Compra otra membresía para seguir.`;
     case "no_aprobado":
       return "Este conductor está pendiente de aprobación en el Centro de Peticiones. No se pueden procesar pagos aún.";
     case "paquete_invalido":
