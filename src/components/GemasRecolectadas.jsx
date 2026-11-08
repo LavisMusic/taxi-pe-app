@@ -27,11 +27,25 @@ export default function GemasRecolectadas({ color = "verde", recolectadas = 0, a
     const t = setTimeout(() => setVisible(true), 120);
     return () => clearTimeout(t);
   }, []);
+  // Destello cuando entra una gema (llega al instante por Realtime).
+  const previo = useRef(recolectadas);
+  const [sube, setSube] = useState(0);
+  useEffect(() => {
+    if (recolectadas > previo.current) setSube((n) => n + 1);
+    previo.current = recolectadas;
+  }, [recolectadas]);
+  const [destello, setDestello] = useState(false);
+  useEffect(() => {
+    if (!sube) return undefined;
+    setDestello(true);
+    const t = setTimeout(() => setDestello(false), 1500);
+    return () => clearTimeout(t);
+  }, [sube]);
 
   return (
     <div
       ref={ref}
-      className={`tz-gemrec ${lleno ? "is-lleno" : ""}`}
+      className={`tz-gemrec ${lleno ? "is-lleno" : ""} ${destello ? "is-sube" : ""}`}
       style={{ "--gr-a": c.a, "--gr-b": c.b, "--gr-rgb": c.rgb }}
     >
       <style>{ESTILO}</style>
@@ -40,7 +54,8 @@ export default function GemasRecolectadas({ color = "verde", recolectadas = 0, a
           <IconoGema color={color} size={15} /> Gemas {c.nombre} cobradas
         </span>
         <span className="tz-gemrec-cuenta">
-          <strong>{recolectadas}</strong>/{tope}
+          <strong key={sube}>{recolectadas}</strong>/{tope}
+          {destello && <span className="tz-gemrec-mas">+1</span>}
         </span>
       </div>
       <div className="tz-gemrec-barra">
@@ -91,5 +106,20 @@ const ESTILO = `
 @keyframes tz-gemrec-flujo { from { background-position: 0% 0; } to { background-position: 200% 0; } }
 @keyframes tz-gemrec-apartadas { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
 .tz-gemrec-pie { margin: 6px 0 0; font-size: 11.5px; color: var(--text-dim, #9aa); }
+.tz-gemrec-cuenta { position: relative; }
+.tz-gemrec.is-sube { animation: tz-gemrec-destello 1.5s ease-out both; }
+@keyframes tz-gemrec-destello {
+  0% { box-shadow: 0 0 0 rgba(var(--gr-rgb), 0); border-color: rgba(var(--gr-rgb), 0.35); }
+  18% { box-shadow: 0 0 34px rgba(var(--gr-rgb), 0.85), inset 0 0 22px rgba(var(--gr-rgb), 0.35); border-color: var(--gr-a); }
+  100% { box-shadow: 0 0 18px rgba(var(--gr-rgb), 0.12); border-color: rgba(var(--gr-rgb), 0.35); }
+}
+.tz-gemrec.is-sube .tz-gemrec-cuenta strong { display: inline-block; animation: tz-gemrec-salta 0.7s cubic-bezier(.34,1.56,.64,1) both; }
+@keyframes tz-gemrec-salta { 0% { transform: scale(1); } 40% { transform: scale(1.55); filter: drop-shadow(0 0 10px var(--gr-a)); } 100% { transform: scale(1); } }
+.tz-gemrec-mas {
+  position: absolute; right: 0; top: -14px; font-size: 13px; font-weight: 900; color: var(--gr-a);
+  text-shadow: 0 0 10px rgba(var(--gr-rgb), 0.9); animation: tz-gemrec-mas 1.4s ease-out both; pointer-events: none;
+}
+@keyframes tz-gemrec-mas { 0% { opacity: 0; transform: translateY(8px) scale(0.6); } 25% { opacity: 1; transform: translateY(0) scale(1.15); } 100% { opacity: 0; transform: translateY(-14px) scale(1); } }
+.tz-gemrec.is-sube .tz-gemrec-relleno { animation: tz-gemrec-flujo 0.6s linear infinite; }
 .tz-gemrec.is-lleno .tz-gemrec-pie { color: var(--gr-a); font-weight: 700; }
 `;
