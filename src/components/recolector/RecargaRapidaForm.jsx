@@ -18,6 +18,7 @@ import RegistroConductorModal from "./RegistroConductorModal";
 import ComprobanteScannerModal from "./ComprobanteScannerModal";
 import Dropdown from "../Dropdown";
 import { supabase } from "../../supabaseClient";
+import CanjeGemas from "../CanjeGemas";
 
 const DURACIONES_MEMBRESIA = [
   { id: "mensual", label: "Mensual" },
@@ -171,7 +172,28 @@ export default function RecargaRapidaForm({
   }, [lockedConductor]);
 
   const requiereComprobante = METODOS_CON_COMPROBANTE.includes(metodoPago);
-  const montoNum = Number(paquete?.precio) || 0;
+  // Fase 3a: el conductor canjea sus gemas verdes (solo membresía),
+  // encendido por defecto. Con el recolector, las gemas pasan a su caja.
+  const [canje, setCanje] = useState(null);
+  const [usarGemas, setUsarGemas] = useState(true);
+  useEffect(() => {
+    setCanje(null);
+    setUsarGemas(true);
+    if (!conductorId || !paquete || paquete.tipo_item !== TIPO_ITEM_MEMBRESIA || !paquete.id || String(paquete.id).startsWith("demo")) {
+      return undefined;
+    }
+    let vigente = true;
+    supabase
+      .rpc("taxi_gemas_canje_conductor", { p_conductor_id: conductorId, p_paquete_id: String(paquete.id) })
+      .then(({ data, error: e }) => {
+        if (vigente && !e && data) setCanje(data);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [conductorId, paquete?.id, paquete?.tipo_item]); // eslint-disable-line react-hooks/exhaustive-deps
+  const descuentoGemas = usarGemas && Number(canje?.n) > 0 ? Number(canje.monto) || 0 : 0;
+  const montoNum = Math.max(Math.round(((Number(paquete?.precio) || 0) - descuentoGemas) * 100) / 100, 0);
   const vuelto =
     metodoPago === METODO_PAGO_EFECTIVO && montoRecibido !== "" ? Number(montoRecibido) - montoNum : null;
 
@@ -290,6 +312,7 @@ export default function RecargaRapidaForm({
       paqueteId: paquete.id,
       metodoPago,
       comprobante,
+      usarGemas: descuentoGemas > 0,
     });
 
     if (!submitError) {
@@ -527,6 +550,18 @@ export default function RecargaRapidaForm({
               <span>Precio:</span>
               <strong>{formatSoles(paquete.precio)}</strong>
             </div>
+            {descuentoGemas > 0 && (
+              <div className="tz-scan-result-row">
+                <span>Gemas ({canje.n}):</span>
+                <strong style={{ color: "#39ffb0" }}>−{formatSoles(descuentoGemas)}</strong>
+              </div>
+            )}
+            {descuentoGemas > 0 && (
+              <div className="tz-scan-result-row">
+                <span>Cobras:</span>
+                <strong>{formatSoles(montoNum)}</strong>
+              </div>
+            )}
             <div className="tz-scan-result-row">
               <span>Otorga:</span>
               <strong>
@@ -534,6 +569,17 @@ export default function RecargaRapidaForm({
               </strong>
             </div>
           </div>
+        )}
+
+        {paquete && (
+          <CanjeGemas
+            color="verde"
+            quien="sus"
+            canje={canje}
+            precio={paquete.precio}
+            activo={usarGemas}
+            onCambiar={setUsarGemas}
+          />
         )}
 
         <div className="tz-metodo-pago">
@@ -678,7 +724,7 @@ export default function RecargaRapidaForm({
 
       {scannerOpen && (
         <ComprobanteScannerModal
-          precioEsperado={paquete?.precio}
+          precioEsperado={paquete ? montoNum : undefined}
           onConfirm={(data) => {
             setComprobante(data);
             setScannerOpen(false);

@@ -15,6 +15,9 @@ import { useMiRecargaConductor } from "../../hooks/useRecargasConductor";
 import Dropdown from "../Dropdown";
 import DatosPagoComprobante from "../DatosPagoComprobante";
 import { useContactoPlataforma } from "../../hooks/useContactoPlataforma";
+import { supabase } from "../../supabaseClient";
+import CanjeGemas from "../CanjeGemas";
+import IconoGema from "../IconoGema";
 
 // "Recargar" del pie de página del conductor: pide membresía o gemas por
 // su cuenta (Yape/Plin/Otros + foto del comprobante, obligatoria). La
@@ -49,6 +52,26 @@ export default function RecargarConductorModal({ conductor, onClose }) {
   const activos = paquetes.filter((p) => p.activo !== false && p.tipo_item === tipo);
   const paquete = activos.find((p) => String(p.id) === String(paqueteId)) || null;
 
+  // Fase 3a: canjear sus gemas verdes cobradas (solo membresía), encendido
+  // por defecto. La base aparta las gemas al enviar y descuenta el monto.
+  const [canje, setCanje] = useState(null);
+  const [usarGemas, setUsarGemas] = useState(true);
+  useEffect(() => {
+    setCanje(null);
+    if (!paquete || paquete.tipo_item !== TIPO_ITEM_MEMBRESIA) return undefined;
+    let vigente = true;
+    supabase
+      .rpc("taxi_gemas_canje_conductor", { p_conductor_id: conductor.id, p_paquete_id: String(paquete.id) })
+      .then(({ data, error: e }) => {
+        if (vigente && !e && data) setCanje(data);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [paquete?.id, paquete?.tipo_item, conductor.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const descuentoGemas = usarGemas && Number(canje?.n) > 0 ? Number(canje.monto) || 0 : 0;
+  const montoAPagar = paquete ? Math.max(Math.round((Number(paquete.precio) - descuentoGemas) * 100) / 100, 0) : 0;
+
   const elegirArchivo = (e) => {
     const f = e.target.files?.[0];
     e.target.value = "";
@@ -64,7 +87,7 @@ export default function RecargarConductorModal({ conductor, onClose }) {
     if (!metodo) return setError("Elige cómo pagaste.");
     if (!archivo) return setError("Toma la foto o adjunta tu comprobante.");
     setEnviando(true);
-    const r = await crear({ paquete, metodoPago: metodo, archivo });
+    const r = await crear({ paquete, metodoPago: metodo, archivo, usarGemas: descuentoGemas > 0 });
     setEnviando(false);
     if (r.error) return setError(r.message);
     setPaqueteId("");
@@ -91,6 +114,12 @@ export default function RecargarConductorModal({ conductor, onClose }) {
         <h3 className="tz-recarga-bloqueada">Solicitud en revisión</h3>
         <p className="tz-stock-editor-sub">
           {pendiente.paquete_nombre} · {formatSoles(pendiente.monto)} · enviada el {formatDate(pendiente.created_at)}.
+          {Number(pendiente.gemas_usadas) > 0 && (
+            <>
+              <br />
+              <IconoGema color="verde" size={12} /> Canjeaste {pendiente.gemas_usadas} gemas (−{formatSoles(Number(pendiente.gemas_monto))})
+            </>
+          )}
           <br />
           El Admin la revisará en breve; cuando la apruebe, se activa sola.
         </p>
@@ -156,6 +185,10 @@ export default function RecargarConductorModal({ conductor, onClose }) {
           </p>
         )}
 
+        {paquete && (
+          <CanjeGemas color="verde" canje={canje} precio={paquete.precio} activo={usarGemas} onCambiar={setUsarGemas} />
+        )}
+
         <label className="tz-field-label" style={{ marginTop: 12 }}>
           ¿Cómo pagas?
         </label>
@@ -196,7 +229,7 @@ export default function RecargarConductorModal({ conductor, onClose }) {
             disabled={enviando}
           >
             {enviando ? <Loader2 size={15} className="tz-spin" /> : <Wallet size={15} />} Enviar solicitud
-            {paquete ? ` de ${formatSoles(paquete.precio)}` : ""}
+            {paquete ? ` de ${formatSoles(montoAPagar)}` : ""}
           </button>
         )}
       </>
