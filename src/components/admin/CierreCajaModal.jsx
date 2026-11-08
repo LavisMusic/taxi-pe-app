@@ -101,7 +101,6 @@ export default function CierreCajaModal({
       [],
       ["Por tipo de venta", ""],
       ["Membresías (S/)", Number(totalPorTipo(TIPO_ITEM_MEMBRESIA).toFixed(2))],
-      ["Créditos (S/)", Number(totalPorTipo(TIPO_ITEM_CREDITOS).toFixed(2))],
       [],
       ["Por método de pago", ""],
       ...METODOS_PAGO.map((m) => [`${m.label} (S/)`, Number(totalPorMetodo(m.key).toFixed(2))]),
@@ -270,10 +269,6 @@ export default function CierreCajaModal({
             <div className="tz-receipt-row">
               <span>Membresías</span>
               <strong>{formatSoles(totalPorTipo(TIPO_ITEM_MEMBRESIA))}</strong>
-            </div>
-            <div className="tz-receipt-row">
-              <span>Créditos</span>
-              <strong>{formatSoles(totalPorTipo(TIPO_ITEM_CREDITOS))}</strong>
             </div>
             <div className="tz-receipt-divider" />
             {METODOS_PAGO.map((m) => (

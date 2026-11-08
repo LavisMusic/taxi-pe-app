@@ -1,27 +1,22 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Wallet, X, Loader2, Camera, RotateCcw } from "lucide-react";
 import ComprobanteScannerModal from "./ComprobanteScannerModal";
 import { formatSoles } from "../../utils/format";
-import { METODOS_PAGO, METODO_PAGO_EFECTIVO, TIPO_ITEM_CREDITOS } from "../../lib/taxiEnums";
+import { METODOS_PAGO, METODO_PAGO_EFECTIVO, TIPO_ITEM_MEMBRESIA } from "../../lib/taxiEnums";
 import Dropdown from "../Dropdown";
 import DatosPagoComprobante from "../DatosPagoComprobante";
 import { useContactoPlataforma } from "../../hooks/useContactoPlataforma";
+import { supabase } from "../../supabaseClient";
+import CanjeGemas from "../CanjeGemas";
 
 const METODOS_AUTORECARGA = METODOS_PAGO.filter((m) => m.key !== METODO_PAGO_EFECTIVO);
 
-// Autorecarga: el propio Recolector pide saldo desde /recolector
-// (botón "Recargar" del footer). A diferencia de la Recarga Rápida que
-// hace el Admin sobre su tarjeta (que aplica el saldo al toque), esto
-// crea una PETICIÓN pendiente — el Admin la revisa en el Centro de
-// Peticiones antes de que el saldo se sume de verdad. Sin Efectivo (no
-// hay a quién entregárselo desde acá) y con comprobante SIEMPRE
-// obligatorio, sea cual sea el método elegido entre los 4 permitidos
-// (Yape/Plin/Otros/Fiado) — a diferencia de Recarga Rápida, donde solo
-// Yape/Plin/Otros lo piden.
+// Autorecarga: el propio Recolector compra su MEMBRESÍA (días + cupo de
+// conductores, fase 3b de gemas) desde /recolector. Crea una PETICIÓN
+// pendiente que el Admin aprueba en el Centro de Peticiones. Puede
+// comprar cuando su membresía venció o se le acabó el cupo (empieza un
+// periodo nuevo). Canjea sus gemas verdes, encendido por defecto.
 export default function AutorecargaRecolectorModal({ recolector, paquetes, glowPaquetes = false, crearPeticion, onClose }) {
-  // Los recolectores solo compran paquetes de créditos (son su
-  // mercadería: vender una membresía de N días le cuesta N créditos).
-  const tipoItem = TIPO_ITEM_CREDITOS;
   const [paqueteId, setPaqueteId] = useState("");
   const [metodoPago, setMetodoPago] = useState("");
   const [comprobante, setComprobante] = useState(null);
@@ -31,17 +26,29 @@ export default function AutorecargaRecolectorModal({ recolector, paquetes, glowP
   const [successMsg, setSuccessMsg] = useState("");
   const contacto = useContactoPlataforma();
 
-  // `activo !== false` acá porque usePaquetesRecolectores.js ahora
-  // trae TODO (activos e inactivos, ver su comentario) para que el
-  // Admin los pueda administrar — este desplegable de compra, en
-  // cambio, solo debe ofrecer los activos, igual que ya hace
-  // RecargaRapidaForm.jsx del lado de paquetes de conductor.
-  const paquetesDelTipo = paquetes.filter((p) => p.tipo_item === tipoItem && p.activo !== false);
-  const paquete = paquetesDelTipo.find((p) => String(p.id) === String(paqueteId)) || null;
+  const paquetesActivos = paquetes.filter((p) => p.tipo_item === TIPO_ITEM_MEMBRESIA && p.activo !== false);
+  const paquete = paquetesActivos.find((p) => String(p.id) === String(paqueteId)) || null;
 
-  // Ya no abre el escáner de una: primero se muestran los datos de pago
-  // de la plataforma (para poder copiar el número y pagar), y el escáner se
-  // abre con "Ya pagué, escanear comprobante".
+  // Canje de gemas (y si ya puede comprar).
+  const [canje, setCanje] = useState(null);
+  const [usarGemas, setUsarGemas] = useState(true);
+  useEffect(() => {
+    setCanje(null);
+    if (!paquete || !recolector?.id) return undefined;
+    let vigente = true;
+    supabase
+      .rpc("taxi_gemas_canje_recolector", { p_recolector_id: recolector.id, p_paquete_id: String(paquete.id) })
+      .then(({ data, error: e }) => {
+        if (vigente && !e && data) setCanje(data);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [paquete?.id, recolector?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const descuento = usarGemas && Number(canje?.n) > 0 ? Number(canje.monto) || 0 : 0;
+  const aPagar = paquete ? Math.max(Math.round((Number(paquete.precio) - descuento) * 100) / 100, 0) : 0;
+  const noPuede = canje && canje.puede === false;
+
   const elegirMetodo = (key) => {
     setMetodoPago(key);
     setComprobante(null);
@@ -50,29 +57,22 @@ export default function AutorecargaRecolectorModal({ recolector, paquetes, glowP
   const handleEnviar = async () => {
     setError("");
     setSuccessMsg("");
-    if (!paquete) {
-      setError("Elige un paquete.");
-      return;
-    }
-    if (!metodoPago) {
-      setError("Elige cómo vas a pagar.");
-      return;
-    }
-    if (!comprobante) {
-      setError("Escanea el comprobante antes de enviar la solicitud.");
-      return;
-    }
+    if (!paquete) return setError("Elige una membresía.");
+    if (noPuede) return setError("Tu membresía sigue vigente y con cupo.");
+    if (!metodoPago) return setError("Elige cómo vas a pagar.");
+    if (!comprobante) return setError("Escanea el comprobante antes de enviar la solicitud.");
     setSaving(true);
     const { error: submitError } = await crearPeticion({
       recolector,
       paquete,
       metodoPago,
       comprobanteUrl: comprobante.voucherUrl,
+      usarGemas: descuento > 0,
       autoAprobar: false,
     });
     setSaving(false);
     if (submitError) {
-      setError("No se pudo enviar la solicitud.");
+      setError(submitError.message || "No se pudo enviar la solicitud.");
       return;
     }
     setSuccessMsg("Solicitud enviada — el Admin la va a revisar en el Centro de Peticiones.");
@@ -89,27 +89,32 @@ export default function AutorecargaRecolectorModal({ recolector, paquetes, glowP
         </button>
         <div className="tz-payment-modal">
           <h2>
-            <Wallet size={17} /> Recargar mi saldo
+            <Wallet size={17} /> Mi membresía
           </h2>
 
-          <label className="tz-field-label">Paquete de créditos</label>
+          <label className="tz-field-label">Membresía</label>
           <Dropdown
             className={glowPaquetes ? "tz-select-glow-neon" : ""}
             value={paqueteId}
             onChange={(v) => setPaqueteId(String(v))}
-            options={paquetesDelTipo.map((p) => ({
+            options={paquetesActivos.map((p) => ({
               value: String(p.id),
-              label: `${p.nombre} — ${formatSoles(p.precio)}${
-                p.tipo_item === TIPO_ITEM_CREDITOS ? ` (${p.creditos} créditos)` : ` (${p.dias_membresia} días)`
-              }`,
+              label: `${p.nombre} — ${formatSoles(p.precio)} (${p.dias_membresia} días · ${p.cupo_conductores || 0} conductores)`,
             }))}
-            placeholder={paquetesDelTipo.length === 0 ? "Ninguna configurada" : "Elige una opción…"}
-            ariaLabel="Paquete de créditos"
+            placeholder={paquetesActivos.length === 0 ? "Ninguna configurada" : "Elige una opción…"}
+            ariaLabel="Membresía"
           />
           {glowPaquetes && (
             <p className="tz-camera-note" style={{ margin: "4px 0 0", color: "var(--pink)" }}>
               ✨ El Admin actualizó el catálogo — revisa las opciones.
             </p>
+          )}
+          {noPuede && (
+            <p className="tz-error">Tu membresía sigue vigente y con cupo: podrás comprar otra cuando se te acabe el cupo o venza.</p>
+          )}
+
+          {paquete && !noPuede && (
+            <CanjeGemas color="verde" canje={canje} precio={paquete.precio} activo={usarGemas} onCambiar={setUsarGemas} />
           )}
 
           <label className="tz-field-label" style={{ marginTop: 12 }}>
@@ -130,7 +135,6 @@ export default function AutorecargaRecolectorModal({ recolector, paquetes, glowP
             ))}
           </div>
 
-          {/* Datos de pago de la plataforma (Yape/Plin o cuenta + titular). */}
           <DatosPagoComprobante
             metodo={metodoPago}
             datos={{ yape_plin: contacto.yape_plin, titular: contacto.titular, cuenta: contacto.cuenta_bancaria }}
@@ -167,17 +171,16 @@ export default function AutorecargaRecolectorModal({ recolector, paquetes, glowP
           {error && <p className="tz-error">{error}</p>}
           {successMsg && <p className="tz-success">{successMsg}</p>}
 
-          {/* Aparece cuando ya hay comprobante escaneado. */}
           {(comprobante || saving) && (
             <button
               type="button"
               className="tz-scan-btn tz-payment-save tz-pagoc-enviar"
-              disabled={saving}
+              disabled={saving || noPuede}
               onClick={handleEnviar}
               style={{ marginTop: 14 }}
             >
               {saving ? <Loader2 size={16} className="tz-spin" /> : <Wallet size={16} />}
-              {saving ? "Enviando…" : "Enviar Solicitud"}
+              {saving ? "Enviando…" : `Enviar solicitud${paquete ? ` de ${formatSoles(aPagar)}` : ""}`}
             </button>
           )}
         </div>
@@ -185,6 +188,7 @@ export default function AutorecargaRecolectorModal({ recolector, paquetes, glowP
 
       {scannerOpen && (
         <ComprobanteScannerModal
+          precioEsperado={paquete ? aPagar : undefined}
           onConfirm={(data) => {
             setComprobante(data);
             setScannerOpen(false);

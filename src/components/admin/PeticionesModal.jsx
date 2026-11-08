@@ -488,7 +488,6 @@ function PeticionPinRow({ peticion, onEnviarCodigo, onDescartar }) {
 // este flujo.
 function RecargaRecolectorRow({ peticion, recolector, onAprobar, onRechazar }) {
   const [busy, setBusy] = useState(false);
-  const esMembresia = peticion.tipo_item === TIPO_ITEM_MEMBRESIA;
 
   return (
     <li className="tz-history-row">
@@ -502,14 +501,19 @@ function RecargaRecolectorRow({ peticion, recolector, onAprobar, onRechazar }) {
         </div>
 
         <div className="tz-peticion-solicitud">
-          <span className={`tz-tag ${esMembresia ? "tz-tag-warn" : "tz-tag-ok"}`}>
-            {esMembresia ? "Membresía" : "Créditos"}
-          </span>
+          <span className="tz-tag tz-tag-warn">Membresía</span>
           <strong>{peticion.paquete_nombre}</strong>
           <span className="tz-peticion-solicitud-meta">
-            {esMembresia ? `${peticion.dias_membresia} días` : `${peticion.creditos} créditos`} ·{" "}
-            {formatSoles(peticion.monto)} · {peticion.metodo_pago} · {formatDate(peticion.created_at)}
+            {`${peticion.dias_membresia} días`}
+            {peticion.cupo_conductores ? ` · ${peticion.cupo_conductores} conductores` : ""} · {formatSoles(peticion.monto)} ·{" "}
+            {peticion.metodo_pago} · {formatDate(peticion.created_at)}
           </span>
+          {Number(peticion.gemas_usadas) > 0 && (
+            <span className="tz-peticion-solicitud-meta" style={{ color: "#39ffb0", fontWeight: 700 }}>
+              Canjeó {peticion.gemas_usadas} gemas verdes: precio {formatSoles(Number(peticion.monto) + Number(peticion.gemas_monto))} −{" "}
+              {formatSoles(Number(peticion.gemas_monto))} = pagó {formatSoles(Number(peticion.monto))}
+            </span>
+          )}
         </div>
 
         {peticion.comprobante_url ? (
@@ -580,7 +584,7 @@ function RecargaConductorRow({ peticion, conductor, onAprobar, onRechazar }) {
           <span className={`tz-tag ${esMembresia ? "tz-tag-warn" : "tz-tag-ok"}`}>{esMembresia ? "Membresía" : "Gemas"}</span>
           <strong>{peticion.paquete_nombre}</strong>
           <span className="tz-peticion-solicitud-meta">
-            {esMembresia ? `${peticion.dias_membresia} días` : `${peticion.creditos} gemas`} · {formatSoles(peticion.monto)} ·{" "}
+            {`${peticion.dias_membresia} días`} · {formatSoles(peticion.monto)} ·{" "}
             {peticion.metodo_pago} · {formatDate(peticion.created_at)}
           </span>
           {Number(peticion.gemas_usadas) > 0 && (

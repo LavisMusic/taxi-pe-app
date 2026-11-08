@@ -104,6 +104,23 @@ export default function RecolectorPage() {
     },
   });
 
+  // Membresía del recolector (fase 3b): cupo de conductores del periodo.
+  const [membresiaRec, setMembresiaRec] = useState(null);
+  useEffect(() => {
+    let vigente = true;
+    const leer = () =>
+      supabase.rpc("taxi_mi_membresia_recolector").then(({ data, error }) => {
+        if (vigente && !error && data) setMembresiaRec(data);
+      });
+    leer();
+    const t = setInterval(leer, 30000);
+    window.addEventListener("tz-cupo-cambio", leer);
+    return () => {
+      vigente = false;
+      clearInterval(t);
+      window.removeEventListener("tz-cupo-cambio", leer);
+    };
+  }, []);
   // Caja de gemas verdes del recolector (fase 3a).
   const [gemasRecolector, setGemasRecolector] = useState(null);
   useEffect(() => {
@@ -270,18 +287,24 @@ export default function RecolectorPage() {
               </div>
               <div className="tz-stat-chip" style={{ textAlign: "center", padding: "22px" }}>
                 <span className="tz-stat-label" style={{ justifyContent: "center" }}>
-                  <CreditCard size={14} /> Mi Saldo
+                  <CreditCard size={14} /> Mi cupo
                 </span>
                 <span className="tz-stat-value tz-cyan" style={{ fontSize: 34 }}>
-                  {miPerfil?.creditos_disponibles ?? 0}
+                  {membresiaRec?.activa ? `${membresiaRec.usado}/${membresiaRec.cupo}` : "—"}
                 </span>
+                {membresiaRec?.activa && Number(membresiaRec.cupo) > 0 && (
+                  <span className="tz-cupo-barra" aria-hidden="true">
+                    <span style={{ width: `${Math.min(100, (Number(membresiaRec.usado) / Number(membresiaRec.cupo)) * 100)}%` }} />
+                  </span>
+                )}
                 <span className="tz-stat-sub">
-                  {miPerfil?.membresia_vencimiento ? (
+                  {membresiaRec?.activa ? (
                     <>
-                      <CalendarClock size={11} style={{ verticalAlign: "-1px" }} /> Membresía vence{" "}
-                      {formatDate(miPerfil.membresia_vencimiento)}
-                      {diasMembresiaRestantes != null && diasMembresiaRestantes < 0 ? " (vencida)" : ""}
+                      <CalendarClock size={11} style={{ verticalAlign: "-1px" }} /> Conductores atendidos · vence{" "}
+                      {formatDate(membresiaRec.vence)}
                     </>
+                  ) : miPerfil?.membresia_vencimiento ? (
+                    `Membresía vencida el ${formatDate(miPerfil.membresia_vencimiento)}`
                   ) : (
                     "Sin membresía activa"
                   )}

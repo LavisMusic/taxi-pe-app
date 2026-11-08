@@ -136,9 +136,6 @@ export default function RecolectorCard({ recolector, onUpdate, onRecargar }) {
 
           <div className="tz-card-bottom">
             <div className="tz-card-stockrow">
-              <span className="tz-tag tz-tag-ok">
-                <CreditCard size={12} style={{ verticalAlign: "-2px" }} /> {recolector.creditos_disponibles ?? 0} créditos
-              </span>
               {recolector.membresia_vencimiento && (
                 <span className="tz-tag tz-tag-warn">
                   <CalendarClock size={12} style={{ verticalAlign: "-2px" }} /> Vence{" "}

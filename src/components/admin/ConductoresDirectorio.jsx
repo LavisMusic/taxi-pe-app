@@ -60,10 +60,7 @@ function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar
     ? Math.ceil((new Date(conductor.vencimiento_suscripcion) - new Date()) / 86400000)
     : null;
   const tieneMembresiaVigenteCard = diasRestantesCard != null && diasRestantesCard >= 0;
-  const sinSaldo =
-    conductor.estado !== ESTADO_CONDUCTOR_INHABILITADO &&
-    !tieneMembresiaVigenteCard &&
-    (conductor.creditos ?? 0) <= 0;
+  const sinSaldo = conductor.estado !== ESTADO_CONDUCTOR_INHABILITADO && !tieneMembresiaVigenteCard;
   const subgruposDeSuCategoria = subgrupos.filter((s) => s.categoria_id === conductor.categoria_id);
 
   const startEdit = () => {
@@ -260,9 +257,6 @@ function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar
 
           <div className="tz-card-bottom">
             <div className="tz-card-stockrow">
-              {conductor.creditos != null && (
-                <span className="tz-tag tz-tag-ok">{conductor.creditos} créditos</span>
-              )}
               {conductor.vencimiento_suscripcion && (
                 <span className="tz-tag tz-tag-warn">
                   Vence {formatDate(conductor.vencimiento_suscripcion)}

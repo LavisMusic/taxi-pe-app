@@ -30,7 +30,7 @@ export function usePaquetesRecolectores() {
     setError("");
     const { data, error: fetchError } = await supabase
       .from("paquetes_recolectores")
-      .select("id, tipo_item, nombre, precio, dias_membresia, creditos, descripcion, activo, orden")
+      .select("id, tipo_item, nombre, precio, dias_membresia, creditos, cupo_conductores, descripcion, activo, orden")
       .order("orden", { ascending: true });
 
     if (fetchError) {
