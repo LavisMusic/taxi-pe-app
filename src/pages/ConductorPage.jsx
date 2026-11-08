@@ -330,9 +330,11 @@ export default function ConductorPage() {
         if (fila?.gema_estado) leer();
       })
       .subscribe();
+    window.addEventListener("tz-gemas-cambio", leer);
     return () => {
       cancel = true;
       clearInterval(t);
+      window.removeEventListener("tz-gemas-cambio", leer);
       supabase.removeChannel(canal);
     };
   }, [conductor?.id]);

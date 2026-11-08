@@ -124,9 +124,11 @@ export default function RecolectorPage() {
         .on("postgres_changes", { event: "*", schema: "public", table: "taxi_gemas_recolectores", filter: `recolector_id=eq.${uid}` }, leer)
         .subscribe();
     });
+    window.addEventListener("tz-gemas-cambio", leer);
     return () => {
       vigente = false;
       clearInterval(t);
+      window.removeEventListener("tz-gemas-cambio", leer);
       if (canal) supabase.removeChannel(canal);
     };
   }, []);

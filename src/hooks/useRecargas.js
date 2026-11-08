@@ -77,6 +77,8 @@ export function useRecargas({ onDone }) {
       }
 
       onDone?.();
+      // Canje con gemas: la caja del recolector (o del conductor) al instante.
+      if (data?.venta?.gemas_usadas > 0) window.dispatchEvent(new Event("tz-gemas-cambio"));
       // La venta creada (con su código TX-… de la base) y el conductor ya
       // actualizado: para el desplegable de venta registrada.
       return { error: null, venta: data.venta, destinatario: data.conductor };
