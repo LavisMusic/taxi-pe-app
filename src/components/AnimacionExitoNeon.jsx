@@ -224,7 +224,10 @@ export default function AnimacionExitoNeon({ titulo = "¡Listo!", descripcion, o
               filter: drop-shadow(0 0 8px rgba(255,255,255,0.8));
             }
 
-            .tz-exito-titulo {
+            /* Con el prefijo del overlay (y !important en el relleno) para
+               ganarle a ".tz-root h1 { color: var(--text) }": en temas
+               claros ese color es casi negro y tapaba el degradado. */
+            .tz-exito-overlay .tz-exito-titulo {
               position: relative;
               z-index: 2;
               margin: 6px 0 0;
@@ -235,10 +238,12 @@ export default function AnimacionExitoNeon({ titulo = "¡Listo!", descripcion, o
               background: linear-gradient(90deg, var(--tz-exito-green), #eafcff 45%, var(--tz-exito-cyan));
               -webkit-background-clip: text;
               background-clip: text;
-              color: transparent;
-              text-shadow: 0 0 18px rgba(77,255,160,0.5), 0 0 30px rgba(43,232,255,0.35);
+              color: transparent !important;
+              -webkit-text-fill-color: transparent !important;
+              /* Glow con drop-shadow: los temas claros apagan los text-shadow. */
+              filter: drop-shadow(0 0 10px rgba(77,255,160,0.45)) drop-shadow(0 0 22px rgba(43,232,255,0.3));
             }
-            .tz-exito-desc {
+            .tz-exito-overlay .tz-exito-desc {
               position: relative;
               z-index: 2;
               margin: 0;
@@ -247,8 +252,8 @@ export default function AnimacionExitoNeon({ titulo = "¡Listo!", descripcion, o
               font-family: 'Rajdhani', sans-serif;
               font-weight: 600;
               font-size: clamp(13px, 3vw, 17px);
-              color: #dffcff;
-              text-shadow: 0 0 12px rgba(43,232,255,0.35);
+              color: #dffcff !important;
+              filter: drop-shadow(0 0 8px rgba(43,232,255,0.35));
             }
 
           `}</style>

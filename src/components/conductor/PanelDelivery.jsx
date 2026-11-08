@@ -1,5 +1,6 @@
 import { Bike, Ban, Car, Loader2, Package, Wallet } from "lucide-react";
 import EntregasRepartidorPanel from "../repartidor/EntregasRepartidorPanel";
+import ContratosReparto from "./ContratosReparto";
 import { MAX_REPARTOS } from "../../hooks/useEntregasRepartidor";
 import { formatSoles } from "../../utils/format";
 
@@ -104,6 +105,9 @@ export default function PanelDelivery({
         <span className="tz-estado-toggle-hint">{pista}</span>
       </button>
       {error && <p className="tz-error" style={{ textAlign: "center" }}>{error}</p>}
+
+      {/* Invitaciones de negocios y con quiénes reparte (contrato). */}
+      <ContratosReparto conductorId={conductor.id} />
 
       {conductor.aprobado && (encendido || repartiendo) ? (
         <EntregasRepartidorPanel
