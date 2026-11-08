@@ -2,19 +2,16 @@ import { useState } from "react";
 import { Settings, Plus, Save, Pencil, Trash2, X, Loader2 } from "lucide-react";
 import ListaArrastrable from "./ListaArrastrable";
 import { formatSoles } from "../../utils/format";
-import { TIPO_ITEM_CREDITOS, TIPO_ITEM_MEMBRESIA } from "../../lib/taxiEnums";
+import { TIPO_ITEM_MEMBRESIA } from "../../lib/taxiEnums";
 
-const TIPOS = [
-  { value: TIPO_ITEM_MEMBRESIA, label: "Membresía" },
-  { value: TIPO_ITEM_CREDITOS, label: "Paquete de Créditos" },
-];
-
-function PaqueteForm({ initial, onGuardar, onCancelar, saving }) {
-  const [tipoItem, setTipoItem] = useState(initial?.tipo_item ?? TIPO_ITEM_MEMBRESIA);
+// Solo membresías (los créditos ya no existen). Las de recolectores
+// (`conCupo`) llevan además el cupo de conductores que pueden atender en su
+// periodo (fase 3b de gemas).
+function PaqueteForm({ initial, onGuardar, onCancelar, saving, conCupo = false }) {
   const [nombre, setNombre] = useState(initial?.nombre ?? "");
   const [precio, setPrecio] = useState(String(initial?.precio ?? ""));
   const [diasMembresia, setDiasMembresia] = useState(String(initial?.dias_membresia ?? "30"));
-  const [creditos, setCreditos] = useState(String(initial?.creditos ?? ""));
+  const [cupo, setCupo] = useState(String(initial?.cupo_conductores ?? ""));
   const [descripcion, setDescripcion] = useState(initial?.descripcion ?? "");
   const [error, setError] = useState("");
 
@@ -28,46 +25,33 @@ function PaqueteForm({ initial, onGuardar, onCancelar, saving }) {
       setError("Ingresa un precio válido.");
       return;
     }
-    if (tipoItem === TIPO_ITEM_MEMBRESIA && (!Number(diasMembresia) || Number(diasMembresia) <= 0)) {
+    if (!Number(diasMembresia) || Number(diasMembresia) <= 0) {
       setError("Ingresa los días de vigencia.");
       return;
     }
-    if (tipoItem === TIPO_ITEM_CREDITOS && (!Number(creditos) || Number(creditos) <= 0)) {
-      setError("Ingresa la cantidad de créditos.");
+    if (conCupo && (!Number(cupo) || Number(cupo) <= 0 || !Number.isInteger(Number(cupo)))) {
+      setError("Ingresa cuántos conductores puede atender en su periodo.");
       return;
     }
     setError("");
     onGuardar({
-      tipo_item: tipoItem,
+      tipo_item: TIPO_ITEM_MEMBRESIA,
       nombre: nombre.trim(),
       precio: precioNum,
-      dias_membresia: tipoItem === TIPO_ITEM_MEMBRESIA ? Number(diasMembresia) : null,
-      creditos: tipoItem === TIPO_ITEM_CREDITOS ? Number(creditos) : null,
+      dias_membresia: Number(diasMembresia),
+      creditos: null,
+      ...(conCupo ? { cupo_conductores: Number(cupo) } : {}),
       descripcion: descripcion.trim(),
     });
   };
 
   return (
     <div className="tz-add-entry">
-      <label className="tz-field-label">Tipo</label>
-      <div className="tz-gasto-tipo-buttons">
-        {TIPOS.map((t) => (
-          <button
-            key={t.value}
-            type="button"
-            className={`tz-gasto-tipo-btn ${tipoItem === t.value ? "tz-gasto-tipo-active" : ""}`}
-            onClick={() => setTipoItem(t.value)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
       <label className="tz-field-label">Nombre</label>
       <input
         type="text"
         className="tz-text-input"
-        placeholder={tipoItem === TIPO_ITEM_MEMBRESIA ? "Ej. Membresía Básica" : "Ej. Paquete 50 créditos"}
+        placeholder={conCupo ? "Ej. Recolector 20 conductores" : "Ej. Membresía Básica"}
         value={nombre}
         onChange={(e) => setNombre(e.target.value)}
       />
@@ -75,15 +59,23 @@ function PaqueteForm({ initial, onGuardar, onCancelar, saving }) {
       <label className="tz-field-label">Precio (S/)</label>
       <input type="number" inputMode="decimal" className="tz-text-input" value={precio} onChange={(e) => setPrecio(e.target.value)} />
 
-      {tipoItem === TIPO_ITEM_MEMBRESIA ? (
+      <label className="tz-field-label">Días de vigencia que otorga</label>
+      <input type="number" inputMode="numeric" className="tz-text-input" value={diasMembresia} onChange={(e) => setDiasMembresia(e.target.value)} />
+
+      {conCupo && (
         <>
-          <label className="tz-field-label">Días de vigencia que otorga</label>
-          <input type="number" inputMode="numeric" className="tz-text-input" value={diasMembresia} onChange={(e) => setDiasMembresia(e.target.value)} />
-        </>
-      ) : (
-        <>
-          <label className="tz-field-label">Créditos que otorga</label>
-          <input type="number" inputMode="numeric" className="tz-text-input" value={creditos} onChange={(e) => setCreditos(e.target.value)} />
+          <label className="tz-field-label">Cupo de conductores en su periodo</label>
+          <input
+            type="number"
+            inputMode="numeric"
+            className="tz-text-input"
+            placeholder="Ej. 20"
+            value={cupo}
+            onChange={(e) => setCupo(e.target.value)}
+          />
+          <p className="tz-stock-editor-sub" style={{ margin: "4px 0 0" }}>
+            Cuántos conductores distintos puede atender (venderles membresía) mientras dure.
+          </p>
         </>
       )}
 
@@ -104,7 +96,7 @@ function PaqueteForm({ initial, onGuardar, onCancelar, saving }) {
   );
 }
 
-function PaqueteRow({ paquete, onActualizar, onEliminar }) {
+function PaqueteRow({ paquete, onActualizar, onEliminar, conCupo = false }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [borrando, setBorrando] = useState(false);
@@ -134,7 +126,7 @@ function PaqueteRow({ paquete, onActualizar, onEliminar }) {
     return (
       <div className="tz-history-row-detail" style={{ padding: 12 }}>
         {error && <p className="tz-error">{error}</p>}
-        <PaqueteForm initial={paquete} onGuardar={guardar} onCancelar={() => setEditing(false)} saving={saving} />
+        <PaqueteForm initial={paquete} onGuardar={guardar} onCancelar={() => setEditing(false)} saving={saving} conCupo={conCupo} />
       </div>
     );
   }
@@ -145,7 +137,8 @@ function PaqueteRow({ paquete, onActualizar, onEliminar }) {
         <strong style={{ color: "var(--text)" }}>{paquete.nombre}</strong>
         <span style={{ marginLeft: 8 }}>
           {formatSoles(paquete.precio)} ·{" "}
-          {paquete.tipo_item === TIPO_ITEM_CREDITOS ? `${paquete.creditos} créditos` : `${paquete.dias_membresia} días`}
+          {`${paquete.dias_membresia} días`}
+          {conCupo && paquete.cupo_conductores ? ` · ${paquete.cupo_conductores} conductores` : ""}
         </span>
       </span>
       <span style={{ display: "flex", gap: 6, flexShrink: 0 }}>
@@ -167,8 +160,8 @@ function PaqueteRow({ paquete, onActualizar, onEliminar }) {
   );
 }
 
-// "Configurar Membresías" — administra la LISTA de paquetes (Membresías
-// y Paquetes de Créditos) de DOS catálogos independientes (Conductores
+// "Configurar Membresías" — administra la LISTA de membresías de DOS
+// catálogos independientes (Conductores
 // y Recolectores, cada uno su propia tabla en Supabase — ver
 // usePaquetes.js/usePaquetesRecolectores.js), seleccionables desde un
 // desplegable en Recarga Rápida/Autorecarga en vez de tipear un monto a
@@ -181,7 +174,6 @@ function PaqueteRow({ paquete, onActualizar, onEliminar }) {
 // un elemento más en el array, cero cambios acá).
 export default function ConfigurarMembresiasModal({ catalogos, onClose }) {
   const [audiencia, setAudiencia] = useState(catalogos[0]?.key);
-  const [tab, setTab] = useState(TIPO_ITEM_MEMBRESIA);
   const [addOpen, setAddOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -189,11 +181,9 @@ export default function ConfigurarMembresiasModal({ catalogos, onClose }) {
 
   const catalogo = catalogos.find((c) => c.key === audiencia) ?? catalogos[0];
   const { paquetes, loading, error, crearPaquete, actualizarPaquete, eliminarPaquete, reordenarPaquetes } = catalogo;
-  // Algunos catálogos (recolectores) solo venden paquetes de créditos.
-  const tiposCatalogo = catalogo.soloCreditos ? TIPOS.filter((t) => t.value === TIPO_ITEM_CREDITOS) : TIPOS;
-  const tabActivo = tiposCatalogo.some((t) => t.value === tab) ? tab : tiposCatalogo[0].value;
-
-  const paquetesDelTab = paquetes.filter((p) => p.tipo_item === tabActivo);
+  const conCupo = !!catalogo.conCupo;
+  const tabActivo = TIPO_ITEM_MEMBRESIA;
+  const paquetesDelTab = paquetes.filter((p) => p.tipo_item === TIPO_ITEM_MEMBRESIA);
 
   const crear = async (patch) => {
     setSaving(true);
@@ -250,23 +240,6 @@ export default function ConfigurarMembresiasModal({ catalogos, onClose }) {
             ))}
           </div>
 
-          {/* Tab de tipo — Membresía vs Paquete de Créditos, dentro del catálogo elegido */}
-          <div className="tz-gasto-tipo-buttons" style={{ marginBottom: 10 }}>
-            {tiposCatalogo.map((t) => (
-              <button
-                key={t.value}
-                type="button"
-                className={`tz-gasto-tipo-btn ${tabActivo === t.value ? "tz-gasto-tipo-active" : ""}`}
-                onClick={() => {
-                  setTab(t.value);
-                  setAddOpen(false);
-                  setSaveError("");
-                }}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
 
           {!addOpen ? (
             <button className="tz-scan-btn tz-add-entry-toggle" onClick={() => setAddOpen(true)}>
@@ -278,6 +251,7 @@ export default function ConfigurarMembresiasModal({ catalogos, onClose }) {
               <PaqueteForm
                 key={audiencia}
                 initial={{ tipo_item: tabActivo }}
+                conCupo={conCupo}
                 onGuardar={crear}
                 onCancelar={() => {
                   setAddOpen(false);
@@ -305,7 +279,7 @@ export default function ConfigurarMembresiasModal({ catalogos, onClose }) {
               items={paquetesDelTab}
               onReordenar={reordenarPaquetes}
               vacio={<p className="tz-method-history-empty">No hay paquetes configurados todavía.</p>}
-              renderItem={(p) => <PaqueteRow paquete={p} onActualizar={actualizarPaquete} onEliminar={eliminarPaquete} />}
+              renderItem={(p) => <PaqueteRow paquete={p} onActualizar={actualizarPaquete} onEliminar={eliminarPaquete} conCupo={conCupo} />}
             />
           )}
         </div>
