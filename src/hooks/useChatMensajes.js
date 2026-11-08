@@ -201,6 +201,8 @@ export function useChatMensajes(conductorId, pasajeroId) {
           if (!payload?.new || payload.new.pasajero_id !== pasajeroId) return;
           if (payload.eventType === "UPDATE") {
             setMensajes((prev) => prev.map((m) => (m.id === payload.new.id ? { ...m, ...payload.new } : m)));
+            // Gema apartada / cobrada / devuelta: las cajas de gemas se releen.
+            if (payload.new.gema_estado) window.dispatchEvent(new Event("tz-gemas-cambio"));
             return;
           }
           setMensajes((prev) => (prev.some((m) => m.id === payload.new.id) ? prev : [...prev, payload.new]));
@@ -428,6 +430,8 @@ export function useChatMensajes(conductorId, pasajeroId) {
         }
 
         await sincronizarAsientosYEstado(conductorId);
+        // Si el pasajero usó gema, ya es del conductor: su caja al instante.
+        window.dispatchEvent(new Event("tz-gemas-cambio"));
 
         return { error: null };
       } catch (err) {
