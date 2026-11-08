@@ -15,6 +15,8 @@ import { subirComprobante } from "../../lib/comprobantes";
 import Dropdown from "../Dropdown";
 import Select from "../Select";
 import BotonPegarComprobante from "../BotonPegarComprobante";
+import CanjeGemas from "../CanjeGemas";
+import { supabase } from "../../supabaseClient";
 
 // Gestor de la membresía de UN conductor (botón ⚡ de su tarjeta en el
 // Directorio del Admin) — COMPLETAMENTE igual al gestor del plan de un
@@ -100,7 +102,25 @@ function RecargaRapida({ conductor, paquetes, registrarRecarga, saving, errorExt
   const duracionActiva = duraciones.some((d) => d.id === duracion) ? duracion : duraciones[0]?.id;
   const visibles = tipo === TIPO_ITEM_MEMBRESIA && duracionActiva ? activos.filter((p) => duracionDe(p) === duracionActiva) : activos;
   const paquete = activos.find((p) => String(p.id) === String(paqueteId)) || null;
-  const total = Number(paquete?.precio) || 0;
+  // Fase 3a: canje de las gemas verdes del conductor (solo membresía),
+  // encendido por defecto.
+  const [canje, setCanje] = useState(null);
+  const [usarGemas, setUsarGemas] = useState(true);
+  useEffect(() => {
+    setCanje(null);
+    if (!paquete || paquete.tipo_item !== TIPO_ITEM_MEMBRESIA) return undefined;
+    let vigente = true;
+    supabase
+      .rpc("taxi_gemas_canje_conductor", { p_conductor_id: conductor.id, p_paquete_id: String(paquete.id) })
+      .then(({ data, error: e }) => {
+        if (vigente && !e && data) setCanje(data);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [paquete?.id, paquete?.tipo_item, conductor.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const descuentoGemas = usarGemas && Number(canje?.n) > 0 ? Number(canje.monto) || 0 : 0;
+  const total = Math.max(Math.round(((Number(paquete?.precio) || 0) - descuentoGemas) * 100) / 100, 0);
   const esEfectivo = metodo === METODO_PAGO_EFECTIVO;
   const esDigital = METODOS_CON_COMPROBANTE.includes(metodo);
   const recibidoNum = Number(String(recibido).replace(",", "."));
@@ -195,6 +215,7 @@ function RecargaRapida({ conductor, paquetes, registrarRecarga, saving, errorExt
       paqueteDescripcion: paquete.descripcion,
       metodoPago: metodo,
       comprobante: voucherUrl ? { voucherUrl } : null,
+      usarGemas: descuentoGemas > 0,
     });
     setEnviando(false);
     if (err) return;
@@ -242,9 +263,14 @@ function RecargaRapida({ conductor, paquetes, registrarRecarga, saving, errorExt
       />
       {paquete && (
         <p className="tz-plan-total" style={{ margin: "8px 0 0" }}>
-          Total: <strong>{formatSoles(total)}</strong> ·{" "}
+          Total: <strong>{formatSoles(total)}</strong>
+          {descuentoGemas > 0 && <span style={{ color: "#39ffb0" }}> (gemas −{formatSoles(descuentoGemas)})</span>} ·{" "}
           {paquete.tipo_item === TIPO_ITEM_MEMBRESIA ? `${paquete.dias_membresia} días` : `${paquete.creditos} créditos`}
         </p>
+      )}
+
+      {paquete && (
+        <CanjeGemas color="verde" quien="sus" canje={canje} precio={paquete.precio} activo={usarGemas} onCambiar={setUsarGemas} />
       )}
 
       <label className="tz-field-label" style={{ marginTop: 12 }}>

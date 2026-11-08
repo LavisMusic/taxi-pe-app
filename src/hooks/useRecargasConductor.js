@@ -13,7 +13,7 @@ import { ESTADO_RECARGA_APROBADO, ESTADO_RECARGA_PENDIENTE, ESTADO_RECARGA_RECHA
 // con membresía vigente (migración 20261014170000).
 
 const CAMPOS =
-  "id, conductor_id, paquete_id, paquete_nombre, tipo_item, creditos, dias_membresia, monto, metodo_pago, comprobante_url, estado, created_at, resuelto_at";
+  "id, conductor_id, paquete_id, paquete_nombre, tipo_item, creditos, dias_membresia, monto, metodo_pago, comprobante_url, estado, created_at, resuelto_at, gemas_usadas, gemas_monto";
 
 // Lado conductor: su última petición (para mostrar "en revisión",
 // "aprobada" o "rechazada") y crear una nueva.
@@ -43,7 +43,7 @@ export function useMiRecargaConductor(conductorId) {
   );
 
   const crear = useCallback(
-    async ({ paquete, metodoPago, archivo }) => {
+    async ({ paquete, metodoPago, archivo, usarGemas = false }) => {
       const { valor, error: errSubida } = await subirComprobantePrivado(archivo, `comprobantes/${conductorId}`);
       if (errSubida) return { error: errSubida, message: "No se pudo subir el comprobante. Intenta de nuevo." };
       const { error } = await supabase.from("peticiones_recarga_conductor").insert({
@@ -51,6 +51,8 @@ export function useMiRecargaConductor(conductorId) {
         paquete_id: String(paquete.id),
         metodo_pago: metodoPago,
         comprobante_url: valor,
+        // Canjea sus gemas verdes: la base las aparta y descuenta el monto.
+        usar_gemas: !!usarGemas,
       });
       if (error) {
         const message =
@@ -102,6 +104,7 @@ export function useRecargasConductorAdmin() {
         cantidadCreditos: Number(peticion.creditos) || 0,
         diasMembresia: Number(peticion.dias_membresia) || undefined,
         paqueteId: peticion.paquete_id,
+        peticionId: peticion.id,
         metodoPago: peticion.metodo_pago,
         comprobante: url ? { voucherUrl: url } : null,
       });

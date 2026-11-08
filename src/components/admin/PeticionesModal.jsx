@@ -583,6 +583,12 @@ function RecargaConductorRow({ peticion, conductor, onAprobar, onRechazar }) {
             {esMembresia ? `${peticion.dias_membresia} días` : `${peticion.creditos} gemas`} · {formatSoles(peticion.monto)} ·{" "}
             {peticion.metodo_pago} · {formatDate(peticion.created_at)}
           </span>
+          {Number(peticion.gemas_usadas) > 0 && (
+            <span className="tz-peticion-solicitud-meta" style={{ color: "#39ffb0", fontWeight: 700 }}>
+              Canjeó {peticion.gemas_usadas} gemas verdes: precio {formatSoles(Number(peticion.monto) + Number(peticion.gemas_monto))} −{" "}
+              {formatSoles(Number(peticion.gemas_monto))} = pagó {formatSoles(Number(peticion.monto))}
+            </span>
+          )}
         </div>
 
         {comprobante ? (

@@ -33,6 +33,8 @@ import CierreCajaModal from "../components/admin/CierreCajaModal";
 import HistorialVentasModal from "../components/admin/HistorialVentasModal";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import logo from "../assets/logo.webp";
+import GemasRecolectadas from "../components/GemasRecolectadas";
+import { supabase } from "../supabaseClient";
 import BotonSoporte from "../components/BotonSoporte";
 import BotonMensajes from "../components/mensajes/BotonMensajes";
 import AnuncioPopupModal from "../components/AnuncioPopupModal";
@@ -102,6 +104,20 @@ export default function RecolectorPage() {
     },
   });
 
+  // Caja de gemas verdes del recolector (fase 3a).
+  const [gemasRecolector, setGemasRecolector] = useState(null);
+  const [gemasTick, setGemasTick] = useState(0);
+  useEffect(() => {
+    let vigente = true;
+    supabase.rpc("taxi_mis_gemas_recolector").then(({ data, error }) => {
+      if (vigente && !error && data) setGemasRecolector(data);
+    });
+    const t = setTimeout(() => setGemasTick((n) => n + 1), 30000);
+    return () => {
+      vigente = false;
+      clearTimeout(t);
+    };
+  }, [gemasTick]);
   const [registroOpen, setRegistroOpen] = useState(false);
   const [registroMsg, setRegistroMsg] = useState("");
   const [cierreOpen, setCierreOpen] = useState(false);
@@ -258,6 +274,19 @@ export default function RecolectorPage() {
                 </span>
               </div>
             </section>
+
+            {/* Gemas verdes que le pasaron los conductores al canjear con él
+                (fase 3a): las usará al renovar su membresía (fase 3b). */}
+            {gemasRecolector && (
+              <GemasRecolectadas
+                color="verde"
+                recolectadas={gemasRecolector.recolectadas}
+                apartadas={0}
+                tope={gemasRecolector.tope}
+                valor={Number(gemasRecolector.valor) || 0.1}
+                activo={gemasRecolector.activo}
+              />
+            )}
 
             {registroMsg && <p className="tz-success">{registroMsg}</p>}
 

@@ -47,7 +47,7 @@ export function useRecargas({ onDone }) {
   // crea el fiado. Ya no se recarga a clientes (sus créditos son puntos
   // que ganan comprando).
   const registrarRecarga = useCallback(
-    async ({ conductor, tipoItem, cantidadCreditos, diasMembresia, paqueteId, metodoPago, comprobante }) => {
+    async ({ conductor, tipoItem, cantidadCreditos, diasMembresia, paqueteId, metodoPago, comprobante, usarGemas = false, peticionId = null }) => {
       setSaving(true);
       setError("");
 
@@ -64,6 +64,10 @@ export function useRecargas({ onDone }) {
         p_metodo_pago: metodoPago,
         p_voucher_url: comprobante?.voucherUrl || null,
         p_detalle: detalle,
+        // Fase 3a de gemas: canjear las gemas del conductor (membresía), o
+        // las que ya apartó su petición.
+        p_usar_gemas: !!usarGemas,
+        p_peticion_id: peticionId != null ? Number(peticionId) : null,
       });
       setSaving(false);
       if (rpcError || data?.estado !== "ok") {
