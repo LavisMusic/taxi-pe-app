@@ -105,12 +105,53 @@ export default function EntregaActivaModal({ entrega, conductorId, onClose, avan
       ? `https://waze.com/ul?ll=${entrega.entrega_lat},${entrega.entrega_lng}&navigate=yes`
       : null;
 
+  // ---- Pago del envío al recoger (contrato, migración 20261107100000):
+  // la tienda paga, el repartidor confirma, y recién ahí puede salir. Se
+  // vuelve a leer cada pocos segundos mientras espera el pago.
+  const [pagoLeido, setPagoLeido] = useState(null);
+  const filaPago = pagoLeido && pagoLeido.id === entrega.id ? pagoLeido : entrega;
+  const pago = {
+    tarifa: Number(filaPago.tarifa) || 0,
+    pagadoAt: filaPago.envio_pagado_at || null,
+    metodo: filaPago.envio_pago_metodo || null,
+    monto: Number(filaPago.envio_monto_pagado) || 0,
+    recibidoAt: filaPago.envio_recibido_at || null,
+    noRecibidoAt: filaPago.envio_no_recibido_at || null,
+  };
+  pago.falta = !!filaPago.pago_envio_requerido && pago.tarifa > 0 && !pago.recibidoAt;
+  const releerPago = async () => {
+    const { data } = await supabase.rpc("rpc_entrega_activa_conductor", { p_conductor_id: conductorId });
+    const fila = (data || []).find((e) => e.id === entrega.id);
+    if (fila) setPagoLeido(fila);
+  };
+  useEffect(() => {
+    if (estado !== "aceptado" || !pago.falta) return undefined;
+    const t = setInterval(releerPago, 5000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estado, pago.falta, entrega.id]);
+
+  const confirmarPago = async (recibido) => {
+    setBusy(true);
+    setMsg("");
+    const { data, error: e } = await supabase.rpc("rpc_entrega_confirmar_pago", {
+      p_entrega_id: entrega.id,
+      p_recibido: recibido,
+    });
+    setBusy(false);
+    if (e || (data?.status && data.status !== "ok")) setMsg("No se pudo confirmar el pago. Intenta de nuevo.");
+    releerPago();
+  };
+
   const marcarRecogido = async () => {
     setBusy(true);
     setMsg("");
     const r = await avanzar(entrega.id, "en_ruta");
     setBusy(false);
-    if (r?.status && r.status !== "ok") setMsg(`No se pudo (${r.status}).`);
+    if (r?.status === "falta_pago_envio") {
+      setMsg("Primero confirma que recibiste el pago del envío.");
+      releerPago();
+    } else if (r?.status && r.status !== "ok") setMsg(`No se pudo (${r.status}).`);
   };
 
   // Intenta finalizar con un código (del QR o del PIN). Si sale bien,
@@ -240,7 +281,33 @@ export default function EntregaActivaModal({ entrega, conductorId, onClose, avan
 
         {/* Acción según estado */}
         <div style={{ marginTop: 12 }}>
-          {estado === "aceptado" && (
+          {estado === "aceptado" && pago.falta && !pago.pagadoAt && (
+            <div className="tz-pago-envio tz-pago-envio-espera">
+              <Loader2 size={15} className="tz-spin" />
+              <span>
+                Al recoger el pedido, la tienda te paga el envío
+                {pago.tarifa > 0 ? ` (${formatSoles(pago.tarifa)})` : ""}. Espera su pago para salir.
+              </span>
+            </div>
+          )}
+          {estado === "aceptado" && pago.falta && pago.pagadoAt && (
+            <div className="tz-pago-envio tz-pago-envio-pagado">
+              <p>
+                💵 La tienda te pagó <strong>{formatSoles(pago.monto)}</strong>{" "}
+                {pago.metodo === "EFECTIVO" ? "en efectivo" : "por Yape"}.
+              </p>
+              {pago.noRecibidoAt && <p className="tz-pago-envio-nota">Le avisamos a la tienda que todavía no lo recibes.</p>}
+              <div className="tz-pago-envio-acciones">
+                <button type="button" className="tz-contrato-btn" disabled={busy} onClick={() => confirmarPago(false)}>
+                  No lo recibí
+                </button>
+                <button type="button" className="tz-contrato-btn tz-contrato-btn-si" disabled={busy} onClick={() => confirmarPago(true)}>
+                  {busy ? <Loader2 size={14} className="tz-spin" /> : <Check size={14} />} Recibí el pago
+                </button>
+              </div>
+            </div>
+          )}
+          {estado === "aceptado" && !pago.falta && (
             <button className="tz-scan-btn tz-payment-save" style={{ width: "100%" }} disabled={busy} onClick={marcarRecogido}>
               {busy ? <Loader2 size={16} className="tz-spin" /> : <PackageCheck size={16} />} Pedido recogido y pagado
             </button>

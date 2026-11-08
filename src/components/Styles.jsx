@@ -2568,6 +2568,58 @@ export default function Styles() {
         visibility: visible;
         pointer-events: auto;
       }
+      /* ---- Contrato negocio–repartidor (ContratosReparto.jsx) ---- */
+      .tz-contratos { margin: 14px 0 4px; display: flex; flex-direction: column; gap: 10px; }
+      .tz-contrato-invitacion {
+        position: relative;
+        padding: 14px;
+        border-radius: 16px;
+        border: 1px solid var(--cyan);
+        background: rgba(43, 232, 255, 0.07);
+        box-shadow: 0 0 0 1px rgba(43, 232, 255, 0.2), 0 0 22px rgba(43, 232, 255, 0.28);
+        animation: tz-contrato-llega 0.6s cubic-bezier(0.2, 1.5, 0.4, 1) both, tz-contrato-late 2.4s 0.6s ease-in-out infinite;
+      }
+      .tz-contrato-cab { display: flex; align-items: center; gap: 10px; }
+      .tz-contrato-logo {
+        width: 40px; height: 40px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: rgba(43, 232, 255, 0.15); color: var(--cyan);
+        box-shadow: 0 0 10px rgba(43, 232, 255, 0.5);
+      }
+      .tz-contrato-logo img { width: 100%; height: 100%; object-fit: cover; }
+      .tz-contrato-nombre { margin: 0; font-weight: 800; color: var(--text); }
+      .tz-contrato-sub { margin: 0; font-size: 12.5px; color: var(--cyan); }
+      .tz-contrato-texto { margin: 10px 0; font-size: 13px; color: var(--text-dim); }
+      .tz-contrato-acciones, .tz-pago-envio-acciones { display: flex; gap: 8px; }
+      .tz-contrato-btn {
+        flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+        padding: 9px 10px; border-radius: 999px; cursor: pointer; font-weight: 700;
+        border: 1px solid rgba(255, 255, 255, 0.2); background: transparent; color: var(--text);
+        transition: transform 0.25s cubic-bezier(0.2, 1.6, 0.4, 1);
+      }
+      .tz-contrato-btn:hover:not(:disabled) { transform: scale(1.04); }
+      .tz-contrato-btn-si { border: none; color: #02201c; background: linear-gradient(110deg, #39ffb0, #2be8ff); box-shadow: 0 0 14px rgba(43, 232, 255, 0.5); }
+      .tz-contratos-titulo { margin: 0 0 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); }
+      .tz-contratos-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+      .tz-contrato-chip {
+        display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 8px; border-radius: 999px;
+        border: 1px solid rgba(57, 255, 176, 0.45); background: rgba(57, 255, 176, 0.08);
+        color: var(--text); font-size: 12.5px; font-weight: 700;
+      }
+      .tz-contrato-chip img { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; }
+      .tz-contrato-chip button { border: none; background: rgba(255, 255, 255, 0.1); color: var(--text); border-radius: 999px; padding: 2px 7px; cursor: pointer; font-size: 11.5px; }
+      .tz-contrato-chip-confirmar { border-color: rgba(255, 84, 112, 0.5); background: rgba(255, 84, 112, 0.08); }
+      @keyframes tz-contrato-llega { from { opacity: 0; transform: translateY(12px) scale(0.94); } to { opacity: 1; transform: none; } }
+      @keyframes tz-contrato-late {
+        0%, 100% { box-shadow: 0 0 0 1px rgba(43, 232, 255, 0.2), 0 0 18px rgba(43, 232, 255, 0.22); }
+        50% { box-shadow: 0 0 0 2px rgba(43, 232, 255, 0.4), 0 0 30px rgba(43, 232, 255, 0.45); }
+      }
+      /* Pago del envío al recoger (EntregaActivaModal.jsx). */
+      .tz-pago-envio { margin-bottom: 10px; padding: 12px; border-radius: 14px; font-size: 13.5px; animation: tz-contrato-llega 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) both; }
+      .tz-pago-envio p { margin: 0 0 10px; }
+      .tz-pago-envio-espera { display: flex; align-items: center; gap: 10px; color: var(--text-dim); border: 1px dashed rgba(43, 232, 255, 0.45); }
+      .tz-pago-envio-pagado { border: 1px solid rgba(57, 255, 176, 0.55); background: rgba(57, 255, 176, 0.08); box-shadow: 0 0 18px rgba(57, 255, 176, 0.25); color: var(--text); }
+      .tz-pago-envio-nota { font-size: 12px; color: var(--yellow); }
       .tz-reparto-vacio {
         margin: 18px 0 6px;
         padding: 22px 12px;
@@ -7360,7 +7412,7 @@ export default function Styles() {
       .tz-chatneg-avatar {
         width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%;
         display: inline-flex; align-items: center; justify-content: center;
-        background: rgba(var(--cyan-rgb), 0.14); border: 1px solid rgba(var(--cyan-rgb), 0.4);
+        background: rgba(43, 232, 255, 0.14); border: 1px solid rgba(43, 232, 255, 0.4);
         color: var(--cyan); font-weight: 800; font-size: 16px;
       }
       /* "Pegar comprobante" (BotonPegarComprobante.jsx), debajo de adjuntar. */
@@ -7672,7 +7724,7 @@ export default function Styles() {
       }
       .tz-chat-modal-shell .tz-entrega-chat-scroll { flex: 1 1 auto; min-height: 0; max-height: none; }
       .tz-chatent-cliente { margin-left: 18px; width: calc(100% - 18px); border-top: 1px dashed var(--border-soft); padding-top: 8px; }
-      .tz-chatcond-foto-vacia { display: inline-flex; align-items: center; justify-content: center; background: rgba(var(--cyan-rgb),0.12); border: 1px solid rgba(var(--cyan-rgb),0.35); color: var(--cyan); }
+      .tz-chatcond-foto-vacia { display: inline-flex; align-items: center; justify-content: center; background: rgba(43, 232, 255,0.12); border: 1px solid rgba(43, 232, 255,0.35); color: var(--cyan); }
       .tz-chatfijo-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
       .tz-chatfijo-nombre { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 5px; }
       .tz-chatfijo-pin { color: var(--cyan); }
