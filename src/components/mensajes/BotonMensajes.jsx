@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { MessageCircle, X, Car } from "lucide-react";
 import { useMensajesPlataforma } from "../../hooks/useMensajesPlataforma";
@@ -50,6 +50,16 @@ export default function BotonMensajes({ usuarioId, conductores = [], onAbrirCond
     setAbierto(false);
     setCanal(null);
   };
+  // Cada vez que ve la lista, los chats con algo pendiente (viaje en curso
+  // o mensajes sin leer) laten en verde 3 s — igual que los pedidos del
+  // cliente en Caja.
+  const [pulsoLista, setPulsoLista] = useState(false);
+  useEffect(() => {
+    if (!abierto || canal) return undefined;
+    setPulsoLista(true);
+    const t = setTimeout(() => setPulsoLista(false), 3000);
+    return () => clearTimeout(t);
+  }, [abierto, canal]);
 
   return (
     <>
@@ -93,6 +103,7 @@ export default function BotonMensajes({ usuarioId, conductores = [], onAbrirCond
                         <li className="tz-chatneg-seccion">{conductores.length === 1 ? "Tu conductor" : "Tus conductores"}</li>
                         {conductores.map((c) => (
                           <li key={c.id} className={`tz-history-row tz-chatfijo-row tz-chatpas-row ${c.enViaje ? "is-activo" : ""}`}>
+                            {pulsoLista && (c.enViaje || c.noLeidos > 0) && <span className="tz-chatped-pulso" aria-hidden="true" />}
                             <button
                               type="button"
                               className="tz-chatfijo-btn"

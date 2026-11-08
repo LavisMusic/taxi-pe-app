@@ -13,6 +13,8 @@ import L from "leaflet";
 //   - pulsos: puntitos de luz que viajan hacia el destino;
 //   - previa (opcional): el tramo siguiente, tenue y punteado.
 // `dibujoKey` (de useConexionRuta) hace que la línea se dibuje sola.
+// Sin excepción por "reducir movimiento": el movimiento es el indicador
+// de que el servicio está conectado (pedido explícito).
 // className/interactive van como props propias: react-leaflet aplica
 // pathOptions con setStyle, que no toca la clase ni lo interactivo.
 
@@ -179,31 +181,31 @@ export default function RutaNeon({ desde, hasta, previa = null, color = "#00e0ff
         <Polyline
           ref={previaRef}
           positions={[aPar(previa[0]), aPar(previa[1])]}
-          className="tz-ruta-previa"
+            className="tz-ruta-previa"
           interactive={false}
-          pathOptions={{ color: "#2be8ff", weight: 3, opacity: 0.5, dashArray: "2 9" }}
+          pathOptions={{ color: "#2be8ff", weight: 3.5, opacity: 0.6, dashArray: "2 9" }}
         />
       )}
       <Polyline
         ref={haloRef}
         positions={linea}
         className="tz-ruta-halo"
-          interactive={false}
-          pathOptions={{ color, weight: 10, opacity: 0.35 }}
+        interactive={false}
+        pathOptions={{ color, weight: 14, opacity: 0.4 }}
       />
       <Polyline
         ref={nucleoRef}
         positions={linea}
         className="tz-ruta-nucleo"
-          interactive={false}
-          pathOptions={{ color: `url(#${gradId})`, weight: 4, opacity: 1 }}
+        interactive={false}
+        pathOptions={{ color: `url(#${gradId})`, weight: 5.5, opacity: 1 }}
       />
       <Polyline
         ref={pulsosRef}
         positions={linea}
         className="tz-ruta-pulsos"
-          interactive={false}
-          pathOptions={{ color: "#f2feff", weight: 5, opacity: 0.95, dashArray: "1 22" }}
+        interactive={false}
+        pathOptions={{ color: "#ffffff", weight: 7, opacity: 1, dashArray: "1 26" }}
       />
     </>
   );
@@ -219,12 +221,16 @@ function useEstilos() {
     s.textContent = `
       .tz-ruta-halo { animation: tz-ruta-halo 1.6s ease-in-out infinite; }
       @keyframes tz-ruta-halo {
-        0%, 100% { stroke-width: 8px; stroke-opacity: 0.22; }
-        50% { stroke-width: 15px; stroke-opacity: 0.5; }
+        0%, 100% { stroke-width: 9px; stroke-opacity: 0.2; }
+        50% { stroke-width: 22px; stroke-opacity: 0.6; }
       }
-      .tz-ruta-nucleo { filter: drop-shadow(0 0 3px rgba(43, 232, 255, 0.9)); }
-      .tz-ruta-pulsos { animation: tz-ruta-pulsos 1s linear infinite; filter: drop-shadow(0 0 4px #ffffff); }
-      @keyframes tz-ruta-pulsos { to { stroke-dashoffset: -23; } }
+      .tz-ruta-nucleo { animation: tz-ruta-nucleo 1.6s ease-in-out infinite; }
+      @keyframes tz-ruta-nucleo {
+        0%, 100% { filter: drop-shadow(0 0 3px rgba(43, 232, 255, 0.8)); }
+        50% { filter: drop-shadow(0 0 9px rgba(57, 255, 176, 1)); }
+      }
+      .tz-ruta-pulsos { animation: tz-ruta-pulsos 0.9s linear infinite; filter: drop-shadow(0 0 5px #ffffff) drop-shadow(0 0 9px rgba(43, 232, 255, 0.9)); }
+      @keyframes tz-ruta-pulsos { to { stroke-dashoffset: -27; } }
       .tz-ruta-previa { animation: tz-ruta-previa 2.4s linear infinite; }
       @keyframes tz-ruta-previa { to { stroke-dashoffset: -22; } }
       .tz-ruta-pulsos, .tz-ruta-previa { transition: opacity 0.5s ease; }
@@ -244,9 +250,6 @@ function useEstilos() {
       @keyframes tz-luz-respira {
         0%, 100% { transform: scale(0.85); opacity: 0.35; }
         50% { transform: scale(1.2); opacity: 0.75; }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .tz-ruta-halo, .tz-ruta-pulsos, .tz-ruta-previa, .tz-luz.is-on::before, .tz-luz.is-on::after { animation: none; }
       }
     `;
     document.head.appendChild(s);
