@@ -12,7 +12,7 @@ import { claseNota } from "../../lib/adjuntosChat";
 import MapaEntrega from "./MapaEntrega";
 
 // Pantalla de la entrega en curso para el repartidor. Ver DELIVERY.md §7.
-//   aceptado → (Pedido recogido y pagado en la Caja) → en_ruta → entregado
+//   aceptado → (la tienda paga el envío + "Recibí el pago") → en_ruta → entregado
 //
 // Finalizar: primero SIEMPRE el QR del cliente (codifica el PIN). Tras 3
 // intentos fallidos —o si no hay cámara / se niega el permiso— se
@@ -138,8 +138,21 @@ export default function EntregaActivaModal({ entrega, conductorId, onClose, avan
       p_entrega_id: entrega.id,
       p_recibido: recibido,
     });
+    if (e || (data?.status && data.status !== "ok")) {
+      setBusy(false);
+      setMsg("No se pudo confirmar el pago. Intenta de nuevo.");
+      releerPago();
+      return;
+    }
+    if (!recibido) {
+      setBusy(false);
+      releerPago();
+      return;
+    }
+    // "Recibí el pago" = pedido recogido: sale directo a la entrega.
+    const r = await avanzar(entrega.id, "en_ruta");
     setBusy(false);
-    if (e || (data?.status && data.status !== "ok")) setMsg("No se pudo confirmar el pago. Intenta de nuevo.");
+    if (r?.status && r.status !== "ok") setMsg(`Pago confirmado, pero no se pudo iniciar la entrega (${r.status}).`);
     releerPago();
   };
 
@@ -305,11 +318,14 @@ export default function EntregaActivaModal({ entrega, conductorId, onClose, avan
                   {busy ? <Loader2 size={14} className="tz-spin" /> : <Check size={14} />} Recibí el pago
                 </button>
               </div>
+              <p className="tz-pago-envio-nota">Al confirmarlo sales directo a la entrega.</p>
             </div>
           )}
+          {/* Solo entregas sin cobro de envío (las de antes del contrato):
+              con cobro, "Recibí el pago" ya marca el recojo. */}
           {estado === "aceptado" && !pago.falta && (
             <button className="tz-scan-btn tz-payment-save" style={{ width: "100%" }} disabled={busy} onClick={marcarRecogido}>
-              {busy ? <Loader2 size={16} className="tz-spin" /> : <PackageCheck size={16} />} Pedido recogido y pagado
+              {busy ? <Loader2 size={16} className="tz-spin" /> : <PackageCheck size={16} />} Pedido recogido
             </button>
           )}
 
