@@ -513,6 +513,7 @@ export default function AdminDashboardPage() {
             if (!r.error) await refreshUsuarios();
             return r;
           }}
+          onCorregido={refreshUsuarios}
           onUpdate={actualizarUsuario}
           onClose={() => {
             setRecargaRecolectorOpen(false);

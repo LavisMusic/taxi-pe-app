@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { X, Zap, Loader2, CreditCard, Camera, ImagePlus } from "lucide-react";
+import { X, Zap, Loader2, CreditCard, Camera, ImagePlus, CalendarClock, RotateCcw } from "lucide-react";
 import { formatSoles, formatDate, formatTime } from "../../utils/format";
 import {
   METODOS_PAGO,
@@ -29,8 +29,85 @@ import { supabase } from "../../supabaseClient";
 const APARTADOS = [
   { id: "estado", label: "Membresía y cupo" },
   { id: "recarga", label: "Vender membresía" },
+  { id: "corregir", label: "Corregir membresía" },
   { id: "pagos", label: "Pagos" },
 ];
+const aFechaInput = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+// Corregir sin cobrar: vencimiento, cupo total y, si se pide, reiniciar el
+// periodo (los conductores atendidos vuelven a 0). Lo hace la base
+// (taxi_corregir_membresia_recolector).
+function CorregirMembresia({ recolector, cupo, onHecho }) {
+  const [fecha, setFecha] = useState(aFechaInput(recolector.membresia_vencimiento));
+  const [cupoTotal, setCupoTotal] = useState(String(cupo?.cupo ?? ""));
+  const [reiniciar, setReiniciar] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    if (cupo && cupoTotal === "") setCupoTotal(String(cupo.cupo ?? 0));
+  }, [cupo]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const guardar = async () => {
+    setError("");
+    const n = Number(cupoTotal);
+    if (fecha && (!Number.isInteger(n) || n < 0)) return setError("El cupo debe ser un número entero (0 o más).");
+    setGuardando(true);
+    const { error: e } = await supabase.rpc("taxi_corregir_membresia_recolector", {
+      p_recolector_id: recolector.id,
+      // Fin del día elegido (hora de Perú, UTC-5); vacío = sin membresía.
+      p_vence: fecha ? new Date(`${fecha}T23:59:59-05:00`).toISOString() : null,
+      p_cupo: fecha ? n : null,
+      p_reiniciar: reiniciar,
+    });
+    setGuardando(false);
+    if (e) return setError(e.message || "No se pudo guardar.");
+    setReiniciar(false);
+    onHecho?.(fecha ? "Membresía corregida." : "Membresía quitada.");
+  };
+
+  return (
+    <div className="tz-plan-seccion" style={{ alignItems: "flex-end" }}>
+      <label className="tz-plan-campo">
+        <span>Vence el</span>
+        <input type="date" className="tz-text-input" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+      </label>
+      <label className="tz-plan-campo">
+        <span>Cupo de conductores{cupo ? ` (usados: ${cupo.usado})` : ""}</span>
+        <input
+          type="number"
+          min={0}
+          step={1}
+          inputMode="numeric"
+          className="tz-text-input"
+          value={cupoTotal}
+          onChange={(e) => setCupoTotal(e.target.value)}
+          disabled={!fecha}
+        />
+      </label>
+      <button
+        type="button"
+        className={`tz-gasto-tipo-btn tz-reiniciar-periodo ${reiniciar ? "tz-gasto-tipo-active" : ""}`}
+        onClick={() => setReiniciar((v) => !v)}
+        disabled={!fecha}
+        aria-pressed={reiniciar}
+      >
+        <RotateCcw size={13} /> Reiniciar el periodo
+      </button>
+      <button type="button" className="tz-cliente-action-btn" onClick={guardar} disabled={guardando}>
+        {guardando ? <Loader2 size={13} className="tz-spin" /> : <CalendarClock size={13} />} Guardar
+      </button>
+      <p className="tz-stock-editor-sub" style={{ flexBasis: "100%", margin: 0 }}>
+        Solo corrige: no registra venta ni pago. Deja la fecha vacía para quitarle la membresía.
+        {reiniciar ? " Al guardar, los conductores atendidos vuelven a 0 y el periodo empieza hoy." : ""}
+      </p>
+      {error && <p className="tz-error" style={{ flexBasis: "100%", margin: 0 }}>{error}</p>}
+    </div>
+  );
+}
 const CLASE_METODO = { efectivo: "efectivo", yape: "yape", plin: "plin", otros: "otros" };
 const DIAS_AVISO = 7;
 const diasHasta = (iso) => (iso ? Math.ceil((new Date(iso) - new Date()) / 86400000) : null);
@@ -248,7 +325,7 @@ function RecargaRapida({ recolector, paquetes, crearPeticion, onHecho }) {
   );
 }
 
-export default function GestorPlanRecolectorModal({ recolector, paquetes = [], peticiones = [], crearPeticion, onClose }) {
+export default function GestorPlanRecolectorModal({ recolector, paquetes = [], peticiones = [], crearPeticion, onCorregido, onClose }) {
   const [apartado, setApartado] = useState("estado");
   const [aviso, setAviso] = useState("");
   const [error, setError] = useState("");
@@ -341,6 +418,18 @@ export default function GestorPlanRecolectorModal({ recolector, paquetes = [], p
           <RecargaRapida recolector={recolector} paquetes={paquetes} crearPeticion={crearPeticion} onHecho={setAviso} />
         )}
 
+
+        {apartado === "corregir" && (
+          <CorregirMembresia
+            key={recolector.membresia_vencimiento || "sin"}
+            recolector={recolector}
+            cupo={cupo}
+            onHecho={(msg) => {
+              setAviso(msg);
+              onCorregido?.();
+            }}
+          />
+        )}
 
         {apartado === "pagos" &&
           (susCompras.length === 0 ? (
