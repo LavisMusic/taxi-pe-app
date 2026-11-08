@@ -7703,6 +7703,13 @@ export default function Styles() {
          debajo (se despliega solo), el cliente; un brillo verde recorre el
          borde de los dos juntos — mismo diseño que "Tus pedidos" en Caja. */
       .tz-chatent-row, .tz-chatpas-row { position: relative; display: flex; flex-direction: column; gap: 6px; border-radius: 14px; overflow: visible !important; }
+      /* Cuentas verificadas (fase 5a). */
+      .tz-cuentas-verificadas { margin: 14px 0; }
+      .tz-cuentas-verificadas-titulo {
+        display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 14px; font-weight: 800;
+        letter-spacing: 0.06em; text-transform: uppercase; color: var(--cyan);
+      }
+      .tz-cuentas-verificadas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
       /* Cupo de conductores del recolector (fase 3b). */
       .tz-cupo-barra { display: block; height: 8px; margin: 8px auto 2px; width: 80%; border-radius: 999px; overflow: hidden; background: rgba(43,232,255,0.14); }
       .tz-cupo-barra > span {

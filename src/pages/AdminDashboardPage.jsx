@@ -33,6 +33,7 @@ import { useRankingRepartidores } from "../hooks/useRankingRepartidores";
 import Styles from "../components/Styles";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import { useBienvenidaNeon } from "../hooks/useBienvenidaNeon";
+import CuentasVerificadas from "../components/admin/CuentasVerificadas";
 import StatsSection from "../components/admin/StatsSection";
 import UsuarioEstrellaChip from "../components/admin/UsuarioEstrellaChip";
 import TopUsuariosModal from "../components/admin/TopUsuariosModal";
@@ -408,6 +409,9 @@ export default function AdminDashboardPage() {
               <StatsSection metrics={metrics} totalGastosHoy={totalGastosHoy} />
               <UsuarioEstrellaChip ranking={ranking} />
             </section>
+
+            {/* Fase 5a: cuentas verificadas por rol, con su meta. */}
+            <CuentasVerificadas />
 
             <h2 style={{ margin: "22px 0 10px" }}>Directorio de Conductores</h2>
             <ConductoresDirectorio

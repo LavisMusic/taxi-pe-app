@@ -65,6 +65,21 @@ Deno.serve(async (req) => {
   const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
   switch (accion) {
+    // Fase 5a: medidor de cuentas verificadas de Taxi-PE en el panel del
+    // superadmin de Caja.
+    case "cuentas.resumen": {
+      const { data, error } = await db.rpc("taxi_resumen_cuentas");
+      if (error) return jsonResponse(500, { error: error.message });
+      return jsonResponse(200, { ok: true, roles: data ?? [] });
+    }
+    case "cuentas.meta": {
+      const { error } = await db.rpc("taxi_guardar_meta_cuentas", {
+        p_rol: String(d.rol ?? ""),
+        p_meta: Number(d.meta),
+      });
+      if (error) return jsonResponse(400, { error: error.message });
+      return jsonResponse(200, { ok: true });
+    }
     case "mensajes.listar": {
       const { data, error } = await db
         .from("mensajes_plataforma")
