@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -7,6 +7,7 @@ import { supabase } from "../../supabaseClient";
 import { canalEntrega } from "../../hooks/useEntregasRepartidor";
 import { MAPBOX_TILE_URL, MAPBOX_ATTRIBUTION } from "../../lib/mapboxConfig";
 import { MAPA_NIVEL_COLOR } from "../../lib/nivelServicio";
+import RutaNeon, { divIconLuz, useConexionRuta } from "../RutaNeon";
 
 // Mapa en vivo de la entrega — MISMO estilo que el mapa del chat de un
 // viaje en curso (MapaViaje.jsx): contenedor `tz-mapa-viaje`, pines
@@ -21,29 +22,31 @@ import { MAPA_NIVEL_COLOR } from "../../lib/nivelServicio";
 // pedido. Mostrarlo acá confundía, como si "aceptar la entrega" fuera
 // lo que lo ponía "en carrera".
 
-const ICONO_DESTINO = L.divIcon({
+// Especificaciones (no L.divIcon directo): divIconLuz les agrega la luz
+// del repartidor cuando la conexión los alcanza (RutaNeon.jsx).
+const ICONO_DESTINO = {
   className: "tz-radar-marker-wrap",
   html: '<span class="tz-radar-marker tz-radar-marker-destino">🚩</span>',
   iconSize: [28, 28],
   iconAnchor: [14, 26],
-});
-const ICONO_ORIGEN = L.divIcon({
+};
+const ICONO_ORIGEN = {
   className: "tz-radar-marker-wrap",
   html: '<span class="tz-radar-marker">🏪</span>',
   iconSize: [26, 26],
   iconAnchor: [13, 13],
-});
+};
 
 function iconoRepartidor(color, iconoUrl) {
   const vehiculo = iconoUrl
     ? `<img class="tz-radar-marker-mini-img" src="${iconoUrl}" alt="" style="--tz-marker-color:${color}" />`
     : `<span class="tz-radar-marker" style="--tz-marker-color:${color}">🚖</span>`;
-  return L.divIcon({
+  return {
     className: "tz-radar-marker-wrap",
     html: `<div class="tz-entrega-marker-group">${vehiculo}</div>`,
     iconSize: [26, 26],
     iconAnchor: [13, 13],
-  });
+  };
 }
 
 function encuadrar(map, puntos) {
@@ -91,7 +94,7 @@ function frescura(atMs) {
   return { txt: `hace ${Math.round(s / 3600)} h`, clase: "tz-fresh-stale" };
 }
 
-export default function MapaEntrega({ entregaId, conductorId = null, destino = null, origen = null, posInicial = null, client = supabase }) {
+export default function MapaEntrega({ entregaId, conductorId = null, destino = null, origen = null, posInicial = null, estado = null, client = supabase }) {
   const [repartidor, setRepartidor] = useState(
     posInicial && typeof posInicial.lat === "number" ? { lat: posInicial.lat, lng: posInicial.lng } : null
   );
@@ -147,6 +150,22 @@ export default function MapaEntrega({ entregaId, conductorId = null, destino = n
   const ubicando = !repartidor;
   const fr = frescura(posAt);
 
+  // Línea neón (RutaNeon.jsx): antes de recoger, repartidor → tienda con
+  // la previa tienda → cliente; en camino, repartidor → cliente.
+  const enRuta = estado === "en_ruta";
+  const asignada = estado === "aceptado" || enRuta;
+  const hastaRuta = asignada ? (enRuta ? destino : origen) : null;
+  const previaRuta = asignada && !enRuta && origen && destino ? [origen, destino] : null;
+  const { luces, dibujoKey } = useConexionRuta(!!(repartidor && hastaRuta), enRuta ? 1 : 0);
+  const luzOrigen = enRuta ? luces >= 3 : luces >= 2;
+  const luzDestino = enRuta ? luces >= 2 : luces >= 3;
+  const iconoRep = useMemo(
+    () => divIconLuz(iconoRepartidor(color, marcador.iconoUrl), color, luces >= 1),
+    [color, marcador.iconoUrl, luces >= 1] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const iconoOrigen = useMemo(() => divIconLuz(ICONO_ORIGEN, color, luzOrigen), [color, luzOrigen]);
+  const iconoDestino = useMemo(() => divIconLuz(ICONO_DESTINO, color, luzDestino), [color, luzDestino]);
+
   return (
     <div className="tz-entrega-mapa-wrap">
       <div className="tz-entrega-mapa-bar">
@@ -183,11 +202,10 @@ export default function MapaEntrega({ entregaId, conductorId = null, destino = n
           >
             <AjustarVista puntos={puntos} recentrarTick={recentrarTick} />
             <TileLayer attribution={MAPBOX_ATTRIBUTION} url={MAPBOX_TILE_URL} />
-            {origen && <Marker position={[origen.lat, origen.lng]} icon={ICONO_ORIGEN} />}
-            {destino && <Marker position={[destino.lat, destino.lng]} icon={ICONO_DESTINO} />}
-            {repartidor && (
-              <Marker position={[repartidor.lat, repartidor.lng]} icon={iconoRepartidor(color, marcador.iconoUrl)} />
-            )}
+            <RutaNeon desde={repartidor} hasta={hastaRuta} previa={previaRuta} color={color} dibujoKey={dibujoKey} />
+            {origen && <Marker position={[origen.lat, origen.lng]} icon={iconoOrigen} />}
+            {destino && <Marker position={[destino.lat, destino.lng]} icon={iconoDestino} />}
+            {repartidor && <Marker position={[repartidor.lat, repartidor.lng]} icon={iconoRep} />}
           </MapContainer>
         </div>
       )}

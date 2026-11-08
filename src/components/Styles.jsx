@@ -7652,6 +7652,17 @@ export default function Styles() {
          debajo (se despliega solo), el cliente; un brillo verde recorre el
          borde de los dos juntos — mismo diseño que "Tus pedidos" en Caja. */
       .tz-chatent-row, .tz-chatpas-row { position: relative; display: flex; flex-direction: column; gap: 6px; border-radius: 14px; overflow: visible !important; }
+      /* Chat con algo pendiente al entrar a Mensajes: el relleno late en
+         verde 3 s (mismo pulso que los pedidos del cliente en Caja). */
+      .tz-chatped-pulso {
+        position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 2;
+        background: rgba(57, 255, 176, 0.32);
+        animation: tz-chatped-pulso 0.6s ease-in-out 5 both;
+      }
+      @keyframes tz-chatped-pulso {
+        0%, 100% { opacity: 0; }
+        50% { opacity: 1; }
+      }
       .tz-chatent-row.is-activo, .tz-chatpas-row.is-activo { box-shadow: 0 0 14px rgba(57,255,176,0.25) !important; }
       .tz-chatent-row.is-activo::before, .tz-chatpas-row.is-activo::before {
         content: "";
