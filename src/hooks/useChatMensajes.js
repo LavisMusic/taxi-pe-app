@@ -138,7 +138,7 @@ export function useChatMensajes(conductorId, pasajeroId) {
       const { data, error: fetchError } = await supabase
         .from("chat_mensajes")
         .select(
-          "id, conductor_id, pasajero_id, remitente, mensaje, tipo, estado_oferta, destino_lat, destino_lng, origen_lat, origen_lng, leido, created_at, viaje_fin_at"
+          "id, conductor_id, pasajero_id, remitente, mensaje, tipo, estado_oferta, destino_lat, destino_lng, origen_lat, origen_lng, leido, created_at, viaje_fin_at, gema_usada, gema_estado, gema_valor"
         )
         .eq("conductor_id", conductorId)
         .eq("pasajero_id", pasajeroId)
@@ -252,8 +252,11 @@ export function useChatMensajes(conductorId, pasajeroId) {
   // taxiEnums.js), no se inventa un estado nuevo. Rechazar: le deja al
   // conductor un mensaje de sistema en el mismo hilo, así se entera sin
   // tener que estar mirando esa burbuja puntual en ese momento.
+  // `usarGema` (fase 2 de gemas): al aceptar, el pasajero usa 1 gema verde;
+  // la base la aparta (o la ignora si no se puede), ver
+  // 20261108100000_gemas_uso.sql.
   const responderOferta = useCallback(
-    async (mensajeId, nuevoEstado) => {
+    async (mensajeId, nuevoEstado, usarGema = false) => {
       if (!mensajeId) return { error: new Error("Falta el id del mensaje.") };
       try {
         // `.select()` SIN `.single()`: `.single()` le pide a PostgREST el
@@ -265,7 +268,11 @@ export function useChatMensajes(conductorId, pasajeroId) {
         // Con `.select()` a secas, 0 filas es un array vacío, no un 406.
         const { data, error: updateError } = await supabase
           .from("chat_mensajes")
-          .update({ estado_oferta: nuevoEstado })
+          .update(
+            nuevoEstado === ESTADO_OFERTA_ACEPTADA && usarGema
+              ? { estado_oferta: nuevoEstado, gema_usada: true }
+              : { estado_oferta: nuevoEstado }
+          )
           .eq("id", mensajeId)
           .select();
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import IconoGema from "./IconoGema";
 import EntradaChat from "./chat/EntradaChat";
 import AdjuntoMensaje from "./chat/AdjuntoMensaje";
 import { claseNota } from "../lib/adjuntosChat";
@@ -243,7 +244,36 @@ function ChecksLectura({ mine, leido }) {
   );
 }
 
-function MessageBubble({ mensaje, mine, esOfertaParaPasajero, estadoOferta, onResponder, respondiendo, finOverrideISO, enCursoPermitido }) {
+// Gema verde (fase 2): el pasajero puede usar 1 al aceptar; la tarifa no
+// cambia, la gema paga S/ 0.10 de ella. Línea con lo que se cobra en mano.
+function LineaGema({ mensaje, paraConductor }) {
+  if (!mensaje?.gema_estado || mensaje.gema_estado === "devuelta") {
+    return mensaje?.gema_estado === "devuelta" ? (
+      <p className="tz-chat-gema-linea is-devuelta">
+        <IconoGema color="verde" size={12} /> Tu gema volvió a tu saldo
+      </p>
+    ) : null;
+  }
+  const tarifa = tarifaDeTexto(mensaje.mensaje);
+  const valor = Number(mensaje.gema_valor) || 0.1;
+  const enMano = tarifa != null ? Math.max(tarifa - valor, 0) : null;
+  return (
+    <p className={`tz-chat-gema-linea ${paraConductor ? "is-conductor" : ""}`}>
+      <IconoGema color="verde" size={13} />
+      {paraConductor
+        ? `Gema −S/ ${valor.toFixed(2)} · Cobras ${enMano != null ? `S/ ${enMano.toFixed(2)}` : "la tarifa menos la gema"} + 1 gema`
+        : `Usaste 1 gema · Pagas ${enMano != null ? `S/ ${enMano.toFixed(2)}` : "la tarifa menos S/ " + valor.toFixed(2)}`}
+    </p>
+  );
+}
+
+function tarifaDeTexto(texto) {
+  const m = String(texto || "").replace(",", ".").match(/(\d+(?:\.\d+)?)/);
+  return m ? Number(m[1]) : null;
+}
+
+function MessageBubble({ mensaje, mine, esOfertaParaPasajero, estadoOferta, onResponder, respondiendo, finOverrideISO, enCursoPermitido, gema = null }) {
+  const [usarGema, setUsarGema] = useState(false);
   const texto = mensaje?.mensaje ?? "";
   const hora = mensaje?.created_at ? formatTime(mensaje.created_at) : "";
 
@@ -297,13 +327,18 @@ function MessageBubble({ mensaje, mine, esOfertaParaPasajero, estadoOferta, onRe
               ? "⚠️ Viaje cancelado"
               : "❌ Oferta rechazada"}
           </p>
-        ) : (
+        ) : null}
+        {resuelta && <LineaGema mensaje={mensaje} />}
+        {!resuelta && gema?.activo && (
+          <InterruptorGema gema={gema} tarifa={tarifaDeTexto(texto)} activo={usarGema} onCambiar={setUsarGema} />
+        )}
+        {resuelta ? null : (
           <div className="tz-chat-contrato-acciones">
             <button
               type="button"
               className="tz-chat-contrato-btn tz-chat-contrato-aceptar"
               disabled={respondiendo}
-              onClick={() => onResponder?.(mensaje.id, ESTADO_OFERTA_ACEPTADA)}
+              onClick={() => onResponder?.(mensaje.id, ESTADO_OFERTA_ACEPTADA, usarGema)}
             >
               ✅ Aceptar
             </button>
@@ -356,10 +391,58 @@ function MessageBubble({ mensaje, mine, esOfertaParaPasajero, estadoOferta, onRe
       <AdjuntoMensaje texto={texto} claseBurbuja={`tz-chat-bubble ${mine ? "tz-chat-bubble-mine" : ""}`}>
         <p>{texto}</p>
       </AdjuntoMensaje>
+      {mensaje?.tipo === TIPO_MENSAJE_OFERTA && mensaje?.gema_estado && mensaje.gema_estado !== "devuelta" && (
+        <LineaGema mensaje={mensaje} paraConductor />
+      )}
       <span className="tz-chat-bubble-time">
         {hora}
         <ChecksLectura mine={mine} leido={!!mensaje?.leido} />
       </span>
+    </div>
+  );
+}
+
+// "Usar 1 gema verde": solo si tiene saldo; deshabilitado con su motivo si
+// la tarifa es menor a S/ 1 o el conductor ya llenó su tope.
+function InterruptorGema({ gema, tarifa, activo, onCambiar }) {
+  const valor = Number(gema.valor) || 0.1;
+  const motivo =
+    gema.saldo < 1
+      ? null
+      : tarifa != null && tarifa < 1
+        ? "La gema se usa en viajes de S/ 1 o más."
+        : gema.lleno
+          ? "Este conductor ya completó su tope de gemas."
+          : "";
+  if (motivo === null) return null;
+  const bloqueado = motivo !== "";
+  const encendido = activo && !bloqueado;
+  return (
+    <div className={`tz-chat-gema-toggle ${encendido ? "is-on" : ""} ${bloqueado ? "is-bloqueado" : ""}`}>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={encendido}
+        disabled={bloqueado}
+        onClick={() => onCambiar(!activo)}
+      >
+        <span className="tz-chat-gema-ico">
+          <IconoGema color="verde" size={18} />
+        </span>
+        <span className="tz-chat-gema-textos">
+          <strong>Usar 1 gema verde (−S/ {valor.toFixed(2)})</strong>
+          <small>
+            {bloqueado
+              ? motivo
+              : encendido && tarifa != null
+                ? `Pagas S/ ${Math.max(tarifa - valor, 0).toFixed(2)} · te quedan ${gema.saldo - 1}`
+                : `Tienes ${gema.saldo} ${gema.saldo === 1 ? "gema" : "gemas"}`}
+          </small>
+        </span>
+        <span className={`tz-gemas-switch${encendido ? " tz-gemas-switch-on" : ""}`} aria-hidden="true">
+          <span className="tz-gemas-switch-bola" />
+        </span>
+      </button>
     </div>
   );
 }
@@ -406,6 +489,21 @@ export default function ChatWindow({
   const [enviando, setEnviando] = useState(false);
   const [respondiendo, setRespondiendo] = useState(false);
   const [errorOferta, setErrorOferta] = useState("");
+  // Gema verde del pasajero frente a una oferta pendiente de este conductor.
+  const [gemaPasajero, setGemaPasajero] = useState(null);
+  const hayOfertaPendiente =
+    remitentePropio === REMITENTE_PASAJERO &&
+    (mensajes || []).some((m) => m?.tipo === TIPO_MENSAJE_OFERTA && m?.estado_oferta === ESTADO_OFERTA_PENDIENTE);
+  useEffect(() => {
+    if (!hayOfertaPendiente || !conductorId) return undefined;
+    let cancel = false;
+    supabase.rpc("taxi_gema_para_oferta", { p_conductor_id: conductorId }).then(({ data, error }) => {
+      if (!cancel && !error && data) setGemaPasajero(data);
+    });
+    return () => {
+      cancel = true;
+    };
+  }, [hayOfertaPendiente, conductorId]);
   const [confirmarCancelarOpen, setConfirmarCancelarOpen] = useState(false);
   const [cancelando, setCancelando] = useState(false);
   const [marcandoRecogido, setMarcandoRecogido] = useState(false);
@@ -1029,14 +1127,14 @@ export default function ChatWindow({
     setMostrarInputTarifa(false);
   };
 
-  const handleResponderOferta = async (mensajeId, nuevoEstado) => {
+  const handleResponderOferta = async (mensajeId, nuevoEstado, usarGema = false) => {
     if (respondiendo) return;
     setRespondiendo(true);
     setErrorOferta("");
     // Optimista primero: el pasajero ve el resultado YA, sin esperar el
     // viaje de ida y vuelta a Supabase.
     setOfertasLocales((prev) => ({ ...prev, [mensajeId]: nuevoEstado }));
-    const { error } = (await onResponderOferta?.(mensajeId, nuevoEstado)) ?? {};
+    const { error } = (await onResponderOferta?.(mensajeId, nuevoEstado, usarGema)) ?? {};
     if (error) {
       // Si de verdad falló, se revierte — mostrar "Aceptada" a un
       // pasajero cuando la base rechazó el cambio sería peor que el
@@ -1487,6 +1585,7 @@ export default function ChatWindow({
                 estadoOferta={ofertasLocales[m?.id] ?? m?.estado_oferta}
                 onResponder={handleResponderOferta}
                 respondiendo={respondiendo}
+                gema={esOfertaParaPasajero ? gemaPasajero : null}
                 finOverrideISO={m?.id === mensajeInicioViaje?.id ? finViajeLocal : null}
                 enCursoPermitido={enCursoPermitido}
               />

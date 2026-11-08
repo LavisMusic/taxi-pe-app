@@ -4049,6 +4049,57 @@ export default function Styles() {
         color: var(--text);
         font-size: 14px;
       }
+      /* ---- Gema verde en la oferta (fase 2 de gemas) ---- */
+      .tz-chat-gema-toggle { margin: 10px 0 2px; }
+      .tz-chat-gema-toggle > button {
+        width: 100%; display: flex; align-items: center; gap: 10px; text-align: left;
+        padding: 9px 12px; border-radius: 14px; cursor: pointer; color: var(--text);
+        border: 1px solid rgba(57,255,176,0.35);
+        background: rgba(57,255,176,0.07);
+        transition: background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease, transform 0.25s cubic-bezier(.34,1.56,.64,1);
+      }
+      .tz-chat-gema-toggle > button:active { transform: scale(0.98); }
+      .tz-chat-gema-toggle.is-on > button {
+        border-color: #39ffb0;
+        background: linear-gradient(110deg, rgba(57,255,176,0.2), rgba(43,232,255,0.16));
+        box-shadow: 0 0 18px rgba(57,255,176,0.35), inset 0 0 12px rgba(57,255,176,0.12);
+      }
+      .tz-chat-gema-toggle.is-bloqueado > button { opacity: 0.6; cursor: not-allowed; border-style: dashed; }
+      .tz-chat-gema-ico { font-size: 18px; line-height: 1; filter: drop-shadow(0 0 6px rgba(57,255,176,0.8)); }
+      .tz-chat-gema-toggle.is-on .tz-chat-gema-ico { animation: tz-chat-gema-late 1.4s ease-in-out infinite; }
+      @keyframes tz-chat-gema-late {
+        0%, 100% { transform: scale(1) rotate(0deg); }
+        50% { transform: scale(1.22) rotate(-8deg); }
+      }
+      .tz-chat-gema-textos { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+      .tz-chat-gema-textos strong { font-size: 13px; }
+      .tz-chat-gema-textos small { font-size: 11.5px; color: var(--text-dim); }
+      .tz-chat-gema-toggle .tz-gemas-switch {
+        position: relative; flex-shrink: 0; width: 46px; height: 26px; border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08);
+        transition: background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+      }
+      .tz-chat-gema-toggle .tz-gemas-switch-bola {
+        position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%;
+        background: var(--text-dim);
+        transition: transform 0.45s cubic-bezier(0.2, 1.6, 0.4, 1), background 0.3s ease, box-shadow 0.3s ease;
+      }
+      .tz-chat-gema-toggle .tz-gemas-switch-on {
+        background: linear-gradient(110deg, rgba(57,255,176,0.35), rgba(43,232,255,0.35));
+        border-color: #2be8ff; box-shadow: 0 0 14px rgba(43,232,255,0.45);
+      }
+      .tz-chat-gema-toggle .tz-gemas-switch-on .tz-gemas-switch-bola { transform: translateX(20px); background: #fff; box-shadow: 0 0 10px #2be8ff; }
+      .tz-chat-gema-linea {
+        margin: 6px 0 0; display: flex; align-items: center; gap: 6px; justify-content: center;
+        font-size: 12px; font-weight: 700; color: #39ffb0;
+        animation: tz-chat-gema-aparece 0.5s cubic-bezier(.34,1.56,.64,1) both;
+      }
+      .tz-chat-gema-linea.is-conductor { justify-content: flex-start; }
+      .tz-chat-gema-linea.is-devuelta { color: var(--text-dim); }
+      @keyframes tz-chat-gema-aparece {
+        from { opacity: 0; transform: translateY(4px) scale(0.92); filter: blur(2px); }
+        to { opacity: 1; transform: none; filter: none; }
+      }
       .tz-chat-contrato-acciones {
         display: flex;
         gap: 8px;
