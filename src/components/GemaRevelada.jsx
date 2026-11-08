@@ -42,13 +42,6 @@ const TEXTOS = {
   celeste: { nombre: "gema celeste", nombres: "gemas celestes", uso: "Úsala como descuento al comprar en las tiendas." },
 };
 
-function reducirMovimiento() {
-  try {
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  } catch {
-    return false;
-  }
-}
 
 // La gema sola (también se usa fuera de la animación, ej. en la
 // configuración del superadmin). `tam`: escala; ocupa 160 × 180 px × tam.
@@ -110,7 +103,9 @@ function GemaCuerpo({ color, tam }) {
 }
 
 export default function GemaRevelada({ color = "verde", cantidad = 1, onCerrar }) {
-  const [fase, setFase] = useState(() => (reducirMovimiento() ? "gema" : "relleno"));
+  // Siempre con el relleno neón, aunque el sistema pida reducir movimiento
+  // (pedido explícito: las animaciones se ven siempre).
+  const [fase, setFase] = useState("relleno");
   const [saliendo, setSaliendo] = useState(false);
   const cerrarRef = useRef(onCerrar);
   cerrarRef.current = onCerrar;
@@ -407,10 +402,5 @@ const ESTILO = `
   0%, 55%, 100% { opacity: 0; transform: scale(0.3) rotate(-30deg); }
   70% { opacity: 1; transform: scale(1) rotate(0deg); }
   85% { opacity: 0; transform: scale(0.5) rotate(30deg); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .tz-gema-relleno, .tz-gema-borde { display: none; }
-  .tz-g3d-cuerpo { animation-duration: 12s; }
-  .tz-gema-rayos { animation: none; }
 }
 `;
