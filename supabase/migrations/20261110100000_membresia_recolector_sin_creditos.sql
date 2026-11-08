@@ -30,7 +30,8 @@ update public.paquetes_recolectores set activo = false where tipo_item = 'credit
 alter table public.paquetes_recolectores add column if not exists cupo_conductores integer;
 alter table public.usuarios add column if not exists membresia_inicio timestamptz;
 alter table public.usuarios add column if not exists membresia_cupo integer;
-alter table public.usuarios add column if not exists membresia_paquete_id text;
+-- (Puede existir ya como uuid: se compara siempre como texto.)
+alter table public.usuarios add column if not exists membresia_paquete_id uuid;
 grant select (membresia_inicio, membresia_cupo, membresia_paquete_id) on public.usuarios to authenticated;
 
 -- Antes la base impedía darle membresía a un recolector.
@@ -74,7 +75,7 @@ begin
     'inicio', v_u.membresia_inicio,
     'cupo', coalesce(v_u.membresia_cupo, 0),
     'usado', public.taxi__cupo_usado_recolector(v_u.id),
-    'paquete', (select nombre from public.paquetes_recolectores where id::text = v_u.membresia_paquete_id)
+    'paquete', (select nombre from public.paquetes_recolectores where id::text = v_u.membresia_paquete_id::text)
   );
 end;
 $$;
@@ -136,7 +137,7 @@ as $$
   select greatest(floor(
     (case when c.tope_recolector_tipo = 'monto' then c.tope_recolector_valor
           else coalesce((select pr.precio from public.usuarios u join public.paquetes_recolectores pr
-                          on pr.id::text = u.membresia_paquete_id where u.id = p_uid and pr.precio > 0)
+                          on pr.id::text = u.membresia_paquete_id::text where u.id = p_uid and pr.precio > 0)
                         * c.tope_recolector_valor / 100, 5) end)
     / nullif(c.valor, 0)), 0)::integer
   from public.taxi_gemas_config c where c.id;
@@ -333,7 +334,7 @@ begin
      set membresia_inicio = now(),
          membresia_vencimiento = v_vence,
          membresia_cupo = coalesce(v_pet.cupo_conductores, 0),
-         membresia_paquete_id = v_pet.paquete_id::text
+         membresia_paquete_id = v_pet.paquete_id::text::uuid
    where id = v_pet.recolector_id;
   update public.peticiones_recarga_recolector
      set estado = 'aprobado', resuelto_at = now()
