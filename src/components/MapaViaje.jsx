@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
+import RutaNeon, { divIconLuz, useConexionRuta } from "./RutaNeon";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Loader2 } from "lucide-react";
@@ -12,13 +13,15 @@ import { COORD_DEFAULT } from "../hooks/useLocalidades";
 import { MAPBOX_TILE_URL, MAPBOX_ATTRIBUTION } from "../lib/mapboxConfig";
 import { COLOR_PASAJERO_MAPA } from "../lib/nivelServicio";
 
+// Especificaciones de los íconos (no L.divIcon directo): divIconLuz les
+// agrega la luz del conductor cuando la conexión los alcanza.
 function iconoPunto(color, emoji) {
-  return L.divIcon({
+  return {
     className: "tz-radar-marker-wrap",
     html: `<span class="tz-radar-marker" style="--tz-marker-color:${color}">${emoji}</span>`,
     iconSize: [26, 26],
     iconAnchor: [13, 13],
-  });
+  };
 }
 
 // Panel de Categorías e Íconos: mismo criterio que iconoVehiculo() en
@@ -27,12 +30,12 @@ function iconoPunto(color, emoji) {
 // acorde a este mapa (mucho más chico que el del Radar — 26px, no
 // 48px, ver el comentario de iconSize más abajo).
 function iconoPuntoImagen(color, url) {
-  return L.divIcon({
+  return {
     className: "tz-radar-marker-wrap",
     html: `<img class="tz-radar-marker-mini-img" src="${url}" alt="" style="--tz-marker-color:${color}" />`,
     iconSize: [26, 26],
     iconAnchor: [13, 13],
-  });
+  };
 }
 
 // Verde neón fijo — a propósito nunca se confunde con MAPA_NIVEL_COLOR
@@ -40,12 +43,12 @@ function iconoPuntoImagen(color, url) {
 // persona, no un auto"). Desaparece del todo al ser recogido
 // (ocultarPasajero, ver más abajo).
 const ICONO_PASAJERO = iconoPunto(COLOR_PASAJERO_MAPA, "🧍");
-const ICONO_DESTINO = L.divIcon({
+const ICONO_DESTINO = {
   className: "tz-radar-marker-wrap",
   html: '<span class="tz-radar-marker tz-radar-marker-destino">🚩</span>',
   iconSize: [28, 28],
   iconAnchor: [14, 26],
-});
+};
 
 // Encuadra el mapa para que los pines que haya siempre queden a la
 // vista — MapContainer solo usa `center`/`zoom` al montar, no
@@ -135,7 +138,7 @@ export default function MapaViaje({
   // (Mototaxi/Minivan/etc. — no confundir con nivel_servicio, que es lo
   // que da `colorCategoria`), reemplaza al 🚖 acá también, igual que ya
   // pasa en el Radar — antes solo estaba conectado ahí.
-  const iconoConductor = iconoCategoriaUrl ? iconoPuntoImagen(colorCategoria, iconoCategoriaUrl) : iconoPunto(colorCategoria, "🚖");
+  const specConductor = iconoCategoriaUrl ? iconoPuntoImagen(colorCategoria, iconoCategoriaUrl) : iconoPunto(colorCategoria, "🚖");
 
   // Canal privado de la carrera — UN SOLO efecto para escuchar Y
   // transmitir, de los DOS lados, desde el segundo uno en que este
@@ -283,6 +286,23 @@ export default function MapaViaje({
   };
   const ubicando = !posicionConductor && !pasajeroVisible;
 
+  // Línea neón (este mapa solo se monta con el viaje ya aceptado): antes
+  // de recoger, conductor → pasajero con la previa pasajero → destino; ya
+  // a bordo, conductor → destino. Las luces: conductor, su próximo punto
+  // y el tercero.
+  const destinoLL = destino ? { lat: destino.lat, lng: destino.lon } : null;
+  const hastaRuta = ocultarPasajero ? destinoLL : posicionPasajero;
+  const previaRuta = !ocultarPasajero && posicionPasajero && destinoLL ? [posicionPasajero, destinoLL] : null;
+  const { luces, dibujoKey } = useConexionRuta(!!(posicionConductor && hastaRuta), ocultarPasajero ? 1 : 0);
+  const luzDestino = ocultarPasajero ? luces >= 2 : luces >= 3;
+  const iconoConductor = useMemo(
+    () => divIconLuz(specConductor, colorCategoria, luces >= 1),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [specConductor.html, colorCategoria, luces >= 1]
+  );
+  const iconoPasajero = useMemo(() => divIconLuz(ICONO_PASAJERO, colorCategoria, luces >= 2), [colorCategoria, luces >= 2]); // eslint-disable-line react-hooks/exhaustive-deps
+  const iconoDestino = useMemo(() => divIconLuz(ICONO_DESTINO, colorCategoria, luzDestino), [colorCategoria, luzDestino]);
+
   return (
     <div style={{ position: "relative" }}>
       {ubicando && (
@@ -303,8 +323,9 @@ export default function MapaViaje({
            resto de la UI neón de esta app, reemplaza al tile claro de
            OpenStreetMap. */}
         <TileLayer attribution={MAPBOX_ATTRIBUTION} url={MAPBOX_TILE_URL} />
-        {destino && <Marker position={[destino.lat, destino.lon]} icon={ICONO_DESTINO} />}
-        {pasajeroVisible && <Marker position={[pasajeroVisible.lat, pasajeroVisible.lng]} icon={ICONO_PASAJERO} />}
+        <RutaNeon desde={posicionConductor} hasta={hastaRuta} previa={previaRuta} color={colorCategoria} dibujoKey={dibujoKey} />
+        {destino && <Marker position={[destino.lat, destino.lon]} icon={iconoDestino} />}
+        {pasajeroVisible && <Marker position={[pasajeroVisible.lat, pasajeroVisible.lng]} icon={iconoPasajero} />}
         {posicionConductor && <Marker position={[posicionConductor.lat, posicionConductor.lng]} icon={iconoConductor} />}
       </MapContainer>
     </div>

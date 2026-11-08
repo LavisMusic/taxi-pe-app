@@ -273,6 +273,7 @@ export default function EntregaActivaModal({ entrega, conductorId, onClose, avan
         {!escaneando && (
           <MapaEntrega
             entregaId={entrega.id}
+            estado={estado}
             conductorId={entrega.conductor_id || conductorId}
             destino={
               entrega.entrega_lat && entrega.entrega_lng
