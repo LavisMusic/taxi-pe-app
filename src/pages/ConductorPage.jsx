@@ -321,9 +321,19 @@ export default function ConductorPage() {
       });
     leer();
     const t = setInterval(leer, 30000);
+    // Al instante: cuando cobra una gema (su caja) o un pasajero la aparta
+    // al aceptar una oferta (sus chats).
+    const canal = supabase
+      .channel(`gemas-conductor-${conductor.id}-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "taxi_gemas_conductores", filter: `conductor_id=eq.${conductor.id}` }, leer)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "chat_mensajes", filter: `conductor_id=eq.${conductor.id}` }, ({ new: fila }) => {
+        if (fila?.gema_estado) leer();
+      })
+      .subscribe();
     return () => {
       cancel = true;
       clearInterval(t);
+      supabase.removeChannel(canal);
     };
   }, [conductor?.id]);
   const metaDiaria = Number(conductor?.meta_diaria) || 0;

@@ -106,18 +106,30 @@ export default function RecolectorPage() {
 
   // Caja de gemas verdes del recolector (fase 3a).
   const [gemasRecolector, setGemasRecolector] = useState(null);
-  const [gemasTick, setGemasTick] = useState(0);
   useEffect(() => {
     let vigente = true;
-    supabase.rpc("taxi_mis_gemas_recolector").then(({ data, error }) => {
-      if (vigente && !error && data) setGemasRecolector(data);
+    const leer = () =>
+      supabase.rpc("taxi_mis_gemas_recolector").then(({ data, error }) => {
+        if (vigente && !error && data) setGemasRecolector(data);
+      });
+    leer();
+    const t = setInterval(leer, 30000);
+    // Al instante cuando un conductor canjea sus gemas con él.
+    let canal = null;
+    supabase.auth.getUser().then(({ data }) => {
+      const uid = data?.user?.id;
+      if (!vigente || !uid) return;
+      canal = supabase
+        .channel(`gemas-recolector-${uid}-${Math.random().toString(36).slice(2)}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "taxi_gemas_recolectores", filter: `recolector_id=eq.${uid}` }, leer)
+        .subscribe();
     });
-    const t = setTimeout(() => setGemasTick((n) => n + 1), 30000);
     return () => {
       vigente = false;
-      clearTimeout(t);
+      clearInterval(t);
+      if (canal) supabase.removeChannel(canal);
     };
-  }, [gemasTick]);
+  }, []);
   const [registroOpen, setRegistroOpen] = useState(false);
   const [registroMsg, setRegistroMsg] = useState("");
   const [cierreOpen, setCierreOpen] = useState(false);
