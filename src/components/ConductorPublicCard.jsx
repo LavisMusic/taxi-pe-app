@@ -48,8 +48,10 @@ export default function ConductorPublicCard({ conductor, isLoggedIn = false, chi
         <div className="tz-card-main">
           <div className="tz-card-top">
             <div className="tz-card-info">
-              <h3 className="tz-card-name">{conductor.nombre}</h3>
-              <ReputacionDe tipo="conductor" id={conductor.id} tamano="chico" className="tz-card-reputacion" />
+              <div className="tz-nombre-rep">
+                <h3 className="tz-card-name">{conductor.nombre}</h3>
+                <ReputacionDe tipo="conductor" id={conductor.id} tamano="chico" className="tz-card-reputacion" />
+              </div>
             </div>
           </div>
 

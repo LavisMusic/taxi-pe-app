@@ -216,8 +216,9 @@ function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar
                 </div>
               ) : (
                 <>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <h3 className="tz-card-name">{conductor.nombre}</h3>
+                    <ReputacionDe tipo="conductor" id={conductor.id} tamano="chico" />
                     <button
                       type="button"
                       className="tz-vis-edit-btn"
@@ -248,7 +249,6 @@ function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar
                       <BadgeCheck size={14} />
                     </button>
                   </div>
-                  <ReputacionDe tipo="conductor" id={conductor.id} tamano="chico" />
                   {etiquetasAbiertas && (
                     <EtiquetasManualesModal
                       tipo="conductor"

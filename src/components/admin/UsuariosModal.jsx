@@ -145,13 +145,11 @@ function UsuarioRow({ usuario, onUpdate, onDelete, onGenerarCodigo, generandoCod
     <li className="tz-history-row">
       <div className="tz-history-row-detail" style={{ padding: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <span>
-          <strong style={{ color: "var(--text)" }}>{usuario.nombre}</strong>
+          <span className="tz-nombre-rep">
+            <strong style={{ color: "var(--text)" }}>{usuario.nombre}</strong>
+            {esPasajero && <ReputacionDe tipo="pasajero" id={usuario.id} tamano="chico" />}
+          </span>
           <span style={{ marginLeft: 8 }}>DNI {usuario.dni} · {formatTelefono(usuario.telefono)}</span>
-          {esPasajero && (
-            <span style={{ display: "block", marginTop: 4 }}>
-              <ReputacionDe tipo="pasajero" id={usuario.id} tamano="chico" />
-            </span>
-          )}
         </span>
         <span style={{ display: "flex", gap: 6, flexShrink: 0 }}>
           {/* Cuenta sin PIN: código de activación para que lo cree ella misma. */}
