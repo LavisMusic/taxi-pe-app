@@ -17,6 +17,7 @@ import AdminDashboardPage from './pages/AdminDashboardPage'
 import AdminDashboardMetricasPage from "./pages/AdminDashboardMetricasPage";
 import RecolectorPage from './pages/RecolectorPage'
 import ConductorPage from './pages/ConductorPage'
+import PerfilConductorPage from './pages/PerfilConductorPage'
 import { instalarDespliegueBotones } from './lib/despliegueBotones'
 
 // Router de TaxiP. El árbol viejo (AuthProvider + CatalogPage + App.jsx
@@ -41,6 +42,8 @@ createRoot(document.getElementById('root')).render(
           <Route path="/recuperar-pin" element={<RecuperarPinPage />} />
           <Route path="/restablecer-pin" element={<RestablecerPinPage />} />
           <Route path="/terminos" element={<TerminosPage />} />
+          {/* Reputación, fase 2: página pública del conductor. */}
+          <Route path="/conductores/:clave" element={<PerfilConductorPage />} />
           <Route
             path="/admin"
             element={

@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import ConductorImage from "./ConductorImage";
 import ReputacionDe from "./ReputacionDe";
 import { ESTADO_CONDUCTOR_ACTIVO, NIVEL_SERVICIO_ECONOMICO } from "../lib/taxiEnums";
@@ -38,6 +39,7 @@ import { ESTADO_CONDUCTOR_ACTIVO, NIVEL_SERVICIO_ECONOMICO } from "../lib/taxiEn
 // prop de animación se comporta exactamente como un `div` normal, así
 // que no hay costo por usarlo siempre acá.
 export default function ConductorPublicCard({ conductor, isLoggedIn = false, children, ...motionProps }) {
+  const navigate = useNavigate();
   if (!conductor) return null;
   const activo = conductor.estado === ESTADO_CONDUCTOR_ACTIVO;
 
@@ -50,7 +52,17 @@ export default function ConductorPublicCard({ conductor, isLoggedIn = false, chi
             <div className="tz-card-info">
               <div className="tz-nombre-rep">
                 <h3 className="tz-card-name">{conductor.nombre}</h3>
-                <ReputacionDe tipo="conductor" id={conductor.id} tamano="chico" className="tz-card-reputacion" />
+                <button
+                  type="button"
+                  className="tz-card-reputacion-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/conductores/${conductor.nombre_usuario || conductor.id}`);
+                  }}
+                  title="Ver su perfil y opiniones"
+                >
+                  <ReputacionDe tipo="conductor" id={conductor.id} tamano="chico" className="tz-card-reputacion" />
+                </button>
               </div>
             </div>
           </div>
