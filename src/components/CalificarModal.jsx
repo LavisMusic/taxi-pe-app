@@ -1,23 +1,39 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Loader2, Send } from "lucide-react";
+import { X, Loader2, Send, Trash2 } from "lucide-react";
 import { EstrellasElegir, RUTA_ESTRELLA } from "./Estrellas";
 
 /* Ventana para calificar un servicio — MISMO archivo en Taxi-PE y Caja
    (src/components/CalificarModal.jsx): mantener iguales.
    Props: nombre, foto, titulo ("¿Cómo te fue con tu conductor?"),
    detalle (placa, fecha…), onEnviar(estrellas, comentario) → { error? },
-   onCerrar() (cerrar sin calificar: queda como pendiente). */
+   onCerrar() (cerrar sin calificar: queda como pendiente).
+   Para editar: inicial { estrellas, comentario } y onBorrar() → { error? }
+   (aparece "Borrar mi calificación", con confirmación). */
 
 const TEXTOS = ["", "Malo", "Regular", "Bien", "Muy bien", "¡Excelente!"];
 const MAX = 280;
 
-export default function CalificarModal({ nombre, foto, titulo, detalle, onEnviar, onCerrar }) {
-  const [estrellas, setEstrellas] = useState(0);
-  const [comentario, setComentario] = useState("");
+export default function CalificarModal({ nombre, foto, titulo, detalle, onEnviar, onCerrar, inicial, onBorrar }) {
+  const editando = !!inicial?.estrellas;
+  const [estrellas, setEstrellas] = useState(inicial?.estrellas || 0);
+  const [comentario, setComentario] = useState(inicial?.comentario || "");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
   const [listo, setListo] = useState(false);
+  const [borrado, setBorrado] = useState(false);
+  const [confirmarBorrar, setConfirmarBorrar] = useState(false);
+
+  const borrar = async () => {
+    if (!confirmarBorrar) return setConfirmarBorrar(true);
+    setEnviando(true);
+    setError("");
+    const r = await onBorrar();
+    setEnviando(false);
+    if (r?.error) return setError(r.error.message || "No se pudo borrar.");
+    setBorrado(true);
+    setListo(true);
+  };
 
   useEffect(() => {
     if (!listo) return undefined;
@@ -54,8 +70,8 @@ export default function CalificarModal({ nombre, foto, titulo, detalle, onEnviar
               ))}
               <svg viewBox="0 0 24 24" className="tz-calif-estrella-grande"><path d={RUTA_ESTRELLA} /></svg>
             </div>
-            <strong>¡Gracias!</strong>
-            <span>Tu calificación ayuda a toda la comunidad.</span>
+            <strong>{borrado ? "Calificación borrada" : editando ? "¡Actualizada!" : "¡Gracias!"}</strong>
+            <span>{borrado ? "Ya no cuenta en su reputación." : "Tu calificación ayuda a toda la comunidad."}</span>
           </div>
         ) : (
           <>
@@ -87,9 +103,14 @@ export default function CalificarModal({ nombre, foto, titulo, detalle, onEnviar
               </button>
               <button type="button" className="tz-calif-enviar" onClick={enviar} disabled={enviando || !estrellas}>
                 {enviando ? <Loader2 size={16} className="tz-spin" /> : <Send size={16} />}
-                Enviar
+                {editando ? "Guardar" : "Enviar"}
               </button>
             </div>
+            {editando && onBorrar && (
+              <button type="button" className={`tz-calif-borrar ${confirmarBorrar ? "is-confirmar" : ""}`} onClick={borrar} disabled={enviando}>
+                <Trash2 size={14} /> {confirmarBorrar ? "Toca otra vez para borrarla" : "Borrar mi calificación"}
+              </button>
+            )}
           </>
         )}
       </div>
@@ -137,6 +158,13 @@ const ESTILO = `
 .tz-calif-enviar { color: #1a1300; background: linear-gradient(110deg, #ffd84a, #ff9500); box-shadow: 0 0 18px rgba(255,216,74,0.45); }
 .tz-calif-enviar:disabled { opacity: .45; box-shadow: none; cursor: default; }
 .tz-calif-acciones button:hover:not(:disabled) { transform: translateY(-2px); }
+.tz-calif-borrar { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; padding: 6px 12px; border-radius: 999px;
+  border: 1px solid transparent; background: transparent; color: var(--text-dim, #9c93c2); font: inherit; font-size: 12.5px; font-weight: 700;
+  cursor: pointer; transition: color .25s ease, background .3s ease, border-color .3s ease, transform .3s cubic-bezier(.34,1.56,.64,1); }
+.tz-calif-borrar:hover { color: #ff5470; }
+.tz-calif-borrar.is-confirmar { color: #ff5470; background: rgba(255,84,112,0.1); border-color: rgba(255,84,112,0.45);
+  animation: tz-calif-tiembla .45s ease both; }
+@keyframes tz-calif-tiembla { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 .tz-calif-gracias { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 0 6px; }
 .tz-calif-gracias strong { font-size: 24px; color: #ffd84a; text-shadow: 0 0 16px rgba(255,216,74,0.6); animation: tz-calif-texto .5s .25s cubic-bezier(.34,1.56,.64,1) both; }
 .tz-calif-gracias span { font-size: 13px; color: var(--text-dim, #9c93c2); animation: tz-calif-fade .5s .4s ease both; }
