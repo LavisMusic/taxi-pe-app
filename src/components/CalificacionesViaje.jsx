@@ -5,8 +5,9 @@ import CalificarModal from "./CalificarModal";
 import { RUTA_ESTRELLA } from "./Estrellas";
 import { avisarCambioReputacion } from "../lib/reputacion";
 
-/* Viajes por calificar (fase 1a de Reportes y reputación). Va en la
-   pantalla del pasajero y en la del conductor:
+/* Viajes y entregas por calificar (fases 1a y 1b de Reportes y
+   reputación). Va en la pantalla del pasajero y en la del conductor
+   (el repartidor califica al negocio y al cliente de cada entrega):
    - Al terminar un viaje (y apenas se cierra el chat o el festejo, ver
      `bloqueado`) se abre sola la ventana para calificar UNA vez por viaje.
    - Si se cierra con "Después", queda una pastilla "Califica tu viaje"
@@ -31,6 +32,15 @@ function guardarOfrecida(ref) {
     /* sin almacenamiento: a lo sumo se vuelve a ofrecer */
   }
 }
+
+// Cada pendiente es un servicio + a quién (una entrega tiene dos).
+const claveDe = (p) => `${p.ref}|${p.calificado_tipo}`;
+const TITULOS = {
+  conductor: "¿Cómo te fue con tu conductor?",
+  pasajero: "¿Qué tal tu pasajero?",
+  negocio: "¿Qué tal el negocio?",
+  cliente: "¿Qué tal el cliente?",
+};
 
 const fechaCorta = (f) =>
   new Date(f).toLocaleDateString("es-PE", { day: "numeric", month: "short" });
@@ -69,24 +79,32 @@ export default function CalificacionesViaje({ bloqueado = false }) {
   useEffect(() => {
     if (bloqueado || abierta || !pendientes.length) return undefined;
     const ofrecidas = leerOfrecidas();
-    const nuevo = pendientes.find((p) => !ofrecidas.has(p.ref));
+    const nuevo = pendientes.find((p) => !ofrecidas.has(claveDe(p)));
     if (!nuevo) return undefined;
     const t = setTimeout(() => {
       if (bloqueadoRef.current) return;
-      guardarOfrecida(nuevo.ref);
+      guardarOfrecida(claveDe(nuevo));
       setAbierta(nuevo);
     }, 900);
     return () => clearTimeout(t);
   }, [pendientes, bloqueado, abierta]);
 
   const enviar = async (estrellas, comentario) => {
-    const { error } = await supabase.rpc("taxi_calificar", {
-      p_ref: abierta.ref,
-      p_estrellas: estrellas,
-      p_comentario: comentario || null,
-    });
+    const { error } =
+      abierta.servicio === "entrega"
+        ? await supabase.rpc("taxi_calificar_entrega", {
+            p_entrega_id: abierta.entrega_id,
+            p_calificado_tipo: abierta.calificado_tipo,
+            p_estrellas: estrellas,
+            p_comentario: comentario || null,
+          })
+        : await supabase.rpc("taxi_calificar", {
+            p_ref: abierta.ref,
+            p_estrellas: estrellas,
+            p_comentario: comentario || null,
+          });
     if (error) return { error };
-    setPendientes((l) => l.filter((p) => p.ref !== abierta.ref));
+    setPendientes((l) => l.filter((p) => claveDe(p) !== claveDe(abierta)));
     avisarCambioReputacion();
     return {};
   };
@@ -97,10 +115,10 @@ export default function CalificacionesViaje({ bloqueado = false }) {
     <>
       {abierta && (
         <CalificarModal
-          key={abierta.ref}
+          key={claveDe(abierta)}
           nombre={abierta.nombre}
           foto={abierta.foto_url}
-          titulo={abierta.calificado_tipo === "conductor" ? "¿Cómo te fue con tu conductor?" : "¿Qué tal tu pasajero?"}
+          titulo={TITULOS[abierta.calificado_tipo] || "¿Cómo te fue?"}
           detalle={[abierta.detalle, fechaCorta(abierta.fecha)].filter(Boolean).join(" · ")}
           onEnviar={enviar}
           onCerrar={cerrar}
@@ -111,7 +129,7 @@ export default function CalificacionesViaje({ bloqueado = false }) {
           <button type="button" className="tz-calif-pastilla" onClick={() => setAbierta(pendientes[0])}>
             <style>{ESTILO}</style>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d={RUTA_ESTRELLA} /></svg>
-            Califica tu viaje
+            {pendientes[0].servicio === "entrega" ? "Califica tu entrega" : "Califica tu viaje"}
             {pendientes.length > 1 && <b>{pendientes.length}</b>}
           </button>,
           document.body
