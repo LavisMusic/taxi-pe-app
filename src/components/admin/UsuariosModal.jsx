@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Users, Plus, Save, Pencil, Trash2, X, Loader2, KeyRound, Image as ImageIcon } from "lucide-react";
+import { Users, Plus, Save, Pencil, Trash2, X, Loader2, KeyRound, Image as ImageIcon, BadgeCheck } from "lucide-react";
+import ReputacionDe from "../ReputacionDe";
+import EtiquetasManualesModal from "./EtiquetasManualesModal";
 import { usePinPrivado } from "../PinPrivado";
 import { activarCuentaNueva, generarCodigoActivacion } from "../../lib/altaConPin";
 import { formatTelefono } from "../../utils/format";
@@ -19,6 +21,8 @@ const TABS = [
 // un conductor (placa/categoría/estado) se editan en el Directorio.
 function UsuarioRow({ usuario, onUpdate, onDelete, onGenerarCodigo, generandoCodigo }) {
   const [editing, setEditing] = useState(false);
+  const [etiquetasAbiertas, setEtiquetasAbiertas] = useState(false);
+  const esPasajero = usuario.rol === "pasajero";
   const [nombre, setNombre] = useState(usuario.nombre);
   const [telefono, setTelefono] = useState(usuario.telefono);
   const [dni, setDni] = useState(usuario.dni);
@@ -143,6 +147,11 @@ function UsuarioRow({ usuario, onUpdate, onDelete, onGenerarCodigo, generandoCod
         <span>
           <strong style={{ color: "var(--text)" }}>{usuario.nombre}</strong>
           <span style={{ marginLeft: 8 }}>DNI {usuario.dni} · {formatTelefono(usuario.telefono)}</span>
+          {esPasajero && (
+            <span style={{ display: "block", marginTop: 4 }}>
+              <ReputacionDe tipo="pasajero" id={usuario.id} tamano="chico" />
+            </span>
+          )}
         </span>
         <span style={{ display: "flex", gap: 6, flexShrink: 0 }}>
           {/* Cuenta sin PIN: código de activación para que lo cree ella misma. */}
@@ -156,6 +165,17 @@ function UsuarioRow({ usuario, onUpdate, onDelete, onGenerarCodigo, generandoCod
               title="Generar código de activación"
             >
               {generandoCodigo ? <Loader2 size={14} className="tz-spin" /> : <KeyRound size={14} />}
+            </button>
+          )}
+          {esPasajero && (
+            <button
+              type="button"
+              className="tz-vis-edit-btn"
+              onClick={() => setEtiquetasAbiertas(true)}
+              aria-label="Reputación y etiquetas"
+              title="Reputación y etiquetas"
+            >
+              <BadgeCheck size={14} />
             </button>
           )}
           <button type="button" className="tz-vis-edit-btn" onClick={startEdit} aria-label="Editar usuario" title="Editar">
@@ -172,6 +192,9 @@ function UsuarioRow({ usuario, onUpdate, onDelete, onGenerarCodigo, generandoCod
           </button>
         </span>
       </div>
+      {etiquetasAbiertas && (
+        <EtiquetasManualesModal tipo="pasajero" id={usuario.id} nombre={usuario.nombre} onClose={() => setEtiquetasAbiertas(false)} />
+      )}
     </li>
   );
 }

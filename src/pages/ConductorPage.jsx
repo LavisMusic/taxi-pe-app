@@ -47,6 +47,7 @@ import { useAbrirMensajesDesdeAviso } from "../hooks/useAbrirMensajesDesdeAviso"
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import AnimacionExitoNeon from "../components/AnimacionExitoNeon";
 import { useViajeFinalizadoAviso } from "../hooks/useViajeFinalizadoAviso";
+import CalificacionesViaje from "../components/CalificacionesViaje";
 import VerificarConductorForm from "../components/VerificarConductorForm";
 import Dropdown from "../components/Dropdown";
 import GemasRecolectadas from "../components/GemasRecolectadas";
@@ -398,6 +399,8 @@ export default function ConductorPage() {
           onTerminar={marcarCompraCreditosVista}
         />
       ) : null}
+      {/* Reputación (fase 1a): calificar al pasajero al terminar el viaje. */}
+      <CalificacionesViaje bloqueado={mensajesOpen || viajeFinalizado.festejar || !!exitoEntrega} />
       {viajeFinalizado.festejar && !exitoEntrega && (
         <AnimacionExitoNeon
           titulo="¡Viaje finalizado!"

@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import ConductorImage from "./ConductorImage";
+import ReputacionDe from "./ReputacionDe";
 import { ESTADO_CONDUCTOR_ACTIVO, NIVEL_SERVICIO_ECONOMICO } from "../lib/taxiEnums";
 
 // Tarjeta pública de un conductor — foto, nombre, estado, placa y
@@ -48,6 +49,7 @@ export default function ConductorPublicCard({ conductor, isLoggedIn = false, chi
           <div className="tz-card-top">
             <div className="tz-card-info">
               <h3 className="tz-card-name">{conductor.nombre}</h3>
+              <ReputacionDe tipo="conductor" id={conductor.id} tamano="chico" className="tz-card-reputacion" />
             </div>
           </div>
 

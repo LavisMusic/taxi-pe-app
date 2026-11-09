@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Pencil, Save, X, Loader2, Zap } from "lucide-react";
+import { Pencil, Save, X, Loader2, Zap, BadgeCheck } from "lucide-react";
+import ReputacionDe from "../ReputacionDe";
+import EtiquetasManualesModal from "./EtiquetasManualesModal";
 import ProductImage from "../ProductImage";
 import GestionImagenModal from "./GestionImagenModal";
 import NivelAccordionGroup from "../NivelAccordionGroup";
@@ -34,6 +36,7 @@ const TAB_RECOLECTORES = "__recolectores__";
 // conductores ya aprobados.
 function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar }) {
   const [editing, setEditing] = useState(false);
+  const [etiquetasAbiertas, setEtiquetasAbiertas] = useState(false);
   const [nombre, setNombre] = useState(conductor.nombre);
   const [placa, setPlaca] = useState(conductor.placa);
   const [telefono, setTelefono] = useState(conductor.telefono || "");
@@ -235,7 +238,25 @@ function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar
                         <Zap size={14} />
                       </button>
                     )}
+                    <button
+                      type="button"
+                      className="tz-vis-edit-btn"
+                      onClick={() => setEtiquetasAbiertas(true)}
+                      aria-label="Reputación y etiquetas"
+                      title="Reputación y etiquetas"
+                    >
+                      <BadgeCheck size={14} />
+                    </button>
                   </div>
+                  <ReputacionDe tipo="conductor" id={conductor.id} tamano="chico" />
+                  {etiquetasAbiertas && (
+                    <EtiquetasManualesModal
+                      tipo="conductor"
+                      id={conductor.id}
+                      nombre={conductor.nombre}
+                      onClose={() => setEtiquetasAbiertas(false)}
+                    />
+                  )}
                   <p style={{ margin: "2px 0", color: "var(--text-dim)", fontSize: 13 }}>
                     Placa <strong style={{ color: "var(--text)" }}>{conductor.placa}</strong>
                     {conductor.telefono ? ` · ${formatTelefono(conductor.telefono)}` : ""}

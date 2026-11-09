@@ -44,6 +44,7 @@ import SaldoGemas from "../components/SaldoGemas";
 import { useMisGemas } from "../hooks/useMisGemas";
 import BotonSoporte from "../components/BotonSoporte";
 import BotonMensajes from "../components/mensajes/BotonMensajes";
+import CalificacionesViaje from "../components/CalificacionesViaje";
 
 // Persistencia del filtro de localidad — sobrevive a un F5 (ver el
 // useState/useEffect de `localidad` más abajo). Es la única pieza de
@@ -416,6 +417,10 @@ export default function HomePage() {
   return (
     <div className="tz-root">
       <Styles />
+      {/* Reputación (fase 1a): calificar al conductor al terminar el viaje. */}
+      {usuario && esPasajero && (
+        <CalificacionesViaje bloqueado={!!chatConductorId || viajeFinalizado.festejar || mostrarBienvenida} />
+      )}
       {!mostrarBienvenida && viajeFinalizado.festejar && (
         <AnimacionExitoNeon
           titulo="¡Viaje finalizado!"
