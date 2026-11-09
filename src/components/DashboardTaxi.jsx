@@ -1,13 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
-  TrendingUp, TrendingDown, Wallet, Car, PackageCheck, Radio, Crown, CalendarClock,
-  MessageCircle, Loader2, BarChart3, Flame, MapPinned, Users,
+  Wallet, Car, PackageCheck, Radio, Crown, CalendarClock, MessageCircle, Loader2, BarChart3, Flame,
+  MapPinned, Users, Repeat, UserMinus, PieChart,
 } from "lucide-react";
 import { MAPBOX_TILE_URL, MAPBOX_ATTRIBUTION } from "../lib/mapboxConfig";
 import IconoGema from "./IconoGema";
+import {
+  useContador, Delta, TarjetaDesglose, AnilloEstados, PestanasDp, HorasPico, ESTILO_PIEZAS,
+} from "./DashboardPiezas";
 
 /* Fase 5c — dashboard de Taxi-PE. MISMO archivo en Taxi-PE y Caja
    (src/components/DashboardTaxi.jsx): mantener iguales.
@@ -24,11 +27,6 @@ const PERIODOS = [
   { id: "30", label: "Últimos 30 días" },
 ];
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Set", "Oct", "Nov", "Dic"];
-const DIAS = [
-  { dow: 1, label: "Lun" }, { dow: 2, label: "Mar" }, { dow: 3, label: "Mié" }, { dow: 4, label: "Jue" },
-  { dow: 5, label: "Vie" }, { dow: 6, label: "Sáb" }, { dow: 0, label: "Dom" },
-];
-
 function rango(id) {
   const ahora = Date.now();
   const lima = new Date(ahora - LIMA);
@@ -49,43 +47,7 @@ const soles = (n, dec = 2) =>
 const entero = (n) => Math.round(Number(n || 0)).toLocaleString("es-PE");
 const fechaCorta = (f) => new Date(f).toLocaleDateString("es-PE", { day: "2-digit", month: "2-digit", year: "numeric" });
 
-function useContador(valor, dur = 900) {
-  const [v, setV] = useState(0);
-  const desde = useRef(0);
-  useEffect(() => {
-    const ini = desde.current;
-    const fin = Number(valor || 0);
-    let raf;
-    const t0 = performance.now();
-    const paso = (t) => {
-      const p = Math.min(1, (t - t0) / dur);
-      const actual = ini + (fin - ini) * (1 - Math.pow(1 - p, 3));
-      setV(actual);
-      desde.current = actual;
-      if (p < 1) raf = requestAnimationFrame(paso);
-    };
-    raf = requestAnimationFrame(paso);
-    return () => cancelAnimationFrame(raf);
-  }, [valor, dur]);
-  return v;
-}
-
-function Delta({ actual, anterior }) {
-  const a = Number(actual || 0);
-  const b = Number(anterior || 0);
-  if (!a && !b) return <span className="tz-dt-delta is-igual">— igual</span>;
-  if (!b) return <span className="tz-dt-delta is-sube">nuevo</span>;
-  const pct = Math.round(((a - b) / b) * 100);
-  if (pct === 0) return <span className="tz-dt-delta is-igual">= igual</span>;
-  const Icono = pct > 0 ? TrendingUp : TrendingDown;
-  return (
-    <span className={`tz-dt-delta ${pct > 0 ? "is-sube" : "is-baja"}`}>
-      <Icono size={13} /> {pct > 0 ? "+" : ""}{pct}%
-    </span>
-  );
-}
-
-function Kpi({ icono: Icono, titulo, valor, formato = soles, anterior, nota, tono = "cyan", i = 0, children }) {
+function Kpi({ icono: Icono, titulo, valor, formato = soles, anterior, invertido, nota, tono = "cyan", i = 0, children }) {
   const v = useContador(valor);
   return (
     <div className={`tz-dt-kpi tono-${tono}`} style={{ animationDelay: `${i * 70}ms` }}>
@@ -93,7 +55,7 @@ function Kpi({ icono: Icono, titulo, valor, formato = soles, anterior, nota, ton
       <span className="tz-dt-kpi-titulo">{titulo}</span>
       <strong className="tz-dt-kpi-valor">{formato(v)}</strong>
       <span className="tz-dt-kpi-pie">
-        {anterior !== undefined && <Delta actual={valor} anterior={anterior} />}
+        {anterior !== undefined && <Delta actual={valor} anterior={anterior} invertido={invertido} />}
         {nota && <span className="tz-dt-kpi-nota">{nota}</span>}
       </span>
     </div>
@@ -197,71 +159,6 @@ function GraficoIngresos({ serie }) {
   );
 }
 
-// Horas pico: conductores conectados en promedio por día y hora.
-function HorasPico({ datos }) {
-  const [hover, setHover] = useState(null);
-  const mapa = useMemo(() => {
-    const m = new Map();
-    (datos || []).forEach((d) => m.set(`${d.dow}:${d.hora}`, Number(d.conductores)));
-    return m;
-  }, [datos]);
-  const max = Math.max(...mapa.values(), 0.01);
-  let pico = null;
-  mapa.forEach((v, k) => { if (!pico || v > pico.v) pico = { k, v }; });
-  const etiqueta = (k) => {
-    const [dow, hora] = k.split(":").map(Number);
-    return `${DIAS.find((d) => d.dow === dow)?.label} ${String(hora).padStart(2, "0")}:00`;
-  };
-  return (
-    <div className="tz-dt-pico">
-      <div className="tz-dt-pico-info">
-        {hover ? (
-          <span><b>{etiqueta(hover)}</b> · {(mapa.get(hover) || 0).toLocaleString("es-PE", { maximumFractionDigits: 1 })} conductores en promedio</span>
-        ) : pico ? (
-          <span><Flame size={13} /> Pico: <b>{etiqueta(pico.k)}</b> · {pico.v.toLocaleString("es-PE", { maximumFractionDigits: 1 })} conductores</span>
-        ) : (
-          <span>Sin conexiones en el periodo.</span>
-        )}
-      </div>
-      <div className="tz-dt-pico-grid" onMouseLeave={() => setHover(null)}>
-        <span />
-        {Array.from({ length: 24 }, (_, h) => (
-          <span key={h} className="tz-dt-pico-hora">{h % 3 === 0 ? h : ""}</span>
-        ))}
-        {DIAS.map((d, fila) => (
-          <FilaPico key={d.dow} d={d} fila={fila} mapa={mapa} max={max} pico={pico} setHover={setHover} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function FilaPico({ d, fila, mapa, max, pico, setHover }) {
-  return (
-    <>
-      <span className="tz-dt-pico-dia">{d.label}</span>
-      {Array.from({ length: 24 }, (_, h) => {
-        const k = `${d.dow}:${h}`;
-        const v = mapa.get(k) || 0;
-        const f = v / max;
-        return (
-          <span
-            key={h}
-            className={`tz-dt-pico-celda ${pico && pico.k === k ? "is-pico" : ""}`}
-            style={{
-              background: v ? `rgba(${Math.round(43 + f * 212)}, ${Math.round(232 - f * 185)}, ${Math.round(255 - f * 97)}, ${0.18 + f * 0.82})` : undefined,
-              boxShadow: f > 0.6 ? `0 0 ${Math.round(f * 12)}px rgba(255, 47, 158, ${f * 0.7})` : undefined,
-              animationDelay: `${fila * 40 + h * 12}ms`,
-            }}
-            onMouseEnter={() => setHover(k)}
-            onClick={() => setHover(k)}
-          />
-        );
-      })}
-    </>
-  );
-}
-
 function Encuadre({ zonas }) {
   const map = useMap();
   useEffect(() => {
@@ -304,6 +201,13 @@ function MapaZonas({ zonas }) {
   );
 }
 
+const ESTADOS_MEMBRESIA = [
+  { key: "vigente", label: "Vigente", color: "#39ffb0" },
+  { key: "por_vencer", label: "Por vencer", color: "#d7ff3b" },
+  { key: "vencida", label: "Vencida", color: "#ff5470" },
+  { key: "sin", label: "Sin membresía", color: "#9c93c2" },
+];
+
 function linkWhatsapp(numero, texto) {
   let d = String(numero || "").replace(/\D/g, "");
   if (!d) return null;
@@ -320,6 +224,7 @@ export default function DashboardTaxi({ leer, titulo = "Taxi-PE" }) {
   const [datos, setDatos] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
+  const [grupoEstados, setGrupoEstados] = useState("conductores");
   const { desde, hasta } = useMemo(() => rango(periodo), [periodo]);
 
   const refrescar = useCallback(async () => {
@@ -367,7 +272,8 @@ export default function DashboardTaxi({ leer, titulo = "Taxi-PE" }) {
   }, [datos]);
 
   const d = datos || {};
-  const ingresos = Number(d.ingresos_conductores || 0) + Number(d.ingresos_recolectores || 0);
+  const tasaBajas = d.base_bajas ? Math.round((Number(d.bajas || 0) / d.base_bajas) * 100) : 0;
+  const estados = d[grupoEstados === "conductores" ? "estados_conductores" : "estados_recolectores"] || {};
   const entregasTot = Number(d.entregas_ok || 0) + Number(d.entregas_fallidas || 0);
   const exito = entregasTot ? Math.round((Number(d.entregas_ok || 0) / entregasTot) * 100) : 0;
   const topC = d.top_conductores || [];
@@ -378,7 +284,7 @@ export default function DashboardTaxi({ leer, titulo = "Taxi-PE" }) {
 
   return (
     <section className="tz-dt">
-      <style>{ESTILO}</style>
+      <style>{ESTILO_PIEZAS + ESTILO}</style>
       <div className="tz-dt-cabecera">
         <h2 className="tz-dt-titulo"><BarChart3 size={17} /> {titulo}</h2>
         <div className="tz-dt-periodos" role="tablist">
@@ -394,15 +300,26 @@ export default function DashboardTaxi({ leer, titulo = "Taxi-PE" }) {
       {error && <p className="tz-dt-error">{error}</p>}
 
       <div className="tz-dt-kpis">
-        <Kpi i={0} icono={Wallet} titulo="Ingresos por membresías" valor={ingresos} anterior={d.ingresos_ant} tono="green"
-          nota={`${entero(d.membresias)} vendidas · recolectores ${soles(d.ingresos_recolectores, 0)}`} />
-        <Kpi i={1} icono={Car} titulo="Viajes" valor={d.viajes} formato={entero} anterior={d.viajes_ant} tono="cyan"
+        <TarjetaDesglose
+          i={0} icono={Wallet} titulo="Ingresos por membresías"
+          nota={`${entero(d.membresias)} vendidas`}
+          partes={[
+            { key: "c", label: "Conductores", color: "#39ffb0", monto: Number(d.ingresos_conductores || 0),
+              ant: Number(d.ingresos_conductores_ant || 0), cantidad: d.membresias_conductores ?? 0, detalle: "vendidas" },
+            { key: "r", label: "Recolectores", color: "#d7ff3b", monto: Number(d.ingresos_recolectores || 0),
+              ant: Number(d.ingresos_recolectores_ant || 0), cantidad: d.membresias_recolectores ?? 0, detalle: "vendidas" },
+          ]}
+        />
+        <Kpi i={1} icono={Repeat} titulo="Ingreso mensual (MRR)" valor={d.mrr} anterior={d.mrr_ant} tono="cyan" nota="membresías vigentes" />
+        <Kpi i={2} icono={UserMinus} titulo="Bajas del periodo" valor={d.bajas} formato={entero} tono="danger"
+          nota={`${tasaBajas}% de las que estaban vigentes`} />
+        <Kpi i={3} icono={Car} titulo="Viajes" valor={d.viajes} formato={entero} anterior={d.viajes_ant} tono="cyan"
           nota={`ganaron ${soles(d.ganado_viajes, 0)} · turnos cerrados`} />
-        <Kpi i={2} icono={PackageCheck} titulo="Entregas completadas" valor={d.entregas_ok} formato={entero} anterior={d.entregas_ok_ant} tono="pink"
+        <Kpi i={4} icono={PackageCheck} titulo="Entregas completadas" valor={d.entregas_ok} formato={entero} anterior={d.entregas_ok_ant} tono="pink"
           nota={`${exito}% de éxito${d.entrega_minutos != null ? ` · ${d.entrega_minutos} min promedio` : ""}${d.entregas_en_curso ? ` · ${d.entregas_en_curso} en curso` : ""}`} />
-        <Kpi i={3} icono={Radio} titulo="Conductores activos" valor={d.activos_periodo} formato={entero} anterior={d.activos_ant} tono="yellow"
+        <Kpi i={5} icono={Radio} titulo="Conductores activos" valor={d.activos_periodo} formato={entero} anterior={d.activos_ant} tono="yellow"
           nota={`hoy ${entero(d.activos_hoy)} de ${entero(d.conductores_total)} · ${entero(d.horas_taxi)} h taxi · ${entero(d.horas_delivery)} h delivery`} />
-        <Kpi i={4} titulo="Gemas verdes ganadas" valor={d.gemas_ganadas} formato={entero} anterior={d.gemas_ganadas_ant} tono="green"
+        <Kpi i={6} titulo="Gemas verdes ganadas" valor={d.gemas_ganadas} formato={entero} anterior={d.gemas_ganadas_ant} tono="green"
           nota={`${entero(d.gemas_usadas)} usadas`}>
           <IconoGema color="verde" size={18} />
         </Kpi>
@@ -414,23 +331,37 @@ export default function DashboardTaxi({ leer, titulo = "Taxi-PE" }) {
           {serieDias.length ? <GraficoDias serie={serieDias} /> : <p className="tz-dt-vacio">Sin días en el periodo.</p>}
         </div>
         <div className="tz-dt-tarjeta">
-          <h3>Membresías · 6 meses</h3>
-          <GraficoIngresos serie={serieIngresos} />
+          <h3>
+            <PieChart size={15} /> Membresías
+            <PestanasDp
+              opciones={[{ id: "conductores", label: "Conductores" }, { id: "recolectores", label: "Recolectores" }]}
+              valor={grupoEstados}
+              onCambiar={setGrupoEstados}
+            />
+          </h3>
+          <AnilloEstados
+            sub={grupoEstados}
+            items={ESTADOS_MEMBRESIA.map((e) => ({ ...e, valor: Number(estados[e.key] || 0) }))}
+          />
         </div>
       </div>
 
       <div className="tz-dt-fila is-mitad">
         <div className="tz-dt-tarjeta">
-          <h3><Flame size={15} /> Horas pico</h3>
-          <HorasPico datos={d.horas_pico} />
+          <h3>Membresías · 6 meses</h3>
+          <GraficoIngresos serie={serieIngresos} />
         </div>
+        <div className="tz-dt-tarjeta">
+          <h3><Flame size={15} /> Horas pico</h3>
+          <HorasPico datos={d.horas_pico} unidad="conductores" vacio="Sin conexiones en el periodo." />
+        </div>
+      </div>
+
+      <div className="tz-dt-fila is-mitad">
         <div className="tz-dt-tarjeta">
           <h3><MapPinned size={15} /> Zonas de entrega</h3>
           <MapaZonas zonas={zonas} />
         </div>
-      </div>
-
-      <div className="tz-dt-fila is-mitad">
         <div className="tz-dt-tarjeta">
           <h3><Crown size={15} /> Conductores con más servicios</h3>
           {topC.length === 0 ? <p className="tz-dt-vacio">Todavía no hay turnos cerrados en este periodo.</p> : (
@@ -449,6 +380,9 @@ export default function DashboardTaxi({ leer, titulo = "Taxi-PE" }) {
             </ol>
           )}
         </div>
+      </div>
+
+      <div className="tz-dt-fila is-mitad">
         <div className="tz-dt-tarjeta">
           <h3><Users size={15} /> Recolectores</h3>
           {topR.length === 0 ? <p className="tz-dt-vacio">Ningún recolector vendió membresías en este periodo.</p> : (
@@ -472,9 +406,6 @@ export default function DashboardTaxi({ leer, titulo = "Taxi-PE" }) {
             </ol>
           )}
         </div>
-      </div>
-
-      <div className="tz-dt-fila is-ancha-primero">
         <div className="tz-dt-tarjeta">
           <h3><CalendarClock size={15} /> Membresías que vencen en 7 días</h3>
           {vencen.length === 0 ? <p className="tz-dt-vacio">Ninguna membresía vence esta semana.</p> : (
@@ -503,6 +434,9 @@ export default function DashboardTaxi({ leer, titulo = "Taxi-PE" }) {
             </ul>
           )}
         </div>
+      </div>
+
+      <div className="tz-dt-fila is-unica">
         <div className="tz-dt-tarjeta tz-dt-gemas">
           <h3><IconoGema color="verde" size={16} /> Gemas</h3>
           <div className="tz-dt-gema">
@@ -546,20 +480,16 @@ const ESTILO = `
 .tz-dt-kpi.tono-green { --t: 57,255,176; }
 .tz-dt-kpi.tono-pink { --t: 255,47,158; }
 .tz-dt-kpi.tono-yellow { --t: 215,255,59; }
+.tz-dt-kpi.tono-danger { --t: 255,84,112; }
 .tz-dt-kpi-icono { width: 32px; height: 32px; border-radius: 11px; display: grid; place-items: center; color: rgb(var(--t));
   background: rgba(var(--t), 0.12); box-shadow: 0 0 14px rgba(var(--t), 0.3); }
 .tz-dt-kpi-titulo { font-size: 12px; font-weight: 700; color: var(--text-dim); letter-spacing: .03em; }
 .tz-dt-kpi-valor { font-size: 24px; font-weight: 900; color: var(--text); font-variant-numeric: tabular-nums; text-shadow: 0 0 16px rgba(var(--t), 0.45); line-height: 1.15; }
 .tz-dt-kpi-pie { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 20px; }
 .tz-dt-kpi-nota { font-size: 11.5px; color: var(--text-dim); }
-.tz-dt-delta { display: inline-flex; align-items: center; gap: 3px; font-size: 11.5px; font-weight: 800; padding: 2px 8px; border-radius: 999px;
-  animation: tz-dt-pop .5s .35s cubic-bezier(.34,1.56,.64,1) both; }
-.tz-dt-delta.is-sube { color: #39ffb0; background: rgba(57,255,176,0.12); }
-.tz-dt-delta.is-baja { color: #ff5470; background: rgba(255,84,112,0.12); }
-.tz-dt-delta.is-igual { color: var(--text-dim); background: rgba(255,255,255,0.06); }
-
 .tz-dt-fila { display: grid; gap: 12px; margin-bottom: 12px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .tz-dt-fila.is-ancha-primero { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.tz-dt-fila.is-unica { grid-template-columns: minmax(0, 1fr); }
 @media (max-width: 760px) { .tz-dt-fila, .tz-dt-fila.is-ancha-primero { grid-template-columns: minmax(0, 1fr); } }
 .tz-dt-tarjeta { padding: 14px; border-radius: 18px; background: var(--panel); border: 1px solid rgba(255,255,255,0.09); min-width: 0;
   animation: tz-dt-in .65s .1s cubic-bezier(.34,1.56,.64,1) both; }
@@ -607,17 +537,6 @@ i.is-reco { background: #d7ff3b; box-shadow: 0 0 8px #d7ff3b; }
 .tz-dt-barra-mes { font-size: 11px; font-weight: 700; color: var(--text-dim); }
 .tz-dt-barra.is-actual .tz-dt-barra-mes { color: var(--cyan); }
 
-.tz-dt-pico-info { font-size: 12px; color: var(--text-dim); min-height: 18px; margin-bottom: 8px; }
-.tz-dt-pico-info span { display: inline-flex; align-items: center; gap: 5px; }
-.tz-dt-pico-info b { color: var(--text); }
-.tz-dt-pico-grid { display: grid; grid-template-columns: 30px repeat(24, minmax(0, 1fr)); gap: 3px; align-items: center; }
-.tz-dt-pico-hora { font-size: 9px; color: var(--text-dim); text-align: left; }
-.tz-dt-pico-dia { font-size: 10.5px; font-weight: 700; color: var(--text-dim); }
-.tz-dt-pico-celda { aspect-ratio: 1; border-radius: 4px; background: rgba(255,255,255,0.04); cursor: pointer;
-  animation: tz-dt-pop .45s cubic-bezier(.34,1.56,.64,1) both; transition: transform .2s cubic-bezier(.34,1.56,.64,1); }
-.tz-dt-pico-celda:hover { transform: scale(1.35); position: relative; z-index: 1; outline: 1px solid rgba(255,255,255,0.6); }
-.tz-dt-pico-celda.is-pico { animation: tz-dt-pop .45s cubic-bezier(.34,1.56,.64,1) both, tz-dt-late 1.6s 1s ease-in-out infinite; }
-
 .tz-dt-mapa { position: relative; height: 260px; border-radius: 14px; overflow: hidden; border: 1px solid rgba(43,232,255,0.2); }
 .tz-dt-mapa .leaflet-container { background: #0a0716; }
 .tz-dt-zona { animation: tz-dt-zona 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
@@ -647,7 +566,7 @@ i.is-reco { background: #d7ff3b; box-shadow: 0 0 8px #d7ff3b; }
 .tz-dt-dias { display: flex; flex-direction: column; align-items: center; min-width: 42px; font-size: 10px; color: var(--text-dim); }
 .tz-dt-dias b { font-size: 20px; color: #d7ff3b; line-height: 1; text-shadow: 0 0 10px rgba(215,255,59,0.5); }
 .tz-dt-vencen li.is-urgente { border-color: rgba(255,84,112,0.45); }
-.tz-dt-vencen li.is-urgente .tz-dt-dias b { color: #ff5470; text-shadow: 0 0 10px rgba(255,84,112,0.6); animation: tz-dt-late 1.6s ease-in-out infinite; }
+.tz-dt-vencen li.is-urgente .tz-dt-dias b { color: #ff5470; text-shadow: 0 0 10px rgba(255,84,112,0.6); animation: tz-dt-late-x 1.6s ease-in-out infinite; }
 .tz-dt-rol { font-style: normal; font-size: 10px; font-weight: 800; padding: 1px 7px; border-radius: 999px; margin-left: 4px; vertical-align: middle; }
 .tz-dt-rol.is-conductor { color: #2be8ff; background: rgba(43,232,255,0.12); }
 .tz-dt-rol.is-recolector { color: #d7ff3b; background: rgba(215,255,59,0.12); }
@@ -656,7 +575,8 @@ i.is-reco { background: #d7ff3b; box-shadow: 0 0 8px #d7ff3b; }
   transition: transform .3s cubic-bezier(.34,1.56,.64,1), box-shadow .3s ease; }
 .tz-dt-btn:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 0 14px rgba(57,255,176,0.45); }
 
-.tz-dt-gemas { display: flex; flex-direction: column; gap: 10px; }
+.tz-dt-gemas { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.tz-dt-gemas h3 { grid-column: 1 / -1; }
 .tz-dt-gema { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 2px; padding: 12px; border-radius: 14px;
   background: rgba(57,255,176,0.06); border: 1px solid rgba(57,255,176,0.25); }
 .tz-dt-gema::after { content: ""; position: absolute; inset: -40% -60%; pointer-events: none;
@@ -673,5 +593,5 @@ i.is-reco { background: #d7ff3b; box-shadow: 0 0 8px #d7ff3b; }
 @keyframes tz-dt-crece-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes tz-dt-brillo { 0%, 70% { transform: translateX(-60%); } 100% { transform: translateX(60%); } }
 @keyframes tz-dt-flota { 0%, 100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-3px) rotate(6deg); } }
-@keyframes tz-dt-late { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+@keyframes tz-dt-late-x { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
 `;
