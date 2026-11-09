@@ -7703,6 +7703,27 @@ export default function Styles() {
          debajo (se despliega solo), el cliente; un brillo verde recorre el
          borde de los dos juntos — mismo diseño que "Tus pedidos" en Caja. */
       .tz-chatent-row, .tz-chatpas-row { position: relative; display: flex; flex-direction: column; gap: 6px; border-radius: 14px; overflow: visible !important; }
+      /* Dashboard en su propia página (fase 5). */
+      .tz-dashboard-pagina { min-height: 100vh; padding: 16px 16px 40px; }
+      .tz-dashboard-cabecera {
+        max-width: 1100px; margin: 0 auto 8px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+        animation: tz-dashboard-in 0.5s cubic-bezier(.34,1.56,.64,1) both;
+      }
+      .tz-dashboard-volver {
+        display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; cursor: pointer;
+        font-weight: 700; font-size: 13px; color: var(--cyan); background: rgba(43,232,255,0.08);
+        border: 1px solid rgba(43,232,255,0.35); transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), box-shadow 0.25s ease;
+      }
+      .tz-dashboard-volver:hover { transform: translateX(-3px); box-shadow: 0 0 14px rgba(43,232,255,0.35); }
+      .tz-dashboard-logo { height: 34px; width: auto; filter: drop-shadow(0 0 10px rgba(43,232,255,0.35)); }
+      .tz-dashboard-titulo { margin: 0 0 0 auto; display: inline-flex; align-items: center; gap: 8px; font-size: 20px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text); }
+      .tz-dashboard-contenido { max-width: 1100px; margin: 0 auto; animation: tz-dashboard-in 0.6s 0.08s cubic-bezier(.34,1.56,.64,1) both; }
+      @keyframes tz-dashboard-in { from { opacity: 0; transform: translateY(10px); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
+      .tz-footer-btn-dashboard {
+        background: linear-gradient(110deg, #39ffb0, #2be8ff);
+        color: #04161a;
+        box-shadow: 0 0 20px rgba(43,232,255,0.45);
+      }
       /* Cuentas verificadas (fase 5a). */
       .tz-cuentas-verificadas { margin: 14px 0; }
       .tz-cuentas-verificadas-titulo {
