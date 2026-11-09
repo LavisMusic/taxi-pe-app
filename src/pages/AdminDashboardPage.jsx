@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, CreditCard, MapPin, Loader2, Trash2, MessageSquareText } from "lucide-react";
+import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, CreditCard, MapPin, Loader2, Trash2, MessageSquareText, BarChart3 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useLocalidades } from "../hooks/useLocalidades";
 import { useVentas } from "../hooks/useVentas";
@@ -64,6 +65,7 @@ const METODOS_PAGO_MENU = METODOS_PAGO.filter((m) => m.key === METODO_PAGO_EFECT
 // mismo layout general (tz-header, tz-stats, tz-main, tz-page-footer)
 // pero leyendo únicamente las tablas nuevas de TaxiP.
 export default function AdminDashboardPage() {
+  const navigate = useNavigate();
   const { logout } = useTaxiAuth();
   // Bienvenida del super admin — una vez por acceso, igual que el resto
   // de los roles. El admin master no tiene fila de usuario propia, así
@@ -471,6 +473,11 @@ export default function AdminDashboardPage() {
         <button className="tz-footer-btn tz-footer-btn-limpiar-chats" onClick={() => setLimpiarChatsOpen(true)}>
           <Trash2 size={18} />
           Limpiar Chats
+        </button>
+        {/* Fase 5: el dashboard en su propia página. */}
+        <button className="tz-footer-btn tz-footer-btn-dashboard" onClick={() => navigate("/admin/dashboard")}>
+          <BarChart3 size={18} />
+          Dashboard
         </button>
       </footer>
 

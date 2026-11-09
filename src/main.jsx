@@ -14,6 +14,7 @@ import RecuperarPinPage from './pages/RecuperarPinPage'
 import RestablecerPinPage from "./pages/RestablecerPinPage";
 import TerminosPage from "./pages/TerminosPage";
 import AdminDashboardPage from './pages/AdminDashboardPage'
+import AdminDashboardMetricasPage from "./pages/AdminDashboardMetricasPage";
 import RecolectorPage from './pages/RecolectorPage'
 import ConductorPage from './pages/ConductorPage'
 import { instalarDespliegueBotones } from './lib/despliegueBotones'
@@ -45,6 +46,14 @@ createRoot(document.getElementById('root')).render(
             element={
               <RequireAdminMaster>
                 <AdminDashboardPage />
+              </RequireAdminMaster>
+            }
+          />
+          <Route
+            path="/admin/dashboard"
+            element={
+              <RequireAdminMaster>
+                <AdminDashboardMetricasPage />
               </RequireAdminMaster>
             }
           />
