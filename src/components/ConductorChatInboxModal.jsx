@@ -6,6 +6,7 @@ import { useHilosChatConductor, useChatMensajes, REMITENTE_CONDUCTOR } from "../
 import { usePerfilesEnVivo } from "../hooks/usePerfilesEnVivo";
 import { previaMensaje } from "../lib/adjuntosChat";
 import ChatWindow from "./ChatWindow";
+import ReputacionDe from "./ReputacionDe";
 import ChatErrorBoundary from "./ChatErrorBoundary";
 import { FilasChatsFijados, ChatFijadoAbierto, InterruptorAvisos } from "./mensajes/ChatsFijados";
 import AvisosDispositivo from "./mensajes/AvisosDispositivo";
@@ -235,7 +236,10 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
             </button>
             <Avatar foto={fotosPorId[pasajeroAbierto]} nombre={nombresPorId[pasajeroAbierto]} />
             <span>
-              <strong>{nombresPorId[pasajeroAbierto] ?? "Pasajero"}</strong>
+              <span className="tz-nombre-rep">
+                <strong>{nombresPorId[pasajeroAbierto] ?? "Pasajero"}</strong>
+                <ReputacionDe tipo="pasajero" id={pasajeroAbierto} tamano="chico" />
+              </span>
               <small>{pasajerosEnCarrera?.includes(pasajeroAbierto) ? "Viaje en curso" : "Negociando"}</small>
             </span>
           </div>
