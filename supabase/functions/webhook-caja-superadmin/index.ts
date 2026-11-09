@@ -72,6 +72,20 @@ Deno.serve(async (req) => {
       if (error) return jsonResponse(500, { error: error.message });
       return jsonResponse(200, { ok: true, roles: data ?? [] });
     }
+    // Fase 5c: dashboard de Taxi-PE para el superadmin de Caja.
+    case "dashboard.resumen": {
+      const desde = new Date(String(d.desde ?? ""));
+      const hasta = new Date(String(d.hasta ?? ""));
+      if (isNaN(desde.getTime()) || isNaN(hasta.getTime()) || hasta <= desde) {
+        return jsonResponse(400, { error: "Periodo inválido." });
+      }
+      const { data, error } = await db.rpc("taxi_dashboard_admin", {
+        p_desde: desde.toISOString(),
+        p_hasta: hasta.toISOString(),
+      });
+      if (error) return jsonResponse(500, { error: error.message });
+      return jsonResponse(200, { ok: true, datos: data ?? {} });
+    }
     case "cuentas.meta": {
       const { error } = await db.rpc("taxi_guardar_meta_cuentas", {
         p_rol: String(d.rol ?? ""),
