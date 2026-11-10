@@ -64,6 +64,9 @@ export default function InsigniaReputacion({ rep, etiquetas = [], tamano = "norm
 const ESTILO = `
 .tz-nombre-rep { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-width: 0; }
 .tz-nombre-rep > h3, .tz-nombre-rep > strong { margin: 0; }
+.tz-card-reputacion-btn { padding: 0; border: 0; background: transparent; cursor: pointer; border-radius: 999px;
+  transition: transform .3s cubic-bezier(.34,1.56,.64,1), filter .3s ease; }
+.tz-card-reputacion-btn:hover { transform: scale(1.06); filter: brightness(1.15); }
 .tz-rep { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 5px; vertical-align: middle; }
 .tz-rep-estrellas { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-dim); }
 .tz-rep-estrellas b { color: #ffd84a; font-weight: 900; text-shadow: 0 0 8px rgba(255,216,74,0.5); }
