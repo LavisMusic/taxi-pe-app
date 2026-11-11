@@ -37,7 +37,9 @@ export default function InsigniaReputacion({ rep, etiquetas = [], tamano = "norm
   const total = Number(rep?.total || 0);
   const promedio = Number(rep?.promedio || 0);
   const clave = total < 3 ? "nuevo" : rep?.etiqueta || "confiable";
-  const auto = ETIQUETAS_AUTO[clave] || ETIQUETAS_AUTO.confiable;
+  // "sin": no se muestra etiqueta automática (p. ej. "Confiable" en los
+  // negocios: todos los registrados lo son).
+  const auto = clave === "sin" ? null : ETIQUETAS_AUTO[clave] || ETIQUETAS_AUTO.confiable;
   const chico = tamano === "chico";
   if (mostrar === "estrellas" && total < 3) return null;
   const conEtiquetas = mostrar !== "estrellas";
@@ -51,7 +53,7 @@ export default function InsigniaReputacion({ rep, etiquetas = [], tamano = "norm
           {!chico && <small>({total})</small>}
         </span>
       )}
-      {conEtiquetas && (
+      {conEtiquetas && auto && (
         <Chip color={auto.color} brilla={clave === "top"}>
           {clave === "nuevo" && <Sparkles size={chico ? 10 : 11} />}
           {auto.label}
