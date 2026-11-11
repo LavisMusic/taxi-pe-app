@@ -31,27 +31,33 @@ function Chip({ color, children, brilla }) {
   );
 }
 
-export default function InsigniaReputacion({ rep, etiquetas = [], tamano = "normal", className = "" }) {
+// mostrar: "todo" (por defecto), "estrellas" (solo estrellas, nada si es
+// nuevo) o "etiquetas" (solo la automática y las puestas a mano).
+export default function InsigniaReputacion({ rep, etiquetas = [], tamano = "normal", className = "", mostrar = "todo" }) {
   const total = Number(rep?.total || 0);
   const promedio = Number(rep?.promedio || 0);
   const clave = total < 3 ? "nuevo" : rep?.etiqueta || "confiable";
   const auto = ETIQUETAS_AUTO[clave] || ETIQUETAS_AUTO.confiable;
   const chico = tamano === "chico";
+  if (mostrar === "estrellas" && total < 3) return null;
+  const conEtiquetas = mostrar !== "estrellas";
   return (
     <span className={`tz-rep ${chico ? "is-chico" : ""} ${className}`}>
       <style>{ESTILO}</style>
-      {total >= 3 && (
+      {total >= 3 && mostrar !== "etiquetas" && (
         <span className="tz-rep-estrellas" title={`${promedio.toFixed(1)} de 5 · ${total} calificaciones`}>
           <Estrellas valor={promedio} size={chico ? 11 : 13} />
           <b>{promedio.toFixed(1)}</b>
           {!chico && <small>({total})</small>}
         </span>
       )}
-      <Chip color={auto.color} brilla={clave === "top"}>
-        {clave === "nuevo" && <Sparkles size={chico ? 10 : 11} />}
-        {auto.label}
-      </Chip>
-      {etiquetas.map((e) => (
+      {conEtiquetas && (
+        <Chip color={auto.color} brilla={clave === "top"}>
+          {clave === "nuevo" && <Sparkles size={chico ? 10 : 11} />}
+          {auto.label}
+        </Chip>
+      )}
+      {conEtiquetas && etiquetas.map((e) => (
         <Chip key={e.etiqueta} color={COLORES_ETIQUETA[e.color] || COLORES_ETIQUETA.cyan}>
           <BadgeCheck size={chico ? 10 : 11} />
           {e.etiqueta}
