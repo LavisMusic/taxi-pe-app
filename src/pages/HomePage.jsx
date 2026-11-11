@@ -45,6 +45,7 @@ import { useMisGemas } from "../hooks/useMisGemas";
 import BotonSoporte from "../components/BotonSoporte";
 import BotonMensajes from "../components/mensajes/BotonMensajes";
 import CalificacionesViaje from "../components/CalificacionesViaje";
+import BotonMiReputacion from "../components/BotonMiReputacion";
 
 // Persistencia del filtro de localidad — sobrevive a un F5 (ver el
 // useState/useEffect de `localidad` más abajo). Es la única pieza de
@@ -448,6 +449,7 @@ export default function HomePage() {
                   <span className="tz-header-btn-label">Editar Perfil</span>
                 </button>
                 <BotonMensajes usuarioId={usuario.id} conductores={chatsMensajes} onAbrirConductor={verChat} />
+                <BotonMiReputacion rol="pasajero" />
               </>
             ) : (
               <>
