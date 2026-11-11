@@ -7784,9 +7784,16 @@ export default function Styles() {
       .tz-perfil-pasajero { max-width: 380px; text-align: center; }
       .tz-perfil-pasajero-foto {
         position: relative; width: 104px; height: 104px; margin: 6px auto 14px; padding: 0;
-        border-radius: 50%; border: 2px solid var(--cyan); background: rgba(43,232,255,0.1);
+        border-radius: 50%; border: 2px solid var(--cyan); background-color: #14101f;
         color: var(--cyan); font-size: 40px; font-weight: 800; cursor: pointer;
         display: flex; align-items: center; justify-content: center; box-shadow: 0 0 16px rgba(43,232,255,0.35);
+        /* Mismo aurora multicolor de las fotos de conductores (recortes sin fondo). */
+        background-image:
+          radial-gradient(circle at 20% 25%, rgba(43,232,255,0.65) 0%, rgba(43,232,255,0.22) 32%, transparent 62%),
+          radial-gradient(circle at 80% 30%, rgba(255,47,158,0.6) 0%, rgba(255,47,158,0.2) 34%, transparent 64%),
+          radial-gradient(circle at 50% 85%, rgba(215,255,59,0.5) 0%, rgba(215,255,59,0.16) 34%, transparent 64%);
+        background-size: 200% 200%;
+        animation: tz-aurora-drift 5s ease-in-out infinite alternate;
       }
       .tz-perfil-pasajero-foto img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
       .tz-perfil-pasajero-camara {

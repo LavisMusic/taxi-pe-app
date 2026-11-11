@@ -133,7 +133,7 @@ export default function MiReputacionModal({
         <button type="button" className="tz-mirep-cerrar" onClick={onClose} aria-label="Cerrar"><X size={18} /></button>
         <h3 className="tz-mirep-titulo"><Star size={18} /> Mi reputación</h3>
 
-        <div className={`tz-mirep-tabs ${PESTANAS.length > 3 ? "is-cuatro" : ""}`} role="tablist" style={{ "--i": idx, "--n": PESTANAS.length }}>
+        <div className={`tz-mirep-tabs ${PESTANAS.length > 3 ? "is-cuatro" : ""}`} role="tablist" style={{ "--i": idx, "--n": PESTANAS.length, "--col": idx % 2, "--fila": Math.floor(idx / 2) }}>
           <span className="tz-mirep-tabs-luz" aria-hidden="true" />
           {PESTANAS.map(({ id, label, Icono }) => (
             <button
@@ -381,8 +381,8 @@ const ESTILO = `
 .tz-mirep-tab span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tz-mirep-tab svg { flex-shrink: 0; }
 .tz-mirep-tab.is-activa { color: #ffd84a; }
-.tz-mirep-tab-num { min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px; display: grid; place-items: center; flex-shrink: 0;
-  font-size: 10.5px; color: #1a1300; background: linear-gradient(110deg, #ffd84a, #ff9500); box-shadow: 0 0 10px rgba(255,216,74,0.6);
+.tz-mirep-tab-num { min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0; box-sizing: border-box; line-height: 1; padding-bottom: 1px; font-size: 10.5px; font-weight: 900; font-variant-numeric: tabular-nums;color: #1a1300; background: linear-gradient(110deg, #ffd84a, #ff9500); box-shadow: 0 0 10px rgba(255,216,74,0.6);
   animation: tz-mirep-pop .5s cubic-bezier(.34,1.56,.64,1) both; }
 .tz-mirep-error { margin: 0; text-align: center; font-size: 13px; color: var(--danger, #ff5470); }
 .tz-mirep-cuerpo { flex: 1; min-height: 0; overflow: hidden auto; scrollbar-width: none; margin: 0 -6px; padding: 4px 6px 6px;
@@ -415,7 +415,14 @@ const ESTILO = `
 .tz-mirep-item.is-saliendo { animation: none; opacity: 0; transform: translateX(40px) scale(.9); max-height: 0; padding-top: 0; padding-bottom: 0; margin-bottom: -8px; overflow: hidden; }
 .tz-mirep-item-cab { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .tz-mirep-avatar { width: 42px; height: 42px; flex-shrink: 0; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,216,74,0.6);
-  box-shadow: 0 0 12px rgba(255,216,74,0.3); background: #0d0820; }
+  box-shadow: 0 0 12px rgba(255,216,74,0.3); background-color: #14101f;
+  /* El mismo aurora multicolor de las fotos de conductores (las fotos son recortes sin fondo). */
+  background-image:
+    radial-gradient(circle at 20% 25%, rgba(43,232,255,0.65) 0%, rgba(43,232,255,0.22) 32%, transparent 62%),
+    radial-gradient(circle at 80% 30%, rgba(255,47,158,0.6) 0%, rgba(255,47,158,0.2) 34%, transparent 64%),
+    radial-gradient(circle at 50% 85%, rgba(215,255,59,0.5) 0%, rgba(215,255,59,0.16) 34%, transparent 64%);
+  background-size: 200% 200%; animation: tz-mirep-aurora 5s ease-in-out infinite alternate; }
+@keyframes tz-mirep-aurora { 0% { background-position: 10% 15%; } 50% { background-position: 70% 55%; } 100% { background-position: 30% 80%; } }
 .tz-mirep-avatar.is-letra { display: grid; place-items: center; font-size: 18px; font-weight: 900; color: #ffd84a; }
 .tz-mirep-info { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
 .tz-mirep-info b { max-width: 100%; font-size: 14px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -445,8 +452,14 @@ const ESTILO = `
   transition: transform .3s cubic-bezier(.34,1.56,.64,1), box-shadow .3s ease; }
 .tz-mirep-pagina:hover { transform: translateY(-2px); box-shadow: 0 0 14px rgba(43,232,255,0.4); }
 @media (max-width: 420px) { .tz-mirep-tab { font-size: 11.5px; gap: 4px; } .tz-mirep-tab svg { display: none; } }
-.tz-mirep-tabs.is-cuatro .tz-mirep-tab { font-size: 11.5px; gap: 4px; padding-inline: 2px; }
-@media (max-width: 480px) { .tz-mirep-tabs.is-cuatro .tz-mirep-tab { font-size: 10.5px; } .tz-mirep-tabs.is-cuatro .tz-mirep-tab svg { display: none; } }
+/* Cuatro pestañas: tabla de 2x2, la luz se mueve en los dos ejes. */
+.tz-mirep-tabs.is-cuatro { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 40px; row-gap: 4px; column-gap: 4px; }
+.tz-mirep-tabs.is-cuatro .tz-mirep-tabs-luz { bottom: auto; width: calc((100% - 12px) / 2); height: 40px;
+  transform: translate(calc(var(--col) * (100% + 4px)), calc(var(--fila) * (100% + 4px)));
+  transition: transform .55s cubic-bezier(.34,1.56,.64,1); }
+.tz-mirep-tabs.is-cuatro .tz-mirep-tab { padding: 0 8px; gap: 6px; font-size: 13px; border-radius: 12px; }
+.tz-mirep-tabs.is-cuatro .tz-mirep-tab:not(.is-activa):hover { background: rgba(255,255,255,0.04); }
+@media (max-width: 420px) { .tz-mirep-tabs.is-cuatro .tz-mirep-tab { font-size: 12.5px; } .tz-mirep-tabs.is-cuatro .tz-mirep-tab svg { display: block; } }
 @keyframes tz-mirep-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes tz-mirep-in { from { opacity: 0; transform: translateY(18px) scale(.92); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
 @keyframes tz-mirep-cambio { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
