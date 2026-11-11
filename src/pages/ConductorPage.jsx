@@ -48,7 +48,7 @@ import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import AnimacionExitoNeon from "../components/AnimacionExitoNeon";
 import { useViajeFinalizadoAviso } from "../hooks/useViajeFinalizadoAviso";
 import CalificacionesViaje from "../components/CalificacionesViaje";
-import BotonMiReputacion from "../components/BotonMiReputacion";
+import { usePendientesReputacion } from "../components/MiReputacion";
 import VerificarConductorForm from "../components/VerificarConductorForm";
 import Dropdown from "../components/Dropdown";
 import GemasRecolectadas from "../components/GemasRecolectadas";
@@ -236,6 +236,7 @@ export default function ConductorPage() {
   const [exitoEntrega, setExitoEntrega] = useState(false);
   const [toggleError, setToggleError] = useState("");
   const [editandoPerfil, setEditandoPerfil] = useState(false);
+  const pendientesReputacion = usePendientesReputacion(conductor ? "conductor" : null);
   const [mensajesOpen, setMensajesOpen] = useState(false);
   // Chat de una entrega pedido desde su tarjeta de reparto (botón
   // "Mensajes" de EntregaActivaModal): abre la bandeja directo en él.
@@ -432,9 +433,14 @@ export default function ConductorPage() {
                 onClick={() => setEditandoPerfil(true)}
                 aria-label="Editar perfil"
                 title="Editar perfil"
+                style={{ position: "relative" }}
               >
                 <Pencil size={19} />
                 <span className="tz-header-btn-label">Editar Perfil</span>
+                {/* Por calificar: la tarjeta "Mi reputación" está en el perfil. */}
+                {pendientesReputacion > 0 && (
+                  <span className="tz-header-btn-badge">{pendientesReputacion > 9 ? "+9" : pendientesReputacion}</span>
+                )}
               </button>
               <button
                 className="tz-header-btn"
@@ -458,9 +464,6 @@ export default function ConductorPage() {
                   ) : null;
                 })()}
               </button>
-              {/* Reputación, fase 3b: Mi reputación (estrellas, por
-                  calificar, las que di) con acceso a su página pública. */}
-              <BotonMiReputacion rol="conductor" conductorId={conductor.id} />
             </div>
           ) : (
             <div className="tz-header-side tz-header-side-left" style={{ visibility: "hidden" }}>

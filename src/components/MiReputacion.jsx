@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Star, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { supabase } from "../supabaseClient";
-import MiReputacionModal from "./MiReputacionModal";
+import MiReputacionModal, { TarjetaReputacion } from "./MiReputacionModal";
 
-/* Botón "Reputación" de la cabecera (fase 3b): abre "Mi reputación" del
-   pasajero (HomePage) o del conductor/repartidor (ConductorPage), con un
-   número por lo que tiene por calificar. */
+/* "Mi reputación" (fase 3b) dentro de "Mi perfil" del pasajero y del
+   conductor/repartidor: la tarjeta con el resumen abre MiReputacionModal.
+   usePendientesReputacion(rol): cuántos tiene por calificar (el número del
+   botón "Editar Perfil" de la cabecera). */
 
 const TITULOS = {
   conductor: "¿Cómo te fue con tu conductor?",
@@ -16,25 +17,26 @@ const TITULOS = {
 };
 const POLL_MS = 60000;
 
-export default function BotonMiReputacion({ rol, conductorId }) {
-  const navigate = useNavigate();
-  const [abierto, setAbierto] = useState(false);
+// Pendientes de este rol (un conductor también puede viajar de pasajero).
+async function leerPendientes(rol) {
+  const r = await supabase.rpc("taxi_calificaciones_pendientes");
+  if (r.error) return r;
+  const lista = (Array.isArray(r.data) ? r.data : []).filter((p) =>
+    rol === "pasajero" ? p.calificado_tipo === "conductor" : p.calificado_tipo !== "conductor"
+  );
+  return { data: lista };
+}
+
+export function usePendientesReputacion(rol) {
   const [num, setNum] = useState(0);
-
-  // Pendientes de este rol (un conductor también puede viajar de pasajero).
-  const pendientes = useCallback(async () => {
-    const r = await supabase.rpc("taxi_calificaciones_pendientes");
-    if (r.error) return r;
-    const lista = (Array.isArray(r.data) ? r.data : []).filter((p) =>
-      rol === "pasajero" ? p.calificado_tipo === "conductor" : p.calificado_tipo !== "conductor"
-    );
-    return { data: lista };
-  }, [rol]);
-
   useEffect(() => {
+    if (!rol) {
+      setNum(0);
+      return undefined;
+    }
     let activo = true;
     const contar = () =>
-      pendientes().then((r) => {
+      leerPendientes(rol).then((r) => {
         if (activo && !r.error) setNum(r.data.length);
       });
     contar();
@@ -45,8 +47,17 @@ export default function BotonMiReputacion({ rol, conductorId }) {
       clearInterval(t);
       window.removeEventListener("tz-reputacion-cambio", contar);
     };
-  }, [pendientes]);
+  }, [rol]);
+  return num;
+}
 
+export default function TarjetaMiReputacion({ rol, conductorId }) {
+  const navigate = useNavigate();
+  const [abierto, setAbierto] = useState(false);
+  const [resumen, setResumen] = useState(null);
+  const num = usePendientesReputacion(rol);
+
+  const pendientes = useCallback(() => leerPendientes(rol), [rol]);
   const acciones = useMemo(
     () => ({
       resumen: () => supabase.rpc("taxi_mi_reputacion", { p_rol: rol }),
@@ -65,19 +76,23 @@ export default function BotonMiReputacion({ rol, conductorId }) {
     [rol, pendientes]
   );
 
+  useEffect(() => {
+    let activo = true;
+    const leer = () =>
+      acciones.resumen().then(({ data, error }) => {
+        if (activo && !error && data) setResumen(data);
+      });
+    leer();
+    window.addEventListener("tz-reputacion-cambio", leer);
+    return () => {
+      activo = false;
+      window.removeEventListener("tz-reputacion-cambio", leer);
+    };
+  }, [acciones]);
+
   return (
     <>
-      <button
-        className="tz-header-btn"
-        onClick={() => setAbierto(true)}
-        aria-label="Mi reputación"
-        title="Mi reputación"
-        style={{ position: "relative" }}
-      >
-        <Star size={19} />
-        <span className="tz-header-btn-label">Reputación</span>
-        {num > 0 && <span className="tz-header-btn-badge">{num > 9 ? "+9" : num}</span>}
-      </button>
+      <TarjetaReputacion resumen={resumen} pendientes={num} onAbrir={() => setAbierto(true)} />
       {abierto && (
         <MiReputacionModal
           acciones={acciones}

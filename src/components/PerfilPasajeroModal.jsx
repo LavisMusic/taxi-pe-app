@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import PerfilModal from "./PerfilModal";
+import TarjetaMiReputacion from "./MiReputacion";
 
 // "Editar perfil" del pasajero (cabecera de la pantalla principal): su foto
 // y su nombre de usuario, guardados en su fila de `usuarios` (la política
@@ -60,6 +61,8 @@ export default function PerfilPasajeroModal({ onClose }) {
       fotoHasta={mas7(cambios?.foto_cambiada_at)}
       limitesListos={!!cambios}
       onClose={onClose}
-    />
+    >
+      <TarjetaMiReputacion rol="pasajero" />
+    </PerfilModal>
   );
 }

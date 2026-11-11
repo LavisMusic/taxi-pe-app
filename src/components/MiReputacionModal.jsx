@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Loader2, Star, Clock3, ListChecks, Pencil, Trash2, MessageSquareReply, EyeOff, PartyPopper } from "lucide-react";
+import { X, Loader2, Star, Clock3, ListChecks, Pencil, Trash2, MessageSquareReply, EyeOff, PartyPopper, ChevronRight } from "lucide-react";
 import { Estrellas } from "./Estrellas";
 import InsigniaReputacion from "./InsigniaReputacion";
 import CalificarModal from "./CalificarModal";
@@ -280,6 +280,65 @@ export default function MiReputacionModal({ acciones, titulos = {}, extra = null
     document.body
   );
 }
+
+/* Tarjeta "Mi reputación" para el modal "Mi perfil" (fase 3b, opción A):
+   resumen (promedio, estrellas, total, etiquetas) y pendientes; al tocarla
+   se abre MiReputacionModal. resumen: { reputacion, etiquetas } o null
+   mientras carga. */
+export function TarjetaReputacion({ resumen, pendientes = 0, onAbrir }) {
+  const rep = resumen?.reputacion || {};
+  const total = Number(rep.total || 0);
+  return (
+    <button type="button" className={`tz-mirep-tarjeta ${pendientes > 0 ? "is-pendientes" : ""}`} onClick={onAbrir}>
+      <style>{ESTILO_TARJETA}</style>
+      <span className="tz-mirep-tarjeta-prom">
+        {resumen ? (
+          <>
+            <strong>{total >= 3 ? Number(rep.promedio).toFixed(1) : "—"}</strong>
+            <Estrellas valor={total >= 3 ? rep.promedio : 0} size={12} />
+          </>
+        ) : (
+          <Loader2 size={20} className="tz-spin" />
+        )}
+      </span>
+      <span className="tz-mirep-tarjeta-info">
+        <b><Star size={14} /> Mi reputación</b>
+        <small>{resumen ? (total === 1 ? "1 calificación" : `${total} calificaciones`) : "Cargando…"}</small>
+        {resumen && <InsigniaReputacion rep={rep} etiquetas={resumen.etiquetas || []} tamano="chico" mostrar="etiquetas" />}
+      </span>
+      <span className="tz-mirep-tarjeta-fin">
+        {pendientes > 0 && <span className="tz-mirep-tarjeta-pend">{pendientes} por calificar</span>}
+        <ChevronRight size={18} className="tz-mirep-tarjeta-flecha" />
+      </span>
+    </button>
+  );
+}
+
+const ESTILO_TARJETA = `
+.tz-mirep-tarjeta { box-sizing: border-box; width: 100%; margin-top: 12px; display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 14px;
+  border-radius: 18px; cursor: pointer; font: inherit; text-align: left; color: var(--text);
+  background: linear-gradient(120deg, rgba(255,216,74,0.1), rgba(255,149,0,0.05)); border: 1px solid rgba(255,216,74,0.4);
+  box-shadow: 0 0 18px rgba(255,216,74,0.12);
+  animation: tz-mirep-tarjeta-in .6s .15s cubic-bezier(.34,1.56,.64,1) both;
+  transition: transform .35s cubic-bezier(.34,1.56,.64,1), box-shadow .35s ease, border-color .35s ease; }
+.tz-mirep-tarjeta:hover { transform: translateY(-2px); border-color: rgba(255,216,74,0.75); box-shadow: 0 0 26px rgba(255,216,74,0.3); }
+.tz-mirep-tarjeta:hover .tz-mirep-tarjeta-flecha { transform: translateX(4px); }
+.tz-mirep-tarjeta.is-pendientes { animation: tz-mirep-tarjeta-in .6s .15s cubic-bezier(.34,1.56,.64,1) both, tz-mirep-tarjeta-late 2.4s 1s ease-in-out infinite; }
+.tz-mirep-tarjeta-prom { flex-shrink: 0; min-width: 62px; display: flex; flex-direction: column; align-items: center; gap: 3px; color: #ffd84a; }
+.tz-mirep-tarjeta-prom strong { font-size: 26px; line-height: 1; color: #ffd84a; text-shadow: 0 0 14px rgba(255,216,74,0.55); }
+.tz-mirep-tarjeta-info { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.tz-mirep-tarjeta-info b { display: inline-flex; align-items: center; gap: 6px; font-size: 14.5px; color: #ffd84a; }
+.tz-mirep-tarjeta-info b svg { fill: #ffd84a; }
+.tz-mirep-tarjeta-info small { font-size: 11.5px; color: var(--text-dim); }
+.tz-mirep-tarjeta-fin { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.tz-mirep-tarjeta-pend { padding: 3px 9px; border-radius: 999px; white-space: nowrap; font-size: 11px; font-weight: 900; color: #1a1300;
+  background: linear-gradient(110deg, #ffd84a, #ff9500); box-shadow: 0 0 12px rgba(255,216,74,0.6);
+  animation: tz-mirep-tarjeta-pop .55s .4s cubic-bezier(.34,1.56,.64,1) both; }
+.tz-mirep-tarjeta-flecha { color: #ffd84a; transition: transform .35s cubic-bezier(.34,1.56,.64,1); }
+@keyframes tz-mirep-tarjeta-in { from { opacity: 0; transform: translateY(14px) scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes tz-mirep-tarjeta-pop { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
+@keyframes tz-mirep-tarjeta-late { 0%, 100% { box-shadow: 0 0 16px rgba(255,216,74,0.18); } 50% { box-shadow: 0 0 30px rgba(255,216,74,0.5); } }
+`;
 
 const ESTILO = `
 .tz-mirep-fondo { position: fixed; inset: 0; z-index: 8900; display: grid; place-items: center; padding: 16px;
