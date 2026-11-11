@@ -17,9 +17,7 @@ import {
   Wallet,
   Target,
   MapPinOff,
-  Star,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useConductorSesion } from "../hooks/useConductorSesion";
 import { useHilosChatConductor } from "../hooks/useChatMensajes";
@@ -50,6 +48,7 @@ import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import AnimacionExitoNeon from "../components/AnimacionExitoNeon";
 import { useViajeFinalizadoAviso } from "../hooks/useViajeFinalizadoAviso";
 import CalificacionesViaje from "../components/CalificacionesViaje";
+import BotonMiReputacion from "../components/BotonMiReputacion";
 import VerificarConductorForm from "../components/VerificarConductorForm";
 import Dropdown from "../components/Dropdown";
 import GemasRecolectadas from "../components/GemasRecolectadas";
@@ -75,7 +74,6 @@ import { useAnuncioActivo } from "../hooks/useAnuncioActivo";
 // tiene abierta mientras maneja, no un dashboard para leer con calma.
 export default function ConductorPage() {
   const { usuario, logout, updateUsuario } = useTaxiAuth();
-  const navigate = useNavigate();
   // Chats fijados "Taxi PE" y "Tonazo" (van dentro de su bandeja de chats).
   const plataforma = useMensajesPlataforma(usuario?.id);
   // Tocar una notificación emergente abre su bandeja en ese chat fijado.
@@ -460,16 +458,9 @@ export default function ConductorPage() {
                   ) : null;
                 })()}
               </button>
-              {/* Reputación, fase 2: su página pública con las opiniones. */}
-              <button
-                className="tz-header-btn"
-                onClick={() => navigate(`/conductores/${conductor.id}`)}
-                aria-label="Mi reputación"
-                title="Mi reputación"
-              >
-                <Star size={19} />
-                <span className="tz-header-btn-label">Reputación</span>
-              </button>
+              {/* Reputación, fase 3b: Mi reputación (estrellas, por
+                  calificar, las que di) con acceso a su página pública. */}
+              <BotonMiReputacion rol="conductor" conductorId={conductor.id} />
             </div>
           ) : (
             <div className="tz-header-side tz-header-side-left" style={{ visibility: "hidden" }}>
