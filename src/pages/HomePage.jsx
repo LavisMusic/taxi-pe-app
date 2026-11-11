@@ -46,6 +46,8 @@ import BotonSoporte from "../components/BotonSoporte";
 import BotonMensajes from "../components/mensajes/BotonMensajes";
 import CalificacionesViaje from "../components/CalificacionesViaje";
 import { usePendientesReputacion } from "../components/MiReputacion";
+import { useMiSancion } from "../hooks/useMiSancion";
+import AvisoSancion from "../components/AvisoSancion";
 
 // Persistencia del filtro de localidad — sobrevive a un F5 (ver el
 // useState/useEffect de `localidad` más abajo). Es la única pieza de
@@ -267,6 +269,7 @@ export default function HomePage() {
   const [accesoRecolectorOpen, setAccesoRecolectorOpen] = useState(false);
   const [perfilOpen, setPerfilOpen] = useState(false);
   const pendientesReputacion = usePendientesReputacion(usuario && esPasajero ? "pasajero" : null);
+  const sancionPasajero = useMiSancion(!!usuario && esPasajero).pasajero;
   // Se guarda solo el ID, no una copia del objeto — `conductores` ya
   // está suscrito a Realtime (useConductoresPublicos.js), así que
   // derivar el conductor actual de ahí en cada render (en vez de
@@ -512,6 +515,8 @@ export default function HomePage() {
       <div className="tz-banda-filtros" aria-hidden="true" />
 
       <main className="tz-main">
+        {/* Reportes (fase 4a): cuenta suspendida o bloqueada. */}
+        <AvisoSancion sancion={sancionPasajero} rol="pasajero" />
         {/* Restauración de layout: el filtro de localidad vuelve a la
            pantalla principal, encima del botón de Radar, los dos
            centrados (ver .tz-radar-bar en Styles.jsx) — antes vivía

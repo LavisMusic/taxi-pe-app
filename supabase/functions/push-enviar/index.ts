@@ -80,6 +80,52 @@ Deno.serve(async () => {
     );
   }
 
+  // Mensajes para UNA persona (resultado de un reporte, sanción: migración
+  // 20261119100000): van solo a los dispositivos de esa cuenta. Si la
+  // columna todavía no existe, la consulta falla y no se manda nada.
+  const { data: personales } = await db
+    .from("mensajes_plataforma")
+    .select("id, canal, titulo, mensaje, destinatario_id, roles")
+    .eq("push_personal_pendiente", true)
+    .lte("programado_para", ahora)
+    .limit(50);
+  for (const m of personales ?? []) {
+    const { data: tomado } = await db
+      .from("mensajes_plataforma")
+      .update({ push_personal_pendiente: false })
+      .eq("id", m.id)
+      .eq("push_personal_pendiente", true)
+      .select("id");
+    if (!tomado?.length || !m.destinatario_id) continue;
+    const { data: subs } = await db
+      .from("push_suscripciones")
+      .select("id, endpoint, p256dh, auth, usuarios!inner(rol, notificaciones_activas)")
+      .eq("usuario_id", m.destinatario_id)
+      .eq("usuarios.notificaciones_activas", true);
+    await Promise.all(
+      (subs ?? []).map(async (s) => {
+        const rol = (s.usuarios as unknown as { rol: string }).rol;
+        try {
+          const status = await enviarPush(
+            s,
+            {
+              title: m.titulo || NOMBRE_CANAL[m.canal] || "Taxi PE",
+              body: String(m.mensaje || "").slice(0, 200),
+              canal: m.canal,
+              url: `${RUTA_ROL[rol] ?? "/"}?mensajes=${m.canal}`,
+              tag: `msg-${m.id}`,
+            },
+            vapid
+          );
+          if (status === 404 || status === 410) await db.from("push_suscripciones").delete().eq("id", s.id);
+          else if (status < 300) enviados++;
+        } catch (err) {
+          console.error("[push-enviar] error enviando (personal)", err);
+        }
+      })
+    );
+  }
+
   return new Response(JSON.stringify({ ok: true, mensajes: pendientes?.length ?? 0, enviados }), {
     headers: { "Content-Type": "application/json" },
   });

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Loader2, Star, Clock3, ListChecks, Pencil, Trash2, MessageSquareReply, EyeOff, PartyPopper, ChevronRight } from "lucide-react";
+import { X, Loader2, Star, Clock3, ListChecks, Pencil, Trash2, MessageSquareReply, EyeOff, PartyPopper, ChevronRight, Flag } from "lucide-react";
 import { Estrellas } from "./Estrellas";
 import InsigniaReputacion from "./InsigniaReputacion";
 import CalificarModal from "./CalificarModal";
+import MisReportes from "./MisReportes";
 import { avisarCambioReputacion } from "../lib/reputacion";
 
 /* "Mi reputación" (fase 3b de Reportes y reputación) — MISMO archivo en
@@ -16,13 +17,16 @@ import { avisarCambioReputacion } from "../lib/reputacion";
      borrar(item)          → { error? }
      completar(items)?     → items (p. ej. el nombre del repartidor)
    titulos: { [calificado_tipo]: "¿Cómo te fue…?" }; extra: algo bajo las
-   estrellas (el conductor: "Ver mi página"); descripcion: quién lo califica. */
+   estrellas (el conductor: "Ver mi página"); descripcion: quién lo califica.
+   Fase 4: acciones.reportes ({ leer, reportar }, ver MisReportes.jsx) suma
+   la pestaña "Reportes"; avisoDonde: el chat donde llega la respuesta. */
 
-const PESTANAS = [
+const PESTANAS_BASE = [
   { id: "estrellas", label: "Mis estrellas", Icono: Star },
   { id: "pendientes", label: "Por calificar", Icono: Clock3 },
   { id: "dadas", label: "Las que di", Icono: ListChecks },
 ];
+const PESTANA_REPORTES = { id: "reportes", label: "Reportes", Icono: Flag };
 const DIA = 86400000;
 const claveDe = (p) => `${p.ref}|${p.calificado_tipo}`;
 const fechaCorta = (f) => new Date(f).toLocaleDateString("es-PE", { day: "numeric", month: "short", year: "numeric" });
@@ -34,7 +38,16 @@ function Avatar({ foto, nombre }) {
   return <span className="tz-mirep-avatar is-letra">{(nombre || "?").replace(/^@/, "").slice(0, 1).toUpperCase()}</span>;
 }
 
-export default function MiReputacionModal({ acciones, titulos = {}, extra = null, descripcion = "", pestanaInicial = "estrellas", onClose }) {
+export default function MiReputacionModal({
+  acciones,
+  titulos = {},
+  extra = null,
+  descripcion = "",
+  pestanaInicial = "estrellas",
+  avisoDonde = "Taxi PE",
+  onClose,
+}) {
+  const PESTANAS = acciones.reportes ? [...PESTANAS_BASE, PESTANA_REPORTES] : PESTANAS_BASE;
   const [pestana, setPestana] = useState(pestanaInicial);
   const [resumen, setResumen] = useState(null);
   const [pendientes, setPendientes] = useState(null);
@@ -120,7 +133,7 @@ export default function MiReputacionModal({ acciones, titulos = {}, extra = null
         <button type="button" className="tz-mirep-cerrar" onClick={onClose} aria-label="Cerrar"><X size={18} /></button>
         <h3 className="tz-mirep-titulo"><Star size={18} /> Mi reputación</h3>
 
-        <div className="tz-mirep-tabs" role="tablist" style={{ "--i": idx }}>
+        <div className={`tz-mirep-tabs ${PESTANAS.length > 3 ? "is-cuatro" : ""}`} role="tablist" style={{ "--i": idx, "--n": PESTANAS.length }}>
           <span className="tz-mirep-tabs-luz" aria-hidden="true" />
           {PESTANAS.map(({ id, label, Icono }) => (
             <button
@@ -260,6 +273,8 @@ export default function MiReputacionModal({ acciones, titulos = {}, extra = null
                 })}
               </ul>
             ))}
+
+          {pestana === "reportes" && acciones.reportes && <MisReportes reportes={acciones.reportes} avisoDonde={avisoDonde} />}
         </div>
       </div>
 
@@ -341,7 +356,7 @@ const ESTILO_TARJETA = `
 `;
 
 const ESTILO = `
-.tz-mirep-fondo { position: fixed; inset: 0; z-index: 8900; display: grid; place-items: center; padding: 16px;
+.tz-mirep-fondo { position: fixed; inset: 0; z-index: 8900; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; padding: 16px;
   background: rgba(5,3,12,0.7); backdrop-filter: blur(6px); animation: tz-mirep-fade .3s ease both; }
 .tz-mirep *, .tz-mirep *::before, .tz-mirep *::after { box-sizing: border-box; }
 .tz-mirep { position: relative; width: min(460px, 100%); height: min(620px, 92vh); display: flex; flex-direction: column; gap: 10px;
@@ -354,9 +369,9 @@ const ESTILO = `
 .tz-mirep-titulo { margin: 0; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 18px; color: #ffd84a;
   text-shadow: 0 0 14px rgba(255,216,74,0.45); }
 .tz-mirep-titulo svg { fill: #ffd84a; }
-.tz-mirep-tabs { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); padding: 4px; border-radius: 16px;
+.tz-mirep-tabs { position: relative; display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); padding: 4px; border-radius: 16px;
   background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); }
-.tz-mirep-tabs-luz { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / 3); border-radius: 12px;
+.tz-mirep-tabs-luz { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / var(--n, 3)); border-radius: 12px;
   background: linear-gradient(110deg, rgba(255,216,74,0.22), rgba(255,149,0,0.18)); border: 1px solid rgba(255,216,74,0.5);
   box-shadow: 0 0 16px rgba(255,216,74,0.3); transform: translateX(calc(var(--i) * 100%));
   transition: transform .5s cubic-bezier(.34,1.56,.64,1); }
@@ -430,6 +445,8 @@ const ESTILO = `
   transition: transform .3s cubic-bezier(.34,1.56,.64,1), box-shadow .3s ease; }
 .tz-mirep-pagina:hover { transform: translateY(-2px); box-shadow: 0 0 14px rgba(43,232,255,0.4); }
 @media (max-width: 420px) { .tz-mirep-tab { font-size: 11.5px; gap: 4px; } .tz-mirep-tab svg { display: none; } }
+.tz-mirep-tabs.is-cuatro .tz-mirep-tab { font-size: 11.5px; gap: 4px; padding-inline: 2px; }
+@media (max-width: 480px) { .tz-mirep-tabs.is-cuatro .tz-mirep-tab { font-size: 10.5px; } .tz-mirep-tabs.is-cuatro .tz-mirep-tab svg { display: none; } }
 @keyframes tz-mirep-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes tz-mirep-in { from { opacity: 0; transform: translateY(18px) scale(.92); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
 @keyframes tz-mirep-cambio { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }

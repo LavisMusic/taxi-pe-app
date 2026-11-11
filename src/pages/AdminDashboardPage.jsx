@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, CreditCard, MapPin, Loader2, Trash2, MessageSquareText, BarChart3 } from "lucide-react";
+import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, CreditCard, MapPin, Loader2, Trash2, MessageSquareText, BarChart3, ShieldAlert } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useLocalidades } from "../hooks/useLocalidades";
@@ -48,6 +48,7 @@ import AdminLocalidadesModal from "../components/admin/AdminLocalidadesModal";
 import UsuariosModal from "../components/admin/UsuariosModal";
 import CategoriasModal from "../components/admin/CategoriasModal";
 import PeticionesModal from "../components/admin/PeticionesModal";
+import ReportesAdminModal, { useConteoReportes } from "../components/admin/ReportesAdminModal";
 import PagosMetodoModal from "../components/admin/PagosMetodoModal";
 import LimpiarChatsModal from "../components/admin/LimpiarChatsModal";
 import GestorRecargaConductorModal from "../components/admin/GestorRecargaConductorModal";
@@ -259,6 +260,10 @@ export default function AdminDashboardPage() {
     reordenarLocalidades,
   } = useLocalidades();
   const [peticionesOpen, setPeticionesOpen] = useState(false);
+  // Centro de reportes (fase 4a): el número son los reportes nuevos.
+  const [reportesOpen, setReportesOpen] = useState(false);
+  const conteoReportes = useConteoReportes();
+  const reportesNuevos = conteoReportes?.nuevo || 0;
   const [pagosMenuOpen, setPagosMenuOpen] = useState(false);
   const [pagosMetodoAbierto, setPagosMetodoAbierto] = useState(null);
   const [recargaOpen, setRecargaOpen] = useState(false);
@@ -323,6 +328,16 @@ export default function AdminDashboardPage() {
               <Inbox size={19} />
               <span className="tz-header-btn-label">Peticiones</span>
               {totalPeticiones > 0 && <span className="tz-header-btn-badge">{totalPeticiones}</span>}
+            </button>
+            <button
+              className="tz-header-btn"
+              onClick={() => setReportesOpen(true)}
+              aria-label="Centro de reportes"
+              style={{ position: "relative" }}
+            >
+              <ShieldAlert size={19} />
+              <span className="tz-header-btn-label">Reportes</span>
+              {reportesNuevos > 0 && <span className="tz-header-btn-badge">{reportesNuevos > 9 ? "+9" : reportesNuevos}</span>}
             </button>
           </div>
 
@@ -482,6 +497,7 @@ export default function AdminDashboardPage() {
       </footer>
 
       {limpiarChatsOpen && <LimpiarChatsModal onClose={() => setLimpiarChatsOpen(false)} />}
+      {reportesOpen && <ReportesAdminModal onClose={() => setReportesOpen(false)} />}
 
       {recargaOpen && recargaConductor && (
         <GestorRecargaConductorModal

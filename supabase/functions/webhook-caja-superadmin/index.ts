@@ -95,11 +95,17 @@ Deno.serve(async (req) => {
       return jsonResponse(200, { ok: true });
     }
     case "mensajes.listar": {
-      const { data, error } = await db
-        .from("mensajes_plataforma")
-        .select("id, canal, titulo, mensaje, imagen_url, video_url, boton_url, boton_texto, roles, programado_para, vence_at, created_at")
-        .order("created_at", { ascending: false })
-        .limit(300);
+      // Sin los mensajes para una sola persona (resultado de reportes,
+      // migración 20261119100000); sin esa columna, la lista de siempre.
+      const consulta = (soloGenerales: boolean) => {
+        let q = db
+          .from("mensajes_plataforma")
+          .select("id, canal, titulo, mensaje, imagen_url, video_url, boton_url, boton_texto, roles, programado_para, vence_at, created_at");
+        if (soloGenerales) q = q.is("destinatario_id", null);
+        return q.order("created_at", { ascending: false }).limit(300);
+      };
+      let { data, error } = await consulta(true);
+      if (error) ({ data, error } = await consulta(false));
       if (error) return jsonResponse(500, { error: error.message });
       return jsonResponse(200, { ok: true, filas: data ?? [] });
     }
