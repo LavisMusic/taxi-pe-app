@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   LogOut,
   Pencil,
+  UserRound,
   Zap,
   Car,
   Ban,
@@ -435,7 +436,7 @@ export default function ConductorPage() {
                 title="Editar perfil"
                 style={{ position: "relative" }}
               >
-                <Pencil size={19} />
+                <UserRound size={19} />
                 <span className="tz-header-btn-label">Editar Perfil</span>
                 {/* Por calificar: la tarjeta "Mi reputación" está en el perfil. */}
                 {pendientesReputacion > 0 && (

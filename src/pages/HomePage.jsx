@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LogIn, LogOut, Car, Users, MessageCircle, X, Loader2, MapPin, Pencil } from "lucide-react";
+import { LogIn, LogOut, Car, Users, MessageCircle, X, Loader2, MapPin, UserRound } from "lucide-react";
 import PerfilPasajeroModal from "../components/PerfilPasajeroModal";
 import { supabase } from "../supabaseClient";
 import { useConductoresPublicos } from "../hooks/useConductoresPublicos";
@@ -452,7 +452,7 @@ export default function HomePage() {
                   title="Editar perfil"
                   style={{ position: "relative" }}
                 >
-                  <Pencil size={19} />
+                  <UserRound size={19} />
                   <span className="tz-header-btn-label">Editar Perfil</span>
                   {/* Por calificar: la tarjeta "Mi reputación" está en el perfil. */}
                   {pendientesReputacion > 0 && (
