@@ -10,15 +10,20 @@ import CalificarModal from "./CalificarModal";
    lista de comentarios ANÓNIMOS con sus botones:
      - quien lo escribió: Editar / Borrar (es_mio);
      - el calificado: Responder / editar o borrar su respuesta;
-     - el admin: Ocultar / Mostrar.
+     - el calificado: Ocultar / Mostrar lo que dicen de él (queda la marca
+       "Comentario oculto por el conductor/negocio"; no puede mostrar lo que
+       ocultó la moderación);
+     - el admin: Ocultar / Mostrar (moderación).
    Props:
      resumen: { reputacion: {total, promedio, distribucion, etiqueta},
                 etiquetas, puede_responder, puede_ocultar }
      cargar(estrellas|null, antes|null) → { data, error }
      acciones: { miCalificacion(item) → { data: {estrellas, comentario} },
                  guardar(item, estrellas, comentario), borrar(item),
-                 responder(item, texto), ocultar(item, oculto) } → { error? }
-     nombre: de quién son las opiniones; quienResponde: "el conductor"…
+                 responder(item, texto), ocultar(item, oculto),
+                 ocultarPropio(item, oculto) } → { error? }
+     nombre: de quién son las opiniones; quienResponde: "el conductor"…;
+     quienOculta: "el conductor" / "el negocio" (para la marca)
      servicios: { viaje: "Viaje", ... } (etiqueta del tipo de servicio)
      onCambio(): refrescar el resumen. */
 
@@ -93,7 +98,9 @@ function Resumen({ resumen }) {
   );
 }
 
-function Comentario({ item, i, resumen, acciones, servicios, quienResponde, onEditar, onRecargar }) {
+function Comentario({ item, i, resumen, acciones, servicios, quienResponde, quienOculta, onEditar, onRecargar }) {
+  const porQuien = item.oculto_por === "calificado" ? `por ${quienOculta}` : "por moderación";
+  const puedeOcultarPropio = resumen?.puede_responder && acciones.ocultarPropio && item.oculto_por !== "admin";
   const [respondiendo, setRespondiendo] = useState(false);
   const [texto, setTexto] = useState(item.respuesta || "");
   const [ocupado, setOcupado] = useState(null);
@@ -122,9 +129,11 @@ function Comentario({ item, i, resumen, acciones, servicios, quienResponde, onEd
       {item.comentario != null ? (
         <p className="tz-op-texto">{item.comentario}</p>
       ) : (
-        <p className="tz-op-texto is-oculto"><EyeOff size={13} /> Comentario oculto por moderación.</p>
+        <p className="tz-op-texto is-oculto"><EyeOff size={13} /> Comentario oculto {porQuien}.</p>
       )}
-      {item.oculto && item.comentario != null && <p className="tz-op-aviso-oculto"><EyeOff size={12} /> Oculto para los demás</p>}
+      {item.oculto && item.comentario != null && (
+        <p className="tz-op-aviso-oculto"><EyeOff size={12} /> Oculto {porQuien}: los demás no ven el texto</p>
+      )}
 
       {item.respuesta && !respondiendo && (
         <div className="tz-op-respuesta">
@@ -170,6 +179,12 @@ function Comentario({ item, i, resumen, acciones, servicios, quienResponde, onEd
             )}
           </>
         )}
+        {puedeOcultarPropio && !resumen?.puede_ocultar && (
+          <button type="button" className="tz-op-btn" onClick={() => correr("ocultarPropio", () => acciones.ocultarPropio(item, !item.oculto))} disabled={!!ocupado}>
+            {ocupado === "ocultarPropio" ? <Loader2 size={13} className="tz-spin" /> : item.oculto ? <Eye size={13} /> : <EyeOff size={13} />}
+            {item.oculto ? "Mostrar" : "Ocultar"}
+          </button>
+        )}
         {resumen?.puede_ocultar && (
           <button type="button" className="tz-op-btn" onClick={() => correr("ocultar", () => acciones.ocultar(item, !item.oculto))} disabled={!!ocupado}>
             {ocupado === "ocultar" ? <Loader2 size={13} className="tz-spin" /> : item.oculto ? <Eye size={13} /> : <EyeOff size={13} />}
@@ -182,7 +197,9 @@ function Comentario({ item, i, resumen, acciones, servicios, quienResponde, onEd
   );
 }
 
-export default function Opiniones({ resumen, cargar, acciones, nombre, quienResponde = "el calificado", servicios, onCambio }) {
+export default function Opiniones({
+  resumen, cargar, acciones, nombre, quienResponde = "el calificado", quienOculta = "el calificado", servicios, onCambio,
+}) {
   const [filtro, setFiltro] = useState(null);
   const [lista, setLista] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -235,7 +252,7 @@ export default function Opiniones({ resumen, cargar, acciones, nombre, quienResp
         <ul className="tz-op-lista">
           {lista.map((item, i) => (
             <Comentario key={item.id} item={item} i={i} resumen={resumen} acciones={acciones} servicios={servicios}
-              quienResponde={quienResponde} onEditar={editar} onRecargar={recargar} />
+              quienResponde={quienResponde} quienOculta={quienOculta} onEditar={editar} onRecargar={recargar} />
           ))}
         </ul>
       )}

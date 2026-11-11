@@ -8,6 +8,7 @@ import { useEntregasRepartidor, MAX_REPARTOS } from "../../hooks/useEntregasRepa
 import { useEntregaGpsBroadcaster } from "../../hooks/useEntregaGpsBroadcaster";
 import { MAPBOX_TILE_URL, MAPBOX_ATTRIBUTION } from "../../lib/mapboxConfig";
 import EntregaActivaModal from "./EntregaActivaModal";
+import ReputacionEntrega from "./ReputacionEntrega";
 import { formatSoles } from "../../utils/format";
 
 // Bandeja de reparto en la pantalla del conductor (ver DELIVERY.md §7).
@@ -272,11 +273,13 @@ export default function EntregasRepartidorPanel({
           )}
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <PackageCheck size={16} /> Entrega en curso · {entrega.cliente_nombre || "Cliente"}
+            <ReputacionEntrega entregaId={entrega.id} tipo="cliente" />
           </span>
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
             {entrega.caja_sucursal && (
               <span className="tz-entrega-badge tz-entrega-badge-sucursal">{entrega.caja_sucursal}</span>
             )}
+            <ReputacionEntrega entregaId={entrega.id} tipo="negocio" />
             <span className={`tz-entrega-badge tz-entrega-badge-${sale ? "entregado" : entrega.estado}`}>
               {sale ? "entregado" : entrega.estado.replace("_", " ")}
             </span>
@@ -299,7 +302,10 @@ export default function EntregasRepartidorPanel({
           return (
             <div key={o.oferta_id} className="tz-add-entry tz-oferta-card" style={{ marginTop: 8 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, margin: "0 0 4px" }}>
-                <p style={{ margin: 0, fontWeight: 600 }}>{o.cliente_nombre || "Cliente"}</p>
+                <p className="tz-nombre-rep" style={{ margin: 0, fontWeight: 600 }}>
+                  {o.cliente_nombre || "Cliente"}
+                  <ReputacionEntrega entregaId={o.entrega_id} tipo="cliente" />
+                </p>
                 {tieneRuta && (
                   <button
                     type="button"
@@ -317,6 +323,7 @@ export default function EntregasRepartidorPanel({
               </p>
               <p className="tz-camera-note" style={{ margin: "0 0 3px", display: "flex", gap: 6 }}>
                 <Store size={13} /> {o.caja_sucursal || "Sucursal"}
+                <ReputacionEntrega entregaId={o.entrega_id} tipo="negocio" />
               </p>
               {o.total != null && (
                 <p className="tz-camera-note" style={{ margin: "0 0 3px" }}>

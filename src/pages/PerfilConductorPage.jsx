@@ -56,6 +56,7 @@ export default function PerfilConductorPage() {
     borrar: (it) => tras(supabase.rpc("taxi_borrar_calificacion", { p_ref: it.ref, p_calificado_tipo: "conductor" })),
     responder: (it, t) => supabase.rpc("taxi_responder_calificacion", { p_id: it.id, p_respuesta: t }),
     ocultar: (it, o) => supabase.rpc("taxi_ocultar_calificacion", { p_id: it.id, p_oculto: o }),
+    ocultarPropio: (it, o) => supabase.rpc("taxi_ocultar_mi_comentario", { p_id: it.id, p_oculto: o }),
   }), []);
 
   const compartir = async () => {
@@ -125,6 +126,7 @@ export default function PerfilConductorPage() {
               acciones={acciones}
               nombre={perfil.nombre}
               quienResponde={perfil.es_mio ? "ti" : "el conductor"}
+              quienOculta="el conductor"
               servicios={SERVICIOS}
               onCambio={leer}
             />
