@@ -30,6 +30,7 @@ export default function PerfilModal({
   fotoHasta = null,
   limitesListos = true,
   onClose,
+  children = null,
 }) {
   const fecha = (ms) =>
     ms && ms > Date.now()
@@ -94,6 +95,8 @@ export default function PerfilModal({
         </form>
         {aviso && <p className="tz-camera-note">{aviso}</p>}
         {error && <p className="tz-error">{error}</p>}
+        {/* Lo que agrega cada perfil (p. ej. la tarjeta "Mi reputación"). */}
+        {children}
       </div>
       {editandoFoto && (
         <GestionImagenModal

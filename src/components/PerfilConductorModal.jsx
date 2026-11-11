@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import PerfilModal from "./PerfilModal";
+import TarjetaMiReputacion from "./MiReputacion";
 
 // "Editar perfil" del conductor: el mismo "Mi perfil" que el pasajero. La
 // foto va a su fila de conductor (`actualizar` de useConductorSesion) y el
@@ -55,6 +56,8 @@ export default function PerfilConductorModal({ conductor, actualizar, onClose })
         return null;
       }}
       onClose={onClose}
-    />
+    >
+      <TarjetaMiReputacion rol="conductor" conductorId={conductor.id} />
+    </PerfilModal>
   );
 }

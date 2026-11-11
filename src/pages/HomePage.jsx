@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LogIn, LogOut, Car, Users, MessageCircle, X, Loader2, MapPin, Pencil } from "lucide-react";
+import { LogIn, LogOut, Car, Users, MessageCircle, X, Loader2, MapPin, UserRound } from "lucide-react";
 import PerfilPasajeroModal from "../components/PerfilPasajeroModal";
 import { supabase } from "../supabaseClient";
 import { useConductoresPublicos } from "../hooks/useConductoresPublicos";
@@ -45,7 +45,7 @@ import { useMisGemas } from "../hooks/useMisGemas";
 import BotonSoporte from "../components/BotonSoporte";
 import BotonMensajes from "../components/mensajes/BotonMensajes";
 import CalificacionesViaje from "../components/CalificacionesViaje";
-import BotonMiReputacion from "../components/BotonMiReputacion";
+import { usePendientesReputacion } from "../components/MiReputacion";
 
 // Persistencia del filtro de localidad — sobrevive a un F5 (ver el
 // useState/useEffect de `localidad` más abajo). Es la única pieza de
@@ -266,6 +266,7 @@ export default function HomePage() {
   const [accesoConductorOpen, setAccesoConductorOpen] = useState(false);
   const [accesoRecolectorOpen, setAccesoRecolectorOpen] = useState(false);
   const [perfilOpen, setPerfilOpen] = useState(false);
+  const pendientesReputacion = usePendientesReputacion(usuario && esPasajero ? "pasajero" : null);
   // Se guarda solo el ID, no una copia del objeto — `conductores` ya
   // está suscrito a Realtime (useConductoresPublicos.js), así que
   // derivar el conductor actual de ahí en cada render (en vez de
@@ -444,12 +445,21 @@ export default function HomePage() {
                 accesos de conductor/recolector son para entrar). */}
             {usuario && esPasajero ? (
               <>
-                <button className="tz-header-btn" onClick={() => setPerfilOpen(true)} aria-label="Editar perfil" title="Editar perfil">
-                  <Pencil size={19} />
+                <button
+                  className="tz-header-btn"
+                  onClick={() => setPerfilOpen(true)}
+                  aria-label="Editar perfil"
+                  title="Editar perfil"
+                  style={{ position: "relative" }}
+                >
+                  <UserRound size={19} />
                   <span className="tz-header-btn-label">Editar Perfil</span>
+                  {/* Por calificar: la tarjeta "Mi reputación" está en el perfil. */}
+                  {pendientesReputacion > 0 && (
+                    <span className="tz-header-btn-badge">{pendientesReputacion > 9 ? "+9" : pendientesReputacion}</span>
+                  )}
                 </button>
                 <BotonMensajes usuarioId={usuario.id} conductores={chatsMensajes} onAbrirConductor={verChat} />
-                <BotonMiReputacion rol="pasajero" />
               </>
             ) : (
               <>
