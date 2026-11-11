@@ -68,6 +68,8 @@ import TextoMaquina from "../components/TextoMaquina";
 import AnuncioPopupModal from "../components/AnuncioPopupModal";
 import { useDescripcionesPublico } from "../hooks/useDescripciones";
 import { useAnuncioActivo } from "../hooks/useAnuncioActivo";
+import { useMiSancion } from "../hooks/useMiSancion";
+import AvisoSancion from "../components/AvisoSancion";
 
 // Ruta /conductor — entra por RequireUsuarioRol rol="conductor".
 // Mobile-first a propósito: una sola columna angosta (max 420px,
@@ -169,7 +171,10 @@ export default function ConductorPage() {
   // raíz, sin importar cuánta membresía/créditos tenga — a diferencia
   // del "sin saldo" de abajo, esto NO se levanta solo al recargar, hace
   // falta que el Admin lo vuelva a cambiar de estado a mano.
-  const inhabilitadoPorAdmin = conductor?.estado === ESTADO_CONDUCTOR_INHABILITADO;
+  // Reportes (fase 4a): suspendido o bloqueado por un reporte = sin acceso
+  // (la base también se lo impide).
+  const sancionConductor = useMiSancion(!!conductor).conductor;
+  const inhabilitadoPorAdmin = conductor?.estado === ESTADO_CONDUCTOR_INHABILITADO || !!sancionConductor;
   // Cuenta sin aprobar (temporal o en revisión): trabaja igual, pero
   // primero elige su vehículo (sale con ese ícono en el radar). Si el
   // Admin rechazó su verificación, no se conecta hasta reenviarla.
@@ -692,7 +697,9 @@ export default function ConductorPage() {
               </span>
               <span className="tz-estado-toggle-hint">
                 {inhabilitadoPorAdmin
-                  ? "Tu cuenta fue inhabilitada por el administrador"
+                  ? sancionConductor
+                    ? "Cuenta suspendida por un reporte"
+                    : "Tu cuenta fue inhabilitada por el administrador"
                   : !tieneAcceso
                     ? "Recarga tu membresía o tus créditos"
                     : enCarrera
@@ -708,6 +715,7 @@ export default function ConductorPage() {
             </button>
 
             {toggleError && <p className="tz-error" style={{ textAlign: "center" }}>{toggleError}</p>}
+            <AvisoSancion sancion={sancionConductor} rol="conductor" />
 
             <div className="tz-method-history" style={{ marginTop: 18 }}>
               <span className="tz-method-history-label">Mi perfil de chat</span>

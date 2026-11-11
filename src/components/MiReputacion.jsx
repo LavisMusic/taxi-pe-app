@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ExternalLink } from "lucide-react";
 import { supabase } from "../supabaseClient";
+import { subirComprobantePrivado } from "../lib/comprobantes";
 import MiReputacionModal, { TarjetaReputacion } from "./MiReputacionModal";
 
 /* "Mi reputación" (fase 3b) dentro de "Mi perfil" del pasajero y del
@@ -72,6 +73,29 @@ export default function TarjetaMiReputacion({ rol, conductorId }) {
             })
           : supabase.rpc("taxi_calificar", { p_ref: item.ref, p_estrellas: estrellas, p_comentario: comentario }),
       borrar: (item) => supabase.rpc("taxi_borrar_calificacion", { p_ref: item.ref, p_calificado_tipo: item.calificado_tipo }),
+      // Fase 4a: pestaña "Reportes" (viajes de los últimos 30 días).
+      reportes: {
+        leer: () => supabase.rpc("taxi_mis_reportes", { p_rol: rol }),
+        reportar: async (item, motivo, descripcion, archivo) => {
+          let foto = null;
+          if (archivo) {
+            // Bucket privado: solo el Admin y quien la subió la ven.
+            const { data } = await supabase.auth.getSession();
+            const uid = data?.session?.user?.id;
+            if (!uid) return { error: new Error("Inicia sesión para reportar.") };
+            const subida = await subirComprobantePrivado(archivo, `reportes/${uid}`);
+            if (subida.error) return { error: new Error("No se pudo subir la foto. Inténtalo otra vez.") };
+            foto = subida.valor;
+          }
+          return supabase.rpc("taxi_reportar", {
+            p_ref: item.ref,
+            p_reportado_tipo: item.reportado_tipo,
+            p_motivo: motivo,
+            p_descripcion: descripcion,
+            p_foto: foto,
+          });
+        },
+      },
     }),
     [rol, pendientes]
   );
