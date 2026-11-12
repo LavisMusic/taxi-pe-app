@@ -322,6 +322,7 @@ export default function RecolectorPage() {
                 tope={gemasRecolector.tope}
                 valor={Number(gemasRecolector.valor) || 0.1}
                 activo={gemasRecolector.activo}
+                clave={usuario?.id ? `tz-gemrec-recolector-${usuario.id}` : null}
               />
             )}
 

@@ -15,25 +15,56 @@ const COLORES = {
   celeste: { a: "#2be8ff", b: "#8fd8ff", rgb: "43,232,255", nombre: "celestes" },
 };
 
-export default function GemasRecolectadas({ color = "verde", recolectadas = 0, apartadas = 0, tope = 50, valor = 0.1, activo = true }) {
+// `clave`: dónde se recuerda (por cuenta, en este navegador) cuántas vio.
+// Así la barra solo crece desde 0 la primera vez; después arranca donde
+// la dejó y solo se mueve (con su destello "+N") si entraron gemas
+// mientras no estaba.
+function leerVisto(clave) {
+  if (!clave) return null;
+  try {
+    const v = window.localStorage.getItem(clave);
+    return v == null ? null : Number(v);
+  } catch {
+    return null;
+  }
+}
+function guardarVisto(clave, valor) {
+  if (!clave) return;
+  try {
+    window.localStorage.setItem(clave, String(valor));
+  } catch {
+    // Sin almacenamiento: la barra vuelve a crecer desde 0 al entrar.
+  }
+}
+
+export default function GemasRecolectadas({ color = "verde", recolectadas = 0, apartadas = 0, tope = 50, valor = 0.1, activo = true, clave = null }) {
   const c = COLORES[color] || COLORES.verde;
   const lleno = tope > 0 && recolectadas + apartadas >= tope;
-  const pct = tope > 0 ? Math.min(100, (recolectadas / tope) * 100) : 0;
+  const pctDe = (n) => (tope > 0 ? Math.min(100, (Math.max(0, n) / tope) * 100) : 0);
+  const pct = pctDe(recolectadas);
   const pctApartadas = tope > 0 ? Math.min(100 - pct, (apartadas / tope) * 100) : 0;
-  // La barra crece desde 0 la primera vez que se ve.
+  const [visto] = useState(() => leerVisto(clave));
+  // La barra crece desde lo último que se vio (desde 0 la primera vez).
   const [visible, setVisible] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 120);
     return () => clearTimeout(t);
   }, []);
-  // Destello cuando entra una gema (llega al instante por Realtime).
-  const previo = useRef(recolectadas);
+  // Destello cuando entra una gema: al instante por Realtime o, al entrar,
+  // si llegaron mientras no estaba.
+  const previo = useRef(visto != null && visto < recolectadas ? visto : recolectadas);
   const [sube, setSube] = useState(0);
+  const [mas, setMas] = useState(1);
   useEffect(() => {
-    if (recolectadas > previo.current) setSube((n) => n + 1);
+    if (!visible) return;
+    if (recolectadas > previo.current) {
+      setMas(recolectadas - previo.current);
+      setSube((n) => n + 1);
+    }
     previo.current = recolectadas;
-  }, [recolectadas]);
+    guardarVisto(clave, recolectadas);
+  }, [recolectadas, visible, clave]);
   const [destello, setDestello] = useState(false);
   useEffect(() => {
     if (!sube) return undefined;
@@ -55,13 +86,16 @@ export default function GemasRecolectadas({ color = "verde", recolectadas = 0, a
         </span>
         <span className="tz-gemrec-cuenta">
           <strong key={sube}>{recolectadas}</strong>/{tope}
-          {destello && <span className="tz-gemrec-mas">+1</span>}
+          {destello && <span className="tz-gemrec-mas">+{mas}</span>}
         </span>
       </div>
       <div className="tz-gemrec-barra">
-        <span className="tz-gemrec-relleno" style={{ width: visible ? `${pct}%` : 0 }} />
+        <span className="tz-gemrec-relleno" style={{ width: `${visible ? pct : pctDe(visto ?? 0)}%` }} />
         {pctApartadas > 0 && (
-          <span className="tz-gemrec-apartadas" style={{ left: `${pct}%`, width: visible ? `${pctApartadas}%` : 0 }} />
+          <span
+            className="tz-gemrec-apartadas"
+            style={{ left: `${pct}%`, width: visible || visto != null ? `${pctApartadas}%` : 0 }}
+          />
         )}
       </div>
       <p className="tz-gemrec-pie">
