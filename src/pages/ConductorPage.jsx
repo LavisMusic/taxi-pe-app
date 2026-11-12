@@ -628,6 +628,7 @@ export default function ConductorPage() {
                 tope={gemasCobradas.tope}
                 valor={Number(gemasCobradas.valor) || 0.1}
                 activo={gemasCobradas.activo}
+                clave={conductor?.id ? `tz-gemrec-conductor-${conductor.id}` : null}
               />
             )}
 
