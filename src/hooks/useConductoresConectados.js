@@ -3,9 +3,8 @@ import { supabase } from "../supabaseClient";
 import { CANAL_PRESENCIA_CONDUCTORES } from "../lib/presencia";
 
 // Espejo de usePasajerosConectados.js, para el canal de Presencia de
-// Conductores (ver useConductorPresenciaTrack.js) — clave por
-// TELÉFONO, no por id de usuario (ver el comentario largo en ese
-// hook). Devuelve además `loaded` (pedido implícito por el bug de
+// Conductores (ver useConductorPresenciaTrack.js) — clave por el id de
+// su cuenta (`usuarios.id`), nunca el teléfono. Devuelve además `loaded` (pedido implícito por el bug de
 // visibilidad, ver useConductoresPublicos.js): el primer evento
 // "sync" de Presencia tarda un instante en llegar después de
 // `subscribe()` — sin esta bandera, un consumidor que filtre por
@@ -24,7 +23,7 @@ export function useConductoresConectados() {
       const lista = Object.values(estado)
         .map((metas) => metas[0])
         .filter(Boolean)
-        .map((meta) => ({ telefono: String(meta.telefono), nombre: meta.nombre ?? null }));
+        .map((meta) => ({ usuarioId: String(meta.usuario_id) }));
       setConectados(lista);
       setLoaded(true);
     };

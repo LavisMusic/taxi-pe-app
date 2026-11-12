@@ -70,6 +70,7 @@ import { useDescripcionesPublico } from "../hooks/useDescripciones";
 import { useAnuncioActivo } from "../hooks/useAnuncioActivo";
 import { useMiSancion } from "../hooks/useMiSancion";
 import AvisoSancion from "../components/AvisoSancion";
+import { useConductorPresenciaTrack } from "../hooks/useConductorPresenciaTrack";
 
 // Ruta /conductor — entra por RequireUsuarioRol rol="conductor".
 // Mobile-first a propósito: una sola columna angosta (max 420px,
@@ -86,6 +87,8 @@ export default function ConductorPage() {
     setMensajesOpen(true);
   }, !!usuario?.id);
   const { conductor, loading, error, setEstado, actualizar, refresh: refrescarConductor } = useConductorSesion(usuario);
+  // "Conectado ahora" para el visor del Admin (por el id de su cuenta).
+  useConductorPresenciaTrack(usuario?.id);
   const [mostrandoVerificacion, setMostrandoVerificacion] = useState(false);
   const { unreadCount, alertaSenas, descartarAlertaSenas, pasajerosEnCarrera } = useHilosChatConductor(conductor?.id);
   // Texto bajo el logo: el nombre y después las descripciones del Admin
@@ -487,10 +490,14 @@ export default function ConductorPage() {
           </div>
           <div className="tz-header-side tz-header-side-right">
             <BotonSoporte />
-            <button className="tz-header-btn" onClick={logout} aria-label="Cerrar sesión" title="Cerrar sesión">
-              <LogOut size={19} />
-              <span className="tz-header-btn-label">Salir</span>
-            </button>
+            {/* Con su ficha de conductor cierra sesión desde "Editar Perfil";
+                sin ella (todavía sin perfil) el botón sigue acá. */}
+            {!conductor && (
+              <button className="tz-header-btn" onClick={logout} aria-label="Cerrar sesión" title="Cerrar sesión">
+                <LogOut size={19} />
+                <span className="tz-header-btn-label">Salir</span>
+              </button>
+            )}
           </div>
         </div>
       </header>

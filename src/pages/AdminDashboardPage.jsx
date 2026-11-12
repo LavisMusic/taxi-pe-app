@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, CreditCard, MapPin, Loader2, Trash2, MessageSquareText, BarChart3, ShieldAlert } from "lucide-react";
+import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, CreditCard, MapPin, Loader2, MessageSquareText, BarChart3, ShieldAlert } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useLocalidades } from "../hooks/useLocalidades";
@@ -58,7 +58,6 @@ const API_REPORTES = {
   levantar: (id) => supabase.rpc("taxi_admin_levantar_sancion", { p_id: id }),
 };
 import PagosMetodoModal from "../components/admin/PagosMetodoModal";
-import LimpiarChatsModal from "../components/admin/LimpiarChatsModal";
 import GestorRecargaConductorModal from "../components/admin/GestorRecargaConductorModal";
 import GestorPlanRecolectorModal from "../components/admin/GestorPlanRecolectorModal";
 import logo from "../assets/logo.webp";
@@ -258,7 +257,6 @@ export default function AdminDashboardPage() {
   const [descripcionesOpen, setDescripcionesOpen] = useState(false);
   const gestorDescripciones = useDescripciones();
   const [localidadesOpen, setLocalidadesOpen] = useState(false);
-  const [limpiarChatsOpen, setLimpiarChatsOpen] = useState(false);
   const {
     localidades,
     loading: localidadesLoading,
@@ -337,16 +335,6 @@ export default function AdminDashboardPage() {
               <span className="tz-header-btn-label">Peticiones</span>
               {totalPeticiones > 0 && <span className="tz-header-btn-badge">{totalPeticiones}</span>}
             </button>
-            <button
-              className="tz-header-btn"
-              onClick={() => setReportesOpen(true)}
-              aria-label="Centro de reportes"
-              style={{ position: "relative" }}
-            >
-              <ShieldAlert size={19} />
-              <span className="tz-header-btn-label">Reportes</span>
-              {reportesNuevos > 0 && <span className="tz-header-btn-badge">{reportesNuevos > 9 ? "+9" : reportesNuevos}</span>}
-            </button>
           </div>
 
           <div className="tz-header-center">
@@ -405,9 +393,15 @@ export default function AdminDashboardPage() {
                 </>
               )}
             </div>
-            <button className="tz-header-btn" onClick={logout} aria-label="Cerrar sesión" title="Cerrar sesión">
-              <LogOut size={19} />
-              <span className="tz-header-btn-label">Salir</span>
+            <button
+              className="tz-header-btn"
+              onClick={() => setReportesOpen(true)}
+              aria-label="Centro de reportes"
+              style={{ position: "relative" }}
+            >
+              <ShieldAlert size={19} />
+              <span className="tz-header-btn-label">Reportes</span>
+              {reportesNuevos > 0 && <span className="tz-header-btn-badge">{reportesNuevos > 9 ? "+9" : reportesNuevos}</span>}
             </button>
             <button className="tz-header-btn" onClick={() => setUsuariosOpen(true)} aria-label="Usuarios">
               <Users size={19} />
@@ -493,18 +487,17 @@ export default function AdminDashboardPage() {
           <MapPin size={18} />
           Localidades
         </button>
-        <button className="tz-footer-btn tz-footer-btn-limpiar-chats" onClick={() => setLimpiarChatsOpen(true)}>
-          <Trash2 size={18} />
-          Limpiar Chats
-        </button>
         {/* Fase 5: el dashboard en su propia página. */}
         <button className="tz-footer-btn tz-footer-btn-dashboard" onClick={() => navigate("/admin/dashboard")}>
           <BarChart3 size={18} />
           Dashboard
         </button>
+        <button className="tz-footer-btn tz-footer-btn-salir" onClick={logout}>
+          <LogOut size={18} />
+          Cerrar sesión
+        </button>
       </footer>
 
-      {limpiarChatsOpen && <LimpiarChatsModal onClose={() => setLimpiarChatsOpen(false)} />}
       {reportesOpen && (
         <ReportesAdminModal
           api={API_REPORTES}

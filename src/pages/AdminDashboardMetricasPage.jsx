@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Styles from "../components/Styles";
 import CuentasVerificadas from "../components/admin/CuentasVerificadas";
 import DashboardTaxi from "../components/DashboardTaxi";
+import { usePasajerosConectados } from "../hooks/usePasajerosConectados";
 import { supabase } from "../supabaseClient";
 import logo from "../assets/logo.webp";
 
@@ -14,6 +15,8 @@ const leerDashboard = (desde, hasta) => supabase.rpc("taxi_dashboard_admin", { p
    (5a); después, el resto del dashboard de Taxi-PE (5c). */
 export default function AdminDashboardMetricasPage() {
   const navigate = useNavigate();
+  // Pasajeros con la app abierta ahora (Presencia, ver usePasajeroPresenciaTrack).
+  const pasajerosConectados = usePasajerosConectados();
   return (
     <div className="tz-root tz-dashboard-pagina">
       <Styles />
@@ -27,7 +30,7 @@ export default function AdminDashboardMetricasPage() {
         </h1>
       </header>
       <main className="tz-dashboard-contenido">
-        <DashboardTaxi leer={leerDashboard} titulo="Taxi PE" />
+        <DashboardTaxi leer={leerDashboard} titulo="Taxi PE" conectadosAhora={pasajerosConectados.length} />
         <CuentasVerificadas />
       </main>
     </div>

@@ -9,7 +9,7 @@ import TarjetaMiReputacion from "./MiReputacion";
 // usuarios_cambiar le deja editar la suya). Se ven en el chat del conductor
 // (usuarios_publicos).
 export default function PerfilPasajeroModal({ onClose }) {
-  const { usuario, updateUsuario } = useTaxiAuth();
+  const { usuario, updateUsuario, logout } = useTaxiAuth();
   // Último cambio de usuario y de foto (una vez por semana) y lo que hay
   // en la base: la sesión guardada puede traer un nombre viejo (antes del
   // nombre de usuario automático).
@@ -61,6 +61,7 @@ export default function PerfilPasajeroModal({ onClose }) {
       fotoHasta={mas7(cambios?.foto_cambiada_at)}
       limitesListos={!!cambios}
       onClose={onClose}
+      onCerrarSesion={logout}
     >
       <TarjetaMiReputacion rol="pasajero" />
     </PerfilModal>

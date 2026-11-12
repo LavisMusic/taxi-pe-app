@@ -9,9 +9,8 @@ import { useConductoresConectados } from "../../hooks/useConductoresConectados";
 // que muestre dos listas"). `usuarios` es el roster COMPLETO de ese rol
 // (verificados o no, pedido explícito de la ronda anterior — se sigue
 // respetando acá) y `estaConectado(u)` decide el punto de color — una
-// función en vez de un Set fijo porque Pasajeros cruza por id de
-// usuario y Conductores por teléfono (ver useConductorPresenciaTrack.js),
-// dos campos distintos según el rol.
+// función en vez de un Set fijo: los dos roles cruzan por el id de su
+// cuenta (ver usePasajeroPresenciaTrack.js / useConductorPresenciaTrack.js).
 function ListaConectados({ titulo, usuarios, estaConectado }) {
   const totalConectados = usuarios.filter(estaConectado).length;
   return (
@@ -53,7 +52,7 @@ export default function UsuariosConectadosModal({ usuarios, onClose }) {
   const pasajerosConectados = usePasajerosConectados();
   const { conectados: conductoresConectados } = useConductoresConectados();
   const pasajerosIds = new Set(pasajerosConectados.map((c) => c.usuarioId));
-  const conductoresTelefonos = new Set(conductoresConectados.map((c) => c.telefono));
+  const conductoresIds = new Set(conductoresConectados.map((c) => c.usuarioId));
   const pasajeros = usuarios.filter((u) => u.rol === "pasajero");
   const conductores = usuarios.filter((u) => u.rol === "conductor");
 
@@ -76,7 +75,7 @@ export default function UsuariosConectadosModal({ usuarios, onClose }) {
             <ListaConectados
               titulo="Conductores"
               usuarios={conductores}
-              estaConectado={(u) => conductoresTelefonos.has(String(u.telefono))}
+              estaConectado={(u) => conductoresIds.has(String(u.id))}
             />
           </div>
         </div>

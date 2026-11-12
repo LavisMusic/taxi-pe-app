@@ -2,38 +2,26 @@ import { useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import { CANAL_PRESENCIA_CONDUCTORES } from "../lib/presencia";
 
-// Mismo mecanismo que usePasajeroPresenciaTrack.js, del lado Conductor
-// — se trackea mientras ConductorPage.jsx esté montado con sesión real.
-// Trackeado por TELÉFONO (no por `usuario.id`) a propósito — bug
-// reportado: "hay un conductor sin la sesión abierta y aún así se
-// puede visualizar en el radar del pasajero". `conductores.estado`
-// (Activo/Ocupado) es un valor GUARDADO en la base, no una señal de
-// presencia real — si el conductor cierra la pestaña sin volver a
-// tocar el switch, `estado` se queda "activo" para siempre y
-// useConductoresPublicos.js lo sigue mostrando. La Presencia de acá es
-// la señal real de "tiene la app abierta ahora mismo", y
-// useConductoresPublicos.js la cruza directo contra `conductores.telefono`
-// (el mismo campo que ya usa como puente con `usuarios`, ver
-// useConductorSesion.js) — por eso el teléfono, no el id de usuario:
-// así ese cruce no necesita traer la tabla `usuarios` completa a una
-// pantalla pública/anónima (algo que ese hook ya evita a propósito).
-export function useConductorPresenciaTrack(telefono, nombreMostrado) {
+// Mismo mecanismo que usePasajeroPresenciaTrack.js, del lado Conductor:
+// mientras ConductorPage.jsx esté montado con sesión, el conductor se
+// "trackea" en el canal de Presencia (no escribe nada en la base). Lo usa
+// el visor "Usuarios Conectados" del Admin. Va por el id de su cuenta
+// (`usuarios.id`), NO por su teléfono: el canal de Presencia lo puede
+// escuchar cualquiera con la llave pública, y el teléfono del conductor
+// no debe ser público.
+export function useConductorPresenciaTrack(usuarioId) {
   useEffect(() => {
-    if (!telefono) return undefined;
+    if (!usuarioId) return undefined;
     const channel = supabase.channel(CANAL_PRESENCIA_CONDUCTORES, {
-      config: { presence: { key: String(telefono) } },
+      config: { presence: { key: String(usuarioId) } },
     });
     channel.subscribe((status) => {
       if (status === "SUBSCRIBED") {
-        channel.track({
-          telefono,
-          nombre: nombreMostrado ?? null,
-          conectado_en: new Date().toISOString(),
-        });
+        channel.track({ usuario_id: usuarioId, conectado_en: new Date().toISOString() });
       }
     });
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [telefono, nombreMostrado]);
+  }, [usuarioId]);
 }
