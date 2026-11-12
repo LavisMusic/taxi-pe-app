@@ -36,6 +36,7 @@ import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import { useBienvenidaNeon } from "../hooks/useBienvenidaNeon";
 import StatsSection from "../components/admin/StatsSection";
 import UsuarioEstrellaChip from "../components/admin/UsuarioEstrellaChip";
+import ConectadosAhoraChip from "../components/admin/ConectadosAhoraChip";
 import TopUsuariosModal from "../components/admin/TopUsuariosModal";
 import LibretaFiadosModal from "../components/admin/LibretaFiadosModal";
 import ConductoresDirectorio from "../components/admin/ConductoresDirectorio";
@@ -333,7 +334,7 @@ export default function AdminDashboardPage() {
             >
               <Inbox size={19} />
               <span className="tz-header-btn-label">Peticiones</span>
-              {totalPeticiones > 0 && <span className="tz-header-btn-badge">{totalPeticiones}</span>}
+              {totalPeticiones > 0 && <span className="tz-header-btn-badge">{totalPeticiones > 9 ? "+9" : totalPeticiones}</span>}
             </button>
           </div>
 
@@ -425,6 +426,7 @@ export default function AdminDashboardPage() {
 
             <section className="tz-stats">
               <StatsSection metrics={metrics} totalGastosHoy={totalGastosHoy} />
+              <ConectadosAhoraChip usuarios={usuarios} />
               <UsuarioEstrellaChip ranking={ranking} />
             </section>
 

@@ -30,6 +30,7 @@ import HistorialVerificacionesTab from "./HistorialVerificacionesTab";
 import { useUrlVisible } from "../../lib/imagenesPrivadas";
 import { formatTelefono, formatSoles, formatDate } from "../../utils/format";
 import Select from "../Select";
+import NumAviso from "../NumAviso";
 
 const FOTOS = [
   { key: "foto_general_url", label: "Toma general" },
@@ -313,8 +314,8 @@ function RegistroTab({
   const filtros = (
     <div className="tz-gasto-tipo-buttons" style={{ marginBottom: 10 }}>
       {[
-        { id: "conductores", label: `Conductores${totalConductores ? ` (${totalConductores})` : ""}` },
-        { id: "recolectores", label: `Recolectores${recolectoresPendientes.length ? ` (${recolectoresPendientes.length})` : ""}` },
+        { id: "conductores", label: "Conductores", n: totalConductores },
+        { id: "recolectores", label: "Recolectores", n: recolectoresPendientes.length },
       ].map((f) => (
         <button
           key={f.id}
@@ -322,7 +323,7 @@ function RegistroTab({
           className={`tz-gasto-tipo-btn ${filtro === f.id ? "tz-gasto-tipo-active" : ""}`}
           onClick={() => setFiltro(f.id)}
         >
-          {f.label}
+          {f.label} <NumAviso n={f.n} />
         </button>
       ))}
     </div>
@@ -659,8 +660,8 @@ function RecargasTab({
   const filtros = (
     <div className="tz-gasto-tipo-buttons" style={{ marginBottom: 10 }}>
       {[
-        { id: "recolectores", label: `Recolectores${recargasRecolector.length ? ` (${recargasRecolector.length})` : ""}` },
-        { id: "conductores", label: `Conductores${recargasConductor.length ? ` (${recargasConductor.length})` : ""}` },
+        { id: "recolectores", label: "Recolectores", n: recargasRecolector.length },
+        { id: "conductores", label: "Conductores", n: recargasConductor.length },
       ].map((f) => (
         <button
           key={f.id}
@@ -668,7 +669,7 @@ function RecargasTab({
           className={`tz-gasto-tipo-btn ${filtro === f.id ? "tz-gasto-tipo-active" : ""}`}
           onClick={() => setFiltro(f.id)}
         >
-          {f.label}
+          {f.label} <NumAviso n={f.n} />
         </button>
       ))}
     </div>
@@ -911,7 +912,7 @@ export default function PeticionesModal({
               className={`tz-gasto-tipo-btn ${tab === "registro" ? "tz-gasto-tipo-active" : ""}`}
               onClick={() => setTab("registro")}
             >
-              Registro {pendientesCount > 0 ? `(${pendientesCount})` : ""}
+              Registro <NumAviso n={pendientesCount} />
             </button>
             <button
               type="button"
@@ -919,7 +920,7 @@ export default function PeticionesModal({
               onClick={() => setTab("pin")}
             >
               <KeyRound size={13} style={{ marginRight: 4, verticalAlign: "-2px" }} />
-              Recuperación de PIN {peticionesPin.length > 0 ? `(${peticionesPin.length})` : ""}
+              Recuperación de PIN <NumAviso n={peticionesPin.length} />
             </button>
             <button
               type="button"
@@ -927,7 +928,7 @@ export default function PeticionesModal({
               onClick={() => setTab("recuperacion")}
             >
               <LifeBuoy size={13} style={{ marginRight: 4, verticalAlign: "-2px" }} />
-              Recuperar cuenta {peticionesRecuperacion.length > 0 ? `(${peticionesRecuperacion.length})` : ""}
+              Recuperar cuenta <NumAviso n={peticionesRecuperacion.length} />
             </button>
             <button
               type="button"
@@ -935,10 +936,7 @@ export default function PeticionesModal({
               onClick={() => setTab("recargas")}
             >
               <Wallet size={13} style={{ marginRight: 4, verticalAlign: "-2px" }} />
-              Recargas{" "}
-              {recargasRecolector.length + recargasConductor.length > 0
-                ? `(${recargasRecolector.length + recargasConductor.length})`
-                : ""}
+              Recargas <NumAviso n={recargasRecolector.length + recargasConductor.length} />
             </button>
             <button
               type="button"

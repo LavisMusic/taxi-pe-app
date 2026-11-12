@@ -208,7 +208,7 @@ export default function ReportesAdminModal({ api: apiUnica, subtitulo: subtitulo
               >
                 <img src={f.logo} alt="" />
                 <span>{f.label}</span>
-                {f.nuevos > 0 && <b className="tz-radm-app-num">{f.nuevos > 99 ? "99+" : f.nuevos}</b>}
+                {f.nuevos > 0 && <b className="tz-radm-app-num">{f.nuevos > 9 ? "+9" : f.nuevos}</b>}
               </button>
             ))}
           </div>
@@ -463,7 +463,7 @@ const ESTILO = `
 .tz-radm-app.is-activa { color: var(--text); }
 .tz-radm-app.is-activa img { filter: drop-shadow(0 0 10px rgba(255,255,255,0.35)); transform: scale(1.12); }
 .tz-radm-app-num { min-width: 18px; height: 18px; padding: 0 5px 1px; box-sizing: border-box; border-radius: 999px; display: inline-flex; align-items: center;
-  justify-content: center; line-height: 1; font-size: 10.5px; font-weight: 900; color: #fff; background: #ff2f9e; box-shadow: 0 0 10px rgba(255,47,158,0.7);
+  justify-content: center; line-height: 1; font-size: 10.5px; font-weight: 900; color: #fff; background: #ff2d55; box-shadow: 0 0 10px rgba(255,45,85,0.6);
   animation: tz-radm-pop .5s cubic-bezier(.34,1.56,.64,1) both; }
 @media (max-width: 420px) { .tz-radm-app span { display: none; } }
 .tz-radm-filtros { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px; }

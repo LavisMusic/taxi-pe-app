@@ -272,14 +272,14 @@ export default function EntregasRepartidorPanel({
             <span className="tz-chat-unread-dot" aria-label="Mensaje nuevo" />
           )}
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {/* Ya aceptado: sin estrellas ni etiquetas (solo sirven para
+                decidir en la oferta). */}
             <PackageCheck size={16} /> Entrega en curso · {entrega.cliente_nombre || "Cliente"}
-            <ReputacionEntrega entregaId={entrega.id} tipo="cliente" />
           </span>
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
             {entrega.caja_sucursal && (
               <span className="tz-entrega-badge tz-entrega-badge-sucursal">{entrega.caja_sucursal}</span>
             )}
-            <ReputacionEntrega entregaId={entrega.id} tipo="negocio" />
             <span className={`tz-entrega-badge tz-entrega-badge-${sale ? "entregado" : entrega.estado}`}>
               {sale ? "entregado" : entrega.estado.replace("_", " ")}
             </span>

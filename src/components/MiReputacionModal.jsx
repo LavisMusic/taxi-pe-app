@@ -382,7 +382,7 @@ const ESTILO = `
 .tz-mirep-tab svg { flex-shrink: 0; }
 .tz-mirep-tab.is-activa { color: #ffd84a; }
 .tz-mirep-tab-num { min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
-  flex-shrink: 0; box-sizing: border-box; line-height: 1; padding-bottom: 1px; font-size: 10.5px; font-weight: 900; font-variant-numeric: tabular-nums;color: #1a1300; background: linear-gradient(110deg, #ffd84a, #ff9500); box-shadow: 0 0 10px rgba(255,216,74,0.6);
+  flex-shrink: 0; box-sizing: border-box; line-height: 1; padding-bottom: 1px; font-size: 10.5px; font-weight: 900; font-variant-numeric: tabular-nums;color: #fff; background: #ff2d55; box-shadow: 0 0 10px rgba(255,45,85,0.6);
   animation: tz-mirep-pop .5s cubic-bezier(.34,1.56,.64,1) both; }
 .tz-mirep-error { margin: 0; text-align: center; font-size: 13px; color: var(--danger, #ff5470); }
 .tz-mirep-cuerpo { flex: 1; min-height: 0; overflow: hidden auto; scrollbar-width: none; margin: 0 -6px; padding: 4px 6px 6px;

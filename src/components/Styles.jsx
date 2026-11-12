@@ -7672,7 +7672,7 @@ export default function Styles() {
         height: 16px;
         padding: 0 4px;
         border-radius: 999px;
-        background: var(--danger, #ff3b5c);
+        background: #ff2d55;
         color: #fff;
         font-size: 10px;
         font-weight: 800;
@@ -7824,7 +7824,7 @@ export default function Styles() {
         height: 20px;
         padding: 0 6px;
         border-radius: 999px;
-        background: var(--pink);
+        background: #ff2d55;
         color: #fff;
         font-size: 11px;
         font-weight: 800;
