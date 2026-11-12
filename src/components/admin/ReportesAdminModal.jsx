@@ -1,17 +1,24 @@
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Loader2, Flag, ShieldAlert, ShieldCheck, Eye, Gavel, Ban, Clock3, CheckCircle2, AlertTriangle, Undo2, Phone, Car, User } from "lucide-react";
-import { supabase } from "../../supabaseClient";
+import { X, Loader2, Flag, ShieldAlert, ShieldCheck, Eye, Gavel, Ban, Clock3, CheckCircle2, AlertTriangle, Undo2, Phone, Car, User, Store, Bike } from "lucide-react";
 import { useUrlVisible } from "../../lib/imagenesPrivadas";
 import { Estrellas } from "../Estrellas";
 import InsigniaReputacion from "../InsigniaReputacion";
 import { textoMotivo } from "../MisReportes";
 
-/* Centro de reportes del Admin de Taxi-PE (fase 4a): reportes de viajes
-   (pasajero ↔ conductor). Estados nuevo → en revisión → resuelto/cerrado;
-   al resolver: sin acción, advertencia, suspensión X días o bloqueo. Quien
-   reportó recibe el resultado en su chat "Taxi PE"; el reportado, solo la
-   medida (sin saber quién lo reportó). */
+/* Centro de reportes (fase 4) — MISMO archivo en Taxi-PE y Caja
+   (src/components/admin/ReportesAdminModal.jsx): mantener iguales.
+   Taxi-PE: el Admin, reportes de viajes (pasajero ↔ conductor). Caja: el
+   superadmin, reportes de pedidos y compras (cliente ↔ negocio).
+   Estados nuevo → en revisión → resuelto/cerrado; al resolver: sin acción,
+   advertencia, suspensión X días o bloqueo. Quien reportó recibe el
+   resultado en su chat fijado; el reportado, solo la medida (sin saber
+   quién lo reportó).
+   api = {
+     listar(estado|null)                       → { data: { reportes, conteo }, error }
+     resolver({ p_id, p_estado, p_accion, p_dias, p_respuesta }) → { error }
+     levantar(sancionId)                        → { error }
+   } */
 
 const FILTROS = [
   { id: "nuevo", label: "Nuevos" },
@@ -33,17 +40,21 @@ const ACCIONES = [
   { id: "bloqueo", label: "Bloqueo", Icono: Ban },
 ];
 const DIAS = [1, 3, 7, 15, 30];
-const TIPO = { conductor: "Conductor", pasajero: "Pasajero", negocio: "Negocio", cliente: "Cliente" };
+const TIPO = { conductor: "Conductor", pasajero: "Pasajero", negocio: "Negocio", cliente: "Cliente", repartidor: "Repartidor" };
+const ICONO_TIPO = { conductor: Car, negocio: Store, repartidor: Bike };
+const SERVICIO = { viaje: "Viaje", entrega: "Reparto", pedido: "Pedido", compra: "Compra en tienda" };
 const fecha = (f) =>
   f ? new Date(f).toLocaleString("es-PE", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
 
-export function useConteoReportes() {
+// Cuántos reportes hay por estado (el número del botón). listar: api.listar.
+export function useConteoReportes(listar) {
   const [conteo, setConteo] = useState(null);
   const leer = useCallback(() => {
-    supabase.rpc("taxi_admin_reportes", { p_estado: "nuevo" }).then(({ data, error }) => {
+    if (!listar) return;
+    Promise.resolve(listar("nuevo")).then(({ data, error }) => {
       if (!error && data?.conteo) setConteo(data.conteo);
     });
-  }, []);
+  }, [listar]);
   useEffect(() => {
     leer();
     const t = setInterval(() => document.visibilityState === "visible" && leer(), 60000);
@@ -72,7 +83,7 @@ function Foto({ valor, onAbrir }) {
   );
 }
 
-export default function ReportesAdminModal({ onClose }) {
+export default function ReportesAdminModal({ api, subtitulo = "", onClose }) {
   const [filtro, setFiltro] = useState("nuevo");
   const [datos, setDatos] = useState(null);
   const [error, setError] = useState("");
@@ -84,7 +95,7 @@ export default function ReportesAdminModal({ onClose }) {
   const [foto, setFoto] = useState("");
 
   const cargar = useCallback(async () => {
-    const { data, error: e } = await supabase.rpc("taxi_admin_reportes", { p_estado: filtro });
+    const { data, error: e } = await api.listar(filtro);
     if (e) {
       setError(e.message || "No se pudieron leer los reportes.");
       setDatos({ reportes: [], conteo: {} });
@@ -92,7 +103,7 @@ export default function ReportesAdminModal({ onClose }) {
     }
     setError("");
     setDatos({ reportes: data?.reportes || [], conteo: data?.conteo || {} });
-  }, [filtro]);
+  }, [filtro, api]);
 
   useEffect(() => {
     setDatos(null);
@@ -113,7 +124,7 @@ export default function ReportesAdminModal({ onClose }) {
     setGuardando(true);
     setError("");
     const n = parseInt(dias, 10);
-    const { error: e } = await supabase.rpc("taxi_admin_resolver_reporte", {
+    const { error: e } = await api.resolver({
       p_id: r.id,
       p_estado: estado,
       p_accion: estado === "resuelto" ? accion : null,
@@ -129,7 +140,7 @@ export default function ReportesAdminModal({ onClose }) {
 
   const levantar = async (sancion) => {
     setGuardando(true);
-    const { error: e } = await supabase.rpc("taxi_admin_levantar_sancion", { p_id: sancion.id });
+    const { error: e } = await api.levantar(sancion.id);
     setGuardando(false);
     if (e) return setError(e.message || "No se pudo levantar la sanción.");
     avisar();
@@ -148,7 +159,7 @@ export default function ReportesAdminModal({ onClose }) {
       <div className="tz-radm" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Centro de reportes">
         <button type="button" className="tz-radm-cerrar" onClick={onClose} aria-label="Cerrar"><X size={18} /></button>
         <h2 className="tz-radm-titulo"><ShieldAlert size={20} /> Centro de reportes</h2>
-        <p className="tz-radm-sub">Reportes de viajes entre pasajeros y conductores.</p>
+        {subtitulo && <p className="tz-radm-sub">{subtitulo}</p>}
 
         <div className="tz-radm-filtros">
           {FILTROS.map((f) => {
@@ -196,7 +207,7 @@ export default function ReportesAdminModal({ onClose }) {
                         </b>
                         <span className="tz-radm-chips">
                           <span className="tz-radm-chip">
-                            {r.reportado?.tipo === "conductor" ? <Car size={11} /> : <User size={11} />} {TIPO[r.reportado?.tipo] || "Cuenta"}
+                            {(() => { const I = ICONO_TIPO[r.reportado?.tipo] || User; return <I size={11} />; })()} {TIPO[r.reportado?.tipo] || "Cuenta"}
                           </span>
                           {r.reportado?.detalle && <span className="tz-radm-chip">{r.reportado.detalle}</span>}
                           {r.reportado?.telefono && <span className="tz-radm-chip"><Phone size={11} /> {r.reportado.telefono}</span>}
@@ -239,7 +250,7 @@ export default function ReportesAdminModal({ onClose }) {
                       Reportó: <b>{r.autor?.nombre}</b> ({TIPO[r.autor?.tipo] || r.autor?.tipo})
                       {r.autor?.telefono ? ` · ${r.autor.telefono}` : ""}
                       <br />
-                      {r.servicio === "viaje" ? "Viaje" : "Reparto"} del {fecha(r.fecha)} · enviado el {fecha(r.created_at)}
+                      {SERVICIO[r.servicio] || "Servicio"} del {fecha(r.fecha)} · enviado el {fecha(r.created_at)}
                     </p>
 
                     {cerrado ? (

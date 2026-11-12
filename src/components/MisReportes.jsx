@@ -320,6 +320,24 @@ export function ReportarModal({ item, avisoDonde, onEnviar, onCerrar }) {
 }
 
 const ESTILO = `
+/* Lo que ReportarModal toma de Mi reputación, para que también se vea bien
+   abierto solo (p. ej. "Reportar cliente" desde un pedido). */
+.tz-rep-modal .tz-mirep-cerrar { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; border-radius: 50%; border: 0; cursor: pointer;
+  display: grid; place-items: center; color: var(--text-dim); background: rgba(255,255,255,0.06); transition: transform .3s cubic-bezier(.34,1.56,.64,1); }
+.tz-rep-modal .tz-mirep-cerrar:hover { transform: rotate(90deg); }
+.tz-rep-modal .tz-mirep-item-cab { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.tz-rep-modal .tz-mirep-avatar { width: 42px; height: 42px; flex-shrink: 0; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,216,74,0.6);
+  box-shadow: 0 0 12px rgba(255,216,74,0.3); background-color: #14101f;
+  background-image:
+    radial-gradient(circle at 20% 25%, rgba(43,232,255,0.65) 0%, rgba(43,232,255,0.22) 32%, transparent 62%),
+    radial-gradient(circle at 80% 30%, rgba(255,47,158,0.6) 0%, rgba(255,47,158,0.2) 34%, transparent 64%),
+    radial-gradient(circle at 50% 85%, rgba(215,255,59,0.5) 0%, rgba(215,255,59,0.16) 34%, transparent 64%);
+  background-size: 200% 200%; animation: tz-rep-aurora 5s ease-in-out infinite alternate; }
+.tz-rep-modal .tz-mirep-avatar.is-letra { display: grid; place-items: center; font-size: 18px; font-weight: 900; color: #ffd84a; }
+.tz-rep-modal .tz-mirep-info { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.tz-rep-modal .tz-mirep-info b { max-width: 100%; font-size: 14px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tz-rep-modal .tz-mirep-info > span { max-width: 100%; font-size: 11.5px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@keyframes tz-rep-aurora { 0% { background-position: 10% 15%; } 50% { background-position: 70% 55%; } 100% { background-position: 30% 80%; } }
 .tz-rep { display: flex; flex-direction: column; gap: 8px; }
 .tz-rep-nota { margin: 0; display: flex; gap: 7px; align-items: flex-start; padding: 9px 11px; border-radius: 14px; font-size: 12px; line-height: 1.4;
   color: var(--text-dim); background: rgba(43,232,255,0.05); border: 1px solid rgba(43,232,255,0.2); }

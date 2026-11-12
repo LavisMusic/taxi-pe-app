@@ -49,6 +49,14 @@ import UsuariosModal from "../components/admin/UsuariosModal";
 import CategoriasModal from "../components/admin/CategoriasModal";
 import PeticionesModal from "../components/admin/PeticionesModal";
 import ReportesAdminModal, { useConteoReportes } from "../components/admin/ReportesAdminModal";
+import { supabase } from "../supabaseClient";
+
+// Centro de reportes del Admin (viajes entre pasajeros y conductores).
+const API_REPORTES = {
+  listar: (estado) => supabase.rpc("taxi_admin_reportes", { p_estado: estado }),
+  resolver: (args) => supabase.rpc("taxi_admin_resolver_reporte", args),
+  levantar: (id) => supabase.rpc("taxi_admin_levantar_sancion", { p_id: id }),
+};
 import PagosMetodoModal from "../components/admin/PagosMetodoModal";
 import LimpiarChatsModal from "../components/admin/LimpiarChatsModal";
 import GestorRecargaConductorModal from "../components/admin/GestorRecargaConductorModal";
@@ -262,7 +270,7 @@ export default function AdminDashboardPage() {
   const [peticionesOpen, setPeticionesOpen] = useState(false);
   // Centro de reportes (fase 4a): el número son los reportes nuevos.
   const [reportesOpen, setReportesOpen] = useState(false);
-  const conteoReportes = useConteoReportes();
+  const conteoReportes = useConteoReportes(API_REPORTES.listar);
   const reportesNuevos = conteoReportes?.nuevo || 0;
   const [pagosMenuOpen, setPagosMenuOpen] = useState(false);
   const [pagosMetodoAbierto, setPagosMetodoAbierto] = useState(null);
@@ -497,7 +505,13 @@ export default function AdminDashboardPage() {
       </footer>
 
       {limpiarChatsOpen && <LimpiarChatsModal onClose={() => setLimpiarChatsOpen(false)} />}
-      {reportesOpen && <ReportesAdminModal onClose={() => setReportesOpen(false)} />}
+      {reportesOpen && (
+        <ReportesAdminModal
+          api={API_REPORTES}
+          subtitulo="Reportes de viajes entre pasajeros y conductores."
+          onClose={() => setReportesOpen(false)}
+        />
+      )}
 
       {recargaOpen && recargaConductor && (
         <GestorRecargaConductorModal

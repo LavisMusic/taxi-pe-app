@@ -132,8 +132,14 @@ const ESTILO = `
   transition: transform .3s cubic-bezier(.34,1.56,.64,1), color .2s ease; }
 .tz-calif-cerrar:hover { transform: rotate(90deg) scale(1.1); color: #fff; }
 .tz-calif-foto { width: 74px; height: 74px; border-radius: 50%; overflow: hidden; display: grid; place-items: center;
-  border: 2px solid #ffd84a; box-shadow: 0 0 22px rgba(255,216,74,0.5); background: #14101f; font-size: 28px; font-weight: 900; color: #ffd84a;
-  animation: tz-calif-flota 3s ease-in-out infinite; }
+  border: 2px solid #ffd84a; box-shadow: 0 0 22px rgba(255,216,74,0.5); background-color: #14101f; font-size: 28px; font-weight: 900; color: #ffd84a;
+  background-image:
+    radial-gradient(circle at 20% 25%, rgba(43,232,255,0.65) 0%, rgba(43,232,255,0.22) 32%, transparent 62%),
+    radial-gradient(circle at 80% 30%, rgba(255,47,158,0.6) 0%, rgba(255,47,158,0.2) 34%, transparent 64%),
+    radial-gradient(circle at 50% 85%, rgba(215,255,59,0.5) 0%, rgba(215,255,59,0.16) 34%, transparent 64%);
+  background-size: 200% 200%;
+  animation: tz-calif-flota 3s ease-in-out infinite, tz-calif-aurora 5s ease-in-out infinite alternate; }
+@keyframes tz-calif-aurora { 0% { background-position: 10% 15%; } 50% { background-position: 70% 55%; } 100% { background-position: 30% 80%; } }
 .tz-calif-foto img { width: 100%; height: 100%; object-fit: cover; }
 .tz-calif-titulo { margin: 6px 0 0; font-size: 18px; font-weight: 900; color: #fff; }
 .tz-calif-nombre { margin: 0 0 6px; font-size: 14px; font-weight: 700; color: var(--text-dim, #9c93c2); }

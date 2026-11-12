@@ -55,10 +55,18 @@ export function useMensajesPlataforma(usuarioId) {
     // Si a la base le falta una columna nueva (migración sin correr), igual
     // se cargan los mensajes con las columnas de siempre.
     const traerMensajes = async () => {
-      const consulta = (columnas) =>
-        supabase.from("mensajes_plataforma").select(columnas).order("programado_para", { ascending: true }).limit(300);
-      const r = await consulta("id, canal, titulo, mensaje, imagen_url, video_url, boton_url, boton_texto, programado_para");
-      return r.error ? consulta("id, canal, titulo, mensaje, programado_para") : r;
+      const consulta = (columnas, soloMios = false) => {
+        let q = supabase.from("mensajes_plataforma").select(columnas);
+        // Los mensajes para UNA persona (resultado de un reporte, sanción):
+        // el admin/superadmin puede leerlos todos, pero en su chat solo
+        // van los generales y los suyos.
+        if (soloMios) q = q.or(`destinatario_id.is.null,destinatario_id.eq.${usuarioId}`);
+        return q.order("programado_para", { ascending: true }).limit(300);
+      };
+      const r = await consulta("id, canal, titulo, mensaje, imagen_url, video_url, boton_url, boton_texto, programado_para", true);
+      if (!r.error) return r;
+      const r2 = await consulta("id, canal, titulo, mensaje, imagen_url, video_url, boton_url, boton_texto, programado_para");
+      return r2.error ? consulta("id, canal, titulo, mensaje, programado_para") : r2;
     };
     const [msj, lei, usu] = await Promise.all([
       traerMensajes(),
