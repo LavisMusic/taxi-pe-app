@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ExternalLink } from "lucide-react";
 import { supabase } from "../supabaseClient";
-import { subirComprobantePrivado } from "../lib/comprobantes";
+import { subirComprobantePrivado, subirFotoReporteACaja } from "../lib/comprobantes";
 import MiReputacionModal, { TarjetaReputacion } from "./MiReputacionModal";
 
 /* "Mi reputación" (fase 3b) dentro de "Mi perfil" del pasajero y del
@@ -78,7 +78,13 @@ export default function TarjetaMiReputacion({ rol, conductorId }) {
         leer: () => supabase.rpc("taxi_mis_reportes", { p_rol: rol }),
         reportar: async (item, motivo, descripcion, archivo) => {
           let foto = null;
-          if (archivo) {
+          if (archivo && String(item.ref).startsWith("entrega:")) {
+            // Reparto (4b-2): el negocio o el cliente los resuelve el
+            // superadmin en Caja → la foto va al bucket privado de Caja.
+            const subida = await subirFotoReporteACaja(archivo);
+            if (subida.error) return { error: new Error("No se pudo subir la foto. Inténtalo otra vez.") };
+            foto = subida.valor;
+          } else if (archivo) {
             // Bucket privado: solo el Admin y quien la subió la ven.
             const { data } = await supabase.auth.getSession();
             const uid = data?.session?.user?.id;

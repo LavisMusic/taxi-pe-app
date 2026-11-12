@@ -51,7 +51,11 @@ export const MOTIVOS = {
   ],
 };
 
-export function textoMotivo(id) {
+// tipo: la lista del reportado (el mismo id puede decir distinto, p. ej.
+// 'no_pago' del pasajero y del cliente).
+export function textoMotivo(id, tipo) {
+  const propia = MOTIVOS[tipo]?.find(([k]) => k === id);
+  if (propia) return propia[1];
   for (const lista of Object.values(MOTIVOS)) {
     const m = lista.find(([k]) => k === id);
     if (m) return m[1];
@@ -120,7 +124,7 @@ export default function MisReportes({ reportes, avisoDonde = "Taxi PE" }) {
                     <Avatar foto={r.foto_url} nombre={r.nombre} />
                     <div className="tz-mirep-info">
                       <b>{r.nombre || "Cuenta"}</b>
-                      <span>{[textoMotivo(r.motivo), fechaCorta(r.fecha || r.created_at)].filter(Boolean).join(" · ")}</span>
+                      <span>{[textoMotivo(r.motivo, r.motivos), fechaCorta(r.fecha || r.created_at)].filter(Boolean).join(" · ")}</span>
                     </div>
                     <span className={`tz-rep-estado is-${r.estado}`}>
                       <est.Icono size={12} /> {est.label}

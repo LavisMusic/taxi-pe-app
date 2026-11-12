@@ -56,6 +56,26 @@ export async function subirComprobantePrivado(archivo, carpeta) {
   return { valor: valorPrivado(data.path) };
 }
 
+// Foto del reporte que el repartidor hace sobre un negocio o un cliente
+// (fase 4b-2): lo resuelve el superadmin en Caja, así que va directo al
+// bucket PRIVADO de Caja (reportes-privado/reportes-taxi/, migración 0159),
+// donde solo la ve el superadmin. Devuelve { valor: "privado:<archivo>" } o { error }.
+export async function subirFotoReporteACaja(archivo) {
+  const { supabaseCaja } = await import("./supabaseCaja");
+  let blob = archivo;
+  try {
+    blob = await comprimir(archivo);
+  } catch (err) {
+    console.error("[comprobantes] no se pudo comprimir, se sube el original:", err);
+  }
+  const ruta = `reportes-taxi/${crypto.randomUUID()}.jpg`;
+  const { data, error } = await supabaseCaja.storage
+    .from("reportes-privado")
+    .upload(ruta, blob, { contentType: "image/jpeg", upsert: false });
+  if (error) return { error };
+  return { valor: `privado:${data.path}` };
+}
+
 // Foto sosteniendo el DNI de "Recuperar cuenta" (SoporteModal.jsx): quien
 // la manda no tiene sesión, así que solo puede SUBIR a la carpeta
 // recuperaciones/ del bucket privado (migración 20261021100000); solo el
