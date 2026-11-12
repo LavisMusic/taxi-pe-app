@@ -200,6 +200,43 @@ Deno.serve(async (req) => {
       const urls = [...(a.data ?? []), ...(m.data ?? [])].flatMap((f) => [f.imagen_url, f.video_url]).filter(Boolean);
       return jsonResponse(200, { ok: true, urls });
     }
+    // Reportes 4b-2 (20261121100000): el superadmin ve y resuelve los
+    // reportes de Taxi-PE desde su centro (filtro Taxi PE).
+    case "reportes.listar": {
+      const estado = ["nuevo", "en_revision", "resuelto", "descartado"].includes(String(d.estado)) ? String(d.estado) : null;
+      const { data, error } = await db.rpc("taxi_admin_reportes", { p_estado: estado });
+      if (error) return jsonResponse(500, { error: error.message });
+      return jsonResponse(200, { ok: true, datos: data ?? { reportes: [], conteo: {} } });
+    }
+    case "reportes.resolver": {
+      const id = uuid(d.p_id);
+      if (!id) return jsonResponse(400, { error: "datos inválidos" });
+      const { error } = await db.rpc("taxi_admin_resolver_reporte", {
+        p_id: id,
+        p_estado: String(d.p_estado ?? ""),
+        p_accion: d.p_accion == null ? null : String(d.p_accion),
+        p_dias: d.p_dias == null ? null : Number(d.p_dias),
+        p_respuesta: texto(d.p_respuesta, 400),
+      });
+      if (error) return jsonResponse(400, { error: error.message });
+      return jsonResponse(200, { ok: true });
+    }
+    case "reportes.levantar": {
+      const id = uuid(d.id);
+      if (!id) return jsonResponse(400, { error: "datos inválidos" });
+      const { error } = await db.rpc("taxi_admin_levantar_sancion", { p_id: id });
+      if (error) return jsonResponse(400, { error: error.message });
+      return jsonResponse(200, { ok: true });
+    }
+    // Enlace firmado (1 h) de la foto privada de un reporte de Taxi-PE.
+    case "reportes.foto": {
+      const valor = String(d.valor ?? "");
+      const m = /^privado:(reportes(?:-caja)?\/[0-9a-z/-]+\.jpg)$/i.exec(valor);
+      if (!m) return jsonResponse(400, { error: "foto inválida" });
+      const { data, error } = await db.storage.from("verificaciones").createSignedUrl(m[1], 3600);
+      if (error || !data?.signedUrl) return jsonResponse(404, { error: "No se encontró la foto." });
+      return jsonResponse(200, { ok: true, url: data.signedUrl });
+    }
     case "anuncios.eliminar": {
       const id = uuid(d.id);
       if (!id) return jsonResponse(400, { error: "datos inválidos" });

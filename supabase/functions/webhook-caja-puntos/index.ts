@@ -22,6 +22,9 @@ const EVENTOS_GEMAS = ["caja.gema_verde", "caja.gemas_celestes", "caja.gemas_con
 const EVENTOS_REPARTO = ["caja.contrato_invitar", "caja.contrato_terminar", "caja.envio_pagado"];
 // Reputación 1b (20261115100000): el cliente o el negocio califican al repartidor.
 const EVENTO_CALIFICACION = "caja.calificacion";
+// Reportes 4b-2 (20261121100000): el cliente o el negocio reportan al
+// repartidor, y el resultado de un reporte que el repartidor hizo.
+const EVENTOS_REPORTE = ["caja.reporte", "caja.reporte_resuelto"];
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return jsonResponse(405, { error: "method not allowed" });
@@ -33,12 +36,15 @@ Deno.serve(async (req) => {
   const esGemas = EVENTOS_GEMAS.includes(env.event_type);
   const esReparto = EVENTOS_REPARTO.includes(env.event_type);
   const esCalificacion = env.event_type === EVENTO_CALIFICACION;
-  if (env.event_type !== EXPECTED_EVENT && !esGemas && !esReparto && !esCalificacion) {
+  const esReporte = EVENTOS_REPORTE.includes(env.event_type);
+  if (env.event_type !== EXPECTED_EVENT && !esGemas && !esReparto && !esCalificacion && !esReporte) {
     return jsonResponse(400, { error: `event_type inesperado: ${env.event_type}` });
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-  const rpc = esCalificacion
+  const rpc = esReporte
+    ? "rpc_webhook_caja_reporte"
+    : esCalificacion
     ? "rpc_webhook_caja_calificacion"
     : esReparto
     ? "rpc_webhook_caja_reparto"

@@ -18,7 +18,10 @@ import { textoMotivo } from "../MisReportes";
      listar(estado|null)                       → { data: { reportes, conteo }, error }
      resolver({ p_id, p_estado, p_accion, p_dias, p_respuesta }) → { error }
      levantar(sancionId)                        → { error }
-   } */
+     foto?(valor)                               → url (fotos que viven en la otra app)
+   }
+   fuentes (solo el superadmin): [{ id, label, logo, api, subtitulo, nuevos }]
+   → arriba, el filtro con los logos (Caja / Taxi PE) elige de dónde se leen. */
 
 const FILTROS = [
   { id: "nuevo", label: "Nuevos" },
@@ -73,8 +76,30 @@ function Avatar({ foto, nombre }) {
   return <span className="tz-radm-avatar is-letra">{(nombre || "?").slice(0, 1).toUpperCase()}</span>;
 }
 
-function Foto({ valor, onAbrir }) {
+function Foto({ valor, onAbrir, resolver }) {
+  return resolver ? <FotoRemota valor={valor} onAbrir={onAbrir} resolver={resolver} /> : <FotoLocal valor={valor} onAbrir={onAbrir} />;
+}
+
+function FotoLocal({ valor, onAbrir }) {
   const url = useUrlVisible(valor);
+  return <FotoBoton valor={valor} url={url} onAbrir={onAbrir} />;
+}
+
+// La foto vive en la otra app: el enlace firmado se pide por su puente.
+function FotoRemota({ valor, onAbrir, resolver }) {
+  const [url, setUrl] = useState("");
+  useEffect(() => {
+    let vivo = true;
+    setUrl("");
+    if (valor) Promise.resolve(resolver(valor)).then((u) => vivo && setUrl(u || "")).catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, [valor, resolver]);
+  return <FotoBoton valor={valor} url={url} onAbrir={onAbrir} />;
+}
+
+function FotoBoton({ valor, url, onAbrir }) {
   if (!valor) return null;
   return (
     <button type="button" className="tz-radm-foto" onClick={() => url && onAbrir(url)} aria-label="Ver foto del reporte">
@@ -83,7 +108,12 @@ function Foto({ valor, onAbrir }) {
   );
 }
 
-export default function ReportesAdminModal({ api, subtitulo = "", onClose }) {
+export default function ReportesAdminModal({ api: apiUnica, subtitulo: subtituloUnico = "", fuentes = null, onClose }) {
+  const [fuenteId, setFuenteId] = useState(fuentes?.[0]?.id ?? null);
+  const fuente = fuentes?.find((f) => f.id === fuenteId) || null;
+  const api = fuente ? fuente.api : apiUnica;
+  const subtitulo = fuente ? fuente.subtitulo : subtituloUnico;
+  const idxFuente = Math.max(0, fuentes?.findIndex((f) => f.id === fuenteId) ?? 0);
   const [filtro, setFiltro] = useState("nuevo");
   const [datos, setDatos] = useState(null);
   const [error, setError] = useState("");
@@ -159,7 +189,31 @@ export default function ReportesAdminModal({ api, subtitulo = "", onClose }) {
       <div className="tz-radm" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Centro de reportes">
         <button type="button" className="tz-radm-cerrar" onClick={onClose} aria-label="Cerrar"><X size={18} /></button>
         <h2 className="tz-radm-titulo"><ShieldAlert size={20} /> Centro de reportes</h2>
-        {subtitulo && <p className="tz-radm-sub">{subtitulo}</p>}
+        {fuentes && (
+          <div className="tz-radm-apps" role="tablist" style={{ "--i": idxFuente, "--n": fuentes.length }}>
+            <span className={`tz-radm-apps-brillo is-${fuenteId}`} aria-hidden="true" />
+            {fuentes.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                role="tab"
+                aria-selected={fuenteId === f.id}
+                className={`tz-radm-app ${fuenteId === f.id ? "is-activa" : ""}`}
+                onClick={() => {
+                  if (f.id === fuenteId) return;
+                  setFuenteId(f.id);
+                  setAbierto(null);
+                  setError("");
+                }}
+              >
+                <img src={f.logo} alt="" />
+                <span>{f.label}</span>
+                {f.nuevos > 0 && <b className="tz-radm-app-num">{f.nuevos > 99 ? "99+" : f.nuevos}</b>}
+              </button>
+            ))}
+          </div>
+        )}
+        {subtitulo && <p key={subtitulo} className="tz-radm-sub">{subtitulo}</p>}
 
         <div className="tz-radm-filtros">
           {FILTROS.map((f) => {
@@ -242,10 +296,10 @@ export default function ReportesAdminModal({ api, subtitulo = "", onClose }) {
                     )}
 
                     <div className="tz-radm-motivo">
-                      <Flag size={14} /> {textoMotivo(r.motivo)}
+                      <Flag size={14} /> {textoMotivo(r.motivo, r.reportado?.tipo === "conductor" && r.servicio === "entrega" ? "repartidor" : r.reportado?.tipo)}
                     </div>
                     {r.descripcion && <p className="tz-radm-desc">“{r.descripcion}”</p>}
-                    <Foto valor={r.foto} onAbrir={setFoto} />
+                    <Foto valor={r.foto} onAbrir={setFoto} resolver={api.foto} />
                     <p className="tz-radm-meta">
                       Reportó: <b>{r.autor?.nombre}</b> ({TIPO[r.autor?.tipo] || r.autor?.tipo})
                       {r.autor?.telefono ? ` · ${r.autor.telefono}` : ""}
@@ -388,7 +442,30 @@ const ESTILO = `
 .tz-radm-cerrar:hover { transform: rotate(90deg); }
 .tz-radm-titulo { margin: 0; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 19px; color: #ff5470;
   text-shadow: 0 0 14px rgba(255,84,112,0.45); }
-.tz-radm-sub { margin: -4px 0 0; text-align: center; font-size: 12.5px; color: var(--text-dim); }
+.tz-radm-sub { margin: -4px 0 0; text-align: center; font-size: 12.5px; color: var(--text-dim); animation: tz-radm-sub-in .5s ease both; }
+@keyframes tz-radm-sub-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+/* Filtro principal con los logos (superadmin): Caja / Taxi PE. */
+.tz-radm-apps { position: relative; display: grid; grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr)); width: 100%; max-width: 420px;
+  margin: 0 auto; padding: 5px; box-sizing: border-box; border-radius: 22px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); }
+.tz-radm-apps-brillo { position: absolute; top: 5px; bottom: 5px; left: 5px; width: calc((100% - 10px) / var(--n, 2)); border-radius: 17px;
+  transform: translateX(calc(var(--i) * 100%)); transition: transform .55s cubic-bezier(.34,1.56,.64,1), background .4s ease, box-shadow .4s ease; }
+.tz-radm-apps-brillo.is-caja { background: linear-gradient(110deg, rgba(255,47,158,0.28), rgba(43,232,255,0.22));
+  box-shadow: 0 0 22px rgba(255,47,158,0.4), inset 0 0 0 1px rgba(255,47,158,0.6); }
+.tz-radm-apps-brillo.is-taxi { background: linear-gradient(110deg, rgba(215,255,59,0.24), rgba(57,255,176,0.22));
+  box-shadow: 0 0 22px rgba(215,255,59,0.38), inset 0 0 0 1px rgba(215,255,59,0.6); }
+.tz-radm-app { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; padding: 8px 10px;
+  border: 0; background: transparent; border-radius: 17px; cursor: pointer; font: inherit; color: var(--text-dim); font-weight: 800; font-size: 13.5px;
+  transition: color .3s ease, transform .35s cubic-bezier(.34,1.56,.64,1); }
+.tz-radm-app:hover { transform: translateY(-1px); color: var(--text); }
+.tz-radm-app img { height: 28px; width: auto; max-width: 76px; object-fit: contain; filter: grayscale(.7) brightness(.8);
+  transition: filter .4s ease, transform .5s cubic-bezier(.34,1.56,.64,1); }
+.tz-radm-app span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tz-radm-app.is-activa { color: var(--text); }
+.tz-radm-app.is-activa img { filter: drop-shadow(0 0 10px rgba(255,255,255,0.35)); transform: scale(1.12); }
+.tz-radm-app-num { min-width: 18px; height: 18px; padding: 0 5px 1px; box-sizing: border-box; border-radius: 999px; display: inline-flex; align-items: center;
+  justify-content: center; line-height: 1; font-size: 10.5px; font-weight: 900; color: #fff; background: #ff2f9e; box-shadow: 0 0 10px rgba(255,47,158,0.7);
+  animation: tz-radm-pop .5s cubic-bezier(.34,1.56,.64,1) both; }
+@media (max-width: 420px) { .tz-radm-app span { display: none; } }
 .tz-radm-filtros { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
 .tz-radm-filtros::-webkit-scrollbar { display: none; }
 .tz-radm-filtro { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 999px; cursor: pointer;
