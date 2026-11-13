@@ -19,6 +19,13 @@ export function canalViaje(conductorId, pasajeroId) {
   return `viaje-${conductorId}-${pasajeroId}`;
 }
 
+// Revisión de seguridad (P1-F): el canal del viaje es PRIVADO — lleva el
+// GPS en vivo y los avisos del viaje. Solo lo pueden escuchar y usar el
+// conductor y el pasajero de ese viaje (políticas sobre realtime.messages,
+// migración 20261129100000). Abrirlo SIEMPRE con estas opciones:
+// supabase.channel(canalViaje(c, p), CANAL_VIAJE_PRIVADO).
+export const CANAL_VIAJE_PRIVADO = { config: { private: true } };
+
 // Lado Conductor (montado en ConductorPage.jsx, vive mientras el
 // conductor tenga sesión — no depende de que tenga el chat abierto):
 // transmite su ubicación en vivo por Broadcast, nunca escribe en la
@@ -108,7 +115,7 @@ export function useGpsBroadcaster({
     const canalesPrivados = vaAlPrivado
       ? new Map(
           idsActuales.map((pasajeroId) => {
-            const canal = supabase.channel(canalViaje(conductorId, pasajeroId));
+            const canal = supabase.channel(canalViaje(conductorId, pasajeroId), CANAL_VIAJE_PRIVADO);
             canal.subscribe();
             return [pasajeroId, canal];
           })
