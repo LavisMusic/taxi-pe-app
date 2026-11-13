@@ -307,6 +307,8 @@ export default function ConductorPage() {
 
   const handleToggleDelivery = async () => {
     if (!conductor || cambiandoDelivery) return;
+    // Igual que el switch de taxi: en pleno viaje no se apaga el delivery.
+    if (conductor.modo_delivery && (enCarrera || repartiendo)) return;
     setCambiandoDelivery(true);
     setDeliveryError("");
     const { error: errDelivery } = await actualizar(conductor.id, { modo_delivery: !conductor.modo_delivery });

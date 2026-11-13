@@ -13,7 +13,8 @@ import { formatSoles } from "../../utils/format";
 //
 // Estados del switch: apagado · activo · repartiendo n/5 (bloqueado: no
 // se apaga con pedidos pendientes) · en carrera (sigue visible para los
-// negocios, pero no recibe repartos hasta terminar el viaje).
+// negocios, pero no recibe repartos hasta terminar el viaje; tampoco se
+// apaga hasta terminarlo, igual que el switch de taxi).
 const MENSAJE_VACIO = "Aquí saldrán tus solicitudes de reparto";
 
 export default function PanelDelivery({
@@ -61,7 +62,7 @@ export default function PanelDelivery({
     activo: "Los negocios pueden verte",
     repartiendo:
       activos >= MAX_REPARTOS ? "Entrega alguno para recibir más pedidos" : "Puedes aceptar más pedidos · entrégalos para apagar",
-    carrera: "No recibes repartos hasta terminar el viaje",
+    carrera: "No recibes repartos hasta terminar el viaje · termínalo para apagar",
   }[estado];
 
   return (
@@ -87,7 +88,8 @@ export default function PanelDelivery({
           sinPermiso ? "tz-estado-toggle-bloqueado" : ""
         }`}
         onClick={onToggle}
-        disabled={cambiando || sinPermiso || repartiendo}
+        // En carrera no se apaga (sí se puede encender).
+        disabled={cambiando || sinPermiso || repartiendo || (enCarrera && encendido)}
         aria-pressed={encendido}
         aria-label={etiqueta}
         title={sinPermiso ? bloqueadoPor : undefined}
