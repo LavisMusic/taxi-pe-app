@@ -27,6 +27,8 @@ import { MAPA_NIVEL_COLOR } from "../lib/nivelServicio";
 import { MAPBOX_TOKEN } from "../lib/mapboxConfig";
 import MapaViaje from "./MapaViaje";
 import AnimacionExitoNeon from "./AnimacionExitoNeon";
+import BotonReportar from "./BotonReportar";
+import { reportarServicio, servicioParaReportar } from "../lib/reportar";
 import logo from "../assets/logo.webp";
 
 // Mini-Mapa en Mensaje de Señas: Mapbox Static Images API — a
@@ -798,6 +800,9 @@ export default function ChatWindow({
       return true;
     });
   const estadoOfertaVigente = ofertaVigente ? ofertasLocales[ofertaVigente.id] ?? ofertaVigente.estado_oferta : null;
+  // Se puede reportar al otro lado mientras el viaje está aceptado o en curso.
+  const viajeReportable =
+    !!ofertaVigente && (estadoOfertaVigente === ESTADO_OFERTA_ACEPTADA || estadoOfertaVigente === ESTADO_OFERTA_EN_TRANSITO);
 
   // Fix Viaje Zombie: `viajeEnTransito`/`finViajeLocal`/`inicioViajeLocal`
   // (overrides optimistas de Broadcast, ver sus declaraciones más
@@ -1420,6 +1425,16 @@ export default function ChatWindow({
             <button type="button" className="tz-chat-cancelar-btn" onClick={() => setConfirmarCancelarOpen(true)}>
               Cancelar Viaje
             </button>
+            {/* Reportes, fase B: también en pleno viaje (al otro lado). */}
+            {viajeReportable && (
+              <BotonReportar
+                key={`${ofertaVigente.id}-${estadoOfertaVigente}`}
+                leer={() => servicioParaReportar({ ref: `viaje:${ofertaVigente.id}` })}
+                enviar={reportarServicio}
+                avisoDonde="Taxi PE"
+                className="tz-chat-reportar-btn"
+              />
+            )}
           </div>
         </div>
       )}
@@ -1533,6 +1548,16 @@ export default function ChatWindow({
             <button type="button" className="tz-chat-cancelar-btn" onClick={() => setConfirmarCancelarOpen(true)}>
               Cancelar Viaje
             </button>
+            {/* Reportes, fase B: también en pleno viaje (al otro lado). */}
+            {viajeReportable && (
+              <BotonReportar
+                key={`${ofertaVigente.id}-${estadoOfertaVigente}`}
+                leer={() => servicioParaReportar({ ref: `viaje:${ofertaVigente.id}` })}
+                enviar={reportarServicio}
+                avisoDonde="Taxi PE"
+                className="tz-chat-reportar-btn"
+              />
+            )}
           </div>
         </div>
       )}

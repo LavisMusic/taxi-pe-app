@@ -1,5 +1,6 @@
 import { BadgeCheck, Sparkles } from "lucide-react";
 import { Estrellas } from "./Estrellas";
+import { useEsNuevo } from "../lib/esNuevo";
 
 /* Insignia de reputación — MISMO archivo en Taxi-PE y Caja
    (src/components/InsigniaReputacion.jsx): mantener iguales.
@@ -32,17 +33,26 @@ function Chip({ color, children, brilla }) {
 }
 
 // mostrar: "todo" (por defecto), "estrellas" (solo estrellas, nada si es
-// nuevo) o "etiquetas" (solo la automática y las puestas a mano).
-export default function InsigniaReputacion({ rep, etiquetas = [], tamano = "normal", className = "", mostrar = "todo" }) {
+// nuevo), "etiquetas" (solo la automática y las puestas a mano) o
+// "estrellas-o-nuevo" (Directorio: las estrellas o, sin ellas, "Nuevo";
+// nunca las puestas a mano).
+// tipo + id: de quién es (para la regla de "Nuevo": solo los primeros 3
+// días desde que se creó la cuenta y mientras no tenga sus primeras 3
+// calificaciones; después, sin etiqueta hasta que lleguen las estrellas).
+// Sin tipo/id no se muestra "Nuevo".
+export default function InsigniaReputacion({ rep, etiquetas = [], tamano = "normal", className = "", mostrar = "todo", tipo = null, id = null }) {
   const total = Number(rep?.total || 0);
   const promedio = Number(rep?.promedio || 0);
-  const clave = total < 3 ? "nuevo" : rep?.etiqueta || "confiable";
+  const esNuevo = useEsNuevo(total < 3 ? tipo : null, id);
+  const clave = total < 3 ? (esNuevo ? "nuevo" : "sin") : rep?.etiqueta || "confiable";
   // "sin": no se muestra etiqueta automática (p. ej. "Confiable" en los
   // negocios: todos los registrados lo son).
   const auto = clave === "sin" ? null : ETIQUETAS_AUTO[clave] || ETIQUETAS_AUTO.confiable;
   const chico = tamano === "chico";
   if (mostrar === "estrellas" && total < 3) return null;
-  const conEtiquetas = mostrar !== "estrellas";
+  if (mostrar === "estrellas-o-nuevo" && total < 3 && clave !== "nuevo") return null;
+  const conEtiquetas = mostrar !== "estrellas" && !(mostrar === "estrellas-o-nuevo" && total >= 3);
+  const conManuales = conEtiquetas && mostrar !== "estrellas-o-nuevo";
   return (
     <span className={`tz-rep ${chico ? "is-chico" : ""} ${className}`}>
       <style>{ESTILO}</style>
@@ -59,7 +69,7 @@ export default function InsigniaReputacion({ rep, etiquetas = [], tamano = "norm
           {auto.label}
         </Chip>
       )}
-      {conEtiquetas && etiquetas.map((e) => (
+      {conManuales && etiquetas.map((e) => (
         <Chip key={e.etiqueta} color={COLORES_ETIQUETA[e.color] || COLORES_ETIQUETA.cyan}>
           <BadgeCheck size={chico ? 10 : 11} />
           {e.etiqueta}

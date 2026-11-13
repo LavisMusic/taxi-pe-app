@@ -14,7 +14,7 @@ const mensaje = (e) =>
   e.code === "23505" ? "Ya lo usa otra persona." : e.code === "42501" ? e.message : "No se pudo guardar. Intenta de nuevo.";
 
 export default function PerfilConductorModal({ conductor, actualizar, onClose }) {
-  const { usuario, updateUsuario } = useTaxiAuth();
+  const { usuario, updateUsuario, logout } = useTaxiAuth();
   const [cambios, setCambios] = useState(null);
 
   const leerCambios = async () => {
@@ -56,6 +56,7 @@ export default function PerfilConductorModal({ conductor, actualizar, onClose })
         return null;
       }}
       onClose={onClose}
+      onCerrarSesion={logout}
     >
       <TarjetaMiReputacion rol="conductor" conductorId={conductor.id} />
     </PerfilModal>

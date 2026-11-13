@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ExternalLink } from "lucide-react";
 import { supabase } from "../supabaseClient";
-import { subirComprobantePrivado, subirFotoReporteACaja } from "../lib/comprobantes";
+import { reportarServicio } from "../lib/reportar";
 import MiReputacionModal, { TarjetaReputacion } from "./MiReputacionModal";
 
 /* "Mi reputación" (fase 3b) dentro de "Mi perfil" del pasajero y del
@@ -76,31 +76,7 @@ export default function TarjetaMiReputacion({ rol, conductorId }) {
       // Fase 4a: pestaña "Reportes" (viajes de los últimos 30 días).
       reportes: {
         leer: () => supabase.rpc("taxi_mis_reportes", { p_rol: rol }),
-        reportar: async (item, motivo, descripcion, archivo) => {
-          let foto = null;
-          if (archivo && String(item.ref).startsWith("entrega:")) {
-            // Reparto (4b-2): el negocio o el cliente los resuelve el
-            // superadmin en Caja → la foto va al bucket privado de Caja.
-            const subida = await subirFotoReporteACaja(archivo);
-            if (subida.error) return { error: new Error("No se pudo subir la foto. Inténtalo otra vez.") };
-            foto = subida.valor;
-          } else if (archivo) {
-            // Bucket privado: solo el Admin y quien la subió la ven.
-            const { data } = await supabase.auth.getSession();
-            const uid = data?.session?.user?.id;
-            if (!uid) return { error: new Error("Inicia sesión para reportar.") };
-            const subida = await subirComprobantePrivado(archivo, `reportes/${uid}`);
-            if (subida.error) return { error: new Error("No se pudo subir la foto. Inténtalo otra vez.") };
-            foto = subida.valor;
-          }
-          return supabase.rpc("taxi_reportar", {
-            p_ref: item.ref,
-            p_reportado_tipo: item.reportado_tipo,
-            p_motivo: motivo,
-            p_descripcion: descripcion,
-            p_foto: foto,
-          });
-        },
+        reportar: reportarServicio,
       },
     }),
     [rol, pendientes]

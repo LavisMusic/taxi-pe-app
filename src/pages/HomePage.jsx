@@ -48,6 +48,7 @@ import CalificacionesViaje from "../components/CalificacionesViaje";
 import { usePendientesReputacion } from "../components/MiReputacion";
 import { useMiSancion } from "../hooks/useMiSancion";
 import AvisoSancion from "../components/AvisoSancion";
+import { usePasajeroPresenciaTrack } from "../hooks/usePasajeroPresenciaTrack";
 
 // Persistencia del filtro de localidad — sobrevive a un F5 (ver el
 // useState/useEffect de `localidad` más abajo). Es la única pieza de
@@ -79,6 +80,8 @@ export default function HomePage() {
   // Créditos del pasajero (puntos por sus compras en Caja Tonazo): el
   // contador con diamante arriba de la pantalla principal.
   const misGemas = useMisGemas(esPasajero ? usuario?.id : null);
+  // "Conectado ahora" para el visor del Admin (solo el id, sin nombre).
+  usePasajeroPresenciaTrack(esPasajero ? usuario?.id : null);
   const { conductores, categorias, loading, error } = useConductoresPublicos();
   // Pop-up de marketing — ver useAnuncioActivo.js para la lógica de
   // vigencia (fecha_inicio/fecha_fin) + frecuencia (localStorage). Se
@@ -495,11 +498,14 @@ export default function HomePage() {
 
           <div className="tz-header-side tz-header-side-right">
             <BotonSoporte />
+            {/* El pasajero cierra sesión desde "Editar Perfil". */}
             {usuario ? (
-              <button className="tz-header-btn" onClick={logout} aria-label="Cerrar sesión" title="Cerrar sesión">
-                <LogOut size={19} />
-                <span className="tz-header-btn-label">Salir</span>
-              </button>
+              !esPasajero && (
+                <button className="tz-header-btn" onClick={logout} aria-label="Cerrar sesión" title="Cerrar sesión">
+                  <LogOut size={19} />
+                  <span className="tz-header-btn-label">Salir</span>
+                </button>
+              )
             ) : (
               <button className="tz-header-btn" onClick={() => setLoginOpen(true)} aria-label="Ingresar">
                 <LogIn size={19} />

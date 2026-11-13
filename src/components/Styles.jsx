@@ -613,7 +613,8 @@ export default function Styles() {
            span 2 se come ese hueco y de paso da lugar real para que
            los 3 botones de rol entren en una sola fila y el carrusel
            Top 5 respire. */
-        grid-column: span 2;
+        /* Pegado al lado derecho (columnas 2 y 3). */
+        grid-column: 2 / span 2;
         border-color: rgba(215,255,59,0.4);
         background: linear-gradient(180deg, rgba(215,255,59,0.10), var(--panel));
       }
@@ -2851,31 +2852,11 @@ export default function Styles() {
         color: #241200;
         box-shadow: 0 0 20px rgba(255,149,0,0.4);
       }
-      /* Limpieza manual de caché de chats — morado a propósito, ningún
-         otro botón del pie de página usa este color: es la acción más
-         destructiva de las 8 (borra TODOS los chats de TODOS los
-         usuarios), tiene que distinguirse de un vistazo del resto. */
-      .tz-footer-btn-limpiar-chats {
-        background: #a855f7;
-        color: #1c0630;
-        box-shadow: 0 0 20px rgba(168,85,247,0.45);
-      }
-      /* Barra de carga del modal de limpieza — mismo criterio fino que
-         ya usan el Cronómetro de cierre de anuncio y el mini-mapa de
-         Señas: track tenue + fill con transición suave, sin números. */
-      .tz-limpiar-chats-progreso-track {
-        width: 100%;
-        height: 6px;
-        border-radius: 999px;
-        background: rgba(255,255,255,0.12);
-        overflow: hidden;
-        margin: 10px 0;
-      }
-      .tz-limpiar-chats-progreso-fill {
-        height: 100%;
-        background: #a855f7;
-        box-shadow: 0 0 10px #a855f7;
-        transition: width 0.15s linear;
+      /* Cerrar sesión en el pie de página (admin): rojo neón, aparte del resto. */
+      .tz-footer-btn-salir {
+        background: linear-gradient(110deg, #ff5470, #ff2f9e);
+        color: #2a0010;
+        box-shadow: 0 0 20px rgba(255,84,112,0.45);
       }
       .tz-footer-btn-stock {
         background: var(--yellow);
@@ -3794,6 +3775,8 @@ export default function Styles() {
         cursor: pointer;
       }
       .tz-chat-cancelar-btn:hover { background: rgba(255,84,112,0.22); }
+      /* "Reportar" en pleno viaje (BotonReportar), al lado de Cancelar. */
+      .tz-brep.tz-chat-reportar-btn { border-radius: 8px; font-family: 'Rajdhani', sans-serif; font-size: 12px; }
       /* "✅ Pasajero Recogido" (Conductor, Fase 3) — verde, al lado del
          rojo de Cancelar en el mismo panel. */
       /* Navegación Externa (Google Maps/Waze) — reemplaza al trazado
@@ -7691,7 +7674,7 @@ export default function Styles() {
         height: 16px;
         padding: 0 4px;
         border-radius: 999px;
-        background: var(--danger, #ff3b5c);
+        background: #ff2d55;
         color: #fff;
         font-size: 10px;
         font-weight: 800;
@@ -7843,7 +7826,7 @@ export default function Styles() {
         height: 20px;
         padding: 0 6px;
         border-radius: 999px;
-        background: var(--pink);
+        background: #ff2d55;
         color: #fff;
         font-size: 11px;
         font-weight: 800;

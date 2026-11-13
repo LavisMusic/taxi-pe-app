@@ -4,6 +4,7 @@ import { X, Camera, Loader2, Check } from "lucide-react";
 import GestionImagenModal from "./admin/GestionImagenModal";
 import CampoUsuario, { useCampoUsuario } from "./CampoUsuario";
 import { esUsuarioProvisional } from "../lib/nombreUsuario";
+import BotonCerrarSesion from "./BotonCerrarSesion";
 
 // "Editar perfil" (pasajero y conductor): tocando el círculo se abre el
 // gestor de imágenes (recorte + IA); abajo, el nombre de usuario — lo que
@@ -30,6 +31,7 @@ export default function PerfilModal({
   fotoHasta = null,
   limitesListos = true,
   onClose,
+  onCerrarSesion = null,
   children = null,
 }) {
   const fecha = (ms) =>
@@ -97,6 +99,7 @@ export default function PerfilModal({
         {error && <p className="tz-error">{error}</p>}
         {/* Lo que agrega cada perfil (p. ej. la tarjeta "Mi reputación"). */}
         {children}
+        {onCerrarSesion && <BotonCerrarSesion onCerrarSesion={onCerrarSesion} />}
       </div>
       {editandoFoto && (
         <GestionImagenModal

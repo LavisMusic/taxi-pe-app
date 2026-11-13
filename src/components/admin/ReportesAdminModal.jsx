@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Loader2, Flag, ShieldAlert, ShieldCheck, Eye, Gavel, Ban, Clock3, CheckCircle2, AlertTriangle, Undo2, Phone, Car, User, Store, Bike } from "lucide-react";
+import { X, Loader2, Flag, ShieldAlert, ShieldCheck, Eye, Gavel, Ban, Clock3, CheckCircle2, AlertTriangle, Undo2, Phone, Car, User, Store, Bike, ExternalLink, PackageCheck } from "lucide-react";
 import { useUrlVisible } from "../../lib/imagenesPrivadas";
 import { Estrellas } from "../Estrellas";
 import InsigniaReputacion from "../InsigniaReputacion";
@@ -19,6 +19,8 @@ import { textoMotivo } from "../MisReportes";
      resolver({ p_id, p_estado, p_accion, p_dias, p_respuesta }) → { error }
      levantar(sancionId)                        → { error }
      foto?(valor)                               → url (fotos que viven en la otra app)
+     perfil?(reportado)                         → { viajes?, entregas?, descripcion?, placa?, etiquetas?, url? }
+                                                  (la ficha que se despliega al tocar su nombre)
    }
    fuentes (solo el superadmin): [{ id, label, logo, api, subtitulo, nuevos }]
    → arriba, el filtro con los logos (Caja / Taxi PE) elige de dónde se leen. */
@@ -74,6 +76,92 @@ function Avatar({ foto, nombre }) {
   const [rota, setRota] = useState(false);
   if (foto && !rota) return <img className="tz-radm-avatar" src={foto} alt="" onError={() => setRota(true)} />;
   return <span className="tz-radm-avatar is-letra">{(nombre || "?").slice(0, 1).toUpperCase()}</span>;
+}
+
+// Ficha del reportado (punto 7): al tocar su nombre se despliega su
+// reputación, sus reportes y, si la app la tiene (api.perfil), sus viajes,
+// entregas, descripción y el enlace a su página — igual que la tarjeta del
+// repartidor que ve el negocio.
+function FichaReportado({ reportado, cargar, children }) {
+  const [abierta, setAbierta] = useState(false);
+  const [extra, setExtra] = useState(undefined);
+  const [pos, setPos] = useState(null);
+  const ancla = useRef(null);
+
+  const ubicar = () => {
+    const r = ancla.current?.getBoundingClientRect();
+    if (!r) return;
+    const ancho = Math.min(300, window.innerWidth - 24);
+    const left = Math.max(12, Math.min(r.left, window.innerWidth - ancho - 12));
+    const abajo = r.bottom + 8 + 280 < window.innerHeight;
+    setPos({ left, ancho, top: abajo ? r.bottom + 8 : null, bottom: abajo ? null : window.innerHeight - r.top + 8 });
+  };
+  const alternar = (e) => {
+    e.stopPropagation();
+    if (abierta) return setAbierta(false);
+    ubicar();
+    setAbierta(true);
+    if (extra === undefined) {
+      if (!cargar) setExtra(null);
+      else Promise.resolve(cargar(reportado)).then((d) => setExtra(d || null), () => setExtra(null));
+    }
+  };
+
+  useEffect(() => {
+    if (!abierta) return undefined;
+    const fuera = (e) => {
+      if (!ancla.current?.contains(e.target) && !e.target.closest?.(".tz-radm-ficha")) setAbierta(false);
+    };
+    window.addEventListener("pointerdown", fuera);
+    window.addEventListener("scroll", ubicar, true);
+    return () => {
+      window.removeEventListener("pointerdown", fuera);
+      window.removeEventListener("scroll", ubicar, true);
+    };
+  }, [abierta]);
+
+  const rep = reportado?.reputacion || {};
+  const I = ICONO_TIPO[reportado?.tipo] || User;
+  return (
+    <>
+      <button type="button" ref={ancla} className={`tz-radm-nombre-btn ${abierta ? "is-abierta" : ""}`} onClick={alternar} title="Ver su perfil">
+        {children}
+      </button>
+      {abierta && pos &&
+        createPortal(
+          <div
+            className={`tz-radm-ficha ${pos.top != null ? "is-abajo" : "is-arriba"}`}
+            style={{ left: pos.left, width: pos.ancho, top: pos.top ?? "auto", bottom: pos.bottom ?? "auto" }}
+          >
+            <div className="tz-radm-ficha-cab">
+              <Avatar foto={reportado?.foto_url} nombre={reportado?.nombre} />
+              <span>
+                <b>{reportado?.nombre}</b>
+                <small>
+                  <I size={11} /> {TIPO[reportado?.tipo] || "Cuenta"}
+                  {extra?.placa || reportado?.detalle ? ` · ${extra?.placa || reportado.detalle}` : ""}
+                </small>
+              </span>
+            </div>
+            <InsigniaReputacion rep={rep} etiquetas={extra?.etiquetas || []} tipo={reportado?.tipo} id={reportado?.id} />
+            <div className="tz-radm-ficha-datos">
+              <span><Flag size={13} /> {reportado?.reportes || 0} reporte{reportado?.reportes === 1 ? "" : "s"}</span>
+              <span><Gavel size={13} /> {reportado?.con_accion || 0} con medida</span>
+              {extra?.viajes != null && <span><Car size={13} /> {extra.viajes} viajes</span>}
+              {extra?.entregas != null && <span><PackageCheck size={13} /> {extra.entregas} entregas</span>}
+            </div>
+            {extra === undefined && <Loader2 size={16} className="tz-spin" />}
+            {extra?.descripcion && <p className="tz-radm-ficha-desc">{extra.descripcion}</p>}
+            {extra?.url && (
+              <a className="tz-radm-ficha-link" href={extra.url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink size={13} /> Ver perfil completo
+              </a>
+            )}
+          </div>,
+          document.body
+        )}
+    </>
+  );
 }
 
 function Foto({ valor, onAbrir, resolver }) {
@@ -208,7 +296,7 @@ export default function ReportesAdminModal({ api: apiUnica, subtitulo: subtitulo
               >
                 <img src={f.logo} alt="" />
                 <span>{f.label}</span>
-                {f.nuevos > 0 && <b className="tz-radm-app-num">{f.nuevos > 99 ? "99+" : f.nuevos}</b>}
+                {f.nuevos > 0 && <b className="tz-radm-app-num">{f.nuevos > 9 ? "+9" : f.nuevos}</b>}
               </button>
             ))}
           </div>
@@ -256,8 +344,10 @@ export default function ReportesAdminModal({ api: apiUnica, subtitulo: subtitulo
                       <Avatar foto={r.reportado?.foto_url} nombre={r.reportado?.nombre} />
                       <div className="tz-radm-quien">
                         <b>
-                          {r.reportado?.nombre}
-                          {r.reportado?.usuario && !/^\d{6,}$/.test(r.reportado.usuario) ? <small> @{r.reportado.usuario}</small> : null}
+                          <FichaReportado reportado={r.reportado} cargar={api.perfil}>
+                            {r.reportado?.nombre}
+                            {r.reportado?.usuario && !/^\d{6,}$/.test(r.reportado.usuario) ? <small> @{r.reportado.usuario}</small> : null}
+                          </FichaReportado>
                         </b>
                         <span className="tz-radm-chips">
                           <span className="tz-radm-chip">
@@ -463,7 +553,7 @@ const ESTILO = `
 .tz-radm-app.is-activa { color: var(--text); }
 .tz-radm-app.is-activa img { filter: drop-shadow(0 0 10px rgba(255,255,255,0.35)); transform: scale(1.12); }
 .tz-radm-app-num { min-width: 18px; height: 18px; padding: 0 5px 1px; box-sizing: border-box; border-radius: 999px; display: inline-flex; align-items: center;
-  justify-content: center; line-height: 1; font-size: 10.5px; font-weight: 900; color: #fff; background: #ff2f9e; box-shadow: 0 0 10px rgba(255,47,158,0.7);
+  justify-content: center; line-height: 1; font-size: 10.5px; font-weight: 900; color: #fff; background: #ff2d55; box-shadow: 0 0 10px rgba(255,45,85,0.6);
   animation: tz-radm-pop .5s cubic-bezier(.34,1.56,.64,1) both; }
 @media (max-width: 420px) { .tz-radm-app span { display: none; } }
 .tz-radm-filtros { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
@@ -575,4 +665,24 @@ const ESTILO = `
 @keyframes tz-radm-item { from { opacity: 0; transform: translateY(14px) scale(.95); } to { opacity: 1; transform: none; } }
 @keyframes tz-radm-pop { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
 @keyframes tz-radm-abre { from { opacity: 0; transform: scaleY(.6) translateY(-6px); } to { opacity: 1; transform: none; } }
+.tz-radm-nombre-btn { all: unset; cursor: pointer; display: inline; border-radius: 6px; max-width: 100%;
+  background-image: linear-gradient(currentColor, currentColor); background-size: 0 1px; background-repeat: no-repeat; background-position: 0 100%;
+  transition: background-size .35s cubic-bezier(.34,1.56,.64,1), color .25s ease, text-shadow .25s ease; }
+.tz-radm-nombre-btn:hover, .tz-radm-nombre-btn.is-abierta { color: #2be8ff; background-size: 100% 1px; text-shadow: 0 0 10px rgba(43,232,255,0.5); }
+.tz-radm-ficha { position: fixed; z-index: 9600; display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 18px; box-sizing: border-box;
+  color: var(--text, #f4f2ff); background: var(--panel-solid, #140d28); border: 1px solid rgba(43,232,255,0.4);
+  box-shadow: 0 0 26px rgba(43,232,255,0.25), 0 14px 34px rgba(0,0,0,0.45); text-align: left; }
+.tz-radm-ficha.is-abajo { transform-origin: top left; animation: tz-radm-ficha-in .45s cubic-bezier(.34,1.56,.64,1) both; }
+.tz-radm-ficha.is-arriba { transform-origin: bottom left; animation: tz-radm-ficha-in .45s cubic-bezier(.34,1.56,.64,1) both; }
+.tz-radm-ficha-cab { display: flex; align-items: center; gap: 10px; }
+.tz-radm-ficha-cab b { display: block; font-size: 14px; }
+.tz-radm-ficha-cab small { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800; letter-spacing: .04em; color: #ff2f9e; }
+.tz-radm-ficha-datos { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12px; color: var(--text-dim, #9c93c2); }
+.tz-radm-ficha-datos span { display: inline-flex; align-items: center; gap: 4px; }
+.tz-radm-ficha-datos svg { color: #2be8ff; }
+.tz-radm-ficha-desc { margin: 0; font-size: 12.5px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.tz-radm-ficha-link { align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 800; color: #2be8ff;
+  text-decoration: none; transition: text-shadow .25s ease; }
+.tz-radm-ficha-link:hover { text-shadow: 0 0 10px rgba(43,232,255,0.7); }
+@keyframes tz-radm-ficha-in { from { opacity: 0; transform: scale(.85) translateY(-6px); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
 `;

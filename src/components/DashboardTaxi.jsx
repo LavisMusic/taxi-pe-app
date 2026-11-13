@@ -219,7 +219,9 @@ function Avatar({ url }) {
   return url ? <img src={url} alt="" className="tz-dt-avatar" /> : <span className="tz-dt-avatar is-vacio"><Users size={14} /></span>;
 }
 
-export default function DashboardTaxi({ leer, titulo = "Taxi-PE" }) {
+// `conectadosAhora`: pasajeros con la app abierta en este momento
+// (Presencia de Taxi-PE); solo lo pasa el admin de Taxi-PE.
+export default function DashboardTaxi({ leer, titulo = "Taxi-PE", conectadosAhora = null }) {
   const [periodo, setPeriodo] = useState("mes");
   const [datos, setDatos] = useState(null);
   const [cargando, setCargando] = useState(true);
@@ -319,10 +321,12 @@ export default function DashboardTaxi({ leer, titulo = "Taxi-PE" }) {
           nota={`${exito}% de éxito${d.entrega_minutos != null ? ` · ${d.entrega_minutos} min promedio` : ""}${d.entregas_en_curso ? ` · ${d.entregas_en_curso} en curso` : ""}`} />
         <Kpi i={5} icono={Radio} titulo="Conductores activos" valor={d.activos_periodo} formato={entero} anterior={d.activos_ant} tono="yellow"
           nota={`hoy ${entero(d.activos_hoy)} de ${entero(d.conductores_total)} · ${entero(d.horas_taxi)} h taxi · ${entero(d.horas_delivery)} h delivery`} />
-        <Kpi i={6} titulo="Gemas verdes ganadas" valor={d.gemas_ganadas} formato={entero} anterior={d.gemas_ganadas_ant} tono="green"
-          nota={`${entero(d.gemas_usadas)} usadas`}>
-          <IconoGema color="verde" size={18} />
-        </Kpi>
+        <Kpi i={6} icono={Users} titulo="Pasajeros activos" valor={d.pasajeros_activos} formato={entero} anterior={d.pasajeros_activos_ant} tono="green"
+          nota={[
+            conectadosAhora != null ? `${entero(conectadosAhora)} conectados ahora` : null,
+            `hoy ${entero(d.pasajeros_hoy)} de ${entero(d.pasajeros_total)}`,
+            `${entero(d.pasajeros_nuevos)} nuevos`,
+          ].filter(Boolean).join(" · ")} />
       </div>
 
       <div className="tz-dt-fila is-ancha-primero">
