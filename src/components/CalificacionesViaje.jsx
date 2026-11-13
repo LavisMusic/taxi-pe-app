@@ -4,6 +4,8 @@ import { supabase } from "../supabaseClient";
 import CalificarModal from "./CalificarModal";
 import { RUTA_ESTRELLA } from "./Estrellas";
 import { avisarCambioReputacion } from "../lib/reputacion";
+import { reportarServicio } from "../lib/reportar";
+import { itemDeReporte } from "./MiReputacionModal";
 
 /* Viajes y entregas por calificar (fases 1a y 1b de Reportes y
    reputación). Va en la pantalla del pasajero y en la del conductor
@@ -122,6 +124,19 @@ export default function CalificacionesViaje({ bloqueado = false }) {
           detalle={[abierta.detalle, fechaCorta(abierta.fecha)].filter(Boolean).join(" · ")}
           onEnviar={enviar}
           onCerrar={cerrar}
+          // Reportar en vez de calificar: sale de "Por calificar".
+          reportar={{
+            item: itemDeReporte(abierta),
+            avisoDonde: "Taxi PE",
+            enviar: async (item, motivo, descripcion, archivo) => {
+              const r = await reportarServicio(item, motivo, descripcion, archivo);
+              if (!r?.error) {
+                setPendientes((l) => l.filter((p) => claveDe(p) !== claveDe(abierta)));
+                avisarCambioReputacion();
+              }
+              return r;
+            },
+          }}
         />
       )}
       {!abierta && !bloqueado && pendientes.length > 0 &&

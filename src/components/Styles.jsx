@@ -3775,6 +3775,8 @@ export default function Styles() {
         cursor: pointer;
       }
       .tz-chat-cancelar-btn:hover { background: rgba(255,84,112,0.22); }
+      /* "Reportar" en pleno viaje (BotonReportar), al lado de Cancelar. */
+      .tz-brep.tz-chat-reportar-btn { border-radius: 8px; font-family: 'Rajdhani', sans-serif; font-size: 12px; }
       /* "✅ Pasajero Recogido" (Conductor, Fase 3) — verde, al lado del
          rojo de Cancelar en el mismo panel. */
       /* Navegación Externa (Google Maps/Waze) — reemplaza al trazado

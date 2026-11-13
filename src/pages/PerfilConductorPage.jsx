@@ -6,6 +6,9 @@ import Opiniones from "../components/Opiniones";
 import InsigniaReputacion from "../components/InsigniaReputacion";
 import { supabase } from "../supabaseClient";
 import { avisarCambioReputacion } from "../lib/reputacion";
+import { useTaxiAuth } from "../contexts/TaxiAuthContext";
+import BotonReportar from "../components/BotonReportar";
+import { reportarServicio, servicioParaReportar } from "../lib/reportar";
 import { NIVELES_SERVICIO } from "../lib/taxiEnums";
 
 /* /conductores/<usuario> (fase 2 de Reportes y reputación): la página
@@ -18,6 +21,7 @@ const SERVICIOS = { viaje: "Viaje", entrega: "Entrega" };
 export default function PerfilConductorPage() {
   const { clave } = useParams();
   const navigate = useNavigate();
+  const { usuario } = useTaxiAuth();
   const [perfil, setPerfil] = useState(undefined);
   const [copiado, setCopiado] = useState(false);
 
@@ -105,6 +109,16 @@ export default function PerfilConductorPage() {
             <h1 className="tz-pc-nombre">{perfil.nombre}</h1>
             {perfil.nombre_usuario && <p className="tz-pc-usuario">@{perfil.nombre_usuario}</p>}
             <InsigniaReputacion rep={perfil.reputacion} etiquetas={perfil.etiquetas} tipo="conductor" id={perfil.id} />
+            {/* Reportes, fase B: el pasajero que viajó con él (30 días). */}
+            {usuario?.rol === "pasajero" && !perfil.es_mio && (
+              <BotonReportar
+                key={perfil.id}
+                leer={() => servicioParaReportar({ conductorId: perfil.id })}
+                enviar={reportarServicio}
+                avisoDonde="Taxi PE"
+                sinServicio="Solo puedes reportarlo si viajaste con él en los últimos 30 días."
+              />
+            )}
             <ul className="tz-pc-datos">
               <li style={{ "--d": "0ms" }}><Car size={16} /><b>{perfil.viajes}</b><span>viajes</span></li>
               <li style={{ "--d": "80ms" }}><PackageCheck size={16} /><b>{perfil.entregas}</b><span>entregas</span></li>

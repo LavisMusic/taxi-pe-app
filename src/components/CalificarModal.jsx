@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Loader2, Send, Trash2 } from "lucide-react";
+import { X, Loader2, Send, Trash2, Flag } from "lucide-react";
 import { EstrellasElegir, RUTA_ESTRELLA } from "./Estrellas";
+import { ReportarModal } from "./MisReportes";
 
 /* Ventana para calificar un servicio — MISMO archivo en Taxi-PE y Caja
    (src/components/CalificarModal.jsx): mantener iguales.
@@ -9,12 +10,16 @@ import { EstrellasElegir, RUTA_ESTRELLA } from "./Estrellas";
    detalle (placa, fecha…), onEnviar(estrellas, comentario) → { error? },
    onCerrar() (cerrar sin calificar: queda como pendiente).
    Para editar: inicial { estrellas, comentario } y onBorrar() → { error? }
-   (aparece "Borrar mi calificación", con confirmación). */
+   (aparece "Borrar mi calificación", con confirmación).
+   reportar = { item, enviar(item, motivo, descripcion, archivo), avisoDonde }:
+   "¿Tuviste un problema? Reportar" — en vez de estrellas se manda un
+   reporte, y el servicio sale de "Por calificar" (onCerrar(true)). */
 
 const TEXTOS = ["", "Malo", "Regular", "Bien", "Muy bien", "¡Excelente!"];
 const MAX = 280;
 
-export default function CalificarModal({ nombre, foto, titulo, detalle, onEnviar, onCerrar, inicial, onBorrar }) {
+export default function CalificarModal({ nombre, foto, titulo, detalle, onEnviar, onCerrar, inicial, onBorrar, reportar = null }) {
+  const [reportando, setReportando] = useState(false);
   const editando = !!inicial?.estrellas;
   const [estrellas, setEstrellas] = useState(inicial?.estrellas || 0);
   const [comentario, setComentario] = useState(inicial?.comentario || "");
@@ -106,6 +111,11 @@ export default function CalificarModal({ nombre, foto, titulo, detalle, onEnviar
                 {editando ? "Guardar" : "Enviar"}
               </button>
             </div>
+            {!editando && reportar && (
+              <button type="button" className="tz-calif-reportar" onClick={() => setReportando(true)} disabled={enviando}>
+                <Flag size={13} /> ¿Tuviste un problema? <b>Reportar</b>
+              </button>
+            )}
             {editando && onBorrar && (
               <button type="button" className={`tz-calif-borrar ${confirmarBorrar ? "is-confirmar" : ""}`} onClick={borrar} disabled={enviando}>
                 <Trash2 size={14} /> {confirmarBorrar ? "Toca otra vez para borrarla" : "Borrar mi calificación"}
@@ -114,6 +124,18 @@ export default function CalificarModal({ nombre, foto, titulo, detalle, onEnviar
           </>
         )}
       </div>
+      {reportando && reportar && (
+        <ReportarModal
+          item={reportar.item}
+          avisoDonde={reportar.avisoDonde}
+          onEnviar={(motivo, descripcion, archivo) => reportar.enviar(reportar.item, motivo, descripcion, archivo)}
+          onCerrar={(listo) => {
+            setReportando(false);
+            // Reportado: ya no se califica (sale de "Por calificar").
+            if (listo) onCerrar?.(true);
+          }}
+        />
+      )}
     </div>,
     document.body
   );
@@ -164,6 +186,12 @@ const ESTILO = `
 .tz-calif-enviar { color: #1a1300; background: linear-gradient(110deg, #ffd84a, #ff9500); box-shadow: 0 0 18px rgba(255,216,74,0.45); }
 .tz-calif-enviar:disabled { opacity: .45; box-shadow: none; cursor: default; }
 .tz-calif-acciones button:hover:not(:disabled) { transform: translateY(-2px); }
+.tz-calif-reportar { display: inline-flex; align-items: center; gap: 5px; margin-top: 2px; padding: 6px 10px; border: 0; border-radius: 999px;
+  cursor: pointer; font: inherit; font-size: 12px; color: var(--text-dim, #9c93c2); background: transparent;
+  transition: color .25s ease, background .3s ease, transform .35s cubic-bezier(.34,1.56,.64,1); animation: tz-calif-fade .5s .2s ease both; }
+.tz-calif-reportar b { color: #ff5470; }
+.tz-calif-reportar svg { color: #ff5470; }
+.tz-calif-reportar:hover:not(:disabled) { color: var(--text, #f4f2ff); background: rgba(255,84,112,0.1); transform: translateY(-1px); }
 .tz-calif-borrar { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; padding: 6px 12px; border-radius: 999px;
   border: 1px solid transparent; background: transparent; color: var(--text-dim, #9c93c2); font: inherit; font-size: 12.5px; font-weight: 700;
   cursor: pointer; transition: color .25s ease, background .3s ease, border-color .3s ease, transform .3s cubic-bezier(.34,1.56,.64,1); }

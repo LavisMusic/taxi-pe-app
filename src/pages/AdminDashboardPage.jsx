@@ -57,6 +57,16 @@ const API_REPORTES = {
   listar: (estado) => supabase.rpc("taxi_admin_reportes", { p_estado: estado }),
   resolver: (args) => supabase.rpc("taxi_admin_resolver_reporte", args),
   levantar: (id) => supabase.rpc("taxi_admin_levantar_sancion", { p_id: id }),
+  // Ficha al tocar el nombre: de un conductor/repartidor, su página.
+  perfil: async (r) => {
+    if (r?.tipo !== "conductor" && r?.tipo !== "repartidor") return null;
+    const { data } = await supabase.rpc("taxi_perfil_conductor", { p_clave: r.id });
+    if (!data) return null;
+    return {
+      viajes: data.viajes, entregas: data.entregas, descripcion: data.descripcion, placa: data.placa,
+      etiquetas: data.etiquetas, url: `/conductores/${data.nombre_usuario || data.id}`,
+    };
+  },
 };
 import PagosMetodoModal from "../components/admin/PagosMetodoModal";
 import GestorRecargaConductorModal from "../components/admin/GestorRecargaConductorModal";

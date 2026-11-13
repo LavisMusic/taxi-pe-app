@@ -29,6 +29,18 @@ const PESTANAS_BASE = [
 const PESTANA_REPORTES = { id: "reportes", label: "Reportes", Icono: Flag };
 const DIA = 86400000;
 const claveDe = (p) => `${p.ref}|${p.calificado_tipo}`;
+// Lo que se calificaría, como servicio para reportar (fase B: "Reportar"
+// en la ventana de calificar reemplaza a las estrellas).
+export const itemDeReporte = (p) => ({
+  ref: p.servicio === "entrega" && p.entrega_id ? `entrega:${p.entrega_id}` : p.ref,
+  servicio: p.servicio,
+  reportado_tipo: p.calificado_tipo,
+  motivos: p.calificado_tipo,
+  nombre: p.nombre,
+  foto_url: p.foto_url,
+  detalle: p.detalle,
+  fecha: p.fecha,
+});
 const fechaCorta = (f) => new Date(f).toLocaleDateString("es-PE", { day: "numeric", month: "short", year: "numeric" });
 const diasQuedan = (f) => Math.max(0, 7 - Math.floor((Date.now() - new Date(f).getTime()) / DIA));
 
@@ -289,6 +301,11 @@ export default function MiReputacionModal({
           onBorrar={abierta.editar ? () => accionesRef.current.borrar(abierta.item) : undefined}
           onEnviar={enviar}
           onCerrar={cerrarCalificar}
+          reportar={
+            !abierta.editar && acciones.reportes
+              ? { item: itemDeReporte(abierta.item), enviar: acciones.reportes.reportar, avisoDonde }
+              : null
+          }
         />
       )}
     </div>,
