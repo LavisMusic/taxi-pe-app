@@ -60,7 +60,7 @@ function useContador(valor, dur = 900) {
   return v;
 }
 
-function Resumen({ resumen }) {
+function Resumen({ resumen, tipo, id }) {
   const rep = resumen?.reputacion || {};
   const total = Number(rep.total || 0);
   const prom = useContador(total >= 3 ? rep.promedio : 0);
@@ -77,7 +77,7 @@ function Resumen({ resumen }) {
         <strong>{total >= 3 ? prom.toFixed(1) : "—"}</strong>
         <Estrellas valor={total >= 3 ? prom : 0} size={20} />
         <span>{total === 1 ? "1 calificación" : `${total} calificaciones`}</span>
-        <InsigniaReputacion rep={rep} etiquetas={resumen?.etiquetas || []} />
+        <InsigniaReputacion rep={rep} etiquetas={resumen?.etiquetas || []} tipo={tipo} id={id} />
       </div>
       <ul className="tz-op-barras">
         {[5, 4, 3, 2, 1].map((n, i) => {
@@ -199,6 +199,8 @@ function Comentario({ item, i, resumen, acciones, servicios, quienResponde, quie
 
 export default function Opiniones({
   resumen, cargar, acciones, nombre, quienResponde = "el calificado", quienOculta = "el calificado", servicios, onCambio,
+  // De quién son (para la etiqueta "Nuevo" de sus primeros 3 días).
+  tipo = null, id = null,
 }) {
   const [filtro, setFiltro] = useState(null);
   const [lista, setLista] = useState([]);
@@ -236,7 +238,7 @@ export default function Opiniones({
   return (
     <div className="tz-op">
       <style>{ESTILO}</style>
-      <Resumen resumen={resumen} />
+      <Resumen resumen={resumen} tipo={tipo} id={id} />
       <div className="tz-op-filtros" role="tablist">
         {FILTROS.map((f) => (
           <button key={f ?? "todos"} type="button" role="tab" aria-selected={filtro === f}

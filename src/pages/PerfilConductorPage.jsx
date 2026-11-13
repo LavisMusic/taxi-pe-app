@@ -104,7 +104,7 @@ export default function PerfilConductorPage() {
             </div>
             <h1 className="tz-pc-nombre">{perfil.nombre}</h1>
             {perfil.nombre_usuario && <p className="tz-pc-usuario">@{perfil.nombre_usuario}</p>}
-            <InsigniaReputacion rep={perfil.reputacion} etiquetas={perfil.etiquetas} />
+            <InsigniaReputacion rep={perfil.reputacion} etiquetas={perfil.etiquetas} tipo="conductor" id={perfil.id} />
             <ul className="tz-pc-datos">
               <li style={{ "--d": "0ms" }}><Car size={16} /><b>{perfil.viajes}</b><span>viajes</span></li>
               <li style={{ "--d": "80ms" }}><PackageCheck size={16} /><b>{perfil.entregas}</b><span>entregas</span></li>
@@ -125,6 +125,8 @@ export default function PerfilConductorPage() {
               cargar={cargar}
               acciones={acciones}
               nombre={perfil.nombre}
+              tipo="conductor"
+              id={perfil.id}
               quienResponde={perfil.es_mio ? "ti" : "el conductor"}
               quienOculta="el conductor"
               servicios={SERVICIOS}

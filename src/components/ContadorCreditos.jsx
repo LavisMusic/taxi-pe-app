@@ -218,9 +218,14 @@ export default function ContadorCreditos({
   variante = "celeste",
   className = "",
   onSubio,
+  // `onVisto(valor)`: al terminar de mostrar un cambio (para guardar lo
+  // visto también fuera de este navegador, ver SaldoGemas.jsx).
+  onVisto,
 }) {
   const onSubioRef = useRef(onSubio);
   onSubioRef.current = onSubio;
+  const onVistoRef = useRef(onVisto);
+  onVistoRef.current = onVisto;
   const actual = Math.max(0, Math.round(Number(valor) || 0));
   const visible = useInterfazPrincipalVisible();
   const [mostrado, setMostrado] = useState(() => {
@@ -269,6 +274,7 @@ export default function ContadorCreditos({
     const dur = Math.max(0, ...giro.rodillos.map((r) => r.dur)) + 120;
     const t = setTimeout(() => {
       guardarVisto(clave, giro.hasta);
+      onVistoRef.current?.(giro.hasta);
       if (giro.hasta > giro.desde) {
         setGotas((g) => g + 1);
         const cuanto = giro.hasta - giro.desde;

@@ -6,5 +6,5 @@ import { useReputacion } from "../lib/reputacion";
 export default function ReputacionDe({ tipo, id, tamano, className, mostrar }) {
   const { rep, etiquetas } = useReputacion(tipo, id);
   if (!id) return null;
-  return <InsigniaReputacion rep={rep} etiquetas={etiquetas} tamano={tamano} className={className} mostrar={mostrar} />;
+  return <InsigniaReputacion rep={rep} etiquetas={etiquetas} tamano={tamano} className={className} mostrar={mostrar} tipo={tipo} id={id} />;
 }
