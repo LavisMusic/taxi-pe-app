@@ -30,3 +30,6 @@ export function useMiSancion(activo = true) {
   }, [activo]);
   return sancion;
 }
+
+// Apelar la sanción (fase C2): una vez por sanción, lo revisa el Admin.
+export const apelarSancion = (id, texto) => supabase.rpc("taxi_apelar_sancion", { p_id: id, p_texto: texto });

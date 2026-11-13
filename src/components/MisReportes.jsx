@@ -22,6 +22,9 @@ export const MOTIVOS = {
     ["otro", "Otro"],
   ],
   repartidor: [
+    // Los dos primeros son "reclamos": confirmados, bajan su nivel (fase C).
+    ["pedido_no_entregado", "Pedido no entregado"],
+    ["dinero_no_rendido", "Dinero no rendido"],
     ["pedido_danado", "Pedido incompleto o dañado"],
     ["demora", "Demora excesiva"],
     ["cobro_indebido", "Cobro indebido"],

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Loader2, Flag, ShieldAlert, ShieldCheck, Eye, Gavel, Ban, Clock3, CheckCircle2, AlertTriangle, Undo2, Phone, Car, User, Store, Bike, ExternalLink, PackageCheck } from "lucide-react";
+import { X, Loader2, Flag, ShieldAlert, ShieldCheck, Eye, Gavel, Ban, Clock3, CheckCircle2, AlertTriangle, Undo2, Phone, Car, User, Store, Bike, ExternalLink, PackageCheck, Scale } from "lucide-react";
 import { useUrlVisible } from "../../lib/imagenesPrivadas";
 import { Estrellas } from "../Estrellas";
 import InsigniaReputacion from "../InsigniaReputacion";
@@ -20,6 +20,7 @@ import { textoMotivo } from "../MisReportes";
      levantar(sancionId)                        → { error }
      foto?(valor)                               → url (fotos que viven en la otra app)
      perfil?(reportado)                         → { viajes?, entregas?, descripcion?, placa?, etiquetas?, url? }
+     rechazarApelacion?(sancionId, respuesta)   → { error } (fase C2; listar('apelacion') trae las apeladas)
                                                   (la ficha que se despliega al tocar su nombre)
    }
    fuentes (solo el superadmin): [{ id, label, logo, api, subtitulo, nuevos }]
@@ -27,6 +28,8 @@ import { textoMotivo } from "../MisReportes";
 
 const FILTROS = [
   { id: "nuevo", label: "Nuevos" },
+  // Fase C2: sanciones apeladas por su dueño, esperando respuesta.
+  { id: "apelacion", label: "Apelaciones" },
   { id: "en_revision", label: "En revisión" },
   { id: "resuelto", label: "Resueltos" },
   { id: "descartado", label: "Cerrados" },
@@ -265,6 +268,24 @@ export default function ReportesAdminModal({ api: apiUnica, subtitulo: subtitulo
     cargar();
   };
 
+  // Rechazar una apelación (la sanción sigue): primero se abre la respuesta.
+  const [rechazando, setRechazando] = useState(null); // sancion id
+  const [respuestaApel, setRespuestaApel] = useState("");
+  const rechazarApelacion = async (sancion) => {
+    if (rechazando !== sancion.id) {
+      setRechazando(sancion.id);
+      setRespuestaApel("");
+      return;
+    }
+    setGuardando(true);
+    const { error: e } = await api.rechazarApelacion(sancion.id, respuestaApel.trim() || null);
+    setGuardando(false);
+    if (e) return setError(e.message || "No se pudo responder la apelación.");
+    setRechazando(null);
+    avisar();
+    cargar();
+  };
+
   const conteo = datos?.conteo || {};
   const diasValidos = (() => {
     const n = parseInt(dias, 10);
@@ -314,7 +335,11 @@ export default function ReportesAdminModal({ api: apiUnica, subtitulo: subtitulo
                 onClick={() => setFiltro(f.id)}
               >
                 {f.label}
-                {n > 0 && <b className={f.id === "nuevo" ? "is-nuevo" : ""}>{n}</b>}
+                {n > 0 && (
+                  <b className={f.id === "nuevo" || f.id === "apelacion" ? "is-nuevo" : ""}>
+                    {(f.id === "nuevo" || f.id === "apelacion") && n > 9 ? "+9" : n}
+                  </b>
+                )}
               </button>
             );
           })}
@@ -382,6 +407,39 @@ export default function ReportesAdminModal({ api: apiUnica, subtitulo: subtitulo
                         <button type="button" className="tz-radm-btn is-mini" disabled={guardando} onClick={() => levantar(san)}>
                           <Undo2 size={12} /> Levantar
                         </button>
+                      </div>
+                    )}
+                    {san?.apelada_at && !san.apelacion_resuelta_at && (
+                      <div className="tz-radm-apelacion">
+                        <span className="tz-radm-apelacion-cab">
+                          <Scale size={14} /> Apeló el {fecha(san.apelada_at)}
+                        </span>
+                        <p>«{san.apelacion}»</p>
+                        {rechazando === san.id && (
+                          <textarea
+                            className="tz-radm-texto"
+                            value={respuestaApel}
+                            maxLength={400}
+                            rows={2}
+                            placeholder="Respuesta para la cuenta (opcional)"
+                            onChange={(e) => setRespuestaApel(e.target.value)}
+                          />
+                        )}
+                        <span className="tz-radm-apelacion-acciones">
+                          <button type="button" className="tz-radm-btn is-mini" disabled={guardando} onClick={() => levantar(san)}>
+                            <Undo2 size={12} /> Levantar sanción
+                          </button>
+                          {api.rechazarApelacion && (
+                            <button
+                              type="button"
+                              className={`tz-radm-btn is-mini ${rechazando === san.id ? "is-peligro" : ""}`}
+                              disabled={guardando}
+                              onClick={() => rechazarApelacion(san)}
+                            >
+                              <Ban size={12} /> {rechazando === san.id ? "Confirmar: la sanción sigue" : "Rechazar apelación"}
+                            </button>
+                          )}
+                        </span>
                       </div>
                     )}
 
@@ -625,6 +683,7 @@ const ESTILO = `
 .tz-radm-btn.is-resolver.is-on { color: #fff; background: #ff5470; box-shadow: 0 0 16px rgba(255,84,112,0.55); }
 .tz-radm-btn.is-descartar { color: var(--text-dim); background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.2); }
 .tz-radm-btn.is-descartar.is-on { color: var(--text); background: rgba(255,255,255,0.14); }
+.tz-radm-btn.is-mini.is-peligro { color: #fff; background: #ff9500; border-color: #ff9500; box-shadow: 0 0 14px rgba(255,149,0,0.5); }
 .tz-radm-panel { display: flex; flex-direction: column; gap: 7px; padding: 10px; border-radius: 14px; background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.1); animation: tz-radm-abre .45s cubic-bezier(.34,1.56,.64,1) both; transform-origin: top center; }
 .tz-radm-etq { margin: 0; font-size: 12.5px; font-weight: 800; }
@@ -685,4 +744,10 @@ const ESTILO = `
   text-decoration: none; transition: text-shadow .25s ease; }
 .tz-radm-ficha-link:hover { text-shadow: 0 0 10px rgba(43,232,255,0.7); }
 @keyframes tz-radm-ficha-in { from { opacity: 0; transform: scale(.85) translateY(-6px); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
+.tz-radm-apelacion { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; padding: 9px 11px; border-radius: 12px;
+  border: 1px solid rgba(255,149,0,0.5); background: rgba(255,149,0,0.08); box-shadow: 0 0 14px rgba(255,149,0,0.15);
+  transform-origin: top; animation: tz-radm-pop .5s cubic-bezier(.34,1.56,.64,1) both; }
+.tz-radm-apelacion-cab { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 800; color: #ff9500; }
+.tz-radm-apelacion p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--text, #f4f2ff); font-style: italic; white-space: pre-wrap; }
+.tz-radm-apelacion-acciones { display: flex; flex-wrap: wrap; gap: 6px; }
 `;

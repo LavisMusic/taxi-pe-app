@@ -68,7 +68,7 @@ import TextoMaquina from "../components/TextoMaquina";
 import AnuncioPopupModal from "../components/AnuncioPopupModal";
 import { useDescripcionesPublico } from "../hooks/useDescripciones";
 import { useAnuncioActivo } from "../hooks/useAnuncioActivo";
-import { useMiSancion } from "../hooks/useMiSancion";
+import { useMiSancion, apelarSancion } from "../hooks/useMiSancion";
 import AvisoSancion from "../components/AvisoSancion";
 import { useConductorPresenciaTrack } from "../hooks/useConductorPresenciaTrack";
 
@@ -725,7 +725,7 @@ export default function ConductorPage() {
             </button>
 
             {toggleError && <p className="tz-error" style={{ textAlign: "center" }}>{toggleError}</p>}
-            <AvisoSancion sancion={sancionConductor} rol="conductor" />
+            <AvisoSancion sancion={sancionConductor} rol="conductor" apelar={apelarSancion} />
 
             <div className="tz-method-history" style={{ marginTop: 18 }}>
               <span className="tz-method-history-label">Mi perfil de chat</span>

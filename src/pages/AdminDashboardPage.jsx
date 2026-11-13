@@ -57,6 +57,8 @@ const API_REPORTES = {
   listar: (estado) => supabase.rpc("taxi_admin_reportes", { p_estado: estado }),
   resolver: (args) => supabase.rpc("taxi_admin_resolver_reporte", args),
   levantar: (id) => supabase.rpc("taxi_admin_levantar_sancion", { p_id: id }),
+  // Fase C2: la sanción sigue (se le avisa por su chat).
+  rechazarApelacion: (id, respuesta) => supabase.rpc("taxi_admin_rechazar_apelacion", { p_id: id, p_respuesta: respuesta }),
   // Ficha al tocar el nombre: de un conductor/repartidor, su página.
   perfil: async (r) => {
     if (r?.tipo !== "conductor" && r?.tipo !== "repartidor") return null;
@@ -280,7 +282,8 @@ export default function AdminDashboardPage() {
   // Centro de reportes (fase 4a): el número son los reportes nuevos.
   const [reportesOpen, setReportesOpen] = useState(false);
   const conteoReportes = useConteoReportes(API_REPORTES.listar);
-  const reportesNuevos = conteoReportes?.nuevo || 0;
+  // Nuevos + apelaciones esperando respuesta (fase C2).
+  const reportesNuevos = (conteoReportes?.nuevo || 0) + (conteoReportes?.apelacion || 0);
   const [pagosMenuOpen, setPagosMenuOpen] = useState(false);
   const [pagosMetodoAbierto, setPagosMetodoAbierto] = useState(null);
   const [recargaOpen, setRecargaOpen] = useState(false);

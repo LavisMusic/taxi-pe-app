@@ -1,4 +1,7 @@
+import { useEffect, useState } from "react";
 import { Bike, Ban, Car, Loader2, Package, Wallet } from "lucide-react";
+import { supabase } from "../../supabaseClient";
+import TarjetaNivel from "../NivelRepartidor";
 import EntregasRepartidorPanel from "../repartidor/EntregasRepartidorPanel";
 import ContratosReparto from "./ContratosReparto";
 import { MAX_REPARTOS } from "../../hooks/useEntregasRepartidor";
@@ -39,6 +42,20 @@ export default function PanelDelivery({
       : "";
   const sinPermiso = !!bloqueadoPor && !encendido && !repartiendo;
   const hoy = estadisticas?.hoy;
+
+  // Nivel de confianza (fase C): se relee al terminar cada reparto.
+  const [nivel, setNivel] = useState(null);
+  const entregasHoy = hoy?.entregas;
+  useEffect(() => {
+    if (!conductor.aprobado) return undefined;
+    let vivo = true;
+    supabase.rpc("taxi_mi_nivel_repartidor").then(({ data, error }) => {
+      if (vivo && !error && data) setNivel(data);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [conductor.aprobado, activos, entregasHoy]);
 
   const estado = sinPermiso
     ? "bloqueado"
@@ -107,6 +124,9 @@ export default function PanelDelivery({
         <span className="tz-estado-toggle-hint">{pista}</span>
       </button>
       {error && <p className="tz-error" style={{ textAlign: "center" }}>{error}</p>}
+
+      {/* Nivel de confianza: hasta cuánto puede valer un pedido que lleva. */}
+      <TarjetaNivel datos={nivel} />
 
       {/* Invitaciones de negocios y con quiénes reparte (contrato). */}
       <ContratosReparto conductorId={conductor.id} />

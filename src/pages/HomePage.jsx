@@ -46,7 +46,7 @@ import BotonSoporte from "../components/BotonSoporte";
 import BotonMensajes from "../components/mensajes/BotonMensajes";
 import CalificacionesViaje from "../components/CalificacionesViaje";
 import { usePendientesReputacion } from "../components/MiReputacion";
-import { useMiSancion } from "../hooks/useMiSancion";
+import { useMiSancion, apelarSancion } from "../hooks/useMiSancion";
 import AvisoSancion from "../components/AvisoSancion";
 import { usePasajeroPresenciaTrack } from "../hooks/usePasajeroPresenciaTrack";
 
@@ -522,7 +522,7 @@ export default function HomePage() {
 
       <main className="tz-main">
         {/* Reportes (fase 4a): cuenta suspendida o bloqueada. */}
-        <AvisoSancion sancion={sancionPasajero} rol="pasajero" />
+        <AvisoSancion sancion={sancionPasajero} rol="pasajero" apelar={apelarSancion} />
         {/* Restauración de layout: el filtro de localidad vuelve a la
            pantalla principal, encima del botón de Radar, los dos
            centrados (ver .tz-radar-bar en Styles.jsx) — antes vivía
