@@ -228,6 +228,15 @@ Deno.serve(async (req) => {
       if (error) return jsonResponse(400, { error: error.message });
       return jsonResponse(200, { ok: true });
     }
+    // Fase C2: rechazar la apelación de una sanción (la sanción sigue).
+    case "reportes.rechazar_apelacion": {
+      const id = uuid(d.id);
+      if (!id) return jsonResponse(400, { error: "datos inválidos" });
+      const respuesta = d.respuesta == null ? null : String(d.respuesta).slice(0, 400);
+      const { error } = await db.rpc("taxi_admin_rechazar_apelacion", { p_id: id, p_respuesta: respuesta });
+      if (error) return jsonResponse(400, { error: error.message });
+      return jsonResponse(200, { ok: true });
+    }
     // Enlace firmado (1 h) de la foto privada de un reporte de Taxi-PE.
     case "reportes.foto": {
       const valor = String(d.valor ?? "");
