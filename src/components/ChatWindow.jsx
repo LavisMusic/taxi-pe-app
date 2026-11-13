@@ -1428,7 +1428,7 @@ export default function ChatWindow({
             {/* Reportes, fase B: también en pleno viaje (al otro lado). */}
             {viajeReportable && (
               <BotonReportar
-                key={ofertaVigente.id}
+                key={`${ofertaVigente.id}-${estadoOfertaVigente}`}
                 leer={() => servicioParaReportar({ ref: `viaje:${ofertaVigente.id}` })}
                 enviar={reportarServicio}
                 avisoDonde="Taxi PE"
@@ -1551,7 +1551,7 @@ export default function ChatWindow({
             {/* Reportes, fase B: también en pleno viaje (al otro lado). */}
             {viajeReportable && (
               <BotonReportar
-                key={ofertaVigente.id}
+                key={`${ofertaVigente.id}-${estadoOfertaVigente}`}
                 leer={() => servicioParaReportar({ ref: `viaje:${ofertaVigente.id}` })}
                 enviar={reportarServicio}
                 avisoDonde="Taxi PE"

@@ -32,7 +32,7 @@ const ICONO_DESTINO = L.divIcon({
   className: "tz-radar-marker-wrap",
   html: '<span class="tz-radar-marker tz-radar-marker-destino">🚩</span>',
   iconSize: [28, 28],
-  iconAnchor: [14, 26],
+  iconAnchor: [14, 14], // al centro: la línea de la ruta empieza/termina en el medio
 });
 const ICONO_YO = L.divIcon({
   className: "tz-radar-marker-wrap",
