@@ -6,7 +6,7 @@ import "leaflet/dist/leaflet.css";
 import { Loader2 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { REMITENTE_PASAJERO } from "../hooks/useChatMensajes";
-import { canalViaje } from "../hooks/useGpsBroadcaster";
+import { canalViaje, CANAL_VIAJE_PRIVADO } from "../hooks/useGpsBroadcaster";
 import { distanciaMetros } from "../lib/haversine";
 import { useWakeLock } from "../hooks/useWakeLock";
 import { COORD_DEFAULT } from "../hooks/useLocalidades";
@@ -159,7 +159,7 @@ export default function MapaViaje({
   useEffect(() => {
     if (!conductorId || !pasajeroId || !navigator.geolocation) return undefined;
 
-    const channel = supabase.channel(canalViaje(conductorId, pasajeroId));
+    const channel = supabase.channel(canalViaje(conductorId, pasajeroId), CANAL_VIAJE_PRIVADO);
     channel.on("broadcast", { event: "gps_update" }, ({ payload }) => {
       if (typeof payload?.lat !== "number" || typeof payload?.lng !== "number") return;
       const punto = { lat: payload.lat, lng: payload.lng };

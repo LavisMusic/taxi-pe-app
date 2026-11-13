@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 import { Send, ShieldAlert, Loader2, Plus, ChevronUp, ChevronDown } from "lucide-react";
 import { formatTime, formatDate } from "../utils/format";
 import { supabase } from "../supabaseClient";
-import { canalViaje } from "../hooks/useGpsBroadcaster";
+import { canalViaje, CANAL_VIAJE_PRIVADO } from "../hooks/useGpsBroadcaster";
 import {
   REMITENTE_PASAJERO,
   REMITENTE_CONDUCTOR,
@@ -648,7 +648,7 @@ export default function ChatWindow({
   // cuando el panel recién está montando.
   useEffect(() => {
     if (!conductorId || !pasajeroId) return undefined;
-    const channel = supabase.channel(canalViaje(conductorId, pasajeroId));
+    const channel = supabase.channel(canalViaje(conductorId, pasajeroId), CANAL_VIAJE_PRIVADO);
     channel.on("broadcast", { event: "estado_viaje_actualizado" }, ({ payload }) => {
       if (payload?.estado === ESTADO_OFERTA_ACEPTADA) {
         // Fix Falso Positivo (Fase 2): el Conductor recibe esto al
@@ -1163,7 +1163,7 @@ export default function ChatWindow({
         canalViajeRef.current.send({ type: "broadcast", event: "estado_viaje_actualizado", payload });
       } else {
         console.error("canalViajeRef no estaba listo — abriendo canal de emergencia para el broadcast.");
-        const canalEmergencia = supabase.channel(canalViaje(conductorId, pasajeroId));
+        const canalEmergencia = supabase.channel(canalViaje(conductorId, pasajeroId), CANAL_VIAJE_PRIVADO);
         canalEmergencia.subscribe((status) => {
           if (status === "SUBSCRIBED") {
             canalEmergencia.send({ type: "broadcast", event: "estado_viaje_actualizado", payload });
@@ -1215,7 +1215,7 @@ export default function ChatWindow({
           canalViajeRef.current.send({ type: "broadcast", event: "estado_viaje_actualizado", payload });
         } else {
           console.error("canalViajeRef no estaba listo — abriendo canal de emergencia para el broadcast.");
-          const canalEmergencia = supabase.channel(canalViaje(conductorId, pasajeroId));
+          const canalEmergencia = supabase.channel(canalViaje(conductorId, pasajeroId), CANAL_VIAJE_PRIVADO);
           canalEmergencia.subscribe((status) => {
             if (status === "SUBSCRIBED") {
               canalEmergencia.send({ type: "broadcast", event: "estado_viaje_actualizado", payload });
@@ -1270,7 +1270,7 @@ export default function ChatWindow({
         // loggear el caso raro y reintentar por otra vía que dejar al
         // pasajero sin el aviso hasta que recargue.
         console.error("canalViajeRef no estaba listo — abriendo canal de emergencia para el broadcast.");
-        const canalEmergencia = supabase.channel(canalViaje(conductorId, pasajeroId));
+        const canalEmergencia = supabase.channel(canalViaje(conductorId, pasajeroId), CANAL_VIAJE_PRIVADO);
         canalEmergencia.subscribe((status) => {
           if (status === "SUBSCRIBED") {
             canalEmergencia.send({ type: "broadcast", event: "estado_viaje_actualizado", payload });
@@ -1330,7 +1330,7 @@ export default function ChatWindow({
           // abrir un canal aparte para este único envío que dejar al
           // Pasajero con el Cronómetro corriendo hasta que recargue.
           console.error("canalViajeRef no estaba listo — abriendo canal de emergencia para el broadcast de fin de viaje.");
-          const canalEmergencia = supabase.channel(canalViaje(conductorId, pasajeroId));
+          const canalEmergencia = supabase.channel(canalViaje(conductorId, pasajeroId), CANAL_VIAJE_PRIVADO);
           canalEmergencia.subscribe((status) => {
             if (status === "SUBSCRIBED") {
               canalEmergencia.send({ type: "broadcast", event: "estado_viaje_actualizado", payload });
