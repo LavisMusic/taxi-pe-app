@@ -32,25 +32,33 @@ export function previaMensaje(texto) {
 }
 
 const LADO_FOTO = 1280;
-async function reducirFoto(blob) {
+// Fotos pegadas con Ctrl + V (capturas de pantalla, PNG pesados): más
+// chicas y con más compresión.
+const LADO_PEGADA = 1080;
+const CALIDAD_PEGADA = 0.72;
+async function reducirFoto(blob, lado = LADO_FOTO, calidad = 0.85) {
   try {
     const bitmap = await createImageBitmap(blob, { imageOrientation: "from-image" });
-    const escala = Math.min(1, LADO_FOTO / Math.max(bitmap.width, bitmap.height));
+    const escala = Math.min(1, lado / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement("canvas");
     canvas.width = Math.round(bitmap.width * escala);
     canvas.height = Math.round(bitmap.height * escala);
     canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     bitmap.close?.();
-    return await new Promise((res) => canvas.toBlob((b) => res(b || blob), "image/jpeg", 0.85));
+    const salida = await new Promise((res) => canvas.toBlob((b) => res(b || blob), "image/jpeg", calidad));
+    // Un JPEG ya liviano no se agranda al volver a comprimirlo.
+    return blob.type === "image/jpeg" && blob.size <= salida.size ? blob : salida;
   } catch {
     return blob;
   }
 }
 
-// Sube una foto (reducida a 1280 px) o una nota de voz y devuelve el texto
-// del mensaje ya codificado.
-export async function subirAdjunto({ tipo, blob, duracion = 0 }) {
-  const archivo = tipo === "foto" ? await reducirFoto(blob) : blob;
+// Sube una foto (reducida a 1280 px; con `comprimir`, las pegadas, a
+// 1080 px y más compresión) o una nota de voz y devuelve el texto del
+// mensaje ya codificado.
+export async function subirAdjunto({ tipo, blob, duracion = 0, comprimir = false }) {
+  const archivo =
+    tipo === "foto" ? await (comprimir ? reducirFoto(blob, LADO_PEGADA, CALIDAD_PEGADA) : reducirFoto(blob)) : blob;
   // Sin ";codecs=…": el bucket solo acepta el tipo base.
   const contentType = tipo === "foto" ? "image/jpeg" : (archivo.type || "audio/webm").split(";")[0];
   const ext = tipo === "foto" ? "jpg" : contentType.includes("mp4") ? "m4a" : contentType.includes("ogg") ? "ogg" : "webm";

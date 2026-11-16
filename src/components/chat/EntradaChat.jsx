@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Send, Mic, ImagePlus, Camera, Loader2, Trash2 } from "lucide-react";
+import { Plus, Send, Mic, ImagePlus, Camera, Loader2, Trash2, X } from "lucide-react";
 import { subirAdjunto, minSeg } from "../../lib/adjuntosChat";
 import AuraVoz from "./AuraVoz";
 
@@ -13,6 +13,9 @@ import AuraVoz from "./AuraVoz";
 //     un aura arcoíris (AuraVoz) que se mueve con la voz, con el contador
 //     al centro. Soltar envía; deslizar hacia afuera cancela.
 //     Máximo 60 s (al llegar, se envía solo).
+//   - Pegar imágenes (Ctrl + V, hasta 3) las deja ancladas en un espacio que se
+//     despliega arriba del campo, cada una con su X; se envían comprimidas con
+//     el avión de papel (y el texto escrito, si hay, va después).
 // `onEnviar(texto)` → Promise ({ error } opcional): el texto o, para una
 // foto o un audio, el mensaje ya codificado (lib/adjuntosChat.js).
 // `onEscribir()`: para el "escribiendo…".
@@ -20,6 +23,7 @@ import AuraVoz from "./AuraVoz";
 // el chat del viaje no deja mandar números de teléfono).
 const MAX_SEG = 60;
 const DISTANCIA_CANCELAR = 90; // px desde donde se empezó a grabar
+const MAX_PEGADAS = 3; // fotos pegadas (Ctrl + V) por envío
 
 export default function EntradaChat({ onEnviar, onEscribir, validar = null, deshabilitado = false, placeholder = "Escribe un mensaje…", autoFocus = true }) {
   const [texto, setTexto] = useState("");
@@ -33,11 +37,51 @@ export default function EntradaChat({ onEnviar, onEscribir, validar = null, desh
   const fileRef = useRef(null);
   const camaraRef = useRef(null);
   const grab = useRef(null); // { recorder, stream, ctx, analyser, inicio, partes, x, y, cancelar, raf, tope }
+  // Imágenes pegadas por enviar (máximo MAX_PEGADAS): [{ id, file, url }].
+  const [pegadas, setPegadas] = useState([]);
+  const pegadasRef = useRef(pegadas);
+  pegadasRef.current = pegadas;
 
-  const activo = foco || texto.trim().length > 0;
+  // Las vistas previas usan URLs locales: se liberan al quitar o al salir.
+  useEffect(() => () => pegadasRef.current.forEach((p) => URL.revokeObjectURL(p.url)), []);
+  const quitarPegada = (id) =>
+    setPegadas((lista) => {
+      lista.filter((p) => p.id === id).forEach((p) => URL.revokeObjectURL(p.url));
+      return lista.filter((p) => p.id !== id);
+    });
+
+  const alPegar = (e) => {
+    if (deshabilitado || subiendo) return;
+    const archivos = [...(e.clipboardData?.items || [])]
+      .filter((it) => it.kind === "file" && it.type.startsWith("image/"))
+      .map((it) => it.getAsFile())
+      .filter(Boolean);
+    if (!archivos.length) return; // texto: se pega normal
+    e.preventDefault();
+    const libres = MAX_PEGADAS - pegadasRef.current.length;
+    setError(archivos.length > libres ? `Puedes pegar hasta ${MAX_PEGADAS} fotos por envío.` : "");
+    if (libres <= 0) return;
+    const nuevas = archivos.slice(0, libres).map((file) => ({ id: `${Date.now()}-${Math.random()}`, file, url: URL.createObjectURL(file) }));
+    setPegadas((lista) => [...lista, ...nuevas].slice(0, MAX_PEGADAS));
+    inputRef.current?.focus();
+  };
+
+  const activo = foco || texto.trim().length > 0 || pegadas.length > 0;
   const aviso = validar && texto.trim() ? validar(texto) : null;
 
   const enviarTexto = async () => {
+    // Con imágenes pegadas: primero las fotos (comprimidas), después el texto.
+    if (pegadas.length) {
+      if (deshabilitado || subiendo || aviso) return;
+      const lista = pegadas;
+      setPegadas([]);
+      let ok = true;
+      for (const p of lista) {
+        ok = (await enviarAdjunto({ tipo: "foto", blob: p.file, comprimir: true })) && ok;
+        URL.revokeObjectURL(p.url);
+      }
+      if (!ok || !texto.trim()) return;
+    }
     const t = texto.trim();
     if (!t || deshabilitado || aviso) return;
     setTexto("");
@@ -54,8 +98,10 @@ export default function EntradaChat({ onEnviar, onEscribir, validar = null, desh
       const codificado = await subirAdjunto(adjunto);
       const r = await onEnviar(codificado);
       if (r?.error) setError("No se pudo enviar. Intenta de nuevo.");
+      return !r?.error;
     } catch {
       setError(adjunto.tipo === "foto" ? "No se pudo subir la foto." : "No se pudo subir la nota de voz.");
+      return false;
     } finally {
       setSubiendo(false);
     }
@@ -155,7 +201,25 @@ export default function EntradaChat({ onEnviar, onEscribir, validar = null, desh
   };
 
   return (
-    <div className="tz-entrada">
+    <div className="tz-entrada" onPaste={alPegar}>
+      {pegadas.length > 0 && (
+        <div className="tz-entrada-pegada">
+          {pegadas.map((p) => (
+            <span className="tz-entrada-pegada-marco" key={p.id}>
+              <img src={p.url} alt="Imagen pegada" />
+              <button
+                type="button"
+                className="tz-entrada-pegada-quitar"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => quitarPegada(p.id)}
+                aria-label="Quitar imagen"
+              >
+                <X size={12} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
       <div className="tz-entrada-campo">
         <input
           ref={inputRef}
@@ -226,7 +290,7 @@ export default function EntradaChat({ onEnviar, onEscribir, validar = null, desh
           className="tz-entrada-accion is-enviar"
           onMouseDown={(e) => e.preventDefault()}
           onClick={enviarTexto}
-          disabled={deshabilitado || !texto.trim() || !!aviso}
+          disabled={deshabilitado || (!texto.trim() && !pegadas.length) || !!aviso}
           aria-label="Enviar mensaje"
         >
           <Send size={18} />

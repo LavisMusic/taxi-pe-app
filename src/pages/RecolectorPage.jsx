@@ -222,12 +222,10 @@ export default function RecolectorPage() {
       )}
       <header className="tz-header">
         <div className="tz-header-row">
+          {/* Izquierda: Soporte y, debajo, Configuraciones y permisos. */}
           <div className="tz-header-side tz-header-side-left">
-            <button className="tz-header-btn" onClick={() => setRegistroOpen(true)} aria-label="Registrar conductor">
-              <UserPlus size={19} />
-              <span className="tz-header-btn-label">Conductor nuevo</span>
-            </button>
-            {usuario && <BotonMensajes usuarioId={usuario.id} />}
+            <BotonSoporte />
+            <BotonConfiguracion usuarioId={usuario?.id} />
           </div>
 
           <div className="tz-header-center">
@@ -240,12 +238,13 @@ export default function RecolectorPage() {
             </div>
           </div>
 
+          {/* Derecha: Mensajes y, debajo, Conductor nuevo. Cerrar sesión va
+              en el pie de página. */}
           <div className="tz-header-side tz-header-side-right">
-            <BotonSoporte />
-            <BotonConfiguracion usuarioId={usuario?.id} />
-            <button className="tz-header-btn" onClick={logout} aria-label="Cerrar sesión" title="Cerrar sesión">
-              <LogOut size={19} />
-              <span className="tz-header-btn-label">Salir</span>
+            {usuario && <BotonMensajes usuarioId={usuario.id} />}
+            <button className="tz-header-btn" onClick={() => setRegistroOpen(true)} aria-label="Registrar conductor">
+              <UserPlus size={19} />
+              <span className="tz-header-btn-label">Conductor nuevo</span>
             </button>
           </div>
         </div>
@@ -363,6 +362,11 @@ export default function RecolectorPage() {
         <button className="tz-footer-btn tz-footer-btn-stock" onClick={() => setAutorecargaOpen(true)}>
           <Wallet size={18} />
           Recargar
+        </button>
+        {/* Cerrar sesión: al final del pie. */}
+        <button className="tz-footer-btn tz-footer-btn-salir" onClick={logout}>
+          <LogOut size={18} />
+          Cerrar sesión
         </button>
       </footer>
 
