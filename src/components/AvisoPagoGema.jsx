@@ -5,9 +5,12 @@ import IconoGema from "./IconoGema";
 // (src/components/AvisoPagoGema.jsx). Un cuadro con una escena animada: una
 // mano deja caer monedas y la gema en la mano de quien cobra; debajo, lo que
 // cobra en mano y la gema que recibe.
-//   Taxi-PE: el conductor, cuando el pasajero usa una gema verde en la tarifa.
-//   Caja: el negocio y sus cajeros, cuando el cliente paga un pedido con una
-//   gema celeste.
+//   Taxi-PE: conductor y pasajero, cuando el pasajero usa una gema verde en
+//   la tarifa (debajo del aviso de la negociación confirmada).
+//   Caja: el negocio, sus cajeros y el cliente, cuando el cliente paga un
+//   pedido con una gema celeste.
+// `pagador`: lo ve quien pagó ("Pagaste con 1 gema" / "Pagas S/ x");
+// si no, quien cobra ("{quien} pagó con 1 gema" / "Cobras S/ x").
 // Sin <p> adentro a propósito: los chats les ponen scroll a los párrafos de
 // las burbujas y eso recortaba el brillo de la gema.
 const COLORES = {
@@ -15,7 +18,7 @@ const COLORES = {
   celeste: { rgb: "43,232,255", hex: "#2be8ff" },
 };
 
-export default function AvisoPagoGema({ color = "verde", quien = "El pasajero", cobras = null, valor = 0.1, hora = null }) {
+export default function AvisoPagoGema({ color = "verde", quien = "El pasajero", cobras = null, valor = 0.1, hora = null, pagador = false }) {
   const c = COLORES[color] || COLORES.verde;
   return (
     <div className="tz-gp" style={{ "--gp-rgb": c.rgb, "--gp-hex": c.hex }}>
@@ -34,11 +37,12 @@ export default function AvisoPagoGema({ color = "verde", quien = "El pasajero", 
         </span>
       </div>
       <div className="tz-gp-titulo">
-        <IconoGema color={color} size={15} /> {quien} pagó con <strong>1 gema</strong>
+        <IconoGema color={color} size={15} /> {pagador ? "Pagaste" : `${quien} pagó`} con <strong>1 gema</strong>
       </div>
       <div className="tz-gp-detalle">
         <span className="tz-gp-chip is-billete">
-          <Banknote size={15} /> Cobras {cobras != null ? <strong>S/ {Number(cobras).toFixed(2)}</strong> : "el total menos la gema"}
+          <Banknote size={15} /> {pagador ? "Pagas" : "Cobras"}{" "}
+          {cobras != null ? <strong>S/ {Number(cobras).toFixed(2)}</strong> : "el total menos la gema"}
         </span>
         <span className="tz-gp-mas">+</span>
         <span className="tz-gp-chip is-gema">
