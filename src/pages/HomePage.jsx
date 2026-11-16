@@ -555,7 +555,7 @@ export default function HomePage() {
                 <div className="tz-fila-saldo">
                   {/* Gemas cruzadas: verdes (comprando en tiendas) y
                      celestes (viajando). Al subir, aparece la gema ganada. */}
-                  <SaldoGemas usuarioId={usuario.id} verdes={misGemas.verdes} celestes={misGemas.celestes} devueltasVerdes={misGemas.devueltas} />
+                  <SaldoGemas usuarioId={usuario.id} verdes={misGemas.verdes} celestes={misGemas.celestes} devueltasVerdes={misGemas.devueltas} devueltasCelestes={misGemas.devueltasCelestes} />
                 </div>
               )}
             </div>
