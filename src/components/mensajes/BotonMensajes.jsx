@@ -5,6 +5,8 @@ import { useMensajesPlataforma } from "../../hooks/useMensajesPlataforma";
 import { FilasChatsFijados, ChatFijadoAbierto } from "./ChatsFijados";
 import { useAbrirMensajesDesdeAviso } from "../../hooks/useAbrirMensajesDesdeAviso";
 import { previaMensaje } from "../../lib/adjuntosChat";
+import FilaChat from "./FilaChat";
+import ReputacionDe from "../ReputacionDe";
 
 const horaCorta = (ms) => {
   const d = new Date(ms);
@@ -30,7 +32,17 @@ function previa(c) {
 // `onAbrirConductor`). Pasajero y recolector tienen los dos fijados, "Taxi
 // PE" y "Tonazo" (por ahí llegan enlaces a la otra app); el pasajero además
 // sus conductores. El conductor ve los fijados dentro de su bandeja de chats.
-export default function BotonMensajes({ usuarioId, conductores = [], onAbrirConductor = null }) {
+// Unificado con Mensajes de Caja: el chat del viaje se abre DENTRO de este
+// modal (`chatConductorId` + `renderChatConductor()`, que arma HomePage),
+// con la flecha para volver a la lista (`onCerrarChatConductor`).
+export default function BotonMensajes({
+  usuarioId,
+  conductores = [],
+  onAbrirConductor = null,
+  chatConductorId = null,
+  renderChatConductor = null,
+  onCerrarChatConductor = null,
+}) {
   const datos = useMensajesPlataforma(usuarioId);
   const noLeidosFijados = Object.keys(datos.canales).reduce(
     (s, c) => s + (datos.canales[c]?.noLeidos || 0),
@@ -45,20 +57,22 @@ export default function BotonMensajes({ usuarioId, conductores = [], onAbrirCond
     setCanal(c);
   }, !!usuarioId);
 
+  const chatViaje = abierto && !!chatConductorId && !!renderChatConductor;
   const cerrar = () => {
     setAbierto(false);
     setCanal(null);
+    if (chatConductorId) onCerrarChatConductor?.();
   };
   // Cada vez que ve la lista, los chats con algo pendiente (viaje en curso
   // o mensajes sin leer) laten en verde 3 s — igual que los pedidos del
   // cliente en Caja.
   const [pulsoLista, setPulsoLista] = useState(false);
   useEffect(() => {
-    if (!abierto || canal) return undefined;
+    if (!abierto || canal || chatViaje) return undefined;
     setPulsoLista(true);
     const t = setTimeout(() => setPulsoLista(false), 3000);
     return () => clearTimeout(t);
-  }, [abierto, canal]);
+  }, [abierto, canal, chatViaje]);
 
   return (
     <>
@@ -77,11 +91,13 @@ export default function BotonMensajes({ usuarioId, conductores = [], onAbrirCond
       {abierto &&
         createPortal(
           <div className="tz-modal-backdrop">
-            <div className="tz-modal tz-mensajes-modal" onClick={(e) => e.stopPropagation()}>
+            <div className={`tz-modal tz-mensajes-modal ${chatViaje ? "tz-chat-modal-shell" : ""}`} onClick={(e) => e.stopPropagation()}>
               <button className="tz-modal-close" onClick={cerrar} aria-label="Cerrar">
                 <X size={18} />
               </button>
-              {canal ? (
+              {chatViaje ? (
+                <div className="tz-payment-modal">{renderChatConductor()}</div>
+              ) : canal ? (
                 <ChatFijadoAbierto
                   canal={canal}
                   datos={datos.canales[canal]}
@@ -99,41 +115,25 @@ export default function BotonMensajes({ usuarioId, conductores = [], onAbrirCond
                       <>
                         <li className="tz-chatneg-seccion">{conductores.length === 1 ? "Tu conductor" : "Tus conductores"}</li>
                         {conductores.map((c) => (
-                          <li key={c.id} className={`tz-history-row tz-chatfijo-row tz-chatpas-row ${c.enViaje ? "is-activo" : ""}`}>
-                            {pulsoLista && (c.enViaje || c.noLeidos > 0) && <span className="tz-chatped-pulso" aria-hidden="true" />}
-                            <button
-                              type="button"
-                              className="tz-chatfijo-btn"
-                              onClick={() => {
-                                cerrar();
-                                onAbrirConductor(c.id);
-                              }}
-                            >
-                              {/* La foto sola, sin marco; sin foto, el sticker. */}
-                              {c.foto_url ? (
-                                <img src={c.foto_url} alt="" className="tz-chat-cara" />
-                              ) : (
-                                <span className="tz-chat-sticker">
-                                  <Car size={26} />
-                                </span>
-                              )}
-                              <span className="tz-chatfijo-texto">
-                                <span className="tz-chatfijo-nombre">
-                                  {c.nombre_usuario ? `@${c.nombre_usuario}` : c.nombre || "Conductor"}
-                                  {c.enViaje ? (
-                                    <span className="tz-chatneg-estado is-en-linea">Viaje en curso</span>
-                                  ) : c.terminado ? (
-                                    <span className="tz-chatneg-estado">Viaje terminado</span>
-                                  ) : null}
-                                </span>
-                                <span className="tz-chatfijo-preview">{previa(c)}</span>
-                              </span>
-                              <span className="tz-chatfijo-meta">
-                                {c.ultimo && <span className="tz-chatfijo-hora">{horaCorta(c.ultimo.created_at)}</span>}
-                                {c.noLeidos > 0 && <span className="tz-chatfijo-badge">{c.noLeidos > 9 ? "+9" : c.noLeidos}</span>}
-                              </span>
-                            </button>
-                          </li>
+                          <FilaChat
+                            key={c.id}
+                            foto={c.foto_url}
+                            icono={Car}
+                            nombre={c.nombre_usuario ? `@${c.nombre_usuario}` : c.nombre || "Conductor"}
+                            estrellas={<ReputacionDe tipo="conductor" id={c.id} tamano="chico" mostrar="estrellas" />}
+                            estado={c.enViaje ? { texto: "Viaje en curso", enLinea: true } : c.terminado ? { texto: "Viaje terminado" } : null}
+                            preview={previa(c)}
+                            hora={c.ultimo ? horaCorta(c.ultimo.created_at) : null}
+                            noLeidos={c.noLeidos}
+                            activo={c.enViaje}
+                            pulso={pulsoLista && (c.enViaje || c.noLeidos > 0)}
+                            onClick={() => {
+                              // Con `renderChatConductor` el chat se abre acá
+                              // mismo; si no, se cierra Mensajes y se abre aparte.
+                              if (!renderChatConductor) cerrar();
+                              onAbrirConductor(c.id);
+                            }}
+                          />
                         ))}
                       </>
                     )}

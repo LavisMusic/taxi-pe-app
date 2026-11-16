@@ -7475,6 +7475,9 @@ export default function Styles() {
         max-width: none;
       }
       .tz-modal.tz-mensajes-modal { display: flex; flex-direction: column; overflow-y: auto; }
+      /* Un chat de viaje abierto dentro de Mensajes: la caja del chat (no
+         scrollea entera; scrollean los mensajes). */
+      .tz-modal.tz-mensajes-modal.tz-chat-modal-shell { overflow: visible; }
       .tz-mensajes-modal > .tz-chatfijo-abierto { flex: 1 1 auto; min-height: 0; }
       .tz-mensajes-modal .tz-chatfijo-abierto .tz-chatfijo-mensajes { flex: 1 1 auto; min-height: 0; max-height: none; }
       /* Bandeja del conductor con el estilo de Mensajes. */
@@ -7887,6 +7890,33 @@ export default function Styles() {
       .tz-chatcond-foto-vacia { display: inline-flex; align-items: center; justify-content: center; background: rgba(43, 232, 255,0.12); border: 1px solid rgba(43, 232, 255,0.35); color: var(--cyan); }
       .tz-chatfijo-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
       .tz-chatfijo-nombre { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 5px; }
+      /* Fila común de Mensajes (mensajes/FilaChat.jsx) — MISMO bloque en
+         Taxi-PE y Caja. Chat en curso: borde verde en movimiento. */
+      .tz-fila-chat { position: relative; border-radius: 14px; overflow: visible !important; }
+      .tz-fila-chat.is-activo { box-shadow: 0 0 14px rgba(57,255,176,0.25) !important; }
+      .tz-fila-chat.is-activo::before {
+        content: "";
+        position: absolute;
+        inset: -1px;
+        border-radius: inherit;
+        padding: 2px;
+        background: linear-gradient(90deg, rgba(57,255,176,0.1), rgba(57,255,176,1), rgba(57,255,176,0.1));
+        background-size: 300% 100%;
+        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        animation: tz-fila-chat-brillo 2.6s linear infinite;
+        pointer-events: none;
+        z-index: 1;
+      }
+      @keyframes tz-fila-chat-brillo {
+        from { background-position: 0% 0; }
+        to { background-position: 300% 0; }
+      }
+      .tz-fila-chat.is-cerrado { opacity: 0.75; }
+      .tz-fila-chat .tz-chatfijo-nombre { flex-wrap: wrap; row-gap: 2px; }
+      .tz-fila-chat-nombre { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .tz-fila-chat-estrellas { display: inline-flex; align-items: center; font-size: 11px; }
       .tz-chatfijo-pin { color: var(--cyan); }
       .tz-chatfijo-preview { font-size: 12px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .tz-chatfijo-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }

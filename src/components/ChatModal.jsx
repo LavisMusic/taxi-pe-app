@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { X, UserRound } from "lucide-react";
+import { X, UserRound, ArrowLeft } from "lucide-react";
 import {
   useChatMensajes,
   REMITENTE_PASAJERO,
@@ -55,7 +55,9 @@ function obtenerPosicionActual() {
 // chat sin que el pasajero haya elegido un `destino` primero (Bloqueo
 // Estricto de Pasajeros Sin Destino) — así que acá `destino` siempre
 // llega con datos reales.
-function ChatModalContenido({ conductor, pasajeroId, destino, autoContactar, categorias = [], onClose, onLimpiarDestino }) {
+// `onVolver`: abierto dentro de Mensajes — flecha para volver a la lista
+// (como los demás chats de Mensajes).
+export function ChatModalContenido({ conductor, pasajeroId, destino, autoContactar, categorias = [], onClose, onLimpiarDestino, onVolver = null }) {
   // Panel de Categorías e Íconos: se resuelve ACÁ (no en HomePage.jsx)
   // por el mismo motivo que RadarGlobal.jsx lo hace en su propio
   // `.map()` — mantiene la búsqueda pegada a donde se usa
@@ -195,6 +197,11 @@ function ChatModalContenido({ conductor, pasajeroId, destino, autoContactar, cat
       {/* Misma cabecera que el chat del conductor (foto, nombre y
           estrellas; la etiqueta abajo; placa y estado). */}
       <div className="tz-chatfijo-cabecera">
+        {onVolver && (
+          <button type="button" className="tz-chatfijo-volver" onClick={onVolver} aria-label="Volver a los chats">
+            <ArrowLeft size={16} />
+          </button>
+        )}
         {conductor.foto_url ? (
           <img src={conductor.foto_url} alt="" className="tz-chat-cara" />
         ) : (

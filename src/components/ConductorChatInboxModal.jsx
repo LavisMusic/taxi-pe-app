@@ -9,6 +9,7 @@ import ChatWindow from "./ChatWindow";
 import ReputacionDe from "./ReputacionDe";
 import ChatErrorBoundary from "./ChatErrorBoundary";
 import { FilasChatsFijados, ChatFijadoAbierto } from "./mensajes/ChatsFijados";
+import FilaChat from "./mensajes/FilaChat";
 
 // Bandeja de mensajes del lado Conductor (/conductor, botón
 // "Mensajes") — sin esto el chat sería de un solo sentido (el pasajero
@@ -117,7 +118,7 @@ function HiloConversacion({ conductorId, pasajeroId, nivelServicio, iconoCategor
 // el del cliente; un brillo verde recorre el borde de los dos (como "Tus
 // pedidos" en Mensajes de Caja). Los chats de la entrega viven solo acá.
 // `entregaInicial` ({ id, hilo }): abre directo ese chat.
-function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCategoriaUrl, plataforma, canalInicial, entregas = [], noLeidosEntregas = {}, onEntregasCambio, entregaInicial }) {
+function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCategoriaUrl, plataforma, canalInicial, entregas = [], noLeidosEntregas = {}, onEntregasCambio, entregaInicial, onVista }) {
   const [canalFijo, setCanalFijo] = useState(canalInicial ?? null);
   const [entregaChat, setEntregaChat] = useState(entregaInicial ?? null); // { id, hilo }
   const { hilos, loading, pasajerosEnCarrera, refresh } = useHilosChatConductor(conductorId);
@@ -150,6 +151,9 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
   // en Mensajes del pasajero y del cliente.
   const [pulsoLista, setPulsoLista] = useState(false);
   const enLista = !pasajeroAbierto && !canalFijo && !entregaChat;
+  useEffect(() => {
+    onVista?.(enLista);
+  }, [enLista, onVista]);
   useEffect(() => {
     if (!enLista) return undefined;
     setPulsoLista(true);
@@ -257,36 +261,8 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
               </span>
             </span>
           </div>
-          {/* Fase 5 (Motor de Viajes Simultáneos) — Selector de Hilos:
-             solo aparece si hay MÁS de un hilo — un conductor con una
-             sola conversación no necesita pestañas para elegir entre
-             una opción. Deja cambiar de pasajero SIN pasar por "Volver
-             a la lista" primero. El puntito verde marca los hilos que
-             son un viaje de verdad en curso ahora mismo (`pasajerosEnCarrera`
-             — 'aceptada'/'en_transito'), no solo una negociación
-             abierta, para que el conductor distinga de un vistazo a
-             quién tiene esperando vs a quién ya lleva a bordo. */}
-          {listaHilos.length > 1 && (
-            <div className="tz-chat-hilos-tabs">
-              {listaHilos.map((h) => {
-                const pid = h?.pasajeroId;
-                if (!pid) return null;
-                const enCurso = pasajerosEnCarrera?.includes(pid);
-                return (
-                  <button
-                    key={pid}
-                    type="button"
-                    className={`tz-chat-hilo-tab ${pid === pasajeroAbierto ? "tz-chat-hilo-tab-activo" : ""}`}
-                    onClick={() => setPasajeroAbierto(pid)}
-                    title={enCurso ? "Viaje en curso" : "Negociando"}
-                  >
-                    {enCurso && <span className="tz-chat-hilo-tab-dot" aria-hidden="true" />}
-                    {nombresPorId[pid] ?? "Pasajero"}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          {/* Sin pestañas de pasajeros (Mensajes unificado): se vuelve a la
+             lista con la flecha de la cabecera. */}
           {/* `key={pasajeroAbierto}` fuerza un remount COMPLETO de
              HiloConversacion (y del ChatWindow que tiene adentro) al
              cambiar de pestaña — sin esto, React reutilizaría la MISMA
@@ -374,24 +350,19 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
             const enCurso = pid && pasajerosEnCarrera?.includes(pid);
             const nombre = nombresPorId[pid] ?? "Pasajero";
             return (
-              <li key={pid ?? Math.random()} className={`tz-history-row tz-chatfijo-row tz-chat-inbox-row tz-chatpas-row ${enCurso ? "is-activo" : ""}`}>
-                {/* Viaje en curso: borde verde en movimiento (como los pedidos en Caja). */}
-                {pulsoLista && (enCurso || h?.noLeidos > 0) && <span className="tz-chatped-pulso" aria-hidden="true" />}
-                <button type="button" className="tz-chatfijo-btn" onClick={() => setPasajeroAbierto(pid)}>
-                  <Avatar foto={fotosPorId[pid]} nombre={nombre} />
-                  <span className="tz-chatfijo-texto">
-                    <span className="tz-chatfijo-nombre">
-                      {nombre}
-                      <span className={`tz-chatneg-estado ${enCurso ? "is-en-linea" : ""}`}>{enCurso ? "Viaje en curso" : "Negociando"}</span>
-                    </span>
-                    <span className="tz-chatfijo-preview">{previaMensaje(h?.ultimo?.mensaje) || "Sin mensajes todavía"}</span>
-                  </span>
-                  <span className="tz-chatfijo-meta">
-                    <span className="tz-chatfijo-hora">{horaCorta(h?.ultimo?.created_at)}</span>
-                    {h?.noLeidos > 0 && <span className="tz-chatfijo-badge">{h.noLeidos > 9 ? "+9" : h.noLeidos}</span>}
-                  </span>
-                </button>
-              </li>
+              <FilaChat
+                key={pid ?? Math.random()}
+                foto={fotosPorId[pid]}
+                nombre={nombre}
+                estrellas={pid ? <ReputacionDe tipo="pasajero" id={pid} tamano="chico" mostrar="estrellas" /> : null}
+                estado={{ texto: enCurso ? "Viaje en curso" : "Negociando", enLinea: !!enCurso }}
+                preview={previaMensaje(h?.ultimo?.mensaje) || "Sin mensajes todavía"}
+                hora={horaCorta(h?.ultimo?.created_at)}
+                noLeidos={h?.noLeidos || 0}
+                activo={!!enCurso}
+                pulso={pulsoLista && (enCurso || h?.noLeidos > 0)}
+                onClick={() => setPasajeroAbierto(pid)}
+              />
             );
               }),
             ])}
@@ -404,9 +375,12 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
 }
 
 export default function ConductorChatInboxModal({ conductorId, pasajeroInicial, nivelServicio, iconoCategoriaUrl, plataforma, canalInicial, entregas, noLeidosEntregas, onEntregasCambio, entregaInicial, onClose }) {
+  // Misma caja que Mensajes del pasajero y de Caja; con un chat abierto,
+  // la del chat (borde rosado, altura fija para el mapa y los mensajes).
+  const [enLista, setEnLista] = useState(!pasajeroInicial && !canalInicial && !entregaInicial);
   return (
     <div className="tz-modal-backdrop">
-      <div className="tz-modal tz-chat-modal-shell" onClick={(e) => e.stopPropagation()}>
+      <div className={`tz-modal tz-mensajes-modal ${enLista ? "" : "tz-chat-modal-shell"}`} onClick={(e) => e.stopPropagation()}>
         <button className="tz-modal-close" onClick={onClose} aria-label="Cerrar">
           <X size={18} />
         </button>
@@ -429,6 +403,7 @@ export default function ConductorChatInboxModal({ conductorId, pasajeroInicial, 
                 noLeidosEntregas={noLeidosEntregas}
                 onEntregasCambio={onEntregasCambio}
                 entregaInicial={entregaInicial}
+                onVista={setEnLista}
               />
             </ChatErrorBoundary>
           )}
