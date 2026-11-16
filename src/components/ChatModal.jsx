@@ -231,6 +231,7 @@ function ChatModalContenido({ conductor, pasajeroId, destino, autoContactar, cat
         // flujo manual ("Contactar" de la tarjeta general, autoContactar
         // false), que no lo exige para abrir el chat.
         destino={destino}
+        contactoNuevo={autoContactar}
         onEnviar={enviarMensaje}
         onResponderOferta={responderOferta}
         onPasajeroRecogido={marcarPasajeroRecogido}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Send, Mic, ImagePlus, Camera, Loader2, Trash2 } from "lucide-react";
+import { Plus, Send, Mic, ImagePlus, Camera, Loader2, Trash2, X } from "lucide-react";
 import { subirAdjunto, minSeg } from "../../lib/adjuntosChat";
 import AuraVoz from "./AuraVoz";
 
@@ -13,6 +13,9 @@ import AuraVoz from "./AuraVoz";
 //     un aura arcoíris (AuraVoz) que se mueve con la voz, con el contador
 //     al centro. Soltar envía; deslizar hacia afuera cancela.
 //     Máximo 60 s (al llegar, se envía solo).
+//   - Pegar una imagen (Ctrl + V) la deja anclada en un espacio que se
+//     despliega arriba del campo, con una X para quitarla; se envía con
+//     el avión de papel (y el texto escrito, si hay, va después).
 // `onEnviar(texto)` → Promise ({ error } opcional): el texto o, para una
 // foto o un audio, el mensaje ya codificado (lib/adjuntosChat.js).
 // `onEscribir()`: para el "escribiendo…".
@@ -33,11 +36,34 @@ export default function EntradaChat({ onEnviar, onEscribir, validar = null, desh
   const fileRef = useRef(null);
   const camaraRef = useRef(null);
   const grab = useRef(null); // { recorder, stream, ctx, analyser, inicio, partes, x, y, cancelar, raf, tope }
+  const [pegada, setPegada] = useState(null); // { file, url } — imagen pegada por enviar
 
-  const activo = foco || texto.trim().length > 0;
+  // La vista previa usa una URL local: se libera al cambiarla o al salir.
+  useEffect(() => () => pegada && URL.revokeObjectURL(pegada.url), [pegada]);
+
+  const alPegar = (e) => {
+    if (deshabilitado || subiendo) return;
+    const item = [...(e.clipboardData?.items || [])].find((it) => it.kind === "file" && it.type.startsWith("image/"));
+    const file = item?.getAsFile();
+    if (!file) return; // texto: se pega normal
+    e.preventDefault();
+    setError("");
+    setPegada({ file, url: URL.createObjectURL(file) });
+    inputRef.current?.focus();
+  };
+
+  const activo = foco || texto.trim().length > 0 || !!pegada;
   const aviso = validar && texto.trim() ? validar(texto) : null;
 
   const enviarTexto = async () => {
+    // Con una imagen pegada: primero la foto, después el texto (si hay).
+    if (pegada) {
+      if (deshabilitado || subiendo || aviso) return;
+      const { file } = pegada;
+      setPegada(null);
+      const ok = await enviarAdjunto({ tipo: "foto", blob: file });
+      if (!ok || !texto.trim()) return;
+    }
     const t = texto.trim();
     if (!t || deshabilitado || aviso) return;
     setTexto("");
@@ -54,8 +80,10 @@ export default function EntradaChat({ onEnviar, onEscribir, validar = null, desh
       const codificado = await subirAdjunto(adjunto);
       const r = await onEnviar(codificado);
       if (r?.error) setError("No se pudo enviar. Intenta de nuevo.");
+      return !r?.error;
     } catch {
       setError(adjunto.tipo === "foto" ? "No se pudo subir la foto." : "No se pudo subir la nota de voz.");
+      return false;
     } finally {
       setSubiendo(false);
     }
@@ -155,7 +183,23 @@ export default function EntradaChat({ onEnviar, onEscribir, validar = null, desh
   };
 
   return (
-    <div className="tz-entrada">
+    <div className="tz-entrada" onPaste={alPegar}>
+      {pegada && (
+        <div className="tz-entrada-pegada" key={pegada.url}>
+          <span className="tz-entrada-pegada-marco">
+            <img src={pegada.url} alt="Imagen pegada" />
+            <button
+              type="button"
+              className="tz-entrada-pegada-quitar"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setPegada(null)}
+              aria-label="Quitar imagen"
+            >
+              <X size={14} />
+            </button>
+          </span>
+        </div>
+      )}
       <div className="tz-entrada-campo">
         <input
           ref={inputRef}
@@ -226,7 +270,7 @@ export default function EntradaChat({ onEnviar, onEscribir, validar = null, desh
           className="tz-entrada-accion is-enviar"
           onMouseDown={(e) => e.preventDefault()}
           onClick={enviarTexto}
-          disabled={deshabilitado || !texto.trim() || !!aviso}
+          disabled={deshabilitado || (!texto.trim() && !pegada) || !!aviso}
           aria-label="Enviar mensaje"
         >
           <Send size={18} />

@@ -4161,6 +4161,8 @@ export default function Styles() {
         background: rgba(255,255,255,0.04);
         text-align: center;
       }
+      .tz-chat-aviso-gema { padding: 6px 12px; border: 1px solid rgba(57,255,176,0.3); background: rgba(57,255,176,0.06); }
+      .tz-chat-bubble-sistema.tz-chat-aviso-gema p.tz-chat-gema-linea { margin: 0; font-style: normal; font-size: 12px; color: #39ffb0; justify-content: center; }
       .tz-chat-bubble-sistema p {
         color: var(--text-dim);
         font-size: 12.5px;
@@ -7610,6 +7612,36 @@ export default function Styles() {
         50% { transform: scale(1.22); box-shadow: 0 0 0 14px rgba(255,47,109,0); }
       }
       .tz-entrada-accion.is-subiendo { background: rgba(255,255,255,0.08); color: var(--cyan, #2be8ff); }
+      /* Imagen pegada (Ctrl + V): un espacio que se despliega hacia arriba
+         desde el campo, con la imagen anclada y una X para quitarla. */
+      .tz-entrada-pegada {
+        order: -1; flex-basis: 100%; display: flex; padding: 12px 12px 8px 10px; box-sizing: border-box; overflow: hidden;
+        animation: tz-entrada-pegada-abre 0.55s cubic-bezier(.34,1.56,.64,1) both;
+      }
+      .tz-entrada-pegada-marco {
+        position: relative; display: inline-flex; border-radius: 14px; padding: 3px;
+        background: rgba(43,232,255,0.08); border: 1px solid rgba(43,232,255,0.45);
+        box-shadow: 0 0 9px rgba(43,232,255,0.3);
+        transform-origin: 0% 100%;
+        animation: tz-entrada-pegada-img 0.6s cubic-bezier(.34,1.56,.64,1) 0.05s both;
+      }
+      .tz-entrada-pegada-marco img { display: block; max-height: 140px; max-width: min(240px, 70vw); border-radius: 11px; object-fit: cover; }
+      .tz-entrada-pegada-quitar {
+        position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 999px; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; padding: 0;
+        border: 1px solid rgba(255,84,112,0.7); background: #2a0f1a; color: #ff5470;
+        box-shadow: 0 0 10px rgba(255,84,112,0.45);
+        transition: transform 0.35s cubic-bezier(.34,1.56,.64,1);
+      }
+      .tz-entrada-pegada-quitar:hover { transform: scale(1.15) rotate(90deg); }
+      @keyframes tz-entrada-pegada-abre {
+        from { max-height: 0; opacity: 0; }
+        to { max-height: 190px; opacity: 1; }
+      }
+      @keyframes tz-entrada-pegada-img {
+        0% { opacity: 0; transform: translateY(16px) scale(0.6); filter: blur(6px); }
+        100% { opacity: 1; transform: none; filter: none; }
+      }
       .tz-entrada-error { flex-basis: 100%; margin: 2px 4px 0; font-size: 12px; color: var(--danger, #ff5470); }
       /* Grabando: el aura (AuraVoz) en el medio del chat, sin recuadro; el
          contador al centro y una ayuda corta debajo. */

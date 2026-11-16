@@ -361,19 +361,28 @@ function MessageBubble({ mensaje, mine, esOfertaParaPasajero, estadoOferta, onRe
     );
   }
 
+  // La gema que usó el pasajero en esta tarifa le llega al conductor como
+  // un aviso centrado del chat (como lo ve el pasajero), no dentro de su
+  // burbuja.
+  const avisoGema =
+    mensaje?.tipo === TIPO_MENSAJE_OFERTA && mensaje?.gema_estado && mensaje.gema_estado !== "devuelta";
   return (
-    <div className={`tz-chat-bubble ${mine ? "tz-chat-bubble-mine" : ""} ${claseNota(texto)}`}>
-      <AdjuntoMensaje texto={texto} claseBurbuja={`tz-chat-bubble ${mine ? "tz-chat-bubble-mine" : ""}`}>
-        <p>{texto}</p>
-      </AdjuntoMensaje>
-      {mensaje?.tipo === TIPO_MENSAJE_OFERTA && mensaje?.gema_estado && mensaje.gema_estado !== "devuelta" && (
-        <LineaGema mensaje={mensaje} paraConductor />
+    <>
+      <div className={`tz-chat-bubble ${mine ? "tz-chat-bubble-mine" : ""} ${claseNota(texto)}`}>
+        <AdjuntoMensaje texto={texto} claseBurbuja={`tz-chat-bubble ${mine ? "tz-chat-bubble-mine" : ""}`}>
+          <p>{texto}</p>
+        </AdjuntoMensaje>
+        <span className="tz-chat-bubble-time">
+          {hora}
+          <ChecksLectura mine={mine} leido={!!mensaje?.leido} />
+        </span>
+      </div>
+      {avisoGema && (
+        <div className="tz-chat-bubble tz-chat-bubble-sistema tz-chat-aviso-gema">
+          <LineaGema mensaje={mensaje} paraConductor />
+        </div>
       )}
-      <span className="tz-chat-bubble-time">
-        {hora}
-        <ChecksLectura mine={mine} leido={!!mensaje?.leido} />
-      </span>
-    </div>
+    </>
   );
 }
 
@@ -453,6 +462,8 @@ export default function ChatWindow({
   onMarcarFinDeViaje,
   onCerrarPorCancelacion,
   onLimpiarDestino,
+  // true: el chat se abrió para un contacto nuevo (desde el radar).
+  contactoNuevo = false,
   destino = null,
   conductorId,
   pasajeroId,
@@ -969,9 +980,21 @@ export default function ChatWindow({
   // viaje termina — no hace falta ninguna acción del pasajero.
   // `onLimpiarDestino` es idempotente (setDestino(null) de nuevo no
   // rompe nada), así que no hace falta guardia de "una sola vez".
+  //
+  // Bug "Hacer señas" tras cancelar: al volver a escribirle a un conductor
+  // con el que ya hubo un viaje cancelado, el hilo arranca "cerrado" (la
+  // oferta vieja) hasta que llega el mensaje nuevo con el mapa — y esto
+  // borraba el destino recién elegido. Ahora solo limpia cuando el viaje
+  // PASA a cerrado con el chat abierto, o si se abrió un chat ya cerrado
+  // sin un contacto nuevo (desde Mensajes).
+  const cerradoAntesRef = useRef(null);
   useEffect(() => {
-    if (viajeCerrado) onLimpiarDestino?.();
-  }, [viajeCerrado, onLimpiarDestino]);
+    if (loading) return;
+    const antes = cerradoAntesRef.current;
+    cerradoAntesRef.current = viajeCerrado;
+    if (!viajeCerrado) return;
+    if (antes === false || (antes === null && !contactoNuevo)) onLimpiarDestino?.();
+  }, [viajeCerrado, loading, contactoNuevo, onLimpiarDestino]);
 
   // Color de categoría (VIP/Premium/Ejecutivo/Económico) para el glow
   // del pin y la línea de ruta en MapaViaje.jsx — hex fijos
