@@ -9,15 +9,20 @@ const TONOS = {
 export default function IconoGema({ color = "celeste", size = 16, className = "" }) {
   const [claro, medio, oscuro] = TONOS[color] || TONOS.celeste;
   const id = `tz-ig-${color}`;
+  // El brillo va en una envoltura HTML, no en el <svg>: Chrome recorta el
+  // filtro de un SVG en el borde de su recuadro (se veía cuadrado).
   return (
-    <svg
+    <span
       className={`tz-icono-gema ${className}`}
-      width={size}
-      height={size * 1.15}
-      viewBox="0 0 20 23"
       aria-hidden="true"
-      style={{ filter: `drop-shadow(0 0 ${Math.max(2, size / 4)}px ${medio})`, flexShrink: 0, verticalAlign: "middle" }}
+      style={{
+        display: "inline-flex",
+        flexShrink: 0,
+        verticalAlign: "middle",
+        filter: `drop-shadow(0 0 ${Math.max(2, size / 4)}px ${medio})`,
+      }}
     >
+    <svg width={size} height={size * 1.15} viewBox="0 0 20 23" style={{ display: "block", overflow: "visible" }}>
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor={claro} />
@@ -32,5 +37,6 @@ export default function IconoGema({ color = "celeste", size = 16, className = ""
       <polygon points="0,9 10,9 10,23" fill={oscuro} opacity="0.35" />
       <polyline points="0,9 20,9" stroke={claro} strokeWidth="0.8" opacity="0.8" fill="none" />
     </svg>
+    </span>
   );
 }

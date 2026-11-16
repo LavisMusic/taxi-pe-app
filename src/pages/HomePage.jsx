@@ -43,6 +43,7 @@ import logo from "../assets/logo.webp";
 import SaldoGemas from "../components/SaldoGemas";
 import { useMisGemas } from "../hooks/useMisGemas";
 import BotonSoporte from "../components/BotonSoporte";
+import { BotonConfiguracion } from "../components/ConfiguracionesModal";
 import BotonMensajes from "../components/mensajes/BotonMensajes";
 import CalificacionesViaje from "../components/CalificacionesViaje";
 import { usePendientesReputacion } from "../components/MiReputacion";
@@ -447,25 +448,13 @@ export default function HomePage() {
       <header className="tz-header">
         <div className="tz-header-row">
           <div className="tz-header-side tz-header-side-left">
-            {/* Con sesión de pasajero: solo su perfil y sus Mensajes (los
-                accesos de conductor/recolector son para entrar). */}
+            {/* Con sesión de pasajero: Soporte y, debajo, Configuraciones y
+                permisos (sus Mensajes y su Perfil van a la derecha). Sin
+                sesión, los accesos de conductor/recolector. */}
             {usuario && esPasajero ? (
               <>
-                <button
-                  className="tz-header-btn"
-                  onClick={() => setPerfilOpen(true)}
-                  aria-label="Editar perfil"
-                  title="Editar perfil"
-                  style={{ position: "relative" }}
-                >
-                  <UserRound size={19} />
-                  <span className="tz-header-btn-label">Editar Perfil</span>
-                  {/* Por calificar: la tarjeta "Mi reputación" está en el perfil. */}
-                  {pendientesReputacion > 0 && (
-                    <span className="tz-header-btn-badge">{pendientesReputacion > 9 ? "+9" : pendientesReputacion}</span>
-                  )}
-                </button>
-                <BotonMensajes usuarioId={usuario.id} conductores={chatsMensajes} onAbrirConductor={verChat} />
+                <BotonSoporte />
+                <BotonConfiguracion usuarioId={usuario.id} />
               </>
             ) : (
               <>
@@ -497,8 +486,28 @@ export default function HomePage() {
           </div>
 
           <div className="tz-header-side tz-header-side-right">
-            <BotonSoporte />
-            {/* El pasajero cierra sesión desde "Editar Perfil". */}
+            {/* Pasajero: Mensajes y, debajo, su Perfil (ahí cierra sesión). */}
+            {usuario && esPasajero ? (
+              <>
+                <BotonMensajes usuarioId={usuario.id} conductores={chatsMensajes} onAbrirConductor={verChat} />
+                <button
+                  className="tz-header-btn"
+                  onClick={() => setPerfilOpen(true)}
+                  aria-label="Perfil"
+                  title="Perfil"
+                  style={{ position: "relative" }}
+                >
+                  <UserRound size={19} />
+                  <span className="tz-header-btn-label">Perfil</span>
+                  {/* Por calificar: la tarjeta "Mi reputación" está en el perfil. */}
+                  {pendientesReputacion > 0 && (
+                    <span className="tz-header-btn-badge">{pendientesReputacion > 9 ? "+9" : pendientesReputacion}</span>
+                  )}
+                </button>
+              </>
+            ) : (
+              <BotonSoporte />
+            )}
             {usuario ? (
               !esPasajero && (
                 <button className="tz-header-btn" onClick={logout} aria-label="Cerrar sesión" title="Cerrar sesión">
@@ -546,7 +555,7 @@ export default function HomePage() {
                 <div className="tz-fila-saldo">
                   {/* Gemas cruzadas: verdes (comprando en tiendas) y
                      celestes (viajando). Al subir, aparece la gema ganada. */}
-                  <SaldoGemas usuarioId={usuario.id} verdes={misGemas.verdes} celestes={misGemas.celestes} />
+                  <SaldoGemas usuarioId={usuario.id} verdes={misGemas.verdes} celestes={misGemas.celestes} devueltasVerdes={misGemas.devueltas} />
                 </div>
               )}
             </div>

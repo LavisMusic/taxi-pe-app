@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { MessageCircle, X, Car } from "lucide-react";
 import { useMensajesPlataforma } from "../../hooks/useMensajesPlataforma";
-import { FilasChatsFijados, ChatFijadoAbierto, InterruptorAvisos } from "./ChatsFijados";
-import AvisosDispositivo from "./AvisosDispositivo";
+import { FilasChatsFijados, ChatFijadoAbierto } from "./ChatsFijados";
 import { useAbrirMensajesDesdeAviso } from "../../hooks/useAbrirMensajesDesdeAviso";
 import { previaMensaje } from "../../lib/adjuntosChat";
 
@@ -94,8 +93,6 @@ export default function BotonMensajes({ usuarioId, conductores = [], onAbrirCond
                   <h2 style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <MessageCircle size={18} /> Mensajes
                   </h2>
-                  <InterruptorAvisos activos={datos.avisosActivos} onCambiar={datos.cambiarAvisos} />
-                  <AvisosDispositivo />
                   <ul className="tz-history-rows" style={{ marginTop: 10 }}>
                     <FilasChatsFijados canales={datos.canales} onAbrir={setCanal} />
                     {onAbrirConductor && conductores.length > 0 && (

@@ -8,8 +8,7 @@ import { previaMensaje } from "../lib/adjuntosChat";
 import ChatWindow from "./ChatWindow";
 import ReputacionDe from "./ReputacionDe";
 import ChatErrorBoundary from "./ChatErrorBoundary";
-import { FilasChatsFijados, ChatFijadoAbierto, InterruptorAvisos } from "./mensajes/ChatsFijados";
-import AvisosDispositivo from "./mensajes/AvisosDispositivo";
+import { FilasChatsFijados, ChatFijadoAbierto } from "./mensajes/ChatsFijados";
 
 // Bandeja de mensajes del lado Conductor (/conductor, botón
 // "Mensajes") — sin esto el chat sería de un solo sentido (el pasajero
@@ -235,12 +234,16 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
               <ArrowLeft size={16} />
             </button>
             <Avatar foto={fotosPorId[pasajeroAbierto]} nombre={nombresPorId[pasajeroAbierto]} />
-            <span>
-              <span className="tz-nombre-rep">
-                <strong>{nombresPorId[pasajeroAbierto] ?? "Pasajero"}</strong>
-                <ReputacionDe tipo="pasajero" id={pasajeroAbierto} tamano="chico" />
+            {/* Nombre | estrellas; abajo: estado | etiqueta (centrada bajo las estrellas). */}
+            <span className="tz-chat-cab-datos">
+              <strong>{nombresPorId[pasajeroAbierto] ?? "Pasajero"}</strong>
+              <span className="tz-chat-cab-estrellas">
+                <ReputacionDe tipo="pasajero" id={pasajeroAbierto} tamano="chico" mostrar="estrellas" />
               </span>
-              <small>{pasajerosEnCarrera?.includes(pasajeroAbierto) ? "Viaje en curso" : "Negociando"}</small>
+              <small>{pasajerosEnCarrera?.includes(pasajeroAbierto) ? "" : "Negociando"}</small>
+              <span className="tz-chat-cab-etiqueta">
+                <ReputacionDe tipo="pasajero" id={pasajeroAbierto} tamano="chico" mostrar="etiquetas" />
+              </span>
             </span>
           </div>
           {/* Fase 5 (Motor de Viajes Simultáneos) — Selector de Hilos:
@@ -295,8 +298,6 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
         <>
           {plataforma && (
             <>
-              <InterruptorAvisos activos={plataforma.avisosActivos} onCambiar={plataforma.cambiarAvisos} />
-              <AvisosDispositivo />
               <ul className="tz-history-rows" style={{ margin: "10px 0" }}>
                 <FilasChatsFijados canales={plataforma.canales} onAbrir={setCanalFijo} />
               </ul>

@@ -62,6 +62,7 @@ export default function PerfilPasajeroModal({ onClose }) {
       limitesListos={!!cambios}
       onClose={onClose}
       onCerrarSesion={logout}
+      soloLectura="Tu foto y tu nombre de usuario se cambian desde tu perfil en Caja Tonazo (la misma cuenta)."
     >
       <TarjetaMiReputacion rol="pasajero" />
     </PerfilModal>

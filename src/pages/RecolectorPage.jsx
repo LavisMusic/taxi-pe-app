@@ -36,6 +36,7 @@ import logo from "../assets/logo.webp";
 import GemasRecolectadas from "../components/GemasRecolectadas";
 import { supabase } from "../supabaseClient";
 import BotonSoporte from "../components/BotonSoporte";
+import { BotonConfiguracion } from "../components/ConfiguracionesModal";
 import BotonMensajes from "../components/mensajes/BotonMensajes";
 import AnuncioPopupModal from "../components/AnuncioPopupModal";
 import { useAnuncioActivo } from "../hooks/useAnuncioActivo";
@@ -241,6 +242,7 @@ export default function RecolectorPage() {
 
           <div className="tz-header-side tz-header-side-right">
             <BotonSoporte />
+            <BotonConfiguracion usuarioId={usuario?.id} />
             <button className="tz-header-btn" onClick={logout} aria-label="Cerrar sesión" title="Cerrar sesión">
               <LogOut size={19} />
               <span className="tz-header-btn-label">Salir</span>

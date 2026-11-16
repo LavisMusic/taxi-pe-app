@@ -17,6 +17,8 @@ import BotonCerrarSesion from "./BotonCerrarSesion";
 //                               20261029100000)
 //   limitesListos             → ya se sabe si puede cambiarlos (antes, el
 //                               nombre se ve pero no se edita)
+//   soloLectura               → texto: solo se ve (foto y nombre de
+//                               usuario) y se explica dónde se cambian
 export default function PerfilModal({
   titulo = "Mi perfil",
   fotoUrl,
@@ -33,6 +35,7 @@ export default function PerfilModal({
   onClose,
   onCerrarSesion = null,
   children = null,
+  soloLectura = null,
 }) {
   const fecha = (ms) =>
     ms && ms > Date.now()
@@ -67,6 +70,22 @@ export default function PerfilModal({
           <X size={18} />
         </button>
         <h2>{titulo}</h2>
+        {soloLectura ? (
+          <>
+            <div className="tz-perfil-pasajero-foto is-lectura">
+              {fotoUrl ? (
+                <img src={fotoUrl} alt="" />
+              ) : (
+                <span>{((esUsuarioProvisional(nombreUsuario, telefono) ? nombre : nombreUsuario) || nombre || "?").charAt(0).toUpperCase()}</span>
+              )}
+            </div>
+            <p className="tz-perfil-lectura-nombre">
+              {nombreUsuario && !esUsuarioProvisional(nombreUsuario, telefono) ? `@${nombreUsuario}` : nombre}
+            </p>
+            <p className="tz-perfil-lectura-nota">{soloLectura}</p>
+          </>
+        ) : (
+        <>
         <button
           type="button"
           className="tz-perfil-pasajero-foto"
@@ -95,6 +114,8 @@ export default function PerfilModal({
             </button>
           </CampoUsuario>
         </form>
+        </>
+        )}
         {aviso && <p className="tz-camera-note">{aviso}</p>}
         {error && <p className="tz-error">{error}</p>}
         {/* Lo que agrega cada perfil (p. ej. la tarjeta "Mi reputación"). */}
