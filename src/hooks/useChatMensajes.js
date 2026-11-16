@@ -2,6 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useEscribiendo } from "./useEscribiendo";
 
+// Últimos mensajes vistos por conversación ("conductor-pasajero").
+const cacheMensajes = new Map(); // clave -> { lista, at }
+const VIGENCIA_CACHE_MS = 10 * 60 * 1000;
+const deMemoria = (clave) => {
+  const c = cacheMensajes.get(clave);
+  return c && Date.now() - c.at < VIGENCIA_CACHE_MS ? c.lista : null;
+};
+
 export const REMITENTE_PASAJERO = "pasajero";
 export const REMITENTE_CONDUCTOR = "conductor";
 // Mensajes automáticos (ej. "El pasajero rechazó la tarifa") — no los
@@ -92,8 +100,9 @@ async function sincronizarAsientosYEstado(conductorId) {
 // en la base, solo viaja en vivo entre los dos que están mirando el
 // chat en ese momento.
 export function useChatMensajes(conductorId, pasajeroId) {
-  const [mensajes, setMensajes] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Arranca con lo último visto de esta conversación (sin "Cargando…").
+  const [mensajes, setMensajes] = useState(() => deMemoria(`${conductorId}-${pasajeroId}`) ?? []);
+  const [loading, setLoading] = useState(() => !deMemoria(`${conductorId}-${pasajeroId}`));
   const [error, setError] = useState("");
   // "Escribiendo…" por un canal propio con el MISMO nombre en los dos
   // lados (el de abajo lleva un sufijo por ventana y el aviso nunca le
@@ -104,7 +113,9 @@ export function useChatMensajes(conductorId, pasajeroId) {
     apagar: apagarEscribiendo,
   } = useEscribiendo(
     conductorId && pasajeroId ? supabase : null,
-    conductorId && pasajeroId ? `viaje-${conductorId}-${pasajeroId}` : null,
+    // Canal propio (no el del viaje, que es privado: con el mismo nombre
+    // la librería reutilizaba uno u otro según cuál se abría primero).
+    conductorId && pasajeroId ? `escribe-viaje-${conductorId}-${pasajeroId}` : null,
     null
   );
   const otroEscribiendo = !!rolEscribiendo;
@@ -128,7 +139,11 @@ export function useChatMensajes(conductorId, pasajeroId) {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    // Sin "Cargando…" si ya hay mensajes de esta conversación (los últimos
+    // vistos, en memoria): se muestran al instante y se actualizan por detrás.
+    const enMemoria = deMemoria(`${conductorId}-${pasajeroId}`);
+    if (enMemoria) setMensajes(enMemoria);
+    else setLoading(true);
     setError("");
     // try/catch además del `error` tipado que ya devuelve supabase-js:
     // un corte de red a mitad de la consulta deja una promesa
@@ -146,16 +161,22 @@ export function useChatMensajes(conductorId, pasajeroId) {
 
       if (fetchError) {
         setError("No se pudo cargar el chat.");
-        setMensajes([]);
+        if (!enMemoria) setMensajes([]);
       } else {
         setMensajes(data ?? []);
       }
     } catch {
       setError("No se pudo cargar el chat.");
-      setMensajes([]);
+      if (!enMemoria) setMensajes([]);
     }
     setLoading(false);
   }, [conductorId, pasajeroId]);
+
+  // Lo último visto de cada conversación queda en memoria (para abrirla
+  // al instante la próxima vez).
+  useEffect(() => {
+    if (conductorId && pasajeroId && !loading) cacheMensajes.set(`${conductorId}-${pasajeroId}`, { lista: mensajes, at: Date.now() });
+  }, [conductorId, pasajeroId, mensajes, loading]);
 
   useEffect(() => {
     refresh();

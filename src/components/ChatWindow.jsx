@@ -584,6 +584,16 @@ export default function ChatWindow({
     ) {
       setMostrarConfetiViaje(true);
     }
+    // Cancelado por el OTRO lado: también cierra el chat (antes solo se
+    // cerraba si llegaba primero el mensaje de aviso; ahora alcanza con
+    // el cambio de estado, venga por el canal del viaje o por la base).
+    if (
+      (anterior === ESTADO_OFERTA_ACEPTADA || anterior === ESTADO_OFERTA_EN_TRANSITO) &&
+      estadoViaje === ESTADO_OFERTA_CANCELADA &&
+      !propiaCancelacionRef.current
+    ) {
+      setViajeCancelado(true);
+    }
   }, [estadoViaje]);
   // Fix Cronómetro Infinito: override optimista de `viaje_fin_at`,
   // seteado en DOS lugares — (a) el propio Conductor, apenas confirma
@@ -900,6 +910,10 @@ export default function ChatWindow({
   const mostrarBotonTonazo = !loading && remitentePropio === REMITENTE_PASAJERO && !ofertaVigente;
   // Tarifas rápidas (Conductor): también flotan, centradas, sobre el chat.
   const mostrarTarifasRapidas = !loading && remitentePropio === REMITENTE_CONDUCTOR && puedeProponerTarifa;
+  // Una sola encuesta a la vez: con una oferta esperando respuesta del
+  // pasajero, los botones de tarifa quedan apagados (si la rechaza, se
+  // vuelven a encender). La base también lo impide.
+  const ofertaEnEspera = estadoOfertaVigente === ESTADO_OFERTA_PENDIENTE;
 
   // Ocultamiento estricto del mapa — `<MapaViaje/>` NO se monta en
   // absoluto durante Fase 0 (contacto) ni Fase 1 (negociación): recién
@@ -1100,7 +1114,7 @@ export default function ChatWindow({
   // resultado para que quien llama (enviarTarifaCustom) también pueda
   // reaccionar.
   const enviarOferta = async (tarifa) => {
-    if (enviando) return { error: null };
+    if (enviando || ofertaEnEspera) return { error: null };
     setEnviando(true);
     const { error } = (await onEnviar(remitentePropio, tarifa, { tipo: TIPO_MENSAJE_OFERTA, estado_oferta: ESTADO_OFERTA_PENDIENTE })) ?? {};
     setEnviando(false);
@@ -1352,7 +1366,7 @@ export default function ChatWindow({
     <>
       {/* Portal a body: el chat vive dentro de un modal y un ancestro
           con transform rompería el position:fixed de pantalla completa.
-          El chat queda abierto debajo, con el resumen del viaje. */}
+          Al terminar el festejo, el chat se cierra solo. */}
       {mostrarConfetiViaje &&
         createPortal(
           <AnimacionExitoNeon
@@ -1362,7 +1376,11 @@ export default function ChatWindow({
                 ? "Carrera completada. ¡Buen trabajo!"
                 : "Gracias por viajar con Taxi-PE."
             }
-            onTerminar={() => setMostrarConfetiViaje(false)}
+            onTerminar={() => {
+              setMostrarConfetiViaje(false);
+              // Viaje terminado: el chat se cierra solo después del festejo.
+              onCerrarPorCancelacion?.();
+            }}
           />,
           document.body
         )}
@@ -1679,7 +1697,7 @@ export default function ChatWindow({
                   key={tarifa}
                   type="button"
                   className="tz-chat-quickreply-btn"
-                  disabled={enviando}
+                  disabled={enviando || ofertaEnEspera}
                   onClick={() => enviarOferta(tarifa)}
                 >
                   {tarifa}
@@ -1688,6 +1706,7 @@ export default function ChatWindow({
               <button
                 type="button"
                 className="tz-chat-quickreply-btn tz-chat-quickreply-plus"
+                disabled={ofertaEnEspera}
                 onClick={() => {
                   setMostrarInputTarifa((v) => !v);
                   setErrorTarifaCustom("");
@@ -1716,13 +1735,16 @@ export default function ChatWindow({
                 <button
                   type="button"
                   className="tz-chat-send-btn"
-                  disabled={enviando}
+                  disabled={enviando || ofertaEnEspera}
                   onClick={enviarTarifaCustom}
                   aria-label="Enviar tarifa"
                 >
                   <Send size={15} />
                 </button>
               </div>
+            )}
+            {ofertaEnEspera && (
+              <p className="tz-chat-oferta-espera">Esperando la respuesta del pasajero…</p>
             )}
             {errorTarifaCustom && (
               <p className="tz-error" style={{ margin: 0, fontSize: 12 }}>

@@ -238,7 +238,11 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
             <span>
               <span className="tz-nombre-rep">
                 <strong>{nombresPorId[pasajeroAbierto] ?? "Pasajero"}</strong>
-                <ReputacionDe tipo="pasajero" id={pasajeroAbierto} tamano="chico" />
+                <ReputacionDe tipo="pasajero" id={pasajeroAbierto} tamano="chico" mostrar="estrellas" />
+              </span>
+              {/* La etiqueta va en su propia línea, debajo de las estrellas. */}
+              <span className="tz-chat-cab-etiqueta">
+                <ReputacionDe tipo="pasajero" id={pasajeroAbierto} tamano="chico" mostrar="etiquetas" />
               </span>
               <small>{pasajerosEnCarrera?.includes(pasajeroAbierto) ? "Viaje en curso" : "Negociando"}</small>
             </span>

@@ -16,7 +16,7 @@ export default function IconoGema({ color = "celeste", size = 16, className = ""
       height={size * 1.15}
       viewBox="0 0 20 23"
       aria-hidden="true"
-      style={{ filter: `drop-shadow(0 0 ${Math.max(2, size / 4)}px ${medio})`, flexShrink: 0, verticalAlign: "middle" }}
+      style={{ filter: `drop-shadow(0 0 ${Math.max(2, size / 4)}px ${medio})`, flexShrink: 0, verticalAlign: "middle", overflow: "visible" }}
     >
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">

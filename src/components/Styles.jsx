@@ -1492,7 +1492,25 @@ export default function Styles() {
         font-weight: 600;
         font-size: 12.5px;
         color: var(--text-dim);
+        /* Siempre dentro del círculo: en dos líneas, parejas. */
+        max-width: 68%;
+        line-height: 1.25;
+        text-align: center;
+        text-wrap: balance;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
       }
+      /* Cabecera del chat: la etiqueta en su línea, debajo de las estrellas. */
+      .tz-chat-cab-etiqueta { display: block; margin: 3px 0 2px; line-height: 1; }
+      .tz-chat-cab-etiqueta:empty { display: none; }
+      /* Tarifas: una sola encuesta a la vez. */
+      .tz-chat-oferta-espera {
+        margin: 2px 0 0; text-align: center; font-size: 12px; font-weight: 700; color: var(--yellow);
+        animation: tz-oferta-espera 1.6s ease-in-out infinite;
+      }
+      @keyframes tz-oferta-espera { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
       /* Lista vertical (una fila por ingrediente) — mismo tamaño/peso
          que .tz-card-detail (la descripción de cualquier producto
          normal), no un tamaño reducido aparte, para que un combo no
@@ -3710,6 +3728,8 @@ export default function Styles() {
         border-radius: 8px;
         z-index: 0;
       }
+      /* El del chat del viaje: más alto e interactivo (se puede mover y hacer zoom). */
+      .tz-mapa-viaje.tz-mapa-viaje-chat { height: clamp(200px, 32vh, 280px); border-radius: 12px; touch-action: none; }
       .tz-mapa-viaje-loading {
         display: flex;
         align-items: center;
@@ -7453,7 +7473,9 @@ export default function Styles() {
       .tz-pegar-comprobante { margin-top: 8px; width: 100%; justify-content: center; }
       .tz-pegar-comprobante-aviso { margin: 6px 2px 0; font-size: 12px; color: var(--text-dim); }
       /* ===== Chats: escribir con fotos y notas de voz (chat/EntradaChat.jsx) ===== */
-      .tz-entrada { position: relative; display: flex; align-items: center; gap: 8px; width: 100%; flex-wrap: wrap; }
+      /* Aire a la derecha y abajo: el brillo del micrófono/enviar no se corta
+         contra el borde del modal que hace scroll. */
+      .tz-entrada { position: relative; display: flex; align-items: center; gap: 8px; width: 100%; flex-wrap: wrap; box-sizing: border-box; padding: 2px 8px 8px 2px; }
       .tz-entrada-campo { position: relative; flex: 1 1 auto; min-width: 0; }
       .tz-dlv-chat-input > .tz-entrada, .tz-chatneg-escribir > .tz-entrada, .tz-entrega-chat-input > .tz-entrada, .tz-chat-input-row > .tz-entrada { flex: 1 1 auto; min-width: 0; }
       .tz-entrada-input { width: 100%; margin: 0 !important; padding-right: 44px !important; text-transform: none; }

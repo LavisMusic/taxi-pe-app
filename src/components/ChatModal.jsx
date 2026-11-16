@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { X, MessageCircle } from "lucide-react";
+import { X, UserRound } from "lucide-react";
 import {
   useChatMensajes,
   REMITENTE_PASAJERO,
@@ -11,7 +11,7 @@ import {
 } from "../hooks/useChatMensajes";
 import { ESTADO_CONDUCTOR_ACTIVO } from "../lib/taxiEnums";
 import ChatWindow from "./ChatWindow";
-import ChatConductorHeader from "./ChatConductorHeader";
+import ReputacionDe from "./ReputacionDe";
 import ChatErrorBoundary from "./ChatErrorBoundary";
 
 // Persistencia de la Ubicación del Pasajero (Punto de Recojo) —
@@ -192,11 +192,29 @@ function ChatModalContenido({ conductor, pasajeroId, destino, autoContactar, cat
 
   return (
     <>
-      <ChatConductorHeader conductor={conductor} />
-
-      <h2 style={{ marginTop: 12 }}>
-        <MessageCircle size={17} /> Chat
-      </h2>
+      {/* Misma cabecera que el chat del conductor (foto, nombre y
+          estrellas; la etiqueta abajo; placa y estado). */}
+      <div className="tz-chatfijo-cabecera">
+        {conductor.foto_url ? (
+          <img src={conductor.foto_url} alt="" className="tz-chat-cara" />
+        ) : (
+          <span className="tz-chat-sticker">
+            <UserRound size={26} />
+          </span>
+        )}
+        <span>
+          <span className="tz-nombre-rep">
+            <strong>{conductor.nombre}</strong>
+            <ReputacionDe tipo="conductor" id={conductor.id} tamano="chico" mostrar="estrellas" />
+          </span>
+          <span className="tz-chat-cab-etiqueta">
+            <ReputacionDe tipo="conductor" id={conductor.id} tamano="chico" mostrar="etiquetas" />
+          </span>
+          <small>
+            {[conductor.placa, conductor.estado === ESTADO_CONDUCTOR_ACTIVO ? "Libre" : "En carrera"].filter(Boolean).join(" · ")}
+          </small>
+        </span>
+      </div>
 
       {cupoLleno && (
         <p className="tz-error" style={{ marginTop: 0 }}>
