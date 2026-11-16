@@ -138,12 +138,61 @@ export function useMensajesPlataforma(usuarioId) {
   const cambiarAvisos = useCallback(async (activos) => {
     avisosRef.current = activos;
     setAvisosActivos(activos);
-    const { data, error } = await supabase.rpc("taxi_set_notificaciones", { p_activas: activos });
-    if (error || data !== true) {
+    if (!(await guardarAvisos(activos))) {
       avisosRef.current = !activos;
       setAvisosActivos(!activos);
     }
   }, []);
 
+  // Cambiados desde "Configuraciones y permisos" (otro componente).
+  useEffect(() => {
+    const alCambiar = (e) => {
+      avisosRef.current = e.detail === true;
+      setAvisosActivos(e.detail === true);
+    };
+    window.addEventListener(EVENTO_AVISOS, alCambiar);
+    return () => window.removeEventListener(EVENTO_AVISOS, alCambiar);
+  }, []);
+
   return { canales, totalNoLeidos, cargando, marcarLeido, avisosActivos, cambiarAvisos };
+}
+
+// ---------- Avisos y sonido de la cuenta ----------------------------------
+// "Configuraciones y permisos" los cambia fuera de Mensajes: se guarda en la
+// base y se avisa por un evento del navegador a los demás que los usan.
+const EVENTO_AVISOS = "tz-avisos-cambiados";
+
+async function guardarAvisos(activos) {
+  const { data, error } = await supabase.rpc("taxi_set_notificaciones", { p_activas: activos });
+  const ok = !error && data === true;
+  if (ok) window.dispatchEvent(new CustomEvent(EVENTO_AVISOS, { detail: activos }));
+  return ok;
+}
+
+// Preferencia de avisos de la cuenta (null mientras carga) y cómo cambiarla.
+export function useAvisosCuenta(usuarioId) {
+  const [activos, setActivos] = useState(null);
+  useEffect(() => {
+    if (!usuarioId) return undefined;
+    let vivo = true;
+    supabase
+      .from("usuarios")
+      .select("notificaciones_activas")
+      .eq("id", usuarioId)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (vivo) setActivos(!error && data ? data.notificaciones_activas !== false : true);
+      });
+    const alCambiar = (e) => setActivos(e.detail === true);
+    window.addEventListener(EVENTO_AVISOS, alCambiar);
+    return () => {
+      vivo = false;
+      window.removeEventListener(EVENTO_AVISOS, alCambiar);
+    };
+  }, [usuarioId]);
+  const cambiar = useCallback(async (valor) => {
+    setActivos(valor);
+    if (!(await guardarAvisos(valor))) setActivos(!valor);
+  }, []);
+  return { activos, cambiar };
 }

@@ -64,6 +64,7 @@ import RecargarConductorModal from "../components/conductor/RecargarConductorMod
 import MetaDiaModal, { gananciaHoy } from "../components/conductor/MetaDiaModal";
 import logo from "../assets/logo.webp";
 import BotonSoporte from "../components/BotonSoporte";
+import { BotonConfiguracion } from "../components/ConfiguracionesModal";
 import TextoMaquina from "../components/TextoMaquina";
 import AnuncioPopupModal from "../components/AnuncioPopupModal";
 import { useDescripcionesPublico } from "../hooks/useDescripciones";
@@ -437,50 +438,11 @@ export default function ConductorPage() {
       )}
       <header className="tz-header">
         <div className="tz-header-row">
-          {conductor ? (
-            <div className="tz-header-side tz-header-side-left">
-              <button
-                className="tz-header-btn"
-                onClick={() => setEditandoPerfil(true)}
-                aria-label="Editar perfil"
-                title="Editar perfil"
-                style={{ position: "relative" }}
-              >
-                <UserRound size={19} />
-                <span className="tz-header-btn-label">Editar Perfil</span>
-                {/* Por calificar: la tarjeta "Mi reputación" está en el perfil. */}
-                {pendientesReputacion > 0 && (
-                  <span className="tz-header-btn-badge">{pendientesReputacion > 9 ? "+9" : pendientesReputacion}</span>
-                )}
-              </button>
-              <button
-                className="tz-header-btn"
-                onClick={() => setMensajesOpen(true)}
-                aria-label="Mensajes"
-                title="Mensajes"
-                style={{ position: "relative" }}
-              >
-                <MessageCircle size={19} />
-                <span className="tz-header-btn-label">Mensajes</span>
-                {(() => {
-                  // Número de no leídos (pasajeros + fijados + entregas); sin
-                  // no leídos, un punto encendido mientras haya un reparto.
-                  const total =
-                    unreadCount +
-                    plataforma.totalNoLeidos +
-                    Object.values(repartos.noLeidos || {}).reduce((s, x) => s + (x.total || 0), 0);
-                  if (total > 0) return <span className="tz-header-btn-badge">{total > 9 ? "+9" : total}</span>;
-                  return repartos.entregasActivas.length > 0 ? (
-                    <span className="tz-header-btn-badge is-punto" aria-label="Tienes un reparto en curso" />
-                  ) : null;
-                })()}
-              </button>
-            </div>
-          ) : (
-            <div className="tz-header-side tz-header-side-left" style={{ visibility: "hidden" }}>
-              <button className="tz-header-btn" aria-hidden="true" tabIndex={-1} />
-            </div>
-          )}
+          {/* Izquierda: Soporte y, debajo, Configuraciones y permisos. */}
+          <div className="tz-header-side tz-header-side-left">
+            <BotonSoporte />
+            <BotonConfiguracion usuarioId={usuario?.id} />
+          </div>
           <div className="tz-header-center">
             <img src={logo} alt="TaxiP" className="tz-logo" />
             <div className="tz-subtitle-slot">
@@ -490,10 +452,49 @@ export default function ConductorPage() {
               />
             </div>
           </div>
+          {/* Derecha: Mensajes y, debajo, Perfil. Sin ficha de conductor
+              todavía, solo "Salir" (con ficha cierra sesión en el pie). */}
           <div className="tz-header-side tz-header-side-right">
-            <BotonSoporte />
-            {/* Con su ficha de conductor cierra sesión desde "Editar Perfil";
-                sin ella (todavía sin perfil) el botón sigue acá. */}
+            {conductor && (
+              <>
+                <button
+                  className="tz-header-btn"
+                  onClick={() => setMensajesOpen(true)}
+                  aria-label="Mensajes"
+                  title="Mensajes"
+                  style={{ position: "relative" }}
+                >
+                  <MessageCircle size={19} />
+                  <span className="tz-header-btn-label">Mensajes</span>
+                  {(() => {
+                    // Número de no leídos (pasajeros + fijados + entregas); sin
+                    // no leídos, un punto encendido mientras haya un reparto.
+                    const total =
+                      unreadCount +
+                      plataforma.totalNoLeidos +
+                      Object.values(repartos.noLeidos || {}).reduce((s, x) => s + (x.total || 0), 0);
+                    if (total > 0) return <span className="tz-header-btn-badge">{total > 9 ? "+9" : total}</span>;
+                    return repartos.entregasActivas.length > 0 ? (
+                      <span className="tz-header-btn-badge is-punto" aria-label="Tienes un reparto en curso" />
+                    ) : null;
+                  })()}
+                </button>
+                <button
+                  className="tz-header-btn"
+                  onClick={() => setEditandoPerfil(true)}
+                  aria-label="Editar perfil"
+                  title="Editar perfil"
+                  style={{ position: "relative" }}
+                >
+                  <UserRound size={19} />
+                  <span className="tz-header-btn-label">Editar Perfil</span>
+                  {/* Por calificar: la tarjeta "Mi reputación" está en el perfil. */}
+                  {pendientesReputacion > 0 && (
+                    <span className="tz-header-btn-badge">{pendientesReputacion > 9 ? "+9" : pendientesReputacion}</span>
+                  )}
+                </button>
+              </>
+            )}
             {!conductor && (
               <button className="tz-header-btn" onClick={logout} aria-label="Cerrar sesión" title="Cerrar sesión">
                 <LogOut size={19} />

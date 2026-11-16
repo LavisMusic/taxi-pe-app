@@ -25,9 +25,37 @@ function guardarLocal(clave, valor) {
   }
 }
 
-export default function SaldoGemas({ usuarioId, verdes, celestes }) {
+// Gemas DEVUELTAS (un viaje o pedido cancelado devuelve la gema que se usó):
+// `devueltasVerdes` / `devueltasCelestes` son contadores acumulados que da
+// la base. Cuando el contador sube, se resta lo devuelto desde la última
+// vez: la devolución gira como casino pero no se festeja como ganada. Sin
+// esas props (o en null) todo lo que sube se festeja, como antes.
+function leerLocal(clave) {
+  try {
+    const v = window.localStorage.getItem(clave);
+    return v == null ? null : Number(v);
+  } catch {
+    return null;
+  }
+}
+
+export default function SaldoGemas({ usuarioId, verdes, celestes, devueltasVerdes = null, devueltasCelestes = null }) {
   const claveVerdes = `tz-gemas-verdes-visto-${usuarioId}`;
   const claveCelestes = `tz-gemas-celestes-visto-${usuarioId}`;
+  const devueltas = useRef({});
+  devueltas.current = { verde: devueltasVerdes, celeste: devueltasCelestes };
+  const claveDevueltas = (color) => `tz-gemas-${color}-devueltas-visto-${usuarioId}`;
+
+  // La primera vez que se conoce el contador de devueltas, cuenta como visto.
+  useEffect(() => {
+    [
+      ["verde", devueltasVerdes],
+      ["celeste", devueltasCelestes],
+    ].forEach(([color, n]) => {
+      if (n != null && leerLocal(claveDevueltas(color)) == null) guardarLocal(claveDevueltas(color), n);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuarioId, devueltasVerdes, devueltasCelestes]);
   const actuales = useRef({ verdes, celestes });
   actuales.current = { verdes: Number(verdes) || 0, celestes: Number(celestes) || 0 };
   const [listo, setListo] = useState(false);
@@ -73,8 +101,19 @@ export default function SaldoGemas({ usuarioId, verdes, celestes }) {
   const [ganada, setGanada] = useState(null); // { color, cantidad, id }
 
   const alSubir = (color) => (cuanto) => {
+    // La copia oculta (la tienda pinta dos) no hace nada.
     if (!ref.current || ref.current.offsetParent === null) return;
-    setGanada({ color, cantidad: cuanto, id: Date.now() });
+    // Lo devuelto desde la última vez no es ganado: solo giró el contador.
+    let ganadas = cuanto;
+    const total = devueltas.current[color];
+    if (total != null) {
+      const visto = leerLocal(claveDevueltas(color));
+      const nuevas = visto == null ? 0 : Math.max(0, total - visto);
+      guardarLocal(claveDevueltas(color), total);
+      ganadas = cuanto - nuevas;
+    }
+    if (ganadas <= 0) return;
+    setGanada({ color, cantidad: ganadas, id: Date.now() });
   };
 
   return (

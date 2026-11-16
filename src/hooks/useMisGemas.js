@@ -5,7 +5,21 @@ import { supabase } from "../supabaseClient";
 // 20261106100000_gemas.sql): su propia fila de `usuarios` trae la copia de
 // las verdes (viven acá) y las celestes (viven en Caja Tonazo). Realtime +
 // respaldo al volver a la pestaña y cada 60 s. `null` mientras carga o sin
-// sesión; si no, { verdes, celestes }.
+// sesión; si no, { verdes, celestes, devueltas }.
+//
+// `devueltas`: cuántas gemas verdes se le devolvieron (acumulado, viajes
+// cancelados; migración 20261202100000). SaldoGemas la usa para no
+// festejar como "ganada" una gema que solo volvió a su saldo. `null` si la
+// base todavía no tiene esa columna.
+const COLUMNAS = "gemas_verdes, gemas_celestes, gemas_verdes_devueltas";
+const COLUMNAS_SIN_DEVUELTAS = "gemas_verdes, gemas_celestes";
+
+const deFila = (fila) => ({
+  verdes: Number(fila.gemas_verdes) || 0,
+  celestes: Number(fila.gemas_celestes) || 0,
+  devueltas: fila.gemas_verdes_devueltas == null ? null : Number(fila.gemas_verdes_devueltas) || 0,
+});
+
 export function useMisGemas(usuarioId) {
   const [gemas, setGemas] = useState(null);
 
@@ -14,14 +28,12 @@ export function useMisGemas(usuarioId) {
       setGemas(null);
       return;
     }
-    const { data, error } = await supabase
-      .from("usuarios")
-      .select("gemas_verdes, gemas_celestes")
-      .eq("id", usuarioId)
-      .maybeSingle();
-    if (!error && data) {
-      setGemas({ verdes: Number(data.gemas_verdes) || 0, celestes: Number(data.gemas_celestes) || 0 });
+    let { data, error } = await supabase.from("usuarios").select(COLUMNAS).eq("id", usuarioId).maybeSingle();
+    if (error) {
+      // Sin la migración nueva: como antes.
+      ({ data, error } = await supabase.from("usuarios").select(COLUMNAS_SIN_DEVUELTAS).eq("id", usuarioId).maybeSingle());
     }
+    if (!error && data) setGemas(deFila(data));
   }, [usuarioId]);
 
   useEffect(() => {
@@ -33,9 +45,7 @@ export function useMisGemas(usuarioId) {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "usuarios", filter: `id=eq.${usuarioId}` },
         ({ new: fila }) => {
-          if (fila && "gemas_verdes" in fila) {
-            setGemas({ verdes: Number(fila.gemas_verdes) || 0, celestes: Number(fila.gemas_celestes) || 0 });
-          }
+          if (fila && "gemas_verdes" in fila) setGemas(deFila(fila));
         }
       )
       .subscribe();

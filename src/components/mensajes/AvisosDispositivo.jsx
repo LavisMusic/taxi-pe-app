@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { BellRing, Download, Share, SquarePlus, X, Smartphone } from "lucide-react";
+import { BellRing, Check, Download, Share, SquarePlus, X, Smartphone } from "lucide-react";
 import {
   estadoPush,
   activarPush,
@@ -16,7 +16,9 @@ import {
 // la app" (en iPhone es obligatorio para recibir avisos: se explica cómo,
 // porque Safari no tiene botón de instalar; en Android/Chrome abre el
 // aviso nativo).
-export default function AvisosDispositivo() {
+// `siempre` ("Configuraciones y permisos"): con todo listo también muestra
+// el estado (avisos activados / app instalada) en vez de no mostrar nada.
+export default function AvisosDispositivo({ siempre = false }) {
   const [estado, setEstado] = useState(estadoPush);
   const [instalable, setInstalable] = useState(puedeInstalarNativo);
   const [guiaIOS, setGuiaIOS] = useState(false);
@@ -25,10 +27,21 @@ export default function AvisosDispositivo() {
 
   const mostrarInstalar = !esAppInstalada() && (instalable || esIOS());
 
-  if (estado === "activo" && !mostrarInstalar) return null;
+  if (estado === "activo" && !mostrarInstalar && !siempre) return null;
 
   return (
-    <div className="tz-avisos-dispositivo">
+    <div className={`tz-avisos-dispositivo ${siempre ? "is-config" : ""}`}>
+      {siempre && estado === "activo" && (
+        <p className="tz-avisos-dispositivo-ok">
+          <Check size={14} /> Avisos emergentes activados en este dispositivo
+        </p>
+      )}
+      {siempre && esAppInstalada() && (
+        <p className="tz-avisos-dispositivo-ok">
+          <Check size={14} /> App instalada
+        </p>
+      )}
+      {siempre && estado === "no_soportado" && <p>Este navegador no permite avisos emergentes.</p>}
       {estado === "pedir" && (
         <button type="button" className="tz-avisos-dispositivo-btn" onClick={async () => setEstado(await activarPush())}>
           <BellRing size={14} /> Activar avisos en este dispositivo
@@ -70,7 +83,7 @@ export default function AvisosDispositivo() {
                     Elige <SquarePlus size={14} style={{ verticalAlign: "-2px" }} /> <strong>Añadir a pantalla de inicio</strong> y
                     toca <strong>Añadir</strong>.
                   </li>
-                  <li>Abre la app desde el ícono nuevo, entra a Mensajes y activa los avisos.</li>
+                  <li>Abre la app desde el ícono nuevo, entra a Configuración y activa los avisos.</li>
                 </ol>
                 <button type="button" className="tz-scan-btn tz-payment-save" onClick={() => setGuiaIOS(false)}>
                   Entendido

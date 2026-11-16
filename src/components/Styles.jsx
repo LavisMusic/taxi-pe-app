@@ -4104,7 +4104,10 @@ export default function Styles() {
         border-color: #2be8ff; box-shadow: 0 0 14px rgba(43,232,255,0.45);
       }
       .tz-chat-gema-toggle .tz-gemas-switch-on .tz-gemas-switch-bola { transform: translateX(20px); background: #fff; box-shadow: 0 0 10px #2be8ff; }
-      .tz-chat-gema-linea {
+      /* La línea de gema NO hereda el scroll de '.tz-chat-bubble p': un
+         overflow distinto de visible recortaba el brillo de la gema. */
+      .tz-chat-bubble p.tz-chat-gema-linea, .tz-chat-gema-linea {
+        max-height: none; overflow: visible; padding: 2px 0 2px 3px;
         margin: 6px 0 0; display: flex; align-items: center; gap: 6px; justify-content: center;
         font-size: 12px; font-weight: 700; color: #39ffb0;
         animation: tz-chat-gema-aparece 0.5s cubic-bezier(.34,1.56,.64,1) both;
@@ -7813,6 +7816,9 @@ export default function Styles() {
         animation: tz-aurora-drift 5s ease-in-out infinite alternate;
       }
       .tz-perfil-pasajero-foto img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+      .tz-perfil-pasajero-foto.is-lectura { cursor: default; }
+      .tz-perfil-lectura-nombre { margin: 10px 0 2px; text-align: center; font-weight: 800; font-size: 16px; color: var(--text); }
+      .tz-perfil-lectura-nota { margin: 0 0 6px; text-align: center; font-size: 12px; color: var(--text-dim); }
       .tz-perfil-pasajero-camara {
         position: absolute; right: 2px; bottom: 2px; width: 30px; height: 30px; border-radius: 50%;
         display: flex; align-items: center; justify-content: center;
@@ -8022,6 +8028,39 @@ export default function Styles() {
 
       /* Avisos emergentes del dispositivo e "Instalar la app"
          (mensajes/AvisosDispositivo.jsx). */
+      /* "Configuraciones y permisos" (ConfiguracionesModal.jsx): secciones
+         que entran con resorte, una tras otra. */
+      .tz-config-modal { max-width: 420px; }
+      .tz-config-fila-btn {
+        width: 100%; margin-top: 12px; padding: 11px 14px; border-radius: 12px; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+        font: inherit; font-size: 13px; font-weight: 800; color: #2be8ff;
+        border: 1px solid rgba(43,232,255,0.4); background: rgba(43,232,255,0.08);
+        box-shadow: 0 0 14px rgba(43,232,255,0.12);
+        transition: transform 0.35s cubic-bezier(.34,1.56,.64,1), box-shadow 0.3s ease;
+      }
+      .tz-config-fila-btn:hover { transform: translateY(-1px) scale(1.01); box-shadow: 0 0 22px rgba(43,232,255,0.3); }
+      .tz-config-fila-btn:active { transform: scale(0.97); }
+      .tz-config-seccion {
+        margin-top: 14px; padding: 12px 14px; border-radius: 14px;
+        border: 1px solid rgba(43,232,255,0.22); background: rgba(43,232,255,0.05);
+        animation: tz-config-entra 0.55s cubic-bezier(.34,1.56,.64,1) both;
+      }
+      .tz-config-seccion:nth-of-type(2) { animation-delay: 0.08s; }
+      .tz-config-seccion:nth-of-type(3) { animation-delay: 0.16s; }
+      .tz-config-seccion h3 { margin: 0 0 4px; display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--text); }
+      .tz-config-nota { margin: 0 0 8px; font-size: 12px; color: var(--text-dim); }
+      .tz-config-modal .tz-chatfijo-avisos-fila { justify-content: flex-start; }
+      .tz-avisos-dispositivo.is-config { align-items: flex-start; margin-top: 4px; }
+      .tz-avisos-dispositivo.is-config p { text-align: left; }
+      .tz-avisos-dispositivo p.tz-avisos-dispositivo-ok {
+        display: flex; align-items: center; gap: 6px; color: #39ffb0; font-weight: 700;
+        filter: drop-shadow(0 0 6px rgba(57,255,176,0.35));
+      }
+      @keyframes tz-config-entra {
+        from { opacity: 0; transform: translateY(10px) scale(0.96); }
+        to { opacity: 1; transform: none; }
+      }
       .tz-avisos-dispositivo { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; margin-top: 8px; }
       .tz-avisos-dispositivo p { margin: 0; font-size: 12px; color: var(--text-dim); text-align: right; }
       .tz-avisos-dispositivo-btn {

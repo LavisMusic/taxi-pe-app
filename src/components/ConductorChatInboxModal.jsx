@@ -8,8 +8,7 @@ import { previaMensaje } from "../lib/adjuntosChat";
 import ChatWindow from "./ChatWindow";
 import ReputacionDe from "./ReputacionDe";
 import ChatErrorBoundary from "./ChatErrorBoundary";
-import { FilasChatsFijados, ChatFijadoAbierto, InterruptorAvisos } from "./mensajes/ChatsFijados";
-import AvisosDispositivo from "./mensajes/AvisosDispositivo";
+import { FilasChatsFijados, ChatFijadoAbierto } from "./mensajes/ChatsFijados";
 
 // Bandeja de mensajes del lado Conductor (/conductor, botón
 // "Mensajes") — sin esto el chat sería de un solo sentido (el pasajero
@@ -299,8 +298,6 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
         <>
           {plataforma && (
             <>
-              <InterruptorAvisos activos={plataforma.avisosActivos} onCambiar={plataforma.cambiarAvisos} />
-              <AvisosDispositivo />
               <ul className="tz-history-rows" style={{ margin: "10px 0" }}>
                 <FilasChatsFijados canales={plataforma.canales} onAbrir={setCanalFijo} />
               </ul>
