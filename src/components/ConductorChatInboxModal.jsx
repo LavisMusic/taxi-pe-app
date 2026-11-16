@@ -145,6 +145,17 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
   // ConductorPage.jsx), entra directo a ese hilo en vez de mostrar la
   // lista primero.
   const [pasajeroAbierto, setPasajeroAbierto] = useState(pasajeroInicial ?? null);
+  // Cada vez que se ve la lista, los chats con algo pendiente (viaje o
+  // reparto en curso, o mensajes sin leer) laten en verde 3 s — igual que
+  // en Mensajes del pasajero y del cliente.
+  const [pulsoLista, setPulsoLista] = useState(false);
+  const enLista = !pasajeroAbierto && !canalFijo && !entregaChat;
+  useEffect(() => {
+    if (!enLista) return undefined;
+    setPulsoLista(true);
+    const t = setTimeout(() => setPulsoLista(false), 3000);
+    return () => clearTimeout(t);
+  }, [enLista]);
   const listaHilos = hilos ?? [];
   const idsKey = listaHilos.map((h) => h?.pasajeroId).filter(Boolean).join(",");
 
@@ -310,6 +321,7 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
                 const n = noLeidosEntregas[e.id] || {};
                 return (
                   <li key={e.id} className="tz-history-row tz-chatfijo-row tz-chatent-row is-activo">
+                    {pulsoLista && <span className="tz-chatped-pulso" aria-hidden="true" />}
                     <button type="button" className="tz-chatfijo-btn" onClick={() => setEntregaChat({ id: e.id, hilo: "cajero_conductor" })}>
                       <LogoTienda url={caras[e.id]?.caja_logo_url} />
                       <span className="tz-chatfijo-texto">
@@ -362,7 +374,9 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
             const enCurso = pid && pasajerosEnCarrera?.includes(pid);
             const nombre = nombresPorId[pid] ?? "Pasajero";
             return (
-              <li key={pid ?? Math.random()} className="tz-history-row tz-chatfijo-row tz-chat-inbox-row">
+              <li key={pid ?? Math.random()} className={`tz-history-row tz-chatfijo-row tz-chat-inbox-row tz-chatpas-row ${enCurso ? "is-activo" : ""}`}>
+                {/* Viaje en curso: borde verde en movimiento (como los pedidos en Caja). */}
+                {pulsoLista && (enCurso || h?.noLeidos > 0) && <span className="tz-chatped-pulso" aria-hidden="true" />}
                 <button type="button" className="tz-chatfijo-btn" onClick={() => setPasajeroAbierto(pid)}>
                   <Avatar foto={fotosPorId[pid]} nombre={nombre} />
                   <span className="tz-chatfijo-texto">
