@@ -4,7 +4,7 @@ import EntradaChat from "./chat/EntradaChat";
 import AdjuntoMensaje from "./chat/AdjuntoMensaje";
 import { claseNota } from "../lib/adjuntosChat";
 import { createPortal } from "react-dom";
-import { Send, ShieldAlert, Loader2, Plus, ChevronUp, ChevronDown } from "lucide-react";
+import { Send, ShieldAlert, Loader2, Plus, ChevronUp, ChevronDown, Hand, HandCoins, Banknote } from "lucide-react";
 import { formatTime, formatDate } from "../utils/format";
 import { supabase } from "../supabaseClient";
 import { canalViaje, CANAL_VIAJE_PRIVADO } from "../hooks/useGpsBroadcaster";
@@ -246,6 +246,44 @@ function LineaGema({ mensaje, paraConductor }) {
   );
 }
 
+// Aviso del conductor cuando el pasajero paga con una gema verde: el mismo
+// cuadro de la tarifa, con una escena animada (una mano deja caer monedas y
+// la gema en la mano del conductor) y lo que cobra en mano.
+export function AvisoGemaConductor({ mensaje }) {
+  const tarifa = tarifaDeTexto(mensaje.mensaje);
+  const valor = Number(mensaje.gema_valor) || 0.1;
+  const enMano = tarifa != null ? Math.max(tarifa - valor, 0) : null;
+  return (
+    <div className="tz-chat-bubble tz-chat-bubble-contrato tz-gp">
+      <div className="tz-gp-escena" aria-hidden="true">
+        <span className="tz-gp-mano-arriba">
+          <Hand size={38} strokeWidth={1.8} />
+        </span>
+        <span className="tz-gp-cae tz-gp-moneda" style={{ "--d": "0s", "--x": "-6px" }}>S/</span>
+        <span className="tz-gp-cae tz-gp-gema" style={{ "--d": "0.55s", "--x": "2px" }}>
+          <IconoGema color="verde" size={16} />
+        </span>
+        <span className="tz-gp-cae tz-gp-moneda" style={{ "--d": "1.1s", "--x": "8px" }}>S/</span>
+        <span className="tz-gp-mano-abajo">
+          <HandCoins size={44} strokeWidth={1.8} />
+        </span>
+      </div>
+      <p className="tz-chat-contrato-texto tz-gp-titulo">
+        <IconoGema color="verde" size={15} /> El pasajero pagó con <strong>1 gema</strong>
+      </p>
+      <p className="tz-gp-detalle">
+        <span className="tz-gp-chip is-billete">
+          <Banknote size={15} /> Cobras {enMano != null ? <strong>S/ {enMano.toFixed(2)}</strong> : "la tarifa menos la gema"}
+        </span>
+        <span className="tz-gp-mas">+</span>
+        <span className="tz-gp-chip is-gema">
+          <IconoGema color="verde" size={13} /> <strong>1 gema</strong> (S/ {valor.toFixed(2)})
+        </span>
+      </p>
+    </div>
+  );
+}
+
 function tarifaDeTexto(texto) {
   const m = String(texto || "").replace(",", ".").match(/(\d+(?:\.\d+)?)/);
   return m ? Number(m[1]) : null;
@@ -377,11 +415,7 @@ function MessageBubble({ mensaje, mine, esOfertaParaPasajero, estadoOferta, onRe
           <ChecksLectura mine={mine} leido={!!mensaje?.leido} />
         </span>
       </div>
-      {avisoGema && (
-        <div className="tz-chat-bubble tz-chat-bubble-sistema tz-chat-aviso-gema">
-          <LineaGema mensaje={mensaje} paraConductor />
-        </div>
-      )}
+      {avisoGema && <AvisoGemaConductor mensaje={mensaje} />}
     </>
   );
 }

@@ -4161,8 +4161,63 @@ export default function Styles() {
         background: rgba(255,255,255,0.04);
         text-align: center;
       }
-      .tz-chat-aviso-gema { padding: 6px 12px; border: 1px solid rgba(57,255,176,0.3); background: rgba(57,255,176,0.06); }
-      .tz-chat-bubble-sistema.tz-chat-aviso-gema p.tz-chat-gema-linea { margin: 0; font-style: normal; font-size: 12px; color: #39ffb0; justify-content: center; }
+      /* Pago con gema, del lado del conductor (AvisoGemaConductor). */
+      .tz-gp { animation: tz-gp-entra 0.6s cubic-bezier(.34,1.56,.64,1) both; }
+      @keyframes tz-gp-entra {
+        from { opacity: 0; transform: translateY(12px) scale(0.9); filter: blur(3px); }
+        to { opacity: 1; transform: none; filter: none; }
+      }
+      .tz-gp-escena { position: relative; width: 140px; height: 106px; margin: 2px auto 4px; }
+      .tz-gp-mano-arriba {
+        position: absolute; left: 50%; top: 0; margin-left: -30px; color: #ffd36b; display: inline-flex;
+        transform: rotate(160deg); transform-origin: 50% 50%;
+        filter: drop-shadow(0 0 6px rgba(255,211,107,0.55));
+        animation: tz-gp-suelta 1.65s ease-in-out infinite;
+      }
+      @keyframes tz-gp-suelta {
+        0%, 100% { transform: rotate(160deg) translateY(0); }
+        30% { transform: rotate(150deg) translateY(-2px); }
+        60% { transform: rotate(168deg) translateY(1px); }
+      }
+      .tz-gp-mano-abajo {
+        position: absolute; left: 50%; bottom: 0; margin-left: -22px; color: #39ffb0; display: inline-flex;
+        filter: drop-shadow(0 0 7px rgba(57,255,176,0.55));
+        animation: tz-gp-recibe 0.55s ease-in-out infinite;
+      }
+      @keyframes tz-gp-recibe {
+        0%, 70%, 100% { transform: translateY(0) scale(1); }
+        82% { transform: translateY(2px) scale(1.06); }
+      }
+      .tz-gp-cae {
+        position: absolute; left: 50%; top: 30px; display: inline-flex; align-items: center; justify-content: center;
+        opacity: 0; animation: tz-gp-caer 1.65s cubic-bezier(.45,0,.75,1) var(--d, 0s) infinite;
+      }
+      .tz-gp-moneda {
+        width: 17px; height: 17px; margin-left: -8px; border-radius: 999px;
+        font-size: 7px; font-weight: 900; color: #6b4a00;
+        background: radial-gradient(circle at 35% 30%, #fff6c9, #ffd36b 45%, #d99a14);
+        box-shadow: 0 0 8px rgba(255,211,107,0.75), inset 0 -1px 0 rgba(0,0,0,0.25);
+      }
+      .tz-gp-gema { margin-left: -7px; }
+      @keyframes tz-gp-caer {
+        0% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(0.7); }
+        12% { opacity: 1; transform: translate(calc(var(--x) * 0.3), 4px) rotate(40deg) scale(1); }
+        78% { opacity: 1; transform: translate(var(--x), 44px) rotate(260deg) scale(1); }
+        100% { opacity: 0; transform: translate(var(--x), 52px) rotate(320deg) scale(0.6); }
+      }
+      .tz-gp-titulo { display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 6px !important; }
+      .tz-gp-detalle { margin: 0 0 2px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: var(--text); }
+      .tz-gp-chip {
+        display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 999px;
+        animation: tz-gp-brillo 2.4s ease-in-out infinite;
+      }
+      .tz-gp-chip.is-billete { color: #d7ff3b; border: 1px solid rgba(215,255,59,0.45); background: rgba(215,255,59,0.08); }
+      .tz-gp-chip.is-gema { color: #39ffb0; border: 1px solid rgba(57,255,176,0.45); background: rgba(57,255,176,0.08); animation-delay: 1.2s; }
+      @keyframes tz-gp-brillo {
+        0%, 100% { box-shadow: 0 0 0 rgba(57,255,176,0); }
+        50% { box-shadow: 0 0 12px rgba(57,255,176,0.35); }
+      }
+      .tz-gp-mas { color: var(--text-dim); font-weight: 800; }
       .tz-chat-bubble-sistema p {
         color: var(--text-dim);
         font-size: 12.5px;
@@ -7615,19 +7670,20 @@ export default function Styles() {
       /* Imagen pegada (Ctrl + V): un espacio que se despliega hacia arriba
          desde el campo, con la imagen anclada y una X para quitarla. */
       .tz-entrada-pegada {
-        order: -1; flex-basis: 100%; display: flex; padding: 12px 12px 8px 10px; box-sizing: border-box; overflow: hidden;
+        order: -1; flex-basis: 100%; display: flex; gap: 14px; padding: 10px 10px 6px 8px; box-sizing: border-box; overflow: hidden;
         animation: tz-entrada-pegada-abre 0.55s cubic-bezier(.34,1.56,.64,1) both;
       }
       .tz-entrada-pegada-marco {
-        position: relative; display: inline-flex; border-radius: 14px; padding: 3px;
-        background: rgba(43,232,255,0.08); border: 1px solid rgba(43,232,255,0.45);
-        box-shadow: 0 0 9px rgba(43,232,255,0.3);
-        transform-origin: 0% 100%;
+        position: relative; display: inline-flex; transform-origin: 0% 100%;
         animation: tz-entrada-pegada-img 0.6s cubic-bezier(.34,1.56,.64,1) 0.05s both;
       }
-      .tz-entrada-pegada-marco img { display: block; max-height: 140px; max-width: min(240px, 70vw); border-radius: 11px; object-fit: cover; }
+      .tz-entrada-pegada-marco + .tz-entrada-pegada-marco { animation-delay: 0.1s; }
+      .tz-entrada-pegada-marco img {
+        display: block; height: 64px; width: auto; max-width: 110px; border-radius: 10px; object-fit: cover;
+        box-shadow: 0 0 9px rgba(43,232,255,0.35);
+      }
       .tz-entrada-pegada-quitar {
-        position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 999px; cursor: pointer;
+        position: absolute; top: -7px; right: -7px; width: 20px; height: 20px; border-radius: 999px; cursor: pointer;
         display: flex; align-items: center; justify-content: center; padding: 0;
         border: 1px solid rgba(255,84,112,0.7); background: #2a0f1a; color: #ff5470;
         box-shadow: 0 0 10px rgba(255,84,112,0.45);
@@ -7636,7 +7692,7 @@ export default function Styles() {
       .tz-entrada-pegada-quitar:hover { transform: scale(1.15) rotate(90deg); }
       @keyframes tz-entrada-pegada-abre {
         from { max-height: 0; opacity: 0; }
-        to { max-height: 190px; opacity: 1; }
+        to { max-height: 100px; opacity: 1; }
       }
       @keyframes tz-entrada-pegada-img {
         0% { opacity: 0; transform: translateY(16px) scale(0.6); filter: blur(6px); }
