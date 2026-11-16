@@ -151,9 +151,12 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
   // en Mensajes del pasajero y del cliente.
   const [pulsoLista, setPulsoLista] = useState(false);
   const enLista = !pasajeroAbierto && !canalFijo && !entregaChat;
+  // La caja rosada del chat solo para un viaje o un reparto (los fijados
+  // van en la caja de Mensajes, como en el pasajero y en Caja).
+  const sinChatViaje = !pasajeroAbierto && !entregaChat;
   useEffect(() => {
-    onVista?.(enLista);
-  }, [enLista, onVista]);
+    onVista?.(sinChatViaje);
+  }, [sinChatViaje, onVista]);
   useEffect(() => {
     if (!enLista) return undefined;
     setPulsoLista(true);
@@ -377,7 +380,7 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
 export default function ConductorChatInboxModal({ conductorId, pasajeroInicial, nivelServicio, iconoCategoriaUrl, plataforma, canalInicial, entregas, noLeidosEntregas, onEntregasCambio, entregaInicial, onClose }) {
   // Misma caja que Mensajes del pasajero y de Caja; con un chat abierto,
   // la del chat (borde rosado, altura fija para el mapa y los mensajes).
-  const [enLista, setEnLista] = useState(!pasajeroInicial && !canalInicial && !entregaInicial);
+  const [enLista, setEnLista] = useState(!pasajeroInicial && !entregaInicial);
   return (
     <div className="tz-modal-backdrop">
       <div className={`tz-modal tz-mensajes-modal ${enLista ? "" : "tz-chat-modal-shell"}`} onClick={(e) => e.stopPropagation()}>

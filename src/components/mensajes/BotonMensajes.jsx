@@ -58,6 +58,12 @@ export default function BotonMensajes({
   }, !!usuarioId);
 
   const chatViaje = abierto && !!chatConductorId && !!renderChatConductor;
+  // Un chat de viaje pedido desde afuera (viaje recuperado al entrar) abre
+  // Mensajes con ese chat adentro.
+  useEffect(() => {
+    if (chatConductorId && renderChatConductor) setAbierto(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatConductorId]);
   const cerrar = () => {
     setAbierto(false);
     setCanal(null);

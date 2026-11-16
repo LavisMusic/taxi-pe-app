@@ -375,8 +375,9 @@ export default function HomePage() {
       // el único flujo que persiste destino) — nunca "Contactar" manual.
       if (!cancelado) {
         setChatAuto(true);
-        // chatEnMensajes sigue en false (modal propio) salvo que ya haya
-        // abierto ese chat desde Mensajes.
+        // El viaje recuperado se abre DENTRO de Mensajes (con la flecha
+        // para volver a la lista), igual que al tocarlo en la lista.
+        setChatEnMensajes(true);
         setChatConductorId((actual) => actual ?? conductorIdActivo);
       }
     })();

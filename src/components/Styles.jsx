@@ -7478,6 +7478,14 @@ export default function Styles() {
       /* Un chat de viaje abierto dentro de Mensajes: la caja del chat (no
          scrollea entera; scrollean los mensajes). */
       .tz-modal.tz-mensajes-modal.tz-chat-modal-shell { overflow: visible; }
+      /* Bandeja del conductor: el título "Mensajes" igual que en Mensajes
+         del pasajero y de Caja (no el de los modales de pagos). */
+      .tz-mensajes-modal:not(.tz-chat-modal-shell) > .tz-payment-modal { flex: 1 1 auto; min-height: 0; }
+      .tz-mensajes-modal .tz-payment-modal > .tz-chatfijo-abierto { flex: 1 1 auto; min-height: 0; }
+      .tz-mensajes-modal .tz-payment-modal > h2 {
+        font-family: inherit; font-size: 20px; text-transform: none; letter-spacing: -0.012em;
+        justify-content: flex-start; text-align: left; margin: 0 0 8px;
+      }
       .tz-mensajes-modal > .tz-chatfijo-abierto { flex: 1 1 auto; min-height: 0; }
       .tz-mensajes-modal .tz-chatfijo-abierto .tz-chatfijo-mensajes { flex: 1 1 auto; min-height: 0; max-height: none; }
       /* Bandeja del conductor con el estilo de Mensajes. */
