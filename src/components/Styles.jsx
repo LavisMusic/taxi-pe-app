@@ -1502,9 +1502,13 @@ export default function Styles() {
         -webkit-box-orient: vertical;
         overflow: hidden;
       }
-      /* Cabecera del chat: la etiqueta en su línea, debajo de las estrellas. */
-      .tz-chat-cab-etiqueta { display: block; margin: 3px 0 2px; line-height: 1; }
-      .tz-chat-cab-etiqueta:empty { display: none; }
+      /* Cabecera del chat: nombre | estrellas, y abajo estado | etiqueta
+         (la etiqueta centrada debajo de las estrellas). */
+      .tz-chat-cab-datos { display: grid; grid-template-columns: auto auto; justify-content: start; align-items: center;
+        column-gap: 8px; row-gap: 3px; min-width: 0; }
+      .tz-chat-cab-datos > strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .tz-chat-cab-estrellas, .tz-chat-cab-etiqueta { display: flex; justify-content: center; line-height: 1; }
+      .tz-chat-cab-datos > small { display: block; font-size: 11px; color: var(--text-dim); }
       /* Tarifas: una sola encuesta a la vez. */
       .tz-chat-oferta-espera {
         margin: 2px 0 0; text-align: center; font-size: 12px; font-weight: 700; color: var(--yellow);
@@ -3568,7 +3572,9 @@ export default function Styles() {
            pueda derramarse sobre otro elemento del modal. */
         flex: 1 1 auto;
         min-height: 0;
-        overflow: hidden;
+        /* visible: el brillo de los botones del pie (micrófono, enviar, gema)
+           no se corta; el desplazamiento lo maneja .tz-chat-messages. */
+        overflow: visible;
       }
       .tz-chat-messages {
         display: flex;
@@ -3728,8 +3734,6 @@ export default function Styles() {
         border-radius: 8px;
         z-index: 0;
       }
-      /* El del chat del viaje: más alto e interactivo (se puede mover y hacer zoom). */
-      .tz-mapa-viaje.tz-mapa-viaje-chat { height: clamp(200px, 32vh, 280px); border-radius: 12px; touch-action: none; }
       .tz-mapa-viaje-loading {
         display: flex;
         align-items: center;
@@ -3952,13 +3956,21 @@ export default function Styles() {
          completo de la burbuja, esquinas redondeadas propias (la
          burbuja ya tiene las suyas, pero la imagen pisa esa esquina si
          no se redondea aparte), separada del texto por un margen chico. */
+      /* Mini-mapa A→B del primer mensaje (MiniMapaSenas.jsx): interactivo. */
       .tz-chat-minimapa {
+        position: relative;
         display: block;
-        width: 100%;
-        max-width: 260px;
-        border-radius: 8px;
+        width: min(260px, 100%);
         margin-bottom: 6px;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid rgba(43,232,255,0.35);
+        box-shadow: 0 0 14px rgba(43,232,255,0.18);
+        animation: tz-minimapa-in .55s cubic-bezier(.34,1.56,.64,1) both;
       }
+      .tz-chat-minimapa-mapa { width: 100%; height: 160px; z-index: 0; background: #0b0820; }
+      .tz-chat-minimapa .tz-mapa-viaje-recentrar { z-index: 500; }
+      @keyframes tz-minimapa-in { from { opacity: 0; transform: scale(.94); filter: blur(2px); } to { opacity: 1; transform: none; filter: none; } }
       .tz-chat-bubble-mine {
         align-self: flex-end;
         text-align: right;

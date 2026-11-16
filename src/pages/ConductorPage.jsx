@@ -813,6 +813,10 @@ export default function ConductorPage() {
           <button className="tz-footer-btn tz-footer-btn-localidades" onClick={() => setModalTurno("meta")}>
             <Target size={14} /> Meta del día
           </button>
+          {/* Cerrar sesión: en el pie (conductor y repartidor). */}
+          <button className="tz-footer-btn tz-footer-btn-salir" onClick={logout}>
+            <LogOut size={14} /> Cerrar sesión
+          </button>
         </footer>
       )}
 

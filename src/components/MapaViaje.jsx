@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import RutaNeon, { divIconLuz, useConexionRuta } from "./RutaNeon";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Loader2, Maximize2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { REMITENTE_PASAJERO } from "../hooks/useChatMensajes";
 import { canalViaje, CANAL_VIAJE_PRIVADO } from "../hooks/useGpsBroadcaster";
@@ -57,34 +57,19 @@ const ICONO_DESTINO = {
 // encuadrar — el cálculo vuelve a ser SOLO sobre los pines visibles
 // (origen/conductor/destino), sin el caso especial de "hay una
 // Polyline, encuadrá todo su trayecto" que existía antes.
-function encuadrar(map, puntos) {
-  const validos = puntos.filter(Boolean);
-  if (validos.length >= 2) {
-    map.fitBounds(L.latLngBounds(validos.map((p) => [p.lat, p.lng])), { padding: [36, 36], maxZoom: 16 });
-  } else if (validos.length === 1) {
-    map.setView([validos[0].lat, validos[0].lng], 15, { animate: true });
-  }
-}
-
-// Igual que el mapa de la entrega: encuadra solo al principio (y cuando
-// aparece un pin que faltaba); después el usuario mueve y hace zoom a su
-// gusto sin que cada posición nueva se lo devuelva. El botón ⤢ vuelve a
-// la vista completa.
-function AjustarVista({ puntos, recentrarTick }) {
+function AjustarVista({ puntos }) {
   const map = useMap();
-  const vistos = useRef(0);
-  const cuantos = puntos.filter(Boolean).length;
   useEffect(() => {
-    if (cuantos === 0 || cuantos <= vistos.current) return;
-    vistos.current = cuantos;
-    encuadrar(map, puntos);
+    if (puntos.length >= 2) {
+      map.fitBounds(
+        L.latLngBounds(puntos.map((p) => [p.lat, p.lng])),
+        { padding: [30, 30], maxZoom: 16 }
+      );
+    } else if (puntos.length === 1) {
+      map.setView([puntos[0].lat, puntos[0].lng], 15);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cuantos, map]);
-  useEffect(() => {
-    if (!recentrarTick) return;
-    encuadrar(map, puntos);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recentrarTick]);
+  }, [JSON.stringify(puntos), map]);
   return null;
 }
 
@@ -317,7 +302,6 @@ export default function MapaViaje({
   );
   const iconoPasajero = useMemo(() => divIconLuz(ICONO_PASAJERO, colorCategoria, luces >= 2), [colorCategoria, luces >= 2]); // eslint-disable-line react-hooks/exhaustive-deps
   const iconoDestino = useMemo(() => divIconLuz(ICONO_DESTINO, colorCategoria, luzDestino), [colorCategoria, luzDestino]);
-  const [recentrarTick, setRecentrarTick] = useState(0);
 
   return (
     <div style={{ position: "relative" }}>
@@ -327,23 +311,14 @@ export default function MapaViaje({
           <span>Ubicando…</span>
         </div>
       )}
-      <button
-        type="button"
-        className="tz-mapa-viaje-recentrar"
-        onClick={() => setRecentrarTick((n) => n + 1)}
-        aria-label="Volver a vista amplia"
-        title="Volver a vista amplia"
-      >
-        <Maximize2 size={15} />
-      </button>
       <MapContainer
         center={[centro.lat, centro.lng]}
         zoom={15}
-        className="tz-mapa-viaje tz-mapa-viaje-chat"
+        className="tz-mapa-viaje"
         zoomControl={false}
-        scrollWheelZoom
+        scrollWheelZoom={false}
       >
-        <AjustarVista puntos={puntosParaEncuadre} recentrarTick={recentrarTick} />
+        <AjustarVista puntos={puntosParaEncuadre} />
         {/* Migración Mapbox (Fase 1): estilo 'dark-v11' — combina con el
            resto de la UI neón de esta app, reemplaza al tile claro de
            OpenStreetMap. */}

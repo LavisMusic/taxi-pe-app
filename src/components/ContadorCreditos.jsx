@@ -385,13 +385,14 @@ const ESTILO = `
   height: 1.37em;
   flex-shrink: 0;
   color: var(--tz-cc-color);
+  filter: drop-shadow(0 0 3px var(--tz-cc-color)) drop-shadow(0 0 8px var(--tz-cc-brillo));
 }
 .tz-cc-gema {
   position: relative;
   width: 100%;
   height: 100%;
   overflow: visible;
-  filter: drop-shadow(0 0 3px var(--tz-cc-color)) drop-shadow(0 0 8px var(--tz-cc-brillo));
+  /* El brillo va en .tz-cc-diamante (HTML): en el <svg> Chrome lo recorta. */
   animation: tz-cc-flotar 3.6s ease-in-out infinite;
 }
 .tz-cc-aura {

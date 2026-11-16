@@ -202,17 +202,16 @@ function ChatModalContenido({ conductor, pasajeroId, destino, autoContactar, cat
             <UserRound size={26} />
           </span>
         )}
-        <span>
-          <span className="tz-nombre-rep">
-            <strong>{conductor.nombre}</strong>
+        {/* Nombre | estrellas; abajo: placa | etiqueta (centrada bajo las estrellas). */}
+        <span className="tz-chat-cab-datos">
+          <strong>{conductor.nombre}</strong>
+          <span className="tz-chat-cab-estrellas">
             <ReputacionDe tipo="conductor" id={conductor.id} tamano="chico" mostrar="estrellas" />
           </span>
+          <small>{conductor.placa || ""}</small>
           <span className="tz-chat-cab-etiqueta">
             <ReputacionDe tipo="conductor" id={conductor.id} tamano="chico" mostrar="etiquetas" />
           </span>
-          <small>
-            {[conductor.placa, conductor.estado === ESTADO_CONDUCTOR_ACTIVO ? "Libre" : "En carrera"].filter(Boolean).join(" · ")}
-          </small>
         </span>
       </div>
 

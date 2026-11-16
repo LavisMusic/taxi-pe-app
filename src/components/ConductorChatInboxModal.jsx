@@ -235,16 +235,16 @@ function BandejaContenido({ conductorId, pasajeroInicial, nivelServicio, iconoCa
               <ArrowLeft size={16} />
             </button>
             <Avatar foto={fotosPorId[pasajeroAbierto]} nombre={nombresPorId[pasajeroAbierto]} />
-            <span>
-              <span className="tz-nombre-rep">
-                <strong>{nombresPorId[pasajeroAbierto] ?? "Pasajero"}</strong>
+            {/* Nombre | estrellas; abajo: estado | etiqueta (centrada bajo las estrellas). */}
+            <span className="tz-chat-cab-datos">
+              <strong>{nombresPorId[pasajeroAbierto] ?? "Pasajero"}</strong>
+              <span className="tz-chat-cab-estrellas">
                 <ReputacionDe tipo="pasajero" id={pasajeroAbierto} tamano="chico" mostrar="estrellas" />
               </span>
-              {/* La etiqueta va en su propia línea, debajo de las estrellas. */}
+              <small>{pasajerosEnCarrera?.includes(pasajeroAbierto) ? "" : "Negociando"}</small>
               <span className="tz-chat-cab-etiqueta">
                 <ReputacionDe tipo="pasajero" id={pasajeroAbierto} tamano="chico" mostrar="etiquetas" />
               </span>
-              <small>{pasajerosEnCarrera?.includes(pasajeroAbierto) ? "Viaje en curso" : "Negociando"}</small>
             </span>
           </div>
           {/* Fase 5 (Motor de Viajes Simultáneos) — Selector de Hilos:
