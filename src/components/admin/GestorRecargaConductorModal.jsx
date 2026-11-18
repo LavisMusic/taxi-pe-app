@@ -41,9 +41,8 @@ const APARTADOS = [
   { id: "pagos", label: "Pagos" },
 ];
 const DURACIONES = [
-  { id: "mensual", label: "Mensual" },
-  { id: "anual", label: "Anual" },
-  { id: "otros", label: "Otros" },
+  { id: "mensual", label: "Por mes" },
+  { id: "anual", label: "Por año" },
 ];
 // Los créditos ya no existen (fase 3b): solo membresías.
 const CLASE_METODO = { efectivo: "efectivo", yape: "yape", plin: "plin", otros: "otros", fiado: "otros" };
@@ -56,9 +55,8 @@ const aFechaInput = (iso) => {
 };
 const duracionDe = (p) => {
   const d = Number(p.dias_membresia) || 0;
-  if (d <= 31) return "mensual";
-  if (d >= 360) return "anual";
-  return "otros";
+  // Dos grupos: "Por mes" (1, 2, 3… meses) y "Por año" (desde 360 días).
+  return d >= 360 ? "anual" : "mensual";
 };
 const diasHasta = (iso) => (iso ? Math.ceil((new Date(iso) - new Date()) / 86400000) : null);
 

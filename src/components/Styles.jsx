@@ -2747,6 +2747,9 @@ export default function Styles() {
         cursor: pointer;
       }
       .tz-turno-ver-detalle svg { transition: transform 0.2s ease; }
+      /* "Enviar a mi WhatsApp" del cierre de turno del conductor. */
+      .tz-csv-btn.tz-turno-whatsapp { color: #25d366; border-color: rgba(37,211,102,0.45); background: rgba(37,211,102,0.08); text-decoration: none; }
+      .tz-csv-btn.tz-turno-whatsapp:hover { box-shadow: 0 0 14px rgba(37,211,102,0.35); }
       .tz-turno-detalle {
         list-style: none;
         margin: 4px 0 10px;
@@ -3040,6 +3043,18 @@ export default function Styles() {
       }
       .tz-pagoc-comprobante .tz-scan-btn { width: 100%; justify-content: center; cursor: pointer; }
       .tz-pagoc-adjuntar { box-shadow: 0 0 16px rgba(43, 232, 255, 0.25); }
+      /* Comprobante: los dos botones iguales (mismo alto, mismo brillo). */
+      .tz-pagoc-comprobante .tz-scan-btn { box-sizing: border-box; min-height: 46px; line-height: normal; box-shadow: 0 0 16px rgba(43, 232, 255, 0.25); }
+      .tz-pagoc-comprobante .tz-pegar-comprobante { margin-top: 0; }
+      .tz-pagoc-pista { margin: 2px 0 0; font-size: 12px; color: var(--text-dim); text-align: center; animation: tz-pagoc-in 0.5s cubic-bezier(.34,1.56,.64,1) both; }
+      /* Espera de 8 s tras copiar: línea de carga en el borde inferior del modal. */
+      .tz-pagoc-espera { position: fixed; height: 3px; z-index: 100000; border-radius: 3px; background: rgba(255,255,255,0.08); overflow: hidden; pointer-events: none; }
+      .tz-pagoc-espera-fill {
+        display: block; height: 100%; width: 100%; transform-origin: left center; border-radius: 3px;
+        background: linear-gradient(90deg, #2be8ff, #39ffb0); box-shadow: 0 0 10px rgba(43,232,255,0.8);
+        animation-name: tz-pagoc-espera; animation-timing-function: linear; animation-fill-mode: both;
+      }
+      @keyframes tz-pagoc-espera { from { transform: scaleX(0); } to { transform: scaleX(1); } }
       .tz-pagoc-preview {
         display: block; max-width: 100%; max-height: 260px; margin: 2px auto 0; border-radius: 12px;
         border: 1px solid var(--border-soft); animation: tz-pagoc-in 0.5s cubic-bezier(.34,1.56,.64,1) both;

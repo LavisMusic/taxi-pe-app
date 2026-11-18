@@ -20,6 +20,8 @@ export default function AutorecargaRecolectorModal({ recolector, paquetes, glowP
   const [paqueteId, setPaqueteId] = useState("");
   const [metodoPago, setMetodoPago] = useState("");
   const [comprobante, setComprobante] = useState(null);
+  // El botón de comprobante aparece después de copiar el número (+8 s).
+  const [comprobanteListo, setComprobanteListo] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -140,9 +142,10 @@ export default function AutorecargaRecolectorModal({ recolector, paquetes, glowP
             datos={{ yape_plin: contacto.yape_plin, titular: contacto.titular, cuenta: contacto.cuenta_bancaria }}
             pedirComprobante={false}
             sinDatosTexto="Todavía no hay datos de pago configurados. Escríbenos a soporte."
+            onListoComprobante={setComprobanteListo}
           />
 
-          {metodoPago && (
+          {metodoPago && (comprobanteListo || comprobante) && (
             <div className="tz-add-entry tz-pagoc-comprobante" style={{ marginTop: 4 }}>
               {comprobante ? (
                 <div className="tz-scan-result">
@@ -162,7 +165,7 @@ export default function AutorecargaRecolectorModal({ recolector, paquetes, glowP
                 </div>
               ) : (
                 <button type="button" className="tz-scan-btn tz-pagoc-adjuntar" onClick={() => setScannerOpen(true)}>
-                  <Camera size={16} /> Ya pagué, escanear comprobante
+                  <Camera size={16} /> Adjuntar comprobante
                 </button>
               )}
             </div>

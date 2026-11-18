@@ -623,7 +623,15 @@ export function useHilosChatConductor(conductorId) {
         setPasajerosEnCarrera([]);
       } else {
         const todas = data ?? [];
-        const filas = todas.filter((m) => new Date(m.created_at).getTime() >= corte);
+        // Un viaje en curso (tarifa pendiente, aceptada o en tránsito) se
+        // ve siempre, aunque pasen las 24 h: si no, no se podría terminar
+        // ni cancelar y el conductor quedaba trabado "En carrera".
+        const conViajeVivo = new Set(
+          todas
+            .filter((m) => m?.tipo === TIPO_MENSAJE_OFERTA && ["pendiente", "aceptada", "en_transito"].includes(m?.estado_oferta))
+            .map((m) => m.pasajero_id)
+        );
+        const filas = todas.filter((m) => new Date(m.created_at).getTime() >= corte || conViajeVivo.has(m?.pasajero_id));
         const porPasajero = new Map();
         for (const m of filas) {
           if (m?.pasajero_id && !porPasajero.has(m.pasajero_id)) porPasajero.set(m.pasajero_id, m);

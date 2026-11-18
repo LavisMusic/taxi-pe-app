@@ -20,9 +20,8 @@ import { supabase } from "../../supabaseClient";
 import CanjeGemas from "../CanjeGemas";
 
 const DURACIONES_MEMBRESIA = [
-  { id: "mensual", label: "Mensual" },
-  { id: "anual", label: "Anual" },
-  { id: "otros", label: "Otros" },
+  { id: "mensual", label: "Por mes" },
+  { id: "anual", label: "Por año" },
 ];
 
 const MONTOS_RAPIDOS = [20, 50, 100, 200];
@@ -150,9 +149,8 @@ export default function RecargaRapidaForm({
   // viene en días: hasta 31 = mensual, desde 360 = anual.
   const duracionDe = (p) => {
     const d = Number(p.dias_membresia) || 0;
-    if (d <= 31) return "mensual";
-    if (d >= 360) return "anual";
-    return "otros";
+    // Dos grupos: "Por mes" (1, 2, 3… meses) y "Por año" (desde 360 días).
+    return d >= 360 ? "anual" : "mensual";
   };
   const duracionesConPaquetes =
     tipoItem === TIPO_ITEM_MEMBRESIA

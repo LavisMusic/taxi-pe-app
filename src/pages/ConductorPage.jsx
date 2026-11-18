@@ -825,6 +825,7 @@ export default function ConductorPage() {
         <CerrarTurnoModal
           turnoActual={turno.turnoActual}
           cerrarTurno={turno.cerrarTurno}
+          telefono={conductor?.telefono || usuario?.telefono}
           onCerrado={() => {
             turno.refrescarHistorial();
             refrescarEstadisticas();

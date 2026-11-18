@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { X, Receipt, Loader2, FileSpreadsheet, Trash2, BarChart3, Car, Package, Clock, ChevronDown } from "lucide-react";
+import { X, Receipt, Loader2, FileSpreadsheet, Trash2, BarChart3, Car, Package, Clock, ChevronDown, MessageCircle } from "lucide-react";
+import { buildWhatsappLink } from "../../lib/whatsapp";
 import { formatSoles, formatDate, formatTime } from "../../utils/format";
 import { downloadXLSX } from "../../lib/xlsxExport";
 import { formatMinutos, useEstadisticasConductor } from "../../hooks/useTurnoConductor";
@@ -81,6 +82,37 @@ function ReciboTurno({ t, titulo, compacto = false }) {
   );
 }
 
+// Resumen del turno para mandárselo a su propio WhatsApp.
+function textoTurnoWhatsapp(t) {
+  const total = Number(t.ganado_viajes || 0) + Number(t.ganado_envios || 0);
+  const lineas = [
+    "*Mi turno en Taxi PE*",
+    `${formatDate(t.desde)} ${formatTime(t.desde)} → ${formatDate(t.hasta)} ${formatTime(t.hasta)}`,
+    "",
+    `Viajes: ${t.viajes ?? 0} (${formatSoles(t.ganado_viajes)})`,
+    `Repartos: ${t.entregas ?? 0} (${formatSoles(t.ganado_envios)})`,
+    `Tiempo como taxi: ${formatMinutos(t.minutos_taxi)}`,
+    `Tiempo en delivery: ${formatMinutos(t.minutos_delivery)}`,
+    `*Ganado del turno: ${formatSoles(total)}*`,
+  ];
+  if (Number(t.meta) > 0) lineas.push(`Meta del día (${formatSoles(t.meta)}): ${textoMeta(total, t.meta)}`);
+  if (t.detalle?.length) {
+    lineas.push("", "Detalle:");
+    t.detalle.forEach((d) => lineas.push(`• ${formatTime(d.fecha)} ${d.tipo === "reparto" ? "📦" : "🚗"} ${d.detalle} — ${formatSoles(d.monto)}`));
+  }
+  return lineas.join("\n");
+}
+
+function BotonTurnoWhatsapp({ turno, telefono }) {
+  const link = buildWhatsappLink(telefono, textoTurnoWhatsapp(turno));
+  if (!link) return null;
+  return (
+    <a className="tz-csv-btn tz-turno-whatsapp" href={link} target="_blank" rel="noreferrer">
+      <MessageCircle size={13} /> Enviar a mi WhatsApp
+    </a>
+  );
+}
+
 function ListaDetalle({ detalle }) {
   if (!detalle?.length) return <p className="tz-method-history-empty">Sin viajes ni repartos en este turno.</p>;
   return (
@@ -132,6 +164,8 @@ export function CerrarTurnoModal({
   maxExtensiones = 0,
   obligatorio = false,
   onExtender = null,
+  // Su propio número: "Enviar a mi WhatsApp" con el resumen del turno.
+  telefono = null,
 }) {
   const [extendiendo, setExtendiendo] = useState(false);
   const [errorExtender, setErrorExtender] = useState("");
@@ -208,7 +242,12 @@ export function CerrarTurnoModal({
       ) : !turno ? (
         <p className="tz-error">No se pudo cargar tu turno.</p>
       ) : listo ? (
-        <p className="tz-success">✓ Turno cerrado. Quedó guardado en tu historial y el nuevo turno empieza en cero.</p>
+        <>
+          <p className="tz-success">✓ Turno cerrado. Quedó guardado en tu historial y el nuevo turno empieza en cero.</p>
+          <div className="tz-export-buttons">
+            <BotonTurnoWhatsapp turno={turno} telefono={telefono} />
+          </div>
+        </>
       ) : (
         <>
           <ReciboTurno t={turno} titulo="Turno actual" />
@@ -220,6 +259,7 @@ export function CerrarTurnoModal({
             >
               <FileSpreadsheet size={13} /> Descargar Excel del turno
             </button>
+            <BotonTurnoWhatsapp turno={turno} telefono={telefono} />
           </div>
           <p className="tz-field-label">Detalle</p>
           <ListaDetalle detalle={turno.detalle} />
