@@ -474,8 +474,10 @@ export default function ConductorPage() {
                       plataforma.totalNoLeidos +
                       Object.values(repartos.noLeidos || {}).reduce((s, x) => s + (x.total || 0), 0);
                     if (total > 0) return <span className="tz-header-btn-badge">{total > 9 ? "+9" : total}</span>;
-                    return repartos.entregasActivas.length > 0 ? (
-                      <span className="tz-header-btn-badge is-punto" aria-label="Tienes un reparto en curso" />
+                    // Sin no leídos: punto encendido mientras haya un viaje o un
+                    // reparto en curso (como el pedido en curso en Caja).
+                    return enCarrera || repartos.entregasActivas.length > 0 ? (
+                      <span className="tz-header-btn-badge is-punto" aria-label={enCarrera ? "Tienes un viaje en curso" : "Tienes un reparto en curso"} />
                     ) : null;
                   })()}
                 </button>

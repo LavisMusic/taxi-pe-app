@@ -92,7 +92,13 @@ export default function BotonMensajes({
       >
         <MessageCircle size={19} />
         <span className="tz-header-btn-label">Mensajes</span>
-        {total > 0 && <span className="tz-header-btn-badge">{total > 9 ? "+9" : total}</span>}
+        {total > 0 ? (
+          <span className="tz-header-btn-badge">{total > 9 ? "+9" : total}</span>
+        ) : (
+          // Sin no leídos: punto encendido mientras tenga un viaje en curso
+          // (como el pedido en curso en Caja).
+          conductores.some((c) => c.enViaje) && <span className="tz-header-btn-badge is-punto" aria-label="Tienes un viaje en curso" />
+        )}
       </button>
       {abierto &&
         createPortal(
