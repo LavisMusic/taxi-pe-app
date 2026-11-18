@@ -3043,6 +3043,12 @@ export default function Styles() {
       }
       .tz-pagoc-comprobante .tz-scan-btn { width: 100%; justify-content: center; cursor: pointer; }
       .tz-pagoc-adjuntar { box-shadow: 0 0 16px rgba(43, 232, 255, 0.25); }
+      /* Recargas por pasos: cada paso se despliega con resorte al completar el anterior. */
+      .tz-paso { transform-origin: top center; animation: tz-paso-abre 0.55s cubic-bezier(.34,1.56,.64,1) both; }
+      @keyframes tz-paso-abre {
+        from { opacity: 0; transform: translateY(-10px) scaleY(0.94); filter: blur(3px); }
+        to { opacity: 1; transform: none; filter: none; }
+      }
       /* Chip del descuento en la lista de planes / membresías (mismo en las dos apps). */
       .tz-chip-desc {
         display: inline-flex; align-items: center; margin-left: 8px; padding: 2px 8px; border-radius: 999px;
