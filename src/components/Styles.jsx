@@ -7106,6 +7106,10 @@ export default function Styles() {
         box-shadow: 0 0 8px var(--cyan);
         transition: width 0.2s linear;
       }
+      /* Las imágenes del anuncio se ven con su proporción original (sin
+         recorte ni zoom para encuadrar el 9:16 del modal). */
+      .tz-anuncio-modal-vertical .tz-anuncio-media img,
+      .tz-anuncio-layout .tz-anuncio-media img { object-fit: contain !important; background: transparent; }
       .tz-barra-fluida { width: 100%; transform: scaleX(0); transform-origin: left center; transition: none; will-change: transform; }
       /* Caso "con texto" (default): fuerza el media a una caja 16:9
          arriba, el texto va abajo — columna siempre, en cualquier ancho. */
