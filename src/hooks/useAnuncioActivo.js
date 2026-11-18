@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { FRECUENCIA_UNA_VEZ_DIA, FRECUENCIA_UNA_VEZ_TOTAL } from "../lib/taxiEnums";
 
@@ -83,10 +83,74 @@ async function registrarVisto(anuncio) {
     .then(() => {}, () => {});
 }
 
+// ---------- En vivo + anuncio pedido desde un aviso ------------------------
+// Se vuelve a consultar: en vivo (cambios en `anuncios`), al volver a la app
+// (visibilitychange / focus / online: en la app instalada en iPhone el
+// realtime se corta en segundo plano) y cada minuto (los programados que
+// empiezan solos). Un anuncio pedido desde un aviso emergente
+// (?anuncio=<id> o mensaje del service worker "abrir-anuncio") se muestra
+// PRIMERO, seguido de los demás. Al cerrar el carrusel solo vuelven a salir
+// anuncios nuevos.
+function leerAnuncioDeUrl() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("anuncio");
+    if (!id) return null;
+    params.delete("anuncio");
+    const resto = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${resto ? `?${resto}` : ""}${window.location.hash}`);
+    return /^[\w-]{8,}$/.test(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+function useRecargaAnuncios() {
+  const [version, setVersion] = useState(0);
+  const [pedido, setPedido] = useState(() => leerAnuncioDeUrl());
+  useEffect(() => {
+    const otra = () => setVersion((v) => v + 1);
+    const alVolver = () => document.visibilityState === "visible" && otra();
+    const canal = supabase
+      .channel(`anuncios-vivo-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "anuncios" }, otra)
+      .subscribe();
+    document.addEventListener("visibilitychange", alVolver);
+    window.addEventListener("focus", otra);
+    window.addEventListener("online", otra);
+    const reloj = setInterval(() => document.visibilityState === "visible" && otra(), 60000);
+    const alMensaje = (e) => {
+      if (e.data?.tipo === "abrir-anuncio" && e.data.id) setPedido(String(e.data.id));
+    };
+    navigator.serviceWorker?.addEventListener("message", alMensaje);
+    return () => {
+      supabase.removeChannel(canal);
+      document.removeEventListener("visibilitychange", alVolver);
+      window.removeEventListener("focus", otra);
+      window.removeEventListener("online", otra);
+      clearInterval(reloj);
+      navigator.serviceWorker?.removeEventListener("message", alMensaje);
+    };
+  }, []);
+  return { version, pedido, limpiarPedido: () => setPedido(null) };
+}
+
+// Junta la lista nueva con la que se está mostrando sin reiniciar el
+// carrusel: el pedido va primero; si no, solo se agregan los nuevos.
+function mezclar(prev, candidatos, pedidoFila, mostrados) {
+  if (pedidoFila) {
+    return [pedidoFila, ...candidatos.filter((a) => a.id !== pedidoFila.id)];
+  }
+  const nuevos = candidatos.filter((a) => !mostrados.has(a.id) && !prev.some((p) => p.id === a.id));
+  return nuevos.length ? [...prev, ...nuevos] : prev;
+}
+
 export function useAnuncioActivo(publico = "pasajeros") {
   // Todos los que tocan ahora (carrusel, AnuncioPopupModal `anuncios`).
   const [anuncios, setAnuncios] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { version, pedido, limpiarPedido } = useRecargaAnuncios();
+  const mostrados = useRef(new Set());
 
   useEffect(() => {
     let cancelado = false;
@@ -98,10 +162,11 @@ export function useAnuncioActivo(publico = "pasajeros") {
         // `.or()` con "is.null" cubre ese caso por cada extremo.
         // Por rol (anuncios.roles, migración 20261022120000; los crea el
         // superadmin desde Caja). Sin esa columna, por `publico` como antes.
+        const columnas = "id, titulo, descripcion, imagen_url, video_url, boton_url, boton_texto, fecha_inicio, fecha_fin, frecuencia_mostrar, orden";
         const consultar = (filtro) => {
           let q = supabase
             .from("anuncios")
-            .select("id, titulo, descripcion, imagen_url, video_url, boton_url, boton_texto, fecha_inicio, fecha_fin, frecuencia_mostrar, orden")
+            .select(columnas)
             .eq("activo", true)
             .or(`fecha_inicio.is.null,fecha_inicio.lte.${ahora}`)
             .or(`fecha_fin.is.null,fecha_fin.gte.${ahora}`)
@@ -113,21 +178,33 @@ export function useAnuncioActivo(publico = "pasajeros") {
         };
         let { data, error } = await consultar("roles");
         if (error) ({ data, error } = await consultar("publico"));
+        let pedidoFila = null;
+        if (pedido) {
+          const r = await supabase.from("anuncios").select(columnas).eq("id", pedido).eq("activo", true).maybeSingle();
+          pedidoFila = r.data || null;
+        }
 
         if (cancelado) return;
         const lista = error || !data ? [] : data;
         const vistos = await vistosDeLaPersona(lista.map((a) => a.id));
         if (cancelado) return;
-        setAnuncios(lista.filter((a) => tocaMostrarA(a, vistos)));
+        const candidatos = lista.filter((a) => tocaMostrarA(a, vistos));
+        setAnuncios((prev) => {
+          const sig = mezclar(prev, candidatos, pedidoFila, mostrados.current);
+          sig.forEach((a) => mostrados.current.add(a.id));
+          return sig;
+        });
+        if (pedido) limpiarPedido();
       } catch {
-        if (!cancelado) setAnuncios([]);
+        // Sin conexión: queda lo que ya había.
       }
       if (!cancelado) setLoading(false);
     })();
     return () => {
       cancelado = true;
     };
-  }, [publico]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [publico, version, pedido]);
 
   const cerrar = () => setAnuncios([]);
 

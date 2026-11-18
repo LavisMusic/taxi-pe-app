@@ -42,6 +42,11 @@ export default function AnuncioPopupModal({
   const lista = anuncios?.length ? anuncios : anuncioSuelto ? [anuncioSuelto] : [];
   const [indice, setIndice] = useState(0);
   const [direccion, setDireccion] = useState(0); // -1 anterior, 1 siguiente
+  // Llegó otro anuncio primero (pedido desde un aviso emergente): se muestra ese.
+  const primeroId = lista[0]?.id;
+  useEffect(() => {
+    setIndice(0);
+  }, [primeroId]);
   const anuncio = lista[Math.min(indice, lista.length - 1)] ?? null;
   const varios = lista.length > 1;
   const ir = (paso) => {
