@@ -84,7 +84,13 @@ export default function ConductorPage() {
   // Tocar una notificación emergente abre su bandeja en ese chat fijado.
   const [canalDesdeAviso, setCanalDesdeAviso] = useState(null);
   useAbrirMensajesDesdeAviso((canal) => {
-    setCanalDesdeAviso(canal);
+    // Aviso de un chat de viaje: abre la bandeja en ese pasajero.
+    if (canal?.startsWith("pasajero:")) {
+      setCanalDesdeAviso(null);
+      setPasajeroDesdeAlerta(canal.slice("pasajero:".length));
+    } else {
+      setCanalDesdeAviso(canal);
+    }
     setMensajesOpen(true);
   }, !!usuario?.id);
   const { conductor, loading, error, setEstado, actualizar, refresh: refrescarConductor } = useConductorSesion(usuario);

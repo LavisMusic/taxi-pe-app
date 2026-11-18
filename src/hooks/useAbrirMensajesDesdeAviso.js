@@ -4,6 +4,11 @@ import { useEffect, useRef } from "react";
 // con "?mensajes=<canal>" en la URL; si estaba abierta, el service worker
 // le avisa con un mensaje. En los dos casos se llama `onAbrir(canal)`
 // para abrir Mensajes en ese chat (y se limpia la URL).
+// Claves válidas: los fijados ("taxipe", "tonazo") y, desde los avisos de
+// los chats de viaje (migración 20261206100000), "conductor:<id>" (lo abre
+// el pasajero) y "pasajero:<id>" (lo abre el conductor).
+const valido = (c) => (["taxipe", "tonazo"].includes(c) || /^(conductor|pasajero):[\w-]+$/.test(c || "") ? c : null);
+
 export function useAbrirMensajesDesdeAviso(onAbrir, activo = true) {
   const ref = useRef(onAbrir);
   ref.current = onAbrir;
@@ -16,14 +21,14 @@ export function useAbrirMensajesDesdeAviso(onAbrir, activo = true) {
       params.delete("mensajes");
       const resto = params.toString();
       window.history.replaceState(null, "", `${window.location.pathname}${resto ? `?${resto}` : ""}${window.location.hash}`);
-      ref.current(["taxipe", "tonazo"].includes(canal) ? canal : null);
+      ref.current(valido(canal));
     }
     // Tocar la imagen o el video de un anuncio (AnuncioPopupModal).
-    const alAnuncio = (e) => ref.current(["taxipe", "tonazo"].includes(e.detail?.canal) ? e.detail.canal : null);
+    const alAnuncio = (e) => ref.current(valido(e.detail?.canal));
     window.addEventListener("tz-abrir-mensajes", alAnuncio);
     if (!("serviceWorker" in navigator)) return () => window.removeEventListener("tz-abrir-mensajes", alAnuncio);
     const alMensaje = (e) => {
-      if (e.data?.tipo === "abrir-mensajes") ref.current(["taxipe", "tonazo"].includes(e.data.canal) ? e.data.canal : null);
+      if (e.data?.tipo === "abrir-mensajes") ref.current(valido(e.data.canal));
     };
     navigator.serviceWorker.addEventListener("message", alMensaje);
     return () => {

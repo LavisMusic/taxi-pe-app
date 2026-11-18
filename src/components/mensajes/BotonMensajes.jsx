@@ -54,6 +54,12 @@ export default function BotonMensajes({
   // Tocar una notificación emergente abre Mensajes en ese chat.
   useAbrirMensajesDesdeAviso((c) => {
     setAbierto(true);
+    // Aviso de un chat de viaje: ese chat, dentro de Mensajes.
+    if (c?.startsWith("conductor:")) {
+      setCanal(null);
+      onAbrirConductor?.(c.slice("conductor:".length));
+      return;
+    }
     setCanal(c);
   }, !!usuarioId);
 
