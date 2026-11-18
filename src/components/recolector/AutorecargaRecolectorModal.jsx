@@ -3,7 +3,8 @@ import { Wallet, X, Loader2, Camera, RotateCcw } from "lucide-react";
 import ComprobanteScannerModal from "./ComprobanteScannerModal";
 import { formatSoles } from "../../utils/format";
 import { METODOS_PAGO, METODO_PAGO_EFECTIVO, TIPO_ITEM_MEMBRESIA } from "../../lib/taxiEnums";
-import Dropdown from "../Dropdown";
+import TarjetasPlanes from "../TarjetasPlanes";
+import { itemsDeMembresias } from "../../lib/membresias";
 import DatosPagoComprobante from "../DatosPagoComprobante";
 import { useContactoPlataforma } from "../../hooks/useContactoPlataforma";
 import { supabase } from "../../supabaseClient";
@@ -94,17 +95,14 @@ export default function AutorecargaRecolectorModal({ recolector, paquetes, glowP
             <Wallet size={17} /> Mi membresía
           </h2>
 
-          <label className="tz-field-label">Membresía</label>
-          <Dropdown
-            className={glowPaquetes ? "tz-select-glow-neon" : ""}
-            value={paqueteId}
-            onChange={(v) => setPaqueteId(String(v))}
-            options={paquetesActivos.map((p) => ({
-              value: String(p.id),
-              label: `${p.nombre} — ${formatSoles(p.precio)} (${p.dias_membresia} días · ${p.cupo_conductores || 0} conductores)`,
-            }))}
-            placeholder={paquetesActivos.length === 0 ? "Ninguna configurada" : "Elige una opción…"}
-            ariaLabel="Membresía"
+          <label className="tz-field-label">Elige tu membresía</label>
+          {/* Mismo selector que la renovación del negocio y el conductor
+              (TarjetasPlanes.jsx): píldora "Por mes | Por año" y tarjetas. */}
+          <TarjetasPlanes
+            items={itemsDeMembresias(paquetesActivos, (p) => `${p.dias_membresia} días · ${p.cupo_conductores || 0} conductores`)}
+            seleccionado={paqueteId}
+            onElegir={(id) => setPaqueteId(String(id))}
+            vacio={<p className="tz-stock-editor-sub">Ninguna membresía configurada todavía.</p>}
           />
           {glowPaquetes && (
             <p className="tz-camera-note" style={{ margin: "4px 0 0", color: "var(--pink)" }}>

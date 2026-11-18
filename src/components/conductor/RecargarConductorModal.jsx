@@ -11,7 +11,8 @@ import {
 } from "../../lib/taxiEnums";
 import { usePaquetes } from "../../hooks/usePaquetes";
 import { useMiRecargaConductor } from "../../hooks/useRecargasConductor";
-import Dropdown from "../Dropdown";
+import TarjetasPlanes from "../TarjetasPlanes";
+import { itemsDeMembresias } from "../../lib/membresias";
 import DatosPagoComprobante from "../DatosPagoComprobante";
 import { useContactoPlataforma } from "../../hooks/useContactoPlataforma";
 import { supabase } from "../../supabaseClient";
@@ -146,18 +147,14 @@ export default function RecargarConductorModal({ conductor, onClose }) {
         {ultima?.estado === ESTADO_RECARGA_APROBADO && (
           <p className="tz-success">Tu última solicitud ({ultima.paquete_nombre}) fue aprobada.</p>
         )}
-        <label className="tz-field-label">Paquete</label>
-        <Dropdown
-          value={paqueteId}
-          onChange={(v) => setPaqueteId(String(v))}
-          options={activos.map((p) => ({
-            value: String(p.id),
-            label: `${p.nombre} — ${
-              `${p.dias_membresia} días`
-            } · ${formatSoles(p.precio)}`,
-          }))}
-          placeholder={activos.length === 0 ? "No hay paquetes disponibles" : "Elige un paquete…"}
-          ariaLabel="Paquete"
+        <label className="tz-field-label">Elige tu membresía</label>
+        {/* Mismo selector que la renovación del negocio y el recolector
+            (TarjetasPlanes.jsx): píldora "Por mes | Por año" y tarjetas. */}
+        <TarjetasPlanes
+          items={itemsDeMembresias(activos, (p) => `${p.dias_membresia} días`)}
+          seleccionado={paqueteId}
+          onElegir={(id) => setPaqueteId(String(id))}
+          vacio={<p className="tz-stock-editor-sub">No hay membresías disponibles por ahora.</p>}
         />
         {paquete?.descripcion && (
           <p className="tz-camera-note" style={{ margin: "6px 0 0" }}>
