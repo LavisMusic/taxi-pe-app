@@ -15,6 +15,7 @@ import { PAQUETES_DEMO } from "../../lib/paquetesDemo";
 import { formatSoles } from "../../utils/format";
 import RegistroConductorModal from "./RegistroConductorModal";
 import ComprobanteScannerModal from "./ComprobanteScannerModal";
+import BotonPegarComprobante from "../BotonPegarComprobante";
 import TarjetasPlanes from "../TarjetasPlanes";
 import { itemsDeMembresias } from "../../lib/membresias";
 import { supabase } from "../../supabaseClient";
@@ -94,6 +95,8 @@ export default function RecargaRapidaForm({
   const [conductorId, setConductorId] = useState(lockedConductor?.id ?? "");
   const tipoItem = TIPO_ITEM_MEMBRESIA;
   const [duracion, setDuracion] = useState("mensual");
+  // Imagen pegada ("Pegar comprobante"): va directo al lector.
+  const [archivoPegado, setArchivoPegado] = useState(null);
   const [paqueteId, setPaqueteId] = useState("");
   const [metodoPago, setMetodoPago] = useState("");
   const [comprobante, setComprobante] = useState(null);
@@ -638,9 +641,18 @@ export default function RecargaRapidaForm({
                     </button>
                   </div>
                 ) : (
-                  <button type="button" className="tz-scan-btn" onClick={() => setScannerOpen(true)}>
-                    <Camera size={16} /> Escanear comprobante
-                  </button>
+                  <div className="tz-pagoc-comprobante">
+                    <button type="button" className="tz-scan-btn tz-pagoc-adjuntar" onClick={() => setScannerOpen(true)}>
+                      <Camera size={16} /> Adjuntar comprobante
+                    </button>
+                    {/* Imagen copiada: va directo al lector del comprobante. */}
+                    <BotonPegarComprobante
+                      onArchivo={(f) => {
+                        setArchivoPegado(f);
+                        setScannerOpen(true);
+                      }}
+                    />
+                  </div>
                 )}
               </div>
             )}
@@ -700,11 +712,16 @@ export default function RecargaRapidaForm({
       {scannerOpen && (
         <ComprobanteScannerModal
           precioEsperado={paquete ? montoNum : undefined}
+          archivoInicial={archivoPegado}
           onConfirm={(data) => {
             setComprobante(data);
             setScannerOpen(false);
+            setArchivoPegado(null);
           }}
-          onClose={() => setScannerOpen(false)}
+          onClose={() => {
+            setScannerOpen(false);
+            setArchivoPegado(null);
+          }}
         />
       )}
     </>

@@ -45,7 +45,8 @@ const nowTimeInput = () => new Date().toTimeString().slice(0, 5);
 // junto con la venta. Lo único que persiste es lo que el recolector
 // confirmó a mano en los campos de abajo (ID de operación, fecha, hora)
 // más el método de pago elegido en Recarga Rápida.
-export default function ComprobanteScannerModal({ precioEsperado, onConfirm, onClose }) {
+// `archivoInicial`: imagen pegada ("Pegar comprobante"): se lee directo, sin cámara.
+export default function ComprobanteScannerModal({ precioEsperado, onConfirm, onClose, archivoInicial = null }) {
   const [view, setView] = useState("camera"); // camera | processing | result
   const [cameraSupported, setCameraSupported] = useState(true);
   const [opId, setOpId] = useState("");
@@ -93,7 +94,8 @@ export default function ComprobanteScannerModal({ precioEsperado, onConfirm, onC
   };
 
   useEffect(() => {
-    startCamera();
+    if (archivoInicial) processImage(archivoInicial);
+    else startCamera();
     return () => stopCamera();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
