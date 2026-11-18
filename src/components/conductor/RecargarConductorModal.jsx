@@ -11,7 +11,8 @@ import {
 } from "../../lib/taxiEnums";
 import { usePaquetes } from "../../hooks/usePaquetes";
 import { useMiRecargaConductor } from "../../hooks/useRecargasConductor";
-import Dropdown from "../Dropdown";
+import TarjetasPlanes from "../TarjetasPlanes";
+import { itemsDeMembresias } from "../../lib/membresias";
 import DatosPagoComprobante from "../DatosPagoComprobante";
 import { useContactoPlataforma } from "../../hooks/useContactoPlataforma";
 import { supabase } from "../../supabaseClient";
@@ -146,18 +147,14 @@ export default function RecargarConductorModal({ conductor, onClose }) {
         {ultima?.estado === ESTADO_RECARGA_APROBADO && (
           <p className="tz-success">Tu última solicitud ({ultima.paquete_nombre}) fue aprobada.</p>
         )}
-        <label className="tz-field-label">Paquete</label>
-        <Dropdown
-          value={paqueteId}
-          onChange={(v) => setPaqueteId(String(v))}
-          options={activos.map((p) => ({
-            value: String(p.id),
-            label: `${p.nombre} — ${
-              `${p.dias_membresia} días`
-            } · ${formatSoles(p.precio)}`,
-          }))}
-          placeholder={activos.length === 0 ? "No hay paquetes disponibles" : "Elige un paquete…"}
-          ariaLabel="Paquete"
+        <label className="tz-field-label">1. Elige tu membresía</label>
+        {/* Mismo selector que la renovación del negocio y el recolector
+            (TarjetasPlanes.jsx): píldora "Por mes | Por año" y tarjetas. */}
+        <TarjetasPlanes
+          items={itemsDeMembresias(activos, (p) => `${p.dias_membresia} días`)}
+          seleccionado={paqueteId}
+          onElegir={(id) => setPaqueteId(String(id))}
+          vacio={<p className="tz-stock-editor-sub">No hay membresías disponibles por ahora.</p>}
         />
         {paquete?.descripcion && (
           <p className="tz-camera-note" style={{ margin: "6px 0 0" }}>
@@ -169,35 +166,40 @@ export default function RecargarConductorModal({ conductor, onClose }) {
           <CanjeGemas color="verde" canje={canje} precio={paquete.precio} activo={usarGemas} onCambiar={setUsarGemas} />
         )}
 
-        <label className="tz-field-label" style={{ marginTop: 12 }}>
-          ¿Cómo pagas?
-        </label>
-        <div className="tz-gasto-tipo-buttons">
-          {METODOS.map((m) => (
-            <button
-              key={m.key}
-              type="button"
-              className={`tz-gasto-tipo-btn tz-metodo-btn tz-metodo-btn-${m.key} ${metodo === m.key ? "tz-gasto-tipo-active" : ""}`}
-              onClick={() => {
-                setMetodo(m.key);
-                setError("");
-              }}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
+        {/* Paso 2 recién con una membresía elegida. */}
+        {paquete && (
+          <div className="tz-paso" key={paqueteId}>
+            <label className="tz-field-label" style={{ marginTop: 12 }}>
+              2. ¿Cómo pagas?
+            </label>
+            <div className="tz-gasto-tipo-buttons">
+              {METODOS.map((m) => (
+                <button
+                  key={m.key}
+                  type="button"
+                  className={`tz-gasto-tipo-btn tz-metodo-btn tz-metodo-btn-${m.key} ${metodo === m.key ? "tz-gasto-tipo-active" : ""}`}
+                  onClick={() => {
+                    setMetodo(m.key);
+                    setError("");
+                  }}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
 
-        {/* Datos de pago de la plataforma según el método + las dos
-            opciones de comprobante (se despliegan al elegir el método). */}
-        <DatosPagoComprobante
-          metodo={metodo}
-          datos={{ yape_plin: contacto.yape_plin, titular: contacto.titular, cuenta: contacto.cuenta_bancaria }}
-          archivo={archivo}
-          preview={preview}
-          onArchivo={(f) => elegirArchivo({ target: { files: [f], value: "" } })}
-          sinDatosTexto="Todavía no hay datos de pago configurados. Escríbenos a soporte."
-        />
+            {/* Datos de pago de la plataforma según el método + las dos
+                opciones de comprobante (se despliegan al elegir el método). */}
+            <DatosPagoComprobante
+              metodo={metodo}
+              datos={{ yape_plin: contacto.yape_plin, titular: contacto.titular, cuenta: contacto.cuenta_bancaria }}
+              archivo={archivo}
+              preview={preview}
+              onArchivo={(f) => elegirArchivo({ target: { files: [f], value: "" } })}
+              sinDatosTexto="Todavía no hay datos de pago configurados. Escríbenos a soporte."
+            />
+          </div>
+        )}
 
         {error && <p className="tz-error">{error}</p>}
         {(archivo || enviando) && (

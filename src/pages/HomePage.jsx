@@ -31,7 +31,8 @@ import PasajeroAuthForm from "../components/PasajeroAuthForm";
 import NivelAccordionGroup from "../components/NivelAccordionGroup";
 import AccesoConductorModal from "../components/AccesoConductorModal";
 import AccesoRecolectorModal from "../components/AccesoRecolectorModal";
-import ChatModal from "../components/ChatModal";
+import ChatModal, { ChatModalContenido } from "../components/ChatModal";
+import ChatErrorBoundary from "../components/ChatErrorBoundary";
 import AnuncioPopupModal from "../components/AnuncioPopupModal";
 import TextoMaquina from "../components/TextoMaquina";
 import { useDescripcionesPublico } from "../hooks/useDescripciones";
@@ -252,6 +253,7 @@ export default function HomePage() {
       return;
     }
     setChatAuto(auto);
+    setChatEnMensajes(false);
     setChatConductorId(conductorId);
   };
 
@@ -282,6 +284,9 @@ export default function HomePage() {
   // ChatConductorHeader se actualice sola — sin esto quedaba una foto
   // fija del momento en que se abrió el chat, ver ChatModal.jsx.
   const [chatConductorId, setChatConductorId] = useState(null);
+  // true: el chat se abrió desde Mensajes y se muestra DENTRO de ese modal
+  // (con la flecha para volver); false: modal propio (radar, viaje restaurado).
+  const [chatEnMensajes, setChatEnMensajes] = useState(false);
   // Viaje finalizado con el chat cerrado (o la app cerrada): se festeja al
   // volver a la pantalla principal.
   const viajeFinalizado = useViajeFinalizadoAviso({
@@ -310,6 +315,7 @@ export default function HomePage() {
   // viaje ya terminado queda de solo lectura dentro de ChatWindow).
   const verChat = (id) => {
     setChatAuto(false);
+    setChatEnMensajes(true);
     setChatConductorId(id);
   };
 
@@ -369,6 +375,9 @@ export default function HomePage() {
       // el único flujo que persiste destino) — nunca "Contactar" manual.
       if (!cancelado) {
         setChatAuto(true);
+        // El viaje recuperado se abre DENTRO de Mensajes (con la flecha
+        // para volver a la lista), igual que al tocarlo en la lista.
+        setChatEnMensajes(true);
         setChatConductorId((actual) => actual ?? conductorIdActivo);
       }
     })();
@@ -489,7 +498,31 @@ export default function HomePage() {
             {/* Pasajero: Mensajes y, debajo, su Perfil (ahí cierra sesión). */}
             {usuario && esPasajero ? (
               <>
-                <BotonMensajes usuarioId={usuario.id} conductores={chatsMensajes} onAbrirConductor={verChat} />
+                <BotonMensajes
+                  usuarioId={usuario.id}
+                  conductores={chatsMensajes}
+                  onAbrirConductor={verChat}
+                  chatConductorId={chatEnMensajes && chatConductor ? chatConductorId : null}
+                  onCerrarChatConductor={() => setChatConductorId(null)}
+                  renderChatConductor={() => (
+                    <ChatErrorBoundary>
+                      <ChatModalContenido
+                        key={chatConductorId}
+                        conductor={chatConductor}
+                        pasajeroId={usuario.id}
+                        categorias={categorias}
+                        destino={destinoSeleccionado}
+                        autoContactar={chatAuto}
+                        onLimpiarDestino={() => {
+                          setDestinoSeleccionado(null);
+                          setSeleccionados({});
+                        }}
+                        onClose={() => setChatConductorId(null)}
+                        onVolver={() => setChatConductorId(null)}
+                      />
+                    </ChatErrorBoundary>
+                  )}
+                />
                 <button
                   className="tz-header-btn"
                   onClick={() => setPerfilOpen(true)}
@@ -555,7 +588,7 @@ export default function HomePage() {
                 <div className="tz-fila-saldo">
                   {/* Gemas cruzadas: verdes (comprando en tiendas) y
                      celestes (viajando). Al subir, aparece la gema ganada. */}
-                  <SaldoGemas usuarioId={usuario.id} verdes={misGemas.verdes} celestes={misGemas.celestes} devueltasVerdes={misGemas.devueltas} />
+                  <SaldoGemas usuarioId={usuario.id} verdes={misGemas.verdes} celestes={misGemas.celestes} devueltasVerdes={misGemas.devueltas} devueltasCelestes={misGemas.devueltasCelestes} />
                 </div>
               )}
             </div>
@@ -699,7 +732,7 @@ export default function HomePage() {
         <AccesoRecolectorModal onClose={() => setAccesoRecolectorOpen(false)} />
       )}
 
-      {chatConductor && esPasajero && (
+      {chatConductor && esPasajero && !chatEnMensajes && (
         <ChatModal
           // Bug de "Viaje Fantasma" (blindaje defensivo, igual que
           // ConductorChatInboxModal en ConductorPage.jsx): si alguna vez

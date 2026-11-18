@@ -12,6 +12,8 @@ import {
 } from "../../lib/taxiEnums";
 import { subirComprobante } from "../../lib/comprobantes";
 import Dropdown from "../Dropdown";
+import TarjetasPlanes from "../TarjetasPlanes";
+import { itemsDeMembresias } from "../../lib/membresias";
 import BotonPegarComprobante from "../BotonPegarComprobante";
 import CanjeGemas from "../CanjeGemas";
 import { supabase } from "../../supabaseClient";
@@ -215,112 +217,120 @@ function RecargaRapida({ recolector, paquetes, crearPeticion, onHecho }) {
 
   return (
     <>
-      <label className="tz-field-label">Membresía</label>
-      <Dropdown
-        value={paqueteId}
-        onChange={(v) => setPaqueteId(String(v))}
-        options={activos.map((p) => ({
-          value: String(p.id),
-          label: `${p.nombre} — ${p.dias_membresia} días · ${p.cupo_conductores || 0} conductores · ${formatSoles(p.precio)}`,
-        }))}
-        placeholder={activos.length === 0 ? "No hay membresías de recolector" : "Elige una membresía…"}
-        ariaLabel="Membresía"
+      {/* Paso 1: la membresía (TarjetasPlanes.jsx). Recién al elegir una
+          se despliega el método de pago, y con él el comprobante o el efectivo. */}
+      <label className="tz-field-label">1. Elige la membresía</label>
+      <TarjetasPlanes
+        items={itemsDeMembresias(activos, (p) => `${p.dias_membresia || 0} días · ${p.cupo_conductores || 0} conductores`)}
+        seleccionado={paqueteId}
+        onElegir={(id) => setPaqueteId(String(id))}
+        vacio={<p className="tz-stock-editor-sub">No hay membresías de recolector.</p>}
       />
       {noPuede && <p className="tz-error">Su membresía sigue vigente y con cupo: podrá comprar otra cuando se le acabe el cupo o venza.</p>}
       {paquete && !noPuede && (
-        <CanjeGemas color="verde" quien="sus" canje={canje} precio={paquete.precio} activo={usarGemas} onCambiar={setUsarGemas} />
-      )}
-      {paquete && (
-        <p className="tz-plan-total" style={{ margin: "8px 0 0" }}>
-          Total: <strong>{formatSoles(total)}</strong> · {paquete.dias_membresia} días · {paquete.cupo_conductores || 0} conductores
-        </p>
-      )}
+        <div className="tz-paso" key={paqueteId}>
+          {paquete && !noPuede && (
+            <CanjeGemas color="verde" quien="sus" canje={canje} precio={paquete.precio} activo={usarGemas} onCambiar={setUsarGemas} />
+          )}
+          {paquete && (
+            <p className="tz-plan-total" style={{ margin: "8px 0 0" }}>
+              Total: <strong>{formatSoles(total)}</strong> · {paquete.dias_membresia} días · {paquete.cupo_conductores || 0} conductores
+            </p>
+          )}
 
-      <label className="tz-field-label" style={{ marginTop: 12 }}>
-        Método de pago
-      </label>
-      <div className="tz-gasto-tipo-buttons">
-        {METODOS_PAGO.filter((m) => m.key !== METODO_PAGO_FIADO).map((m) => (
-          <button
-            key={m.key}
-            type="button"
-            className={`tz-gasto-tipo-btn tz-metodo-btn tz-metodo-btn-${CLASE_METODO[m.key] || "otros"} ${
-              metodo === m.key ? "tz-gasto-tipo-active" : ""
-            }`}
-            onClick={() => {
-              setMetodo(m.key);
-              setError("");
-            }}
-          >
-            {m.label}
-          </button>
-        ))}
-      </div>
-
-      {esDigital && (
-        <div className="tz-recarga-comprobante">
           <label className="tz-field-label" style={{ marginTop: 12 }}>
-            Comprobante (obligatorio)
+            Método de pago
           </label>
-          <div className="tz-recarga-comprobante-botones">
-            <label className="tz-scan-btn" style={{ cursor: "pointer" }}>
-              <Camera size={16} /> Tomar foto
-              <input type="file" accept="image/*" capture="environment" hidden onChange={elegirArchivo} />
-            </label>
-            <label className="tz-scan-btn" style={{ cursor: "pointer" }}>
-              <ImagePlus size={16} /> Adjuntar
-              <input type="file" accept="image/*" hidden onChange={elegirArchivo} />
-            </label>
-          </div>
-          <BotonPegarComprobante onArchivo={(f) => elegirArchivo({ target: { files: [f], value: "" } })} />
-          {preview && <img src={preview} alt="Comprobante" className="tz-renovar-comprobante" />}
-        </div>
-      )}
-
-      {esEfectivo && (
-        <div className="tz-recarga-vuelto">
-          <label className="tz-field-label" style={{ marginTop: 12 }} htmlFor="gestor-rec-recibido">
-            Efectivo recibido (S/)
-          </label>
-          <input
-            id="gestor-rec-recibido"
-            className="tz-text-input"
-            inputMode="decimal"
-            placeholder={paquete ? String(total) : "0.00"}
-            value={recibido}
-            onChange={(e) => setRecibido(e.target.value)}
-          />
-          <div className="tz-recarga-vuelto-rapidos">
-            {paquete && (
-              <button type="button" className="tz-gasto-tipo-btn" onClick={() => setRecibido(String(total))}>
-                Exacto
-              </button>
-            )}
-            {[10, 20, 50, 100, 200].map((v) => (
-              <button key={v} type="button" className="tz-gasto-tipo-btn" onClick={() => setRecibido(String(v))}>
-                S/ {v}
+          <div className="tz-gasto-tipo-buttons">
+            {METODOS_PAGO.filter((m) => m.key !== METODO_PAGO_FIADO).map((m) => (
+              <button
+                key={m.key}
+                type="button"
+                className={`tz-gasto-tipo-btn tz-metodo-btn tz-metodo-btn-${CLASE_METODO[m.key] || "otros"} ${
+                  metodo === m.key ? "tz-gasto-tipo-active" : ""
+                }`}
+                onClick={() => {
+                  setMetodo(m.key);
+                  setError("");
+                }}
+              >
+                {m.label}
               </button>
             ))}
           </div>
-          {vuelto != null && (
-            <p className={`tz-recarga-vuelto-resultado ${vuelto < 0 ? "tz-recarga-vuelto-falta" : ""}`}>
-              {vuelto < 0 ? `Faltan ${formatSoles(-vuelto)}` : `Vuelto: ${formatSoles(vuelto)}`}
-            </p>
+
+          {metodo && (
+            <div className="tz-paso" key={metodo}>
+              {esDigital && (
+                <div className="tz-recarga-comprobante">
+                  <label className="tz-field-label" style={{ marginTop: 12 }}>
+                    Comprobante (obligatorio)
+                  </label>
+                  <div className="tz-recarga-comprobante-botones">
+                    <label className="tz-scan-btn" style={{ cursor: "pointer" }}>
+                      <Camera size={16} /> Tomar foto
+                      <input type="file" accept="image/*" capture="environment" hidden onChange={elegirArchivo} />
+                    </label>
+                    <label className="tz-scan-btn" style={{ cursor: "pointer" }}>
+                      <ImagePlus size={16} /> Adjuntar
+                      <input type="file" accept="image/*" hidden onChange={elegirArchivo} />
+                    </label>
+                  </div>
+                  <BotonPegarComprobante onArchivo={(f) => elegirArchivo({ target: { files: [f], value: "" } })} />
+                  {preview && <img src={preview} alt="Comprobante" className="tz-renovar-comprobante" />}
+                </div>
+              )}
+
+              {esEfectivo && (
+                <div className="tz-recarga-vuelto">
+                  <label className="tz-field-label" style={{ marginTop: 12 }} htmlFor="gestor-rec-recibido">
+                    Efectivo recibido (S/)
+                  </label>
+                  <input
+                    id="gestor-rec-recibido"
+                    className="tz-text-input"
+                    inputMode="decimal"
+                    placeholder={paquete ? String(total) : "0.00"}
+                    value={recibido}
+                    onChange={(e) => setRecibido(e.target.value)}
+                  />
+                  <div className="tz-recarga-vuelto-rapidos">
+                    {paquete && (
+                      <button type="button" className="tz-gasto-tipo-btn" onClick={() => setRecibido(String(total))}>
+                        Exacto
+                      </button>
+                    )}
+                    {[10, 20, 50, 100, 200].map((v) => (
+                      <button key={v} type="button" className="tz-gasto-tipo-btn" onClick={() => setRecibido(String(v))}>
+                        S/ {v}
+                      </button>
+                    ))}
+                  </div>
+                  {vuelto != null && (
+                    <p className={`tz-recarga-vuelto-resultado ${vuelto < 0 ? "tz-recarga-vuelto-falta" : ""}`}>
+                      {vuelto < 0 ? `Faltan ${formatSoles(-vuelto)}` : `Vuelto: ${formatSoles(vuelto)}`}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
 
       {error && <p className="tz-error">{error}</p>}
-      <button
-        type="button"
-        className="tz-scan-btn tz-payment-save"
-        style={{ width: "100%", marginTop: 14 }}
-        onClick={registrar}
-        disabled={enviando || noPuede}
-      >
-        {enviando ? <Loader2 size={15} className="tz-spin" /> : <Zap size={15} />} Activar membresía
-        {paquete ? ` de ${formatSoles(total)}` : ""}
-      </button>
+      {paquete && !noPuede && metodo && (
+        <button
+          type="button"
+          className="tz-scan-btn tz-payment-save"
+          style={{ width: "100%", marginTop: 14 }}
+          onClick={registrar}
+          disabled={enviando || noPuede}
+        >
+          {enviando ? <Loader2 size={15} className="tz-spin" /> : <Zap size={15} />} Activar membresía
+          {paquete ? ` de ${formatSoles(total)}` : ""}
+        </button>
+      )}
     </>
   );
 }

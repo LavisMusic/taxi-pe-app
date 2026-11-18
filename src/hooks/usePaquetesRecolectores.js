@@ -30,7 +30,8 @@ export function usePaquetesRecolectores() {
     setError("");
     const { data, error: fetchError } = await supabase
       .from("paquetes_recolectores")
-      .select("id, tipo_item, nombre, precio, dias_membresia, creditos, cupo_conductores, descripcion, activo, orden")
+      // precio = vigente (con el descuento programado); precio_base y descuento_* para mostrar y editar.
+      .select("id, tipo_item, nombre, precio, precio_base, descuento_pct, descuento_desde, descuento_hasta, dias_membresia, creditos, cupo_conductores, descripcion, activo, orden")
       .order("orden", { ascending: true });
 
     if (fetchError) {

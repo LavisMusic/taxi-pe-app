@@ -126,7 +126,54 @@ Deno.serve(async () => {
     );
   }
 
-  return new Response(JSON.stringify({ ok: true, mensajes: pendientes?.length ?? 0, enviados }), {
+  // Avisos de los chats de viaje (migración 20261206100000): cada fila es
+  // para UNA cuenta. Los de más de una hora ya no se mandan (llegarían tarde
+  // y de golpe tras una caída).
+  const haceUnaHora = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { data: chats, error: errChats } = await db
+    .from("push_chat_pendientes")
+    .select("id, destinatario_id, titulo, cuerpo, canal, ruta, tag, created_at")
+    .is("enviado_at", null)
+    .order("created_at", { ascending: true })
+    .limit(100);
+  if (errChats) console.error("[push-enviar] chats", errChats.message);
+  for (const c of chats ?? []) {
+    const { data: tomado } = await db
+      .from("push_chat_pendientes")
+      .update({ enviado_at: ahora })
+      .eq("id", c.id)
+      .is("enviado_at", null)
+      .select("id");
+    if (!tomado?.length || c.created_at < haceUnaHora) continue;
+    const { data: subs } = await db
+      .from("push_suscripciones")
+      .select("id, endpoint, p256dh, auth, usuarios!inner(notificaciones_activas)")
+      .eq("usuario_id", c.destinatario_id)
+      .eq("usuarios.notificaciones_activas", true);
+    await Promise.all(
+      (subs ?? []).map(async (s) => {
+        try {
+          const status = await enviarPush(
+            s,
+            { title: c.titulo, body: String(c.cuerpo || "").slice(0, 200), canal: c.canal, url: c.ruta, tag: c.tag || `chat-${c.id}` },
+            vapid
+          );
+          if (status === 404 || status === 410) await db.from("push_suscripciones").delete().eq("id", s.id);
+          else if (status < 300) enviados++;
+        } catch (err) {
+          console.error("[push-enviar] error enviando (chat)", err);
+        }
+      })
+    );
+  }
+  // La cola no crece: lo enviado de hace más de 2 días se borra.
+  await db
+    .from("push_chat_pendientes")
+    .delete()
+    .lt("created_at", new Date(Date.now() - 2 * 86400000).toISOString())
+    .not("enviado_at", "is", null);
+
+  return new Response(JSON.stringify({ ok: true, mensajes: pendientes?.length ?? 0, chats: chats?.length ?? 0, enviados }), {
     headers: { "Content-Type": "application/json" },
   });
 });

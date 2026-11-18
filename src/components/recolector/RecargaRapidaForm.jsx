@@ -15,14 +15,15 @@ import { PAQUETES_DEMO } from "../../lib/paquetesDemo";
 import { formatSoles } from "../../utils/format";
 import RegistroConductorModal from "./RegistroConductorModal";
 import ComprobanteScannerModal from "./ComprobanteScannerModal";
-import Dropdown from "../Dropdown";
+import BotonPegarComprobante from "../BotonPegarComprobante";
+import TarjetasPlanes from "../TarjetasPlanes";
+import { itemsDeMembresias } from "../../lib/membresias";
 import { supabase } from "../../supabaseClient";
 import CanjeGemas from "../CanjeGemas";
 
 const DURACIONES_MEMBRESIA = [
-  { id: "mensual", label: "Mensual" },
-  { id: "anual", label: "Anual" },
-  { id: "otros", label: "Otros" },
+  { id: "mensual", label: "Por mes" },
+  { id: "anual", label: "Por año" },
 ];
 
 const MONTOS_RAPIDOS = [20, 50, 100, 200];
@@ -94,6 +95,8 @@ export default function RecargaRapidaForm({
   const [conductorId, setConductorId] = useState(lockedConductor?.id ?? "");
   const tipoItem = TIPO_ITEM_MEMBRESIA;
   const [duracion, setDuracion] = useState("mensual");
+  // Imagen pegada ("Pegar comprobante"): va directo al lector.
+  const [archivoPegado, setArchivoPegado] = useState(null);
   const [paqueteId, setPaqueteId] = useState("");
   const [metodoPago, setMetodoPago] = useState("");
   const [comprobante, setComprobante] = useState(null);
@@ -150,9 +153,8 @@ export default function RecargaRapidaForm({
   // viene en días: hasta 31 = mensual, desde 360 = anual.
   const duracionDe = (p) => {
     const d = Number(p.dias_membresia) || 0;
-    if (d <= 31) return "mensual";
-    if (d >= 360) return "anual";
-    return "otros";
+    // Dos grupos: "Por mes" (1, 2, 3… meses) y "Por año" (desde 360 días).
+    return d >= 360 ? "anual" : "mensual";
   };
   const duracionesConPaquetes =
     tipoItem === TIPO_ITEM_MEMBRESIA
@@ -162,7 +164,7 @@ export default function RecargaRapidaForm({
   const paquetesDelTipo =
     tipoItem === TIPO_ITEM_MEMBRESIA && duracionActiva ? paquetesBase.filter((p) => duracionDe(p) === duracionActiva) : paquetesBase;
   const usandoDemo = paquetesReales.length === 0;
-  const paquete = paquetesDelTipo.find((p) => String(p.id) === String(paqueteId)) || null;
+  const paquete = paquetesBase.find((p) => String(p.id) === String(paqueteId)) || null;
   const glowPaquetesActivo = glowPaquetes;
 
   // Al cambiar el tipo de venta, la lista de paquetes cambia entera —
@@ -478,41 +480,19 @@ export default function RecargaRapidaForm({
           </p>
         )}
 
-        {duracionesConPaquetes.length > 1 && (
-          <div className="tz-gasto-tipo-buttons" style={{ marginTop: 12 }}>
-            {duracionesConPaquetes.map((d) => (
-              <button
-                key={d.id}
-                type="button"
-                className={`tz-gasto-tipo-btn ${duracionActiva === d.id ? "tz-gasto-tipo-active" : ""}`}
-                onClick={() => {
-                  setDuracion(d.id);
-                  setPaqueteId("");
-                }}
-              >
-                {d.label}
-              </button>
-            ))}
-          </div>
-        )}
-
+        {/* Paso 1: la membresía (mismas tarjetas que "Mi membresía",
+            TarjetasPlanes.jsx). Recién al elegir una se despliega el resto. */}
         <label className="tz-field-label" style={{ marginTop: 12 }}>
-          Membresía
+          1. Elige la membresía
         </label>
-        <Dropdown
-          className={glowPaquetesActivo ? "tz-select-glow-neon" : ""}
-          value={paqueteId}
-          onChange={(v) => setPaqueteId(String(v))}
-          disabled={bloqueadoPorMembresiaVigente}
-          options={paquetesDelTipo.map((p) => ({
-            value: String(p.id),
-            label: `${p.nombre} — ${formatSoles(p.precio)}${
-              ` (${p.dias_membresia} días)`
-            }`,
-          }))}
-          placeholder={paquetesDelTipo.length === 0 ? "Ninguna por ahora" : "Elige una opción…"}
-          ariaLabel="Paquete"
-        />
+        {!bloqueadoPorMembresiaVigente && (
+          <TarjetasPlanes
+            items={itemsDeMembresias(paquetesBase, (p) => (p.dias_membresia ? `${p.dias_membresia} días` : ""))}
+            seleccionado={paqueteId}
+            onElegir={(id) => setPaqueteId(String(id))}
+            vacio={<p className="tz-stock-editor-sub">Ninguna por ahora.</p>}
+          />
+        )}
         {glowPaquetesActivo && (
           <p className="tz-camera-note" style={{ margin: "4px 0 0", color: "var(--pink)" }}>
             ✨ El Admin actualizó el catálogo — revisa las opciones.
@@ -525,157 +505,177 @@ export default function RecargaRapidaForm({
           </p>
         )}
 
-        {/* ---- Panel de resumen: aparece apenas hay un paquete elegido ---- */}
         {paquete && (
-          <div className="tz-scan-result" style={{ marginTop: 10 }}>
-            <p className="tz-scan-result-title">Resumen</p>
-            <div className="tz-scan-result-row">
-              <span>Paquete:</span>
-              <strong>{paquete.nombre}</strong>
-            </div>
-            <div className="tz-scan-result-row">
-              <span>Precio:</span>
-              <strong>{formatSoles(paquete.precio)}</strong>
-            </div>
-            {descuentoGemas > 0 && (
+          <div className="tz-paso" key={paqueteId}>
+          {/* ---- Panel de resumen: aparece apenas hay un paquete elegido ---- */}
+          {paquete && (
+            <div className="tz-scan-result" style={{ marginTop: 10 }}>
+              <p className="tz-scan-result-title">Resumen</p>
               <div className="tz-scan-result-row">
-                <span>Gemas ({canje.n}):</span>
-                <strong style={{ color: "#39ffb0" }}>−{formatSoles(descuentoGemas)}</strong>
+                <span>Paquete:</span>
+                <strong>{paquete.nombre}</strong>
               </div>
-            )}
-            {descuentoGemas > 0 && (
               <div className="tz-scan-result-row">
-                <span>Cobras:</span>
-                <strong>{formatSoles(montoNum)}</strong>
+                <span>Precio:</span>
+                <strong>{formatSoles(paquete.precio)}</strong>
               </div>
-            )}
-            <div className="tz-scan-result-row">
-              <span>Otorga:</span>
-              <strong>
-                {`${paquete.dias_membresia} días`}
-              </strong>
+              {descuentoGemas > 0 && (
+                <div className="tz-scan-result-row">
+                  <span>Gemas ({canje.n}):</span>
+                  <strong style={{ color: "#39ffb0" }}>−{formatSoles(descuentoGemas)}</strong>
+                </div>
+              )}
+              {descuentoGemas > 0 && (
+                <div className="tz-scan-result-row">
+                  <span>Cobras:</span>
+                  <strong>{formatSoles(montoNum)}</strong>
+                </div>
+              )}
+              <div className="tz-scan-result-row">
+                <span>Otorga:</span>
+                <strong>
+                  {`${paquete.dias_membresia} días`}
+                </strong>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {paquete && (
-          <CanjeGemas
-            color="verde"
-            quien="sus"
-            canje={canje}
-            precio={paquete.precio}
-            activo={usarGemas}
-            onCambiar={setUsarGemas}
-          />
-        )}
-
-        <div className="tz-metodo-pago">
-          <div className="tz-metodo-pago-head">
-            <label className="tz-field-label">Método de pago</label>
-          </div>
-          <div className="tz-gasto-tipo-buttons">
-            {/* Restricción de Recolector: "Fiado" queda afuera de ESTE
-               formulario (el de cobro directo del Recolector) — sigue
-               existiendo como método en `METODOS_PAGO` porque otras
-               pantallas SÍ lo necesitan (PagoFiadoModal.jsx para saldar
-               una deuda ya existente, CierreCajaModal.jsx para el
-               resumen histórico) — filtrar acá nomás no rompe nada de
-               eso. */}
-            {METODOS_PAGO.filter((m) => m.key !== METODO_PAGO_FIADO).map((m) => (
-              <button
-                key={m.key}
-                type="button"
-                className={`tz-gasto-tipo-btn tz-metodo-btn tz-metodo-btn-${m.key} ${
-                  metodoPago === m.key ? "tz-gasto-tipo-active" : ""
-                }`}
-                onClick={() => elegirMetodo(m.key)}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* ---- Efectivo: Calculadora de Vuelto ---- */}
-        {metodoPago === METODO_PAGO_EFECTIVO && (
-          <div className="tz-add-entry" style={{ marginTop: 4 }}>
-            <label className="tz-field-label">Monto recibido (S/)</label>
-            <input
-              type="number"
-              inputMode="decimal"
-              className="tz-amount-input"
-              placeholder="0.00"
-              value={montoRecibido}
-              onChange={(e) => setMontoRecibido(e.target.value)}
+          {paquete && (
+            <CanjeGemas
+              color="verde"
+              quien="sus"
+              canje={canje}
+              precio={paquete.precio}
+              activo={usarGemas}
+              onCambiar={setUsarGemas}
             />
-            <div className="tz-vuelto-quick-buttons">
-              {MONTOS_RAPIDOS.map((m) => (
+          )}
+
+          <div className="tz-metodo-pago">
+            <div className="tz-metodo-pago-head">
+              <label className="tz-field-label">2. Método de pago</label>
+            </div>
+            <div className="tz-gasto-tipo-buttons">
+              {/* Restricción de Recolector: "Fiado" queda afuera de ESTE
+                 formulario (el de cobro directo del Recolector) — sigue
+                 existiendo como método en `METODOS_PAGO` porque otras
+                 pantallas SÍ lo necesitan (PagoFiadoModal.jsx para saldar
+                 una deuda ya existente, CierreCajaModal.jsx para el
+                 resumen histórico) — filtrar acá nomás no rompe nada de
+                 eso. */}
+              {METODOS_PAGO.filter((m) => m.key !== METODO_PAGO_FIADO).map((m) => (
                 <button
-                  key={m}
+                  key={m.key}
                   type="button"
-                  className="tz-vuelto-quick-btn"
-                  onClick={() => setMontoRecibido(String(m))}
+                  className={`tz-gasto-tipo-btn tz-metodo-btn tz-metodo-btn-${m.key} ${
+                    metodoPago === m.key ? "tz-gasto-tipo-active" : ""
+                  }`}
+                  onClick={() => elegirMetodo(m.key)}
                 >
-                  S/ {m}
+                  {m.label}
                 </button>
               ))}
             </div>
-            {vuelto != null &&
-              (vuelto < 0 ? (
-                <p className="tz-error">Falta {formatSoles(Math.abs(vuelto))}.</p>
-              ) : (
-                <p className="tz-vuelto-display">
-                  VUELTO: <strong>{formatSoles(vuelto)}</strong>
-                </p>
-              ))}
           </div>
-        )}
 
-        {/* ---- Yape/Plin/Otros: comprobante escaneado obligatorio ---- */}
-        {requiereComprobante && (
-          <div className="tz-add-entry" style={{ marginTop: 4 }}>
-            {comprobante ? (
-              <div className="tz-scan-result">
-                <p className="tz-scan-result-title">Comprobante listo</p>
-                <div className="tz-scan-result-row">
-                  <span>ID operación:</span>
-                  <strong>{comprobante.opId || "s/d"}</strong>
+          {metodoPago && (
+            <div className="tz-paso" key={metodoPago}>
+          {/* ---- Efectivo: Calculadora de Vuelto ---- */}
+            {metodoPago === METODO_PAGO_EFECTIVO && (
+              <div className="tz-add-entry" style={{ marginTop: 4 }}>
+                <label className="tz-field-label">Monto recibido (S/)</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  className="tz-amount-input"
+                  placeholder="0.00"
+                  value={montoRecibido}
+                  onChange={(e) => setMontoRecibido(e.target.value)}
+                />
+                <div className="tz-vuelto-quick-buttons">
+                  {MONTOS_RAPIDOS.map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      className="tz-vuelto-quick-btn"
+                      onClick={() => setMontoRecibido(String(m))}
+                    >
+                      S/ {m}
+                    </button>
+                  ))}
                 </div>
-                <div className="tz-scan-result-row">
-                  <span>Fecha / Hora:</span>
-                  <strong>
-                    {comprobante.fecha} {comprobante.hora}
-                  </strong>
-                </div>
-                <button
-                  type="button"
-                  className="tz-camera-cancel tz-image-manager-btn"
-                  style={{ marginTop: 8 }}
-                  onClick={() => setScannerOpen(true)}
-                >
-                  <RotateCcw size={14} /> Volver a escanear
-                </button>
+                {vuelto != null &&
+                  (vuelto < 0 ? (
+                    <p className="tz-error">Falta {formatSoles(Math.abs(vuelto))}.</p>
+                  ) : (
+                    <p className="tz-vuelto-display">
+                      VUELTO: <strong>{formatSoles(vuelto)}</strong>
+                    </p>
+                  ))}
               </div>
-            ) : (
-              <button type="button" className="tz-scan-btn" onClick={() => setScannerOpen(true)}>
-                <Camera size={16} /> Escanear comprobante
-              </button>
             )}
+  
+            {/* ---- Yape/Plin/Otros: comprobante escaneado obligatorio ---- */}
+            {requiereComprobante && (
+              <div className="tz-add-entry" style={{ marginTop: 4 }}>
+                {comprobante ? (
+                  <div className="tz-scan-result">
+                    <p className="tz-scan-result-title">Comprobante listo</p>
+                    <div className="tz-scan-result-row">
+                      <span>ID operación:</span>
+                      <strong>{comprobante.opId || "s/d"}</strong>
+                    </div>
+                    <div className="tz-scan-result-row">
+                      <span>Fecha / Hora:</span>
+                      <strong>
+                        {comprobante.fecha} {comprobante.hora}
+                      </strong>
+                    </div>
+                    <button
+                      type="button"
+                      className="tz-camera-cancel tz-image-manager-btn"
+                      style={{ marginTop: 8 }}
+                      onClick={() => setScannerOpen(true)}
+                    >
+                      <RotateCcw size={14} /> Volver a escanear
+                    </button>
+                  </div>
+                ) : (
+                  <div className="tz-pagoc-comprobante">
+                    <button type="button" className="tz-scan-btn tz-pagoc-adjuntar" onClick={() => setScannerOpen(true)}>
+                      <Camera size={16} /> Adjuntar comprobante
+                    </button>
+                    {/* Imagen copiada: va directo al lector del comprobante. */}
+                    <BotonPegarComprobante
+                      onArchivo={(f) => {
+                        setArchivoPegado(f);
+                        setScannerOpen(true);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+  
+            </div>
+          )}
           </div>
         )}
 
         {(localError || error) && <p className="tz-error">{localError || error}</p>}
         {successMsg && <p className="tz-success">{successMsg}</p>}
 
+        {paquete && metodoPago && (
         <button
           type="submit"
-          className="tz-scan-btn tz-payment-save"
+          className="tz-scan-btn tz-payment-save tz-paso"
           disabled={saving || !puedeEnviar}
           style={{ marginTop: 14 }}
         >
           {saving ? <Loader2 size={16} className="tz-spin" /> : <Zap size={16} />}
           {saving ? "Registrando…" : "Registrar Recarga"}
         </button>
+        )}
 
         {/* ---- Fiado: atajo visible para dar de alta un conductor nuevo ---- */}
         {metodoPago === METODO_PAGO_FIADO && !conductor && (
@@ -712,11 +712,16 @@ export default function RecargaRapidaForm({
       {scannerOpen && (
         <ComprobanteScannerModal
           precioEsperado={paquete ? montoNum : undefined}
+          archivoInicial={archivoPegado}
           onConfirm={(data) => {
             setComprobante(data);
             setScannerOpen(false);
+            setArchivoPegado(null);
           }}
-          onClose={() => setScannerOpen(false)}
+          onClose={() => {
+            setScannerOpen(false);
+            setArchivoPegado(null);
+          }}
         />
       )}
     </>

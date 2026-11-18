@@ -84,7 +84,13 @@ export default function ConductorPage() {
   // Tocar una notificación emergente abre su bandeja en ese chat fijado.
   const [canalDesdeAviso, setCanalDesdeAviso] = useState(null);
   useAbrirMensajesDesdeAviso((canal) => {
-    setCanalDesdeAviso(canal);
+    // Aviso de un chat de viaje: abre la bandeja en ese pasajero.
+    if (canal?.startsWith("pasajero:")) {
+      setCanalDesdeAviso(null);
+      setPasajeroDesdeAlerta(canal.slice("pasajero:".length));
+    } else {
+      setCanalDesdeAviso(canal);
+    }
     setMensajesOpen(true);
   }, !!usuario?.id);
   const { conductor, loading, error, setEstado, actualizar, refresh: refrescarConductor } = useConductorSesion(usuario);
@@ -474,8 +480,10 @@ export default function ConductorPage() {
                       plataforma.totalNoLeidos +
                       Object.values(repartos.noLeidos || {}).reduce((s, x) => s + (x.total || 0), 0);
                     if (total > 0) return <span className="tz-header-btn-badge">{total > 9 ? "+9" : total}</span>;
-                    return repartos.entregasActivas.length > 0 ? (
-                      <span className="tz-header-btn-badge is-punto" aria-label="Tienes un reparto en curso" />
+                    // Sin no leídos: punto encendido mientras haya un viaje o un
+                    // reparto en curso (como el pedido en curso en Caja).
+                    return enCarrera || repartos.entregasActivas.length > 0 ? (
+                      <span className="tz-header-btn-badge is-punto" aria-label={enCarrera ? "Tienes un viaje en curso" : "Tienes un reparto en curso"} />
                     ) : null;
                   })()}
                 </button>
@@ -825,6 +833,7 @@ export default function ConductorPage() {
         <CerrarTurnoModal
           turnoActual={turno.turnoActual}
           cerrarTurno={turno.cerrarTurno}
+          telefono={conductor?.telefono || usuario?.telefono}
           onCerrado={() => {
             turno.refrescarHistorial();
             refrescarEstadisticas();

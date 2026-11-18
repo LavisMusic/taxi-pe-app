@@ -7,17 +7,19 @@ import { supabase } from "../supabaseClient";
 // respaldo al volver a la pestaña y cada 60 s. `null` mientras carga o sin
 // sesión; si no, { verdes, celestes, devueltas }.
 //
-// `devueltas`: cuántas gemas verdes se le devolvieron (acumulado, viajes
-// cancelados; migración 20261202100000). SaldoGemas la usa para no
-// festejar como "ganada" una gema que solo volvió a su saldo. `null` si la
-// base todavía no tiene esa columna.
-const COLUMNAS = "gemas_verdes, gemas_celestes, gemas_verdes_devueltas";
+// `devueltas` / `devueltasCelestes`: cuántas gemas se le devolvieron
+// (acumulado: viajes cancelados las verdes, pedidos o ventas canceladas en
+// Caja las celestes; migraciones 20261202100000 y 20261203100000).
+// SaldoGemas las usa para no festejar como "ganada" una gema que solo volvió
+// a su saldo. `null` si la base todavía no tiene esas columnas.
+const COLUMNAS = "gemas_verdes, gemas_celestes, gemas_verdes_devueltas, gemas_celestes_devueltas";
 const COLUMNAS_SIN_DEVUELTAS = "gemas_verdes, gemas_celestes";
 
 const deFila = (fila) => ({
   verdes: Number(fila.gemas_verdes) || 0,
   celestes: Number(fila.gemas_celestes) || 0,
   devueltas: fila.gemas_verdes_devueltas == null ? null : Number(fila.gemas_verdes_devueltas) || 0,
+  devueltasCelestes: fila.gemas_celestes_devueltas == null ? null : Number(fila.gemas_celestes_devueltas) || 0,
 });
 
 export function useMisGemas(usuarioId) {

@@ -292,59 +292,75 @@ function MessageBubble({ mensaje, mine, esOfertaParaPasajero, estadoOferta, onRe
       estadoOferta === ESTADO_OFERTA_FINALIZADO ||
       estadoOferta === ESTADO_OFERTA_RECHAZADA ||
       estadoOferta === ESTADO_OFERTA_CANCELADA;
+    // Pagó con gema: debajo del aviso de la negociación, la animación.
+    const pagoConGema = resuelta && mensaje?.gema_estado && mensaje.gema_estado !== "devuelta";
+    const tarifaGema = tarifaDeTexto(mensaje?.mensaje);
+    const valorGema = Number(mensaje?.gema_valor) || 0.1;
     return (
-      <div className="tz-chat-bubble tz-chat-bubble-contrato">
-        <p className="tz-chat-contrato-texto">
-          El conductor propone: <strong>{texto}</strong>
-        </p>
-        {resuelta ? (
-          <p
-            className={`tz-chat-contrato-resultado ${
-              estadoOferta === ESTADO_OFERTA_ACEPTADA || estadoOferta === ESTADO_OFERTA_EN_TRANSITO || estadoOferta === ESTADO_OFERTA_FINALIZADO
-                ? "tz-chat-contrato-resultado-ok"
-                : ""
-            }`}
-          >
-            {estadoOferta === ESTADO_OFERTA_ACEPTADA
-              ? "✅ Espera al conductor cerca a su ruta"
-              : estadoOferta === ESTADO_OFERTA_EN_TRANSITO
-              ? "🚗 En camino — ¡buen viaje!"
-              : estadoOferta === ESTADO_OFERTA_FINALIZADO
-              ? "🏁 Viaje finalizado"
-              : estadoOferta === ESTADO_OFERTA_CANCELADA
-              ? "⚠️ Viaje cancelado"
-              : "❌ Oferta rechazada"}
+      <>
+        <div className="tz-chat-bubble tz-chat-bubble-contrato">
+          <p className="tz-chat-contrato-texto">
+            El conductor propone: <strong>{texto}</strong>
           </p>
-        ) : null}
-        {resuelta && <LineaGema mensaje={mensaje} />}
-        {!resuelta && gema?.activo && (
-          <InterruptorGema gema={gema} tarifa={tarifaDeTexto(texto)} activo={usarGema} onCambiar={setUsarGema} />
-        )}
-        {resuelta ? null : (
-          <div className="tz-chat-contrato-acciones">
-            <button
-              type="button"
-              className="tz-chat-contrato-btn tz-chat-contrato-aceptar"
-              disabled={respondiendo}
-              onClick={() => onResponder?.(mensaje.id, ESTADO_OFERTA_ACEPTADA, usarGema)}
+          {resuelta ? (
+            <p
+              className={`tz-chat-contrato-resultado ${
+                estadoOferta === ESTADO_OFERTA_ACEPTADA || estadoOferta === ESTADO_OFERTA_EN_TRANSITO || estadoOferta === ESTADO_OFERTA_FINALIZADO
+                  ? "tz-chat-contrato-resultado-ok"
+                  : ""
+              }`}
             >
-              ✅ Aceptar
-            </button>
-            <button
-              type="button"
-              className="tz-chat-contrato-btn tz-chat-contrato-rechazar"
-              disabled={respondiendo}
-              onClick={() => onResponder?.(mensaje.id, ESTADO_OFERTA_RECHAZADA)}
-            >
-              ❌ Rechazar
-            </button>
-          </div>
+              {estadoOferta === ESTADO_OFERTA_ACEPTADA
+                ? "✅ Espera al conductor cerca a su ruta"
+                : estadoOferta === ESTADO_OFERTA_EN_TRANSITO
+                ? "🚗 En camino — ¡buen viaje!"
+                : estadoOferta === ESTADO_OFERTA_FINALIZADO
+                ? "🏁 Viaje finalizado"
+                : estadoOferta === ESTADO_OFERTA_CANCELADA
+                ? "⚠️ Viaje cancelado"
+                : "❌ Oferta rechazada"}
+            </p>
+          ) : null}
+          {/* La gema usada va aparte, como un segundo aviso con la animación
+              (abajo); acá solo queda "tu gema volvió" si se canceló. */}
+          {resuelta && mensaje?.gema_estado === "devuelta" && <LineaGema mensaje={mensaje} />}
+          {!resuelta && gema?.activo && (
+            <InterruptorGema gema={gema} tarifa={tarifaDeTexto(texto)} activo={usarGema} onCambiar={setUsarGema} />
+          )}
+          {resuelta ? null : (
+            <div className="tz-chat-contrato-acciones">
+              <button
+                type="button"
+                className="tz-chat-contrato-btn tz-chat-contrato-aceptar"
+                disabled={respondiendo}
+                onClick={() => onResponder?.(mensaje.id, ESTADO_OFERTA_ACEPTADA, usarGema)}
+              >
+                ✅ Aceptar
+              </button>
+              <button
+                type="button"
+                className="tz-chat-contrato-btn tz-chat-contrato-rechazar"
+                disabled={respondiendo}
+                onClick={() => onResponder?.(mensaje.id, ESTADO_OFERTA_RECHAZADA)}
+              >
+                ❌ Rechazar
+              </button>
+            </div>
+          )}
+          <span className="tz-chat-bubble-time">
+            {hora}
+            <ChecksLectura mine={mine} leido={!!mensaje?.leido} />
+          </span>
+        </div>
+        {pagoConGema && (
+          <AvisoPagoGema
+            color="verde"
+            pagador
+            cobras={tarifaGema != null ? Math.max(tarifaGema - valorGema, 0) : null}
+            valor={valorGema}
+          />
         )}
-        <span className="tz-chat-bubble-time">
-          {hora}
-          <ChecksLectura mine={mine} leido={!!mensaje?.leido} />
-        </span>
-      </div>
+      </>
     );
   }
 

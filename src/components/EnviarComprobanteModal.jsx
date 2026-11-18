@@ -123,7 +123,7 @@ export default function EnviarComprobanteModal({
           <label className="tz-field-label">Comprobante (foto o captura)</label>
           <label className="tz-scan-btn" style={{ cursor: "pointer" }}>
             <Camera size={16} />
-            {file ? "Cambiar comprobante" : "Ya pagué, adjuntar comprobante"}
+            {file ? "Cambiar comprobante" : "Adjuntar comprobante"}
             {/* Sin `capture`: el celular ofrece cámara o galería. */}
             <input
               type="file"

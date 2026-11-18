@@ -2747,6 +2747,9 @@ export default function Styles() {
         cursor: pointer;
       }
       .tz-turno-ver-detalle svg { transition: transform 0.2s ease; }
+      /* "Enviar a mi WhatsApp" del cierre de turno del conductor. */
+      .tz-csv-btn.tz-turno-whatsapp { color: #25d366; border-color: rgba(37,211,102,0.45); background: rgba(37,211,102,0.08); text-decoration: none; }
+      .tz-csv-btn.tz-turno-whatsapp:hover { box-shadow: 0 0 14px rgba(37,211,102,0.35); }
       .tz-turno-detalle {
         list-style: none;
         margin: 4px 0 10px;
@@ -3040,6 +3043,34 @@ export default function Styles() {
       }
       .tz-pagoc-comprobante .tz-scan-btn { width: 100%; justify-content: center; cursor: pointer; }
       .tz-pagoc-adjuntar { box-shadow: 0 0 16px rgba(43, 232, 255, 0.25); }
+      /* Recargas por pasos: cada paso se despliega con resorte al completar el anterior. */
+      .tz-paso { transform-origin: top center; animation: tz-paso-abre 0.55s cubic-bezier(.34,1.56,.64,1) both; }
+      @keyframes tz-paso-abre {
+        from { opacity: 0; transform: translateY(-10px) scaleY(0.94); filter: blur(3px); }
+        to { opacity: 1; transform: none; filter: none; }
+      }
+      /* Chip del descuento en la lista de planes / membresías (mismo en las dos apps). */
+      .tz-chip-desc {
+        display: inline-flex; align-items: center; margin-left: 8px; padding: 2px 8px; border-radius: 999px;
+        font-size: 11px; font-weight: 800; color: #2be8ff; border: 1px solid rgba(43,232,255,0.45);
+      }
+      .tz-chip-desc.is-vigente {
+        color: #fff; border-color: transparent; background: linear-gradient(90deg, #ff2f9e, #ff8a3d);
+        box-shadow: 0 0 12px rgba(255,47,158,0.55); animation: tz-chip-desc-late 1.8s ease-in-out infinite;
+      }
+      @keyframes tz-chip-desc-late { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+      /* Comprobante: los dos botones iguales (mismo alto, mismo brillo). */
+      .tz-pagoc-comprobante .tz-scan-btn { box-sizing: border-box; min-height: 46px; line-height: normal; box-shadow: 0 0 16px rgba(43, 232, 255, 0.25); }
+      .tz-pagoc-comprobante .tz-pegar-comprobante { margin-top: 0; }
+      .tz-pagoc-pista { margin: 2px 0 0; font-size: 12px; color: var(--text-dim); text-align: center; animation: tz-pagoc-in 0.5s cubic-bezier(.34,1.56,.64,1) both; }
+      /* Espera de 8 s tras copiar: línea de carga en el borde inferior del modal. */
+      .tz-pagoc-espera { position: fixed; height: 3px; z-index: 100000; border-radius: 3px; background: rgba(255,255,255,0.08); overflow: hidden; pointer-events: none; }
+      .tz-pagoc-espera-fill {
+        display: block; height: 100%; width: 100%; transform-origin: left center; border-radius: 3px;
+        background: linear-gradient(90deg, #2be8ff, #39ffb0); box-shadow: 0 0 10px rgba(43,232,255,0.8);
+        animation-name: tz-pagoc-espera; animation-timing-function: linear; animation-fill-mode: both;
+      }
+      @keyframes tz-pagoc-espera { from { transform: scaleX(0); } to { transform: scaleX(1); } }
       .tz-pagoc-preview {
         display: block; max-width: 100%; max-height: 260px; margin: 2px auto 0; border-radius: 12px;
         border: 1px solid var(--border-soft); animation: tz-pagoc-in 0.5s cubic-bezier(.34,1.56,.64,1) both;
@@ -7475,6 +7506,17 @@ export default function Styles() {
         max-width: none;
       }
       .tz-modal.tz-mensajes-modal { display: flex; flex-direction: column; overflow-y: auto; }
+      /* Un chat de viaje abierto dentro de Mensajes: la caja del chat (no
+         scrollea entera; scrollean los mensajes). */
+      .tz-modal.tz-mensajes-modal.tz-chat-modal-shell { overflow: visible; }
+      /* Bandeja del conductor: el título "Mensajes" igual que en Mensajes
+         del pasajero y de Caja (no el de los modales de pagos). */
+      .tz-mensajes-modal:not(.tz-chat-modal-shell) > .tz-payment-modal { flex: 1 1 auto; min-height: 0; }
+      .tz-mensajes-modal .tz-payment-modal > .tz-chatfijo-abierto { flex: 1 1 auto; min-height: 0; }
+      .tz-mensajes-modal .tz-payment-modal > h2 {
+        font-family: inherit; font-size: 20px; text-transform: none; letter-spacing: -0.012em;
+        justify-content: flex-start; text-align: left; margin: 0 0 8px;
+      }
       .tz-mensajes-modal > .tz-chatfijo-abierto { flex: 1 1 auto; min-height: 0; }
       .tz-mensajes-modal .tz-chatfijo-abierto .tz-chatfijo-mensajes { flex: 1 1 auto; min-height: 0; max-height: none; }
       /* Bandeja del conductor con el estilo de Mensajes. */
@@ -7887,6 +7929,33 @@ export default function Styles() {
       .tz-chatcond-foto-vacia { display: inline-flex; align-items: center; justify-content: center; background: rgba(43, 232, 255,0.12); border: 1px solid rgba(43, 232, 255,0.35); color: var(--cyan); }
       .tz-chatfijo-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
       .tz-chatfijo-nombre { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 5px; }
+      /* Fila común de Mensajes (mensajes/FilaChat.jsx) — MISMO bloque en
+         Taxi-PE y Caja. Chat en curso: borde verde en movimiento. */
+      .tz-fila-chat { position: relative; border-radius: 14px; overflow: visible !important; }
+      .tz-fila-chat.is-activo { box-shadow: 0 0 14px rgba(57,255,176,0.25) !important; }
+      .tz-fila-chat.is-activo::before {
+        content: "";
+        position: absolute;
+        inset: -1px;
+        border-radius: inherit;
+        padding: 2px;
+        background: linear-gradient(90deg, rgba(57,255,176,0.1), rgba(57,255,176,1), rgba(57,255,176,0.1));
+        background-size: 300% 100%;
+        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        animation: tz-fila-chat-brillo 2.6s linear infinite;
+        pointer-events: none;
+        z-index: 1;
+      }
+      @keyframes tz-fila-chat-brillo {
+        from { background-position: 0% 0; }
+        to { background-position: 300% 0; }
+      }
+      .tz-fila-chat.is-cerrado { opacity: 0.75; }
+      .tz-fila-chat .tz-chatfijo-nombre { flex-wrap: wrap; row-gap: 2px; }
+      .tz-fila-chat-nombre { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .tz-fila-chat-estrellas { display: inline-flex; align-items: center; font-size: 11px; }
       .tz-chatfijo-pin { color: var(--cyan); }
       .tz-chatfijo-preview { font-size: 12px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .tz-chatfijo-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }

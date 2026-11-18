@@ -29,7 +29,9 @@ export function useActividadChatsPasajero(pasajeroId) {
       .from("chat_mensajes")
       .select("conductor_id, created_at, tipo, estado_oferta, finalizado_at, mensaje, remitente, leido")
       .eq("pasajero_id", pasajeroId)
-      .gte("created_at", new Date(Date.now() - VENTANA_MS).toISOString())
+      // Las últimas 24 h, más un viaje en curso aunque sea más viejo (si no,
+      // no se podría abrir para terminarlo o cancelarlo).
+      .or(`created_at.gte.${new Date(Date.now() - VENTANA_MS).toISOString()},estado_oferta.in.(pendiente,aceptada,en_transito)`)
       .order("created_at", { ascending: false })
       .limit(300);
     if (error) return;
