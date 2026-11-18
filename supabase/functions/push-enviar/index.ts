@@ -126,6 +126,56 @@ Deno.serve(async () => {
     );
   }
 
+  // Anuncios publicados (migración 20261207100000): UNA vez cada uno, ya
+  // vigente, a las cuentas de sus roles. Al tocarlo se abre la app con ESE
+  // anuncio primero.
+  const { data: anunciosNuevos, error: errAnuncios } = await db
+    .from("anuncios")
+    .select("id, titulo, descripcion, roles, fecha_fin")
+    .is("push_enviado_at", null)
+    .eq("activo", true)
+    .or(`fecha_inicio.is.null,fecha_inicio.lte.${ahora}`)
+    .limit(10);
+  if (errAnuncios) console.error("[push-enviar] anuncios", errAnuncios.message);
+  for (const a of anunciosNuevos ?? []) {
+    const { data: tomado } = await db
+      .from("anuncios")
+      .update({ push_enviado_at: ahora })
+      .eq("id", a.id)
+      .is("push_enviado_at", null)
+      .select("id");
+    if (!tomado?.length) continue;
+    if (a.fecha_fin && new Date(a.fecha_fin) < new Date()) continue;
+    const roles = Array.isArray(a.roles) && a.roles.length ? a.roles : ["pasajero"];
+    const { data: subs } = await db
+      .from("push_suscripciones")
+      .select("id, endpoint, p256dh, auth, usuarios!inner(rol, notificaciones_activas)")
+      .in("usuarios.rol", roles)
+      .eq("usuarios.notificaciones_activas", true);
+    await Promise.all(
+      (subs ?? []).map(async (s) => {
+        const rol = (s.usuarios as unknown as { rol: string }).rol;
+        try {
+          const status = await enviarPush(
+            s,
+            {
+              title: a.titulo || "Taxi PE",
+              body: String(a.descripcion || "📣 Tenemos un anuncio para ti").slice(0, 200),
+              anuncio: a.id,
+              url: `${RUTA_ROL[rol] || "/"}?anuncio=${a.id}`,
+              tag: `anuncio-${a.id}`,
+            },
+            vapid
+          );
+          if (status === 404 || status === 410) await db.from("push_suscripciones").delete().eq("id", s.id);
+          else if (status < 300) enviados++;
+        } catch (err) {
+          console.error("[push-enviar] error enviando (anuncio)", err);
+        }
+      })
+    );
+  }
+
   // Avisos de los chats de viaje (migración 20261206100000): cada fila es
   // para UNA cuenta. Los de más de una hora ya no se mandan (llegarían tarde
   // y de golpe tras una caída).

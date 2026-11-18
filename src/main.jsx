@@ -19,6 +19,7 @@ import RecolectorPage from './pages/RecolectorPage'
 import ConductorPage from './pages/ConductorPage'
 import PerfilConductorPage from './pages/PerfilConductorPage'
 import { instalarDespliegueBotones } from './lib/despliegueBotones'
+import { instalarGestosPagina } from './lib/gestosPagina'
 
 // Router de TaxiP. El árbol viejo (AuthProvider + CatalogPage + App.jsx
 // "caja registradora") queda intacto en el repo sin importarse desde
@@ -26,6 +27,8 @@ import { instalarDespliegueBotones } from './lib/despliegueBotones'
 // en el siguiente paso, pero ya no es parte del flujo de rutas.
 // Botones de la cabecera: en el celular se despliegan manteniendo presionado.
 instalarDespliegueBotones()
+// Fondo al estirar la página y deslizar para recargar (app instalada).
+instalarGestosPagina()
 
 // Avisos emergentes (Web Push) e instalación de la app.
 registrarServiceWorker()
