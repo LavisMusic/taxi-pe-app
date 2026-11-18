@@ -3,13 +3,21 @@ import { Settings, Plus, Save, Pencil, Trash2, X, Loader2 } from "lucide-react";
 import ListaArrastrable from "./ListaArrastrable";
 import { formatSoles } from "../../utils/format";
 import { TIPO_ITEM_MEMBRESIA } from "../../lib/taxiEnums";
+import PestanasPildora from "../PestanasPildora";
+import CampoDescuento, { aFechaLocal, aIso, validarDescuento } from "../CampoDescuento";
+import { descuentoVigente } from "../TarjetasPlanes";
 
 // Solo membresías (los créditos ya no existen). Las de recolectores
 // (`conCupo`) llevan además el cupo de conductores que pueden atender en su
 // periodo (fase 3b de gemas).
 function PaqueteForm({ initial, onGuardar, onCancelar, saving, conCupo = false }) {
   const [nombre, setNombre] = useState(initial?.nombre ?? "");
-  const [precio, setPrecio] = useState(String(initial?.precio ?? ""));
+  // Precio SIN descuento (precio_base, migración 20261205100000); la base
+  // calcula el precio vigente con el descuento programado.
+  const [precio, setPrecio] = useState(String(initial?.precio_base ?? initial?.precio ?? ""));
+  const [descPct, setDescPct] = useState(String(initial?.descuento_pct ?? 0));
+  const [descDesde, setDescDesde] = useState(aFechaLocal(initial?.descuento_desde));
+  const [descHasta, setDescHasta] = useState(aFechaLocal(initial?.descuento_hasta));
   const [diasMembresia, setDiasMembresia] = useState(String(initial?.dias_membresia ?? "30"));
   const [cupo, setCupo] = useState(String(initial?.cupo_conductores ?? ""));
   const [descripcion, setDescripcion] = useState(initial?.descripcion ?? "");
@@ -29,6 +37,11 @@ function PaqueteForm({ initial, onGuardar, onCancelar, saving, conCupo = false }
       setError("Ingresa los días de vigencia.");
       return;
     }
+    const errDesc = validarDescuento(descPct, descDesde, descHasta);
+    if (errDesc) {
+      setError(errDesc);
+      return;
+    }
     if (conCupo && (!Number(cupo) || Number(cupo) <= 0 || !Number.isInteger(Number(cupo)))) {
       setError("Ingresa cuántos conductores puede atender en su periodo.");
       return;
@@ -38,6 +51,10 @@ function PaqueteForm({ initial, onGuardar, onCancelar, saving, conCupo = false }
       tipo_item: TIPO_ITEM_MEMBRESIA,
       nombre: nombre.trim(),
       precio: precioNum,
+      precio_base: precioNum,
+      descuento_pct: Number(String(descPct || 0).replace(",", ".")) || 0,
+      descuento_desde: aIso(descDesde),
+      descuento_hasta: aIso(descHasta),
       dias_membresia: Number(diasMembresia),
       creditos: null,
       ...(conCupo ? { cupo_conductores: Number(cupo) } : {}),
@@ -56,7 +73,7 @@ function PaqueteForm({ initial, onGuardar, onCancelar, saving, conCupo = false }
         onChange={(e) => setNombre(e.target.value)}
       />
 
-      <label className="tz-field-label">Precio (S/)</label>
+      <label className="tz-field-label">Precio sin descuento (S/)</label>
       <input type="number" inputMode="decimal" className="tz-text-input" value={precio} onChange={(e) => setPrecio(e.target.value)} />
 
       <label className="tz-field-label">Días de vigencia que otorga</label>
@@ -79,6 +96,15 @@ function PaqueteForm({ initial, onGuardar, onCancelar, saving, conCupo = false }
         </>
       )}
 
+      <CampoDescuento
+        pct={descPct}
+        desde={descDesde}
+        hasta={descHasta}
+        onPct={setDescPct}
+        onDesde={setDescDesde}
+        onHasta={setDescHasta}
+      />
+
       <label className="tz-field-label">Descripción (opcional)</label>
       <input type="text" className="tz-text-input" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
 
@@ -93,6 +119,20 @@ function PaqueteForm({ initial, onGuardar, onCancelar, saving, conCupo = false }
         </button>
       </div>
     </div>
+  );
+}
+
+// Descuento de la fila: vigente (late) o programado.
+function ChipDescuento({ item }) {
+  const pct = Number(item?.descuento_pct || 0);
+  if (!pct) return null;
+  const vigente = descuentoVigente(item) > 0;
+  const fin = item.descuento_hasta && new Date(item.descuento_hasta).getTime() <= Date.now();
+  if (fin) return null;
+  return (
+    <span className={`tz-chip-desc ${vigente ? "is-vigente" : ""}`}>
+      −{pct}% {vigente ? (item.descuento_hasta ? `hasta ${new Date(item.descuento_hasta).toLocaleDateString("es-PE", { day: "2-digit", month: "2-digit" })}` : "") : "programado"}
+    </span>
   );
 }
 
@@ -140,6 +180,7 @@ function PaqueteRow({ paquete, onActualizar, onEliminar, conCupo = false }) {
           {`${paquete.dias_membresia} días`}
           {conCupo && paquete.cupo_conductores ? ` · ${paquete.cupo_conductores} conductores` : ""}
         </span>
+        <ChipDescuento item={paquete} />
       </span>
       <span style={{ display: "flex", gap: 6, flexShrink: 0 }}>
         <button type="button" className="tz-vis-edit-btn" onClick={() => setEditing(true)} aria-label="Editar paquete" title="Editar">
@@ -207,7 +248,7 @@ export default function ConfigurarMembresiasModal({ catalogos, onClose }) {
 
   return (
     <div className="tz-modal-backdrop">
-      <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="tz-modal tz-modal-wide" onClick={(e) => e.stopPropagation()}>
         <button className="tz-modal-close" onClick={onClose} aria-label="Cerrar">
           <X size={18} />
         </button>
@@ -222,23 +263,17 @@ export default function ConfigurarMembresiasModal({ catalogos, onClose }) {
 
           {successMsg && <p className="tz-success">{successMsg}</p>}
 
-          {/* Tab de audiencia — a qué catálogo pertenece el paquete */}
-          <div className="tz-gasto-tipo-buttons" style={{ marginBottom: 8 }}>
-            {catalogos.map((c) => (
-              <button
-                key={c.key}
-                type="button"
-                className={`tz-gasto-tipo-btn tz-audiencia-tab-btn ${audiencia === c.key ? "tz-gasto-tipo-active" : ""}`}
-                onClick={() => {
-                  setAudiencia(c.key);
-                  setAddOpen(false);
-                  setSaveError("");
-                }}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
+          {/* A qué catálogo pertenece el paquete: misma píldora que Configurar
+              planes en Caja (PestanasPildora.jsx). */}
+          <PestanasPildora
+            opciones={catalogos.map((c) => ({ id: c.key, label: c.label }))}
+            valor={audiencia}
+            onCambio={(k) => {
+              setAudiencia(k);
+              setAddOpen(false);
+              setSaveError("");
+            }}
+          />
 
 
           {!addOpen ? (

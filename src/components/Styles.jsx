@@ -3043,6 +3043,16 @@ export default function Styles() {
       }
       .tz-pagoc-comprobante .tz-scan-btn { width: 100%; justify-content: center; cursor: pointer; }
       .tz-pagoc-adjuntar { box-shadow: 0 0 16px rgba(43, 232, 255, 0.25); }
+      /* Chip del descuento en la lista de planes / membresías (mismo en las dos apps). */
+      .tz-chip-desc {
+        display: inline-flex; align-items: center; margin-left: 8px; padding: 2px 8px; border-radius: 999px;
+        font-size: 11px; font-weight: 800; color: #2be8ff; border: 1px solid rgba(43,232,255,0.45);
+      }
+      .tz-chip-desc.is-vigente {
+        color: #fff; border-color: transparent; background: linear-gradient(90deg, #ff2f9e, #ff8a3d);
+        box-shadow: 0 0 12px rgba(255,47,158,0.55); animation: tz-chip-desc-late 1.8s ease-in-out infinite;
+      }
+      @keyframes tz-chip-desc-late { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
       /* Comprobante: los dos botones iguales (mismo alto, mismo brillo). */
       .tz-pagoc-comprobante .tz-scan-btn { box-sizing: border-box; min-height: 46px; line-height: normal; box-shadow: 0 0 16px rgba(43, 232, 255, 0.25); }
       .tz-pagoc-comprobante .tz-pegar-comprobante { margin-top: 0; }
