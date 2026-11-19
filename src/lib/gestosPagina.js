@@ -165,35 +165,62 @@ function pintarRelleno(raiz, escena, colorArriba, colorAbajo) {
   const pie = raiz.querySelector(".tz-page-footer");
   const pieAlFinal =
     !!pie && pie.getBoundingClientRect().bottom + window.scrollY >= document.documentElement.scrollHeight - 4;
-  // El cuerpo: su propio fondo o, si es transparente, la escena del tema.
-  const cuerpo = colorDe(raiz) || !escena ? raiz : escena.firstElementChild || raiz;
-  r.arriba.el.style.backgroundColor = colorArriba;
-  // Arriba, la luz del cuerpo solo si el cuerpo tiene fondo propio (con
-  // escena, la cabecera se funde con su propio color: más arena).
-  copiarFondo(r.arriba.cuerpo, colorDe(raiz) ? raiz : null);
+  // Sin fondo propio y con escena (el mar): la escena es fija y ya llena el
+  // hueco con lo correcto (es lo que hay detrás de la página), así que ahí
+  // el relleno es transparente y solo lleva la cabecera o el pie.
+  const conFondo = !!colorDe(raiz);
+  const soloEscena = !conFondo && !!escena;
+  const cuerpo = conFondo || !escena ? raiz : null;
+  // Arriba: con cabecera, su color debajo (la cabecera se funde con él:
+  // más arena); sin cabecera (pantallas de carga), el cuerpo en espejo o,
+  // con escena, nada.
+  r.arriba.el.style.backgroundColor = cabecera || !soloEscena ? colorArriba : "transparent";
+  copiarFondo(r.arriba.cuerpo, cuerpo);
   copiarFondo(r.arriba.borde, cabecera);
   copiarBrillo(r.arriba.brillo, cabecera);
-  r.abajo.el.style.backgroundColor = colorAbajo;
+  r.abajo.el.style.backgroundColor = soloEscena ? "transparent" : colorAbajo;
   copiarFondo(r.abajo.cuerpo, cuerpo);
   copiarFondo(r.abajo.borde, pieAlFinal ? pie : null);
 }
 
-// En cada desplazamiento: el alto del hueco arriba (desplazamiento
-// negativo) y abajo (pasado el final).
-function seguirEstiron() {
-  if (!relleno) return;
+// El alto del hueco arriba (desplazamiento negativo) y abajo (pasado el
+// final). Devuelve si hay hueco. Se solapa unos píxeles con la cabecera o
+// el pie (la copia en espejo es igual en esa orilla): así no asoma una
+// línea del fondo aunque el dato llegue un cuadro tarde.
+const SOLAPE = 4;
+function medirEstiron() {
+  if (!relleno) return false;
   const y = window.scrollY;
   const max = document.documentElement.scrollHeight - window.innerHeight;
   const poner = (lado, alto) => {
     const a = Math.max(0, Math.ceil(alto));
-    if (lado.alto === a) return;
+    if (lado.alto === a) return a > 0;
     lado.alto = a;
     lado.el.style.display = a > 0 ? "block" : "none";
-    lado.el.style.height = `${a + (a > 0 ? 1 : 0)}px`;
+    lado.el.style.height = `${a > 0 ? a + SOLAPE : 0}px`;
+    return a > 0;
   };
-  poner(relleno.arriba, -y);
+  const arriba = poner(relleno.arriba, -y);
   // (Aunque la página quepa entera, en el iPhone también se estira.)
-  poner(relleno.abajo, y - Math.max(0, max));
+  const abajo = poner(relleno.abajo, y - Math.max(0, max));
+  return arriba || abajo;
+}
+
+// Durante el estirón los eventos de desplazamiento llegan tarde y de a
+// saltos: mientras el dedo está en la pantalla, y hasta que la página
+// vuelve a su lugar, se mide en CADA cuadro.
+let tocando = false;
+let bucle = 0;
+function seguirEstiron() {
+  if (bucle) return;
+  let quietos = 0;
+  const paso = () => {
+    const hay = medirEstiron();
+    quietos = hay || tocando ? 0 : quietos + 1;
+    // Unos cuadros más tras soltar (el rebote termina solo).
+    bucle = quietos > 20 ? 0 : requestAnimationFrame(paso);
+  };
+  bucle = requestAnimationFrame(paso);
 }
 
 function pintarFondo() {
@@ -325,8 +352,11 @@ export function instalarGestosPagina() {
   setInterval(() => document.visibilityState === "visible" && pintarFondo(), 2000);
   window.addEventListener("resize", pintarFondo);
   window.addEventListener("scroll", aplicarFondo, { passive: true });
-  window.addEventListener("scroll", seguirEstiron, { passive: true });
-  window.addEventListener("touchmove", seguirEstiron, { passive: true });
-  window.addEventListener("touchend", () => requestAnimationFrame(seguirEstiron), { passive: true });
+  window.addEventListener("scroll", () => (medirEstiron(), seguirEstiron()), { passive: true });
+  window.addEventListener("touchstart", () => ((tocando = true), seguirEstiron()), { passive: true });
+  window.addEventListener("touchmove", () => (medirEstiron(), seguirEstiron()), { passive: true });
+  const soltarDedo = () => ((tocando = false), seguirEstiron());
+  window.addEventListener("touchend", soltarDedo, { passive: true });
+  window.addEventListener("touchcancel", soltarDedo, { passive: true });
   instalarJalar();
 }
