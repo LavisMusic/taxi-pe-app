@@ -137,12 +137,17 @@ function useRecargaAnuncios() {
 
 // Junta la lista nueva con la que se está mostrando sin reiniciar el
 // carrusel: el pedido va primero; si no, solo se agregan los nuevos.
-function mezclar(prev, candidatos, pedidoFila, mostrados) {
+// `vigentes` (Set de ids que siguen publicados; null si la consulta falló):
+// uno borrado, pausado o vencido sale del carrusel al instante, aunque
+// alguien lo esté viendo en ese momento.
+function mezclar(prev, candidatos, pedidoFila, mostrados, vigentes) {
   if (pedidoFila) {
     return [pedidoFila, ...candidatos.filter((a) => a.id !== pedidoFila.id)];
   }
-  const nuevos = candidatos.filter((a) => !mostrados.has(a.id) && !prev.some((p) => p.id === a.id));
-  return nuevos.length ? [...prev, ...nuevos] : prev;
+  const siguen = vigentes ? prev.filter((a) => vigentes.has(a.id)) : prev;
+  const nuevos = candidatos.filter((a) => !mostrados.has(a.id) && !siguen.some((p) => p.id === a.id));
+  if (!nuevos.length && siguen.length === prev.length) return prev;
+  return [...siguen, ...nuevos];
 }
 
 export function useAnuncioActivo(publico = "pasajeros") {
@@ -190,7 +195,7 @@ export function useAnuncioActivo(publico = "pasajeros") {
         if (cancelado) return;
         const candidatos = lista.filter((a) => tocaMostrarA(a, vistos));
         setAnuncios((prev) => {
-          const sig = mezclar(prev, candidatos, pedidoFila, mostrados.current);
+          const sig = mezclar(prev, candidatos, pedidoFila, mostrados.current, error || !data ? null : new Set(lista.map((a) => a.id)));
           sig.forEach((a) => mostrados.current.add(a.id));
           return sig;
         });

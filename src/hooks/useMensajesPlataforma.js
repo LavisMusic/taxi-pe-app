@@ -101,13 +101,21 @@ export function useMensajesPlataforma(usuarioId) {
     // esta cuenta para los avisos emergentes.
     asegurarSuscripcion();
     const desuscribir = subscribeTable("mensajes_plataforma", () => cargar());
+    // Los anuncios también van en el chat: al publicarse aparecen y al
+    // borrarse (o pausarse) desaparecen al instante.
+    const desuscribirAnuncios = subscribeTable("anuncios", () => cargar());
     const intervalo = setInterval(cargar, REVISAR_MS);
     const alVolver = () => document.visibilityState === "visible" && cargar();
     document.addEventListener("visibilitychange", alVolver);
+    window.addEventListener("focus", cargar);
+    window.addEventListener("online", cargar);
     return () => {
       desuscribir?.();
+      desuscribirAnuncios?.();
       clearInterval(intervalo);
       document.removeEventListener("visibilitychange", alVolver);
+      window.removeEventListener("focus", cargar);
+      window.removeEventListener("online", cargar);
     };
   }, [usuarioId, cargar]);
 
