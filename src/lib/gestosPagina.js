@@ -56,90 +56,144 @@ function aplicarFondo() {
   html.style.backgroundColor = color;
 }
 
-// Bordes exteriores: el diseño continúa fuera de la pantalla. Capas FIJAS
-// justo afuera de cada borde: arriba la cabecera, abajo el pie (o el
-// cuerpo) y a los lados el cuerpo. Cada una lleva una COPIA del fondo del
-// tema (imágenes, degradados y color) del mismo tamaño que el original,
-// puesta en ESPEJO contra el borde: la orilla de la copia es idéntica a la
-// de la página, así que empalma sin costura. En el celular, al estirar la
-// página más allá de sus bordes, la página y lo fijo se corren juntos y
-// queda a la vista la continuación del diseño en vez del negro. Fuera de
-// la pantalla no se ven ni agregan desplazamiento.
-const EXTRA = "70vh";
-let bordes = null;
-function crearBordes() {
-  if (bordes || !document.body) return bordes;
-  const hacer = (posicion, copia) => {
+// Relleno al estirar: en el iPhone, al jalar la página más allá de arriba
+// o de abajo, lo FIJO no se mueve y el hueco que se abre mostraba el fondo
+// del documento (negro) o la escena del tema (el mar encima de la arena).
+// Durante el estirón el navegador informa un desplazamiento negativo (o
+// pasado el final): con eso se cubre EXACTAMENTE el hueco con la
+// continuación del diseño, en espejo contra el borde para que empalme sin
+// costura:
+//   * Arriba: la luz del cuerpo (su fondo, o la escena) + la cabecera
+//     encima (si hay arena, más arena) + el brillo del logo que sigue
+//     hacia arriba.
+//   * Abajo: el cuerpo + el pie encima, si es lo último de la página.
+let relleno = null;
+function crearRelleno() {
+  if (relleno || !document.body) return relleno;
+  const hacer = (lado) => {
     const el = document.createElement("div");
     el.setAttribute("aria-hidden", "true");
-    el.className = "tz-borde-exterior";
-    Object.assign(el.style, { position: "fixed", pointerEvents: "none", zIndex: "0", overflow: "hidden" }, posicion);
-    const interior = document.createElement("div");
-    Object.assign(interior.style, { position: "absolute", left: "0" }, copia);
-    el.appendChild(interior);
+    el.className = "tz-relleno-estiron";
+    Object.assign(el.style, {
+      position: "fixed", left: "0", right: "0", [lado]: "0", height: "0px", overflow: "hidden",
+      pointerEvents: "none", zIndex: "2147482000", display: "none",
+    });
+    // Capas: el cuerpo, la cabecera o el pie, y el brillo del logo.
+    const capa = () => {
+      const c = document.createElement("div");
+      Object.assign(c.style, { position: "absolute", left: "0", [lado === "top" ? "bottom" : "top"]: "0", transform: "scaleY(-1)" });
+      el.appendChild(c);
+      return c;
+    };
+    const cuerpo = capa();
+    const borde = capa();
+    // La cabecera (o el pie) se desvanece antes de su otro borde: no se
+    // repite su línea de abajo y se funde con lo que sigue (la luz del
+    // cuerpo o su mismo color). Sentido en su propio dibujo (antes de
+    // voltearlo): la orilla que empalma con la página queda opaca.
+    const fundido = `linear-gradient(${lado === "top" ? "to bottom" : "to top"}, #000 0%, #000 45%, transparent 88%)`;
+    borde.style.webkitMaskImage = fundido;
+    borde.style.maskImage = fundido;
+    const brillo = document.createElement("img");
+    brillo.alt = "";
+    Object.assign(brillo.style, { position: "absolute", display: "none", maxWidth: "none" });
+    el.appendChild(brillo);
     document.body.appendChild(el);
-    return { el, interior };
+    return { el, cuerpo, borde, brillo, alto: -1 };
   };
-  bordes = {
-    // Arriba: la copia se apoya abajo y se voltea (su orilla de arriba
-    // queda pegada a la de arriba de la cabecera).
-    arriba: hacer({ left: "0", right: "0", bottom: "100%", height: EXTRA }, { bottom: "0", transform: "scaleY(-1)" }),
-    // Abajo: se apoya arriba y se voltea (su orilla de abajo, pegada a la
-    // de abajo de la página).
-    abajo: hacer({ left: "0", right: "0", top: "100%", height: EXTRA }, { top: "0", transform: "scaleY(-1)" }),
-    izquierda: hacer({ top: "-" + EXTRA, bottom: "-" + EXTRA, right: "100%", width: "40vw" }, { top: "0", left: "auto", right: "0", transform: "scaleX(-1)" }),
-    derecha: hacer({ top: "-" + EXTRA, bottom: "-" + EXTRA, left: "100%", width: "40vw" }, { top: "0", transform: "scaleX(-1)" }),
-  };
-  return bordes;
+  relleno = { arriba: hacer("top"), abajo: hacer("bottom") };
+  return relleno;
 }
 
-// Copia el fondo de `desde` en la capa: el mismo dibujo, del mismo tamaño
-// que el original (así se ve igual), con un color opaco debajo.
-function copiarFondo(capa, desde, colorBase, ancho, alto) {
-  const estilo = {
-    backgroundColor: colorBase,
-    backgroundImage: "none",
-    backgroundSize: "",
-    backgroundRepeat: "",
-    backgroundPosition: "",
-    width: `${Math.round(ancho)}px`,
-    height: `${Math.round(alto)}px`,
-  };
-  if (desde) {
-    const cs = getComputedStyle(desde);
-    if (cs.backgroundImage && cs.backgroundImage !== "none") {
-      estilo.backgroundImage = cs.backgroundImage;
-      estilo.backgroundSize = cs.backgroundSize;
-      estilo.backgroundRepeat = cs.backgroundRepeat;
-      estilo.backgroundPosition = cs.backgroundPosition;
-    }
+// Copia el fondo de `desde` en `capa`, del mismo tamaño que el original
+// (así se dibuja igual); sin `desde`, la capa queda vacía.
+function copiarFondo(capa, desde) {
+  if (!desde) {
+    capa.style.display = "none";
+    return;
   }
-  const clave = [colorBase, estilo.width, estilo.height, estilo.backgroundSize, estilo.backgroundPosition, estilo.backgroundImage.length, estilo.backgroundImage.slice(0, 160)].join("|");
-  if (capa.el.dataset.clave === clave) return;
-  capa.el.dataset.clave = clave;
-  capa.el.style.backgroundColor = colorBase;
-  Object.assign(capa.interior.style, estilo);
+  const cs = getComputedStyle(desde);
+  const r = desde.getBoundingClientRect();
+  const color = cs.backgroundColor && !/rgba\([^)]*,\s*0\)$/.test(cs.backgroundColor) && cs.backgroundColor !== "transparent" ? cs.backgroundColor : "transparent";
+  const estilo = {
+    display: "block",
+    width: `${Math.round(r.width || window.innerWidth)}px`,
+    height: `${Math.round(r.height || window.innerHeight)}px`,
+    backgroundColor: color,
+    backgroundImage: cs.backgroundImage,
+    backgroundSize: cs.backgroundSize,
+    backgroundRepeat: cs.backgroundRepeat,
+    backgroundPosition: cs.backgroundPosition,
+  };
+  const clave = [estilo.width, estilo.height, color, estilo.backgroundSize, estilo.backgroundPosition, estilo.backgroundImage.length, estilo.backgroundImage.slice(0, 160)].join("|");
+  if (capa.dataset.clave === clave) return;
+  capa.dataset.clave = clave;
+  Object.assign(capa.style, estilo);
 }
 
-function pintarBordes(raiz, escena, colorArriba, colorAbajo) {
-  const b = crearBordes();
-  if (!b) return;
-  const ancho = window.innerWidth;
+// El brillo del logo sigue hacia arriba: una copia del logo con su mismo
+// filtro (drop-shadow) puesta donde está el logo, justo debajo del hueco.
+// La imagen queda fuera (recortada) y solo asoma su resplandor real.
+function copiarBrillo(capa, cabecera) {
+  const logo = cabecera?.querySelector("img.tz-logo");
+  const filtro = logo ? getComputedStyle(logo).filter : "none";
+  if (!logo || !filtro || filtro === "none" || !(logo.currentSrc || logo.src)) {
+    capa.style.display = "none";
+    return;
+  }
+  const rl = logo.getBoundingClientRect();
+  const rc = cabecera.getBoundingClientRect();
+  const src = logo.currentSrc || logo.src;
+  if (capa.getAttribute("src") !== src) capa.setAttribute("src", src);
+  Object.assign(capa.style, {
+    display: "block",
+    width: `${rl.width}px`,
+    height: `${rl.height}px`,
+    left: `${rl.left}px`,
+    // Su borde de arriba, a la misma distancia del borde del hueco que la
+    // del logo al borde de arriba de la cabecera.
+    bottom: `${-(rl.top - rc.top + rl.height)}px`,
+    filter: filtro,
+  });
+}
+
+function pintarRelleno(raiz, escena, colorArriba, colorAbajo) {
+  const r = crearRelleno();
+  if (!r) return;
   const cabecera = raiz.querySelector(".tz-header");
-  // El pie solo si es lo último de la página (si no, el cuerpo).
+  // El pie solo si es lo último de la página.
   const pie = raiz.querySelector(".tz-page-footer");
   const pieAlFinal =
     !!pie && pie.getBoundingClientRect().bottom + window.scrollY >= document.documentElement.scrollHeight - 4;
   // El cuerpo: su propio fondo o, si es transparente, la escena del tema.
   const cuerpo = colorDe(raiz) || !escena ? raiz : escena.firstElementChild || raiz;
-  const altoDe = (el) => Math.max(1, el?.getBoundingClientRect().height || window.innerHeight);
-  copiarFondo(b.arriba, cabecera || cuerpo, colorArriba, ancho, altoDe(cabecera || cuerpo));
-  if (pieAlFinal) copiarFondo(b.abajo, pie, colorDe(pie) || colorAbajo, ancho, altoDe(pie));
-  else copiarFondo(b.abajo, cuerpo, colorAbajo, ancho, altoDe(cuerpo));
-  // A los lados, el cuerpo con el alto de la pantalla (casi nunca se ven).
-  const altoLado = window.innerHeight * 2.4;
-  copiarFondo(b.izquierda, cuerpo, colorAbajo, ancho, altoLado);
-  copiarFondo(b.derecha, cuerpo, colorAbajo, ancho, altoLado);
+  r.arriba.el.style.backgroundColor = colorArriba;
+  // Arriba, la luz del cuerpo solo si el cuerpo tiene fondo propio (con
+  // escena, la cabecera se funde con su propio color: más arena).
+  copiarFondo(r.arriba.cuerpo, colorDe(raiz) ? raiz : null);
+  copiarFondo(r.arriba.borde, cabecera);
+  copiarBrillo(r.arriba.brillo, cabecera);
+  r.abajo.el.style.backgroundColor = colorAbajo;
+  copiarFondo(r.abajo.cuerpo, cuerpo);
+  copiarFondo(r.abajo.borde, pieAlFinal ? pie : null);
+}
+
+// En cada desplazamiento: el alto del hueco arriba (desplazamiento
+// negativo) y abajo (pasado el final).
+function seguirEstiron() {
+  if (!relleno) return;
+  const y = window.scrollY;
+  const max = document.documentElement.scrollHeight - window.innerHeight;
+  const poner = (lado, alto) => {
+    const a = Math.max(0, Math.ceil(alto));
+    if (lado.alto === a) return;
+    lado.alto = a;
+    lado.el.style.display = a > 0 ? "block" : "none";
+    lado.el.style.height = `${a + (a > 0 ? 1 : 0)}px`;
+  };
+  poner(relleno.arriba, -y);
+  // (Aunque la página quepa entera, en el iPhone también se estira.)
+  poner(relleno.abajo, y - Math.max(0, max));
 }
 
 function pintarFondo() {
@@ -147,10 +201,10 @@ function pintarFondo() {
   if (!raiz) return;
   const escena = document.querySelector(".tz-escena");
   const cuerpo = colorDe(raiz) || colorDe(escena?.firstElementChild);
-  // Los bordes exteriores, siempre (con el color del documento si la
+  // El relleno al estirar, siempre (con el color del documento si la
   // página no tiene fondo propio).
   const base = opaco(getComputedStyle(document.documentElement).backgroundColor) || "#0a0716";
-  pintarBordes(
+  pintarRelleno(
     raiz,
     escena,
     colorDe(raiz.querySelector(".tz-header")) || cuerpo || base,
@@ -271,5 +325,8 @@ export function instalarGestosPagina() {
   setInterval(() => document.visibilityState === "visible" && pintarFondo(), 2000);
   window.addEventListener("resize", pintarFondo);
   window.addEventListener("scroll", aplicarFondo, { passive: true });
+  window.addEventListener("scroll", seguirEstiron, { passive: true });
+  window.addEventListener("touchmove", seguirEstiron, { passive: true });
+  window.addEventListener("touchend", () => requestAnimationFrame(seguirEstiron), { passive: true });
   instalarJalar();
 }
