@@ -187,7 +187,9 @@ function pintarRelleno(raiz, escena, colorArriba, colorAbajo) {
 // final). Devuelve si hay hueco. Se solapa unos píxeles con la cabecera o
 // el pie (la copia en espejo es igual en esa orilla): así no asoma una
 // línea del fondo aunque el dato llegue un cuadro tarde.
-const SOLAPE = 4;
+// (En el iPhone el dato llega unos píxeles tarde mientras se estira: con
+// 4 px todavía asomaba una línea.)
+const SOLAPE = 20;
 function medirEstiron() {
   if (!relleno) return false;
   const y = window.scrollY;
@@ -223,9 +225,65 @@ function seguirEstiron() {
   bucle = requestAnimationFrame(paso);
 }
 
+// Notch: la app ocupa toda la pantalla (viewport-fit=cover en index.html),
+// así que la cabecera de arriba de la página se extiende debajo de la
+// barra de estado con su diseño y su contenido baja lo justo (padding
+// de arriba + el alto del notch). Los modales se apartan del notch y de
+// la barra de inicio.
+let sonda = null;
+function altoNotch() {
+  if (!sonda) {
+    sonda = document.createElement("div");
+    sonda.setAttribute("aria-hidden", "true");
+    Object.assign(sonda.style, {
+      position: "fixed", top: "0", left: "0", width: "0", visibility: "hidden", pointerEvents: "none",
+      height: "env(safe-area-inset-top, 0px)",
+    });
+    document.body.appendChild(sonda);
+  }
+  return Math.round(sonda.getBoundingClientRect().height);
+}
+
+function instalarEstilosNotch() {
+  const st = document.createElement("style");
+  st.setAttribute("data-tz-notch", "");
+  st.textContent = `
+html .tz-modal-backdrop { padding-top: max(10px, env(safe-area-inset-top, 0px)); padding-bottom: max(10px, env(safe-area-inset-bottom, 0px)); }
+html .tz-modal { max-height: min(90vh, calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 20px)); }
+html .tz-cart-floating-bar { bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+html .tz-vista-previa { bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
+`;
+  document.head.appendChild(st);
+}
+
+let cabeceraConNotch = null;
+function ajustarNotch(raiz) {
+  const h = raiz?.querySelector(".tz-header") || null;
+  if (cabeceraConNotch && cabeceraConNotch !== h) {
+    cabeceraConNotch.style.removeProperty("padding-top");
+    cabeceraConNotch = null;
+  }
+  const notch = altoNotch();
+  // Solo la cabecera que está arriba del todo de la página.
+  const alTope = h && h.getBoundingClientRect().top + window.scrollY < 2;
+  if (!h || !notch || !alTope) {
+    if (h && h === cabeceraConNotch) {
+      h.style.removeProperty("padding-top");
+      cabeceraConNotch = null;
+    }
+    return;
+  }
+  // El padding del tema (sin lo agregado) + el notch, por encima del tema.
+  h.style.removeProperty("padding-top");
+  const base = parseFloat(getComputedStyle(h).paddingTop) || 0;
+  h.style.setProperty("padding-top", `${base + notch}px`, "important");
+  cabeceraConNotch = h;
+}
+
 function pintarFondo() {
   const raiz = document.querySelector(".tz-root");
   if (!raiz) return;
+  ajustarNotch(raiz);
   const escena = document.querySelector(".tz-escena");
   const cuerpo = colorDe(raiz) || colorDe(escena?.firstElementChild);
   // El relleno al estirar, siempre (con el color del documento si la
@@ -345,6 +403,21 @@ let instalado = false;
 export function instalarGestosPagina() {
   if (instalado || typeof window === "undefined") return;
   instalado = true;
+  instalarEstilosNotch();
+  // Al cambiar de pantalla aparece otra cabecera: se le da el espacio del
+  // notch enseguida (sin esperar la revisión de cada 2 s).
+  let pendiente = 0;
+  let vista = null;
+  new MutationObserver(() => {
+    if (pendiente) return;
+    pendiente = requestAnimationFrame(() => {
+      pendiente = 0;
+      const h = document.querySelector(".tz-root .tz-header");
+      if (h === vista) return;
+      vista = h;
+      ajustarNotch(document.querySelector(".tz-root"));
+    });
+  }).observe(document.body, { childList: true, subtree: true });
   // El tema se aplica después de cargar (y en Caja cambia por negocio):
   // se vuelve a leer al rato y cada pocos segundos (son dos lecturas).
   pintarFondo();
