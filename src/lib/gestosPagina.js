@@ -1,180 +1,26 @@
 // Gestos de la página — MISMO archivo en Taxi-PE y Caja
 // (src/lib/gestosPagina.js). Se instala una vez al arrancar (main.jsx).
 //
-// 1. Fondo al estirar: en el celular, al jalar la página más allá de sus
-//    bordes (arriba, abajo, a los lados) se veía el negro del documento.
-//    El fondo del documento toma el color de la cabecera cerca de arriba y
-//    el del cuerpo cerca de abajo, leídos del tema activo (en Caja cambia
-//    con el tema de cada negocio): se ve la continuación de la página.
-// 2. Deslizar para recargar (solo en la app instalada: en el navegador ya
-//    existe ese gesto): con la página arriba del todo y sin un modal
-//    abierto, al jalar hacia abajo aparece un círculo con una flecha que
-//    crece y gira; soltándolo pasado el límite, la página se recarga.
+// 1. La página no se estira más allá de sus bordes (overscroll-behavior:
+//    none): en el iPhone el estirón descubría un espacio afuera (negro o
+//    con un relleno que no acompañaba bien a la página).
+// 2. Deslizar para recargar: con la página arriba del todo y sin un modal
+//    abierto, al jalar hacia abajo baja solo un círculo y dentro gira el
+//    símbolo de recarga; soltándolo pasado el límite, el símbolo gira un
+//    momento, el círculo se esconde suave y la página se recarga. Antes
+//    del límite, el círculo se esconde y no pasa nada más. (Como la página
+//    ya no se estira, el gesto propio del navegador tampoco existe: este
+//    funciona en la app instalada y en el navegador.)
+// 3. Notch: la app ocupa toda la pantalla (viewport-fit=cover en
+//    index.html); la cabecera de arriba de la página se extiende debajo de
+//    la barra de estado con su diseño y su contenido baja lo justo. Los
+//    modales y las barras de abajo se apartan del notch y de la barra de
+//    inicio.
 
 const UMBRAL = 70; // px de jalón (ya amortiguado) para recargar
 const TOPE = 120;
 
-function primerColor(fondo) {
-  // El último degradado suele ser la base del tema: su primer color.
-  const capas = String(fondo || "").split(/(?=linear-gradient|radial-gradient|url\()/);
-  for (let i = capas.length - 1; i >= 0; i--) {
-    const m = capas[i].match(/rgba?\([^)]+\)|#[0-9a-f]{3,8}\b/i);
-    if (m && !/rgba\([^)]*,\s*0\)/.test(m[0])) return m[0];
-  }
-  return null;
-}
-
-// Opaco: lo que se descubre al estirar no tiene nada detrás (se vería negro).
-const opaco = (c) => (c ? c.replace(/rgba\(\s*([^,]+),\s*([^,]+),\s*([^,]+),[^)]*\)/i, "rgb($1, $2, $3)") : c);
-
-function colorDe(el) {
-  if (!el) return null;
-  const cs = getComputedStyle(el);
-  const c = cs.backgroundColor;
-  if (c && c !== "transparent" && !/rgba\([^)]*,\s*0\)$/.test(c)) return opaco(c);
-  return opaco(primerColor(cs.backgroundImage));
-}
-
-// En iPhone el área que se descubre al estirar se pinta con el COLOR de
-// fondo del documento (no con imágenes ni degradados): se usa el de la
-// cabecera cerca de arriba y el del cuerpo cerca de abajo. Solo se toca
-// el del documento (<html>), nunca el del <body>: un fondo en el body
-// taparía la escena del tema (va detrás del contenido, z-index -1).
-let colores = { arriba: null, abajo: null };
-let aplicado = "";
-function aplicarFondo() {
-  const html = document.documentElement;
-  if (!colores.arriba) {
-    if (aplicado) html.style.backgroundColor = "";
-    aplicado = "";
-    return;
-  }
-  const cercaDeArriba = window.scrollY < window.innerHeight / 2;
-  const color = cercaDeArriba ? colores.arriba : colores.abajo || colores.arriba;
-  if (color === aplicado) return;
-  aplicado = color;
-  html.style.backgroundColor = color;
-}
-
-// Exterior de arriba: la continuación del diseño va PEGADA a la página,
-// como parte del documento, justo encima de su borde de arriba (fuera de
-// la pantalla, no agrega desplazamiento). Al estirar la página en el
-// iPhone se mueve junto con ella, sin retraso ni temblor (una capa fija
-// que se ajustaba por cuadro temblaba). Lleva, en espejo contra el borde
-// para que empalme sin costura:
-//   * la luz del cuerpo (si tiene fondo propio; con escena, la escena ya
-//     está detrás),
-//   * la cabecera encima, desvaneciéndose (si hay arena, más arena),
-//   * el resplandor real del logo, que sigue hacia arriba.
-// Abajo se ve el fondo del documento (el color del cuerpo) o la escena.
-let exterior = null;
-function crearExterior() {
-  if (exterior || !document.body) return exterior;
-  const el = document.createElement("div");
-  el.setAttribute("aria-hidden", "true");
-  el.className = "tz-exterior-arriba";
-  Object.assign(el.style, {
-    position: "absolute", left: "0", width: "100%", top: "-100vh", height: "100vh",
-    overflow: "hidden", pointerEvents: "none",
-  });
-  const capa = () => {
-    const c = document.createElement("div");
-    Object.assign(c.style, { position: "absolute", left: "0", bottom: "0", transform: "scaleY(-1)" });
-    el.appendChild(c);
-    return c;
-  };
-  const cuerpo = capa();
-  const borde = capa();
-  // La cabecera se desvanece antes de su borde de abajo (en su propio
-  // dibujo, antes de voltearlo): no se repite su línea y se funde con lo
-  // que sigue.
-  const fundido = "linear-gradient(to bottom, #000 0%, #000 45%, transparent 88%)";
-  borde.style.webkitMaskImage = fundido;
-  borde.style.maskImage = fundido;
-  const brillo = document.createElement("img");
-  brillo.alt = "";
-  Object.assign(brillo.style, { position: "absolute", display: "none", maxWidth: "none" });
-  el.appendChild(brillo);
-  document.body.appendChild(el);
-  exterior = { el, cuerpo, borde, brillo };
-  return exterior;
-}
-
-// Copia el fondo de `desde` en `capa`, del mismo tamaño que el original
-// (así se dibuja igual); sin `desde`, la capa queda vacía.
-function copiarFondo(capa, desde) {
-  if (!desde) {
-    capa.style.display = "none";
-    return;
-  }
-  const cs = getComputedStyle(desde);
-  const r = desde.getBoundingClientRect();
-  const color = cs.backgroundColor && !/rgba\([^)]*,\s*0\)$/.test(cs.backgroundColor) && cs.backgroundColor !== "transparent" ? cs.backgroundColor : "transparent";
-  const estilo = {
-    display: "block",
-    width: `${Math.round(r.width || window.innerWidth)}px`,
-    height: `${Math.round(r.height || window.innerHeight)}px`,
-    backgroundColor: color,
-    backgroundImage: cs.backgroundImage,
-    backgroundSize: cs.backgroundSize,
-    backgroundRepeat: cs.backgroundRepeat,
-    backgroundPosition: cs.backgroundPosition,
-  };
-  const clave = [estilo.width, estilo.height, color, estilo.backgroundSize, estilo.backgroundPosition, estilo.backgroundImage.length, estilo.backgroundImage.slice(0, 160)].join("|");
-  if (capa.dataset.clave === clave) return;
-  capa.dataset.clave = clave;
-  Object.assign(capa.style, estilo);
-}
-
-// El resplandor del logo sigue hacia arriba: una copia del logo con su
-// mismo filtro (drop-shadow) puesta donde está el logo, justo debajo del
-// borde. La imagen queda fuera (recortada) y solo asoma su resplandor.
-function copiarBrillo(capa, cabecera) {
-  const logo = cabecera?.querySelector("img.tz-logo");
-  const filtro = logo ? getComputedStyle(logo).filter : "none";
-  if (!logo || !filtro || filtro === "none" || !(logo.currentSrc || logo.src)) {
-    capa.style.display = "none";
-    return;
-  }
-  const rl = logo.getBoundingClientRect();
-  const rc = cabecera.getBoundingClientRect();
-  const src = logo.currentSrc || logo.src;
-  if (capa.getAttribute("src") !== src) capa.setAttribute("src", src);
-  Object.assign(capa.style, {
-    display: "block",
-    width: `${rl.width}px`,
-    height: `${rl.height}px`,
-    left: `${rl.left}px`,
-    bottom: `${-(rl.top - rc.top + rl.height)}px`,
-    filter: filtro,
-  });
-}
-
-function pintarExterior(raiz, escena, colorArriba) {
-  const e = crearExterior();
-  if (!e) return;
-  const cabecera = raiz.querySelector(".tz-header");
-  // Solo si la cabecera es lo de arriba de la página.
-  const alTope = !cabecera || cabecera.getBoundingClientRect().top + window.scrollY < 2;
-  const conFondo = !!colorDe(raiz);
-  const soloEscena = !conFondo && !!escena;
-  if (!alTope || (!cabecera && soloEscena)) {
-    // Pantalla de carga con escena: la escena ya está detrás.
-    e.el.style.display = "none";
-    return;
-  }
-  e.el.style.display = "block";
-  e.el.style.backgroundColor = colorArriba;
-  copiarFondo(e.cuerpo, conFondo ? raiz : null);
-  copiarFondo(e.borde, cabecera);
-  copiarBrillo(e.brillo, cabecera);
-}
-
-// Notch: la app ocupa toda la pantalla (viewport-fit=cover en index.html),
-// así que la cabecera de arriba de la página se extiende debajo de la
-// barra de estado con su diseño y su contenido baja lo justo (padding
-// de arriba + el alto del notch). Los modales se apartan del notch y de
-// la barra de inicio.
+// ---------------------------------------------------------------- notch
 let sonda = null;
 function altoNotch() {
   if (!sonda) {
@@ -189,10 +35,11 @@ function altoNotch() {
   return Math.round(sonda.getBoundingClientRect().height);
 }
 
-function instalarEstilosNotch() {
+function instalarEstilos() {
   const st = document.createElement("style");
-  st.setAttribute("data-tz-notch", "");
+  st.setAttribute("data-tz-gestos", "");
   st.textContent = `
+html, body { overscroll-behavior: none; }
 html .tz-modal-backdrop { padding-top: max(10px, env(safe-area-inset-top, 0px)); padding-bottom: max(10px, env(safe-area-inset-bottom, 0px)); }
 html .tz-modal { max-height: min(90vh, calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 20px)); }
 html .tz-cart-floating-bar { bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
@@ -202,7 +49,8 @@ html .tz-vista-previa { bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
 }
 
 let cabeceraConNotch = null;
-function ajustarNotch(raiz) {
+function ajustarNotch() {
+  const raiz = document.querySelector(".tz-root");
   const h = raiz?.querySelector(".tz-header") || null;
   if (cabeceraConNotch && cabeceraConNotch !== h) {
     cabeceraConNotch.style.removeProperty("padding-top");
@@ -225,32 +73,7 @@ function ajustarNotch(raiz) {
   cabeceraConNotch = h;
 }
 
-function pintarFondo() {
-  const raiz = document.querySelector(".tz-root");
-  if (!raiz) return;
-  ajustarNotch(raiz);
-  const escena = document.querySelector(".tz-escena");
-  const cuerpo = colorDe(raiz) || colorDe(escena?.firstElementChild);
-  // El exterior de arriba (con el color del documento si la página no
-  // tiene fondo propio).
-  const base = opaco(getComputedStyle(document.documentElement).backgroundColor) || "#0a0716";
-  pintarExterior(raiz, escena, colorDe(raiz.querySelector(".tz-header")) || cuerpo || base);
-  // Si ni el cuerpo ni una escena cubren la pantalla, lo que se ve detrás
-  // del contenido ES el fondo del documento: se deja como está.
-  if (!cuerpo) {
-    colores = { arriba: null, abajo: null };
-    aplicarFondo();
-    return;
-  }
-  const arriba = colorDe(raiz.querySelector(".tz-header")) || cuerpo;
-  colores = { arriba, abajo: cuerpo };
-  aplicado = "";
-  aplicarFondo();
-}
-
-const esAppInstalada = () =>
-  window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone === true;
-
+// ---------------------------------------------------------------- deslizar para recargar
 function instalarJalar() {
   let inicio = null;
   let jalon = 0;
@@ -261,7 +84,7 @@ function instalarJalar() {
     '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>';
   Object.assign(el.style, {
     position: "fixed",
-    top: "0",
+    top: "env(safe-area-inset-top, 0px)",
     left: "50%",
     width: "44px",
     height: "44px",
@@ -280,15 +103,21 @@ function instalarJalar() {
     pointerEvents: "none",
     willChange: "transform, opacity",
   });
+  // Solo el símbolo gira (el círculo no).
+  const simbolo = el.firstChild;
+  simbolo.style.transition = "transform 0.2s ease";
   const montar = () => document.body && !el.isConnected && document.body.appendChild(el);
 
   const mover = (d, suave) => {
-    el.style.transition = suave ? "transform 0.5s cubic-bezier(.34,1.56,.64,1), opacity 0.35s ease" : "none";
+    el.style.transition = suave
+      ? "transform 0.55s cubic-bezier(.34,1.56,.64,1), opacity 0.35s ease, box-shadow 0.3s ease, color 0.3s ease"
+      : "box-shadow 0.3s ease, color 0.3s ease";
     const listo = d >= UMBRAL;
-    el.style.transform = `translateY(${d + (d > 0 ? 18 : 0)}px) rotate(${d * 3}deg) scale(${listo ? 1.12 : 0.8 + (d / UMBRAL) * 0.2})`;
+    el.style.transform = `translateY(${d + (d > 0 ? 18 : 0)}px) scale(${listo ? 1.12 : 0.8 + (d / UMBRAL) * 0.2})`;
     el.style.opacity = String(Math.min(1, d / 40));
     el.style.boxShadow = listo ? "0 0 26px rgba(57,255,176,0.75)" : "0 0 18px rgba(43,232,255,0.45)";
     el.style.color = listo ? "#39ffb0" : "#2be8ff";
+    simbolo.style.transform = `rotate(${d * 4}deg)`;
   };
 
   const hayModal = () => !!document.querySelector(".tz-modal-backdrop, .tz-modal");
@@ -296,7 +125,7 @@ function instalarJalar() {
   window.addEventListener(
     "touchstart",
     (e) => {
-      if (recargando || !esAppInstalada() || window.scrollY > 0 || hayModal() || e.touches.length !== 1) {
+      if (recargando || window.scrollY > 0 || hayModal() || e.touches.length !== 1) {
         inicio = null;
         return;
       }
@@ -326,10 +155,22 @@ function instalarJalar() {
     inicio = null;
     if (jalon >= UMBRAL) {
       recargando = true;
-      el.style.transition = "transform 0.4s cubic-bezier(.34,1.56,.64,1)";
-      el.style.transform = `translateY(${UMBRAL}px) scale(1.12)`;
-      el.animate?.([{ rotate: "0deg" }, { rotate: "360deg" }], { duration: 650, iterations: Infinity });
-      setTimeout(() => window.location.reload(), 280);
+      // Se acomoda en su lugar, el símbolo gira un momento, el círculo se
+      // esconde suave y recién ahí se recarga.
+      el.style.transition = "transform 0.45s cubic-bezier(.34,1.56,.64,1)";
+      el.style.transform = `translateY(${UMBRAL + 18}px) scale(1.12)`;
+      simbolo.style.transition = "none";
+      simbolo.animate?.([{ transform: "rotate(0deg)" }, { transform: "rotate(360deg)" }], {
+        duration: 650,
+        iterations: Infinity,
+        easing: "linear",
+      });
+      setTimeout(() => {
+        el.style.transition = "transform 0.4s cubic-bezier(.36,0,.66,-0.56), opacity 0.35s ease";
+        el.style.transform = `translateY(${UMBRAL - 10}px) scale(0.3)`;
+        el.style.opacity = "0";
+      }, 700);
+      setTimeout(() => window.location.reload(), 1080);
       return;
     }
     jalon = 0;
@@ -343,9 +184,10 @@ let instalado = false;
 export function instalarGestosPagina() {
   if (instalado || typeof window === "undefined") return;
   instalado = true;
-  instalarEstilosNotch();
-  // Al cambiar de pantalla aparece otra cabecera: se le da el espacio del
-  // notch enseguida (sin esperar la revisión de cada 2 s).
+  instalarEstilos();
+  // Cada cabecera nueva (al cambiar de pantalla) recibe el espacio del
+  // notch enseguida; además se revisa cada pocos segundos (el tema puede
+  // cambiar su padding).
   let pendiente = 0;
   let vista = null;
   new MutationObserver(() => {
@@ -355,15 +197,12 @@ export function instalarGestosPagina() {
       const h = document.querySelector(".tz-root .tz-header");
       if (h === vista) return;
       vista = h;
-      ajustarNotch(document.querySelector(".tz-root"));
+      ajustarNotch();
     });
   }).observe(document.body, { childList: true, subtree: true });
-  // El tema se aplica después de cargar (y en Caja cambia por negocio):
-  // se vuelve a leer al rato y cada pocos segundos (son dos lecturas).
-  pintarFondo();
-  [300, 1000, 2500].forEach((ms) => setTimeout(pintarFondo, ms));
-  setInterval(() => document.visibilityState === "visible" && pintarFondo(), 2000);
-  window.addEventListener("resize", pintarFondo);
-  window.addEventListener("scroll", aplicarFondo, { passive: true });
+  ajustarNotch();
+  [300, 1000, 2500].forEach((ms) => setTimeout(ajustarNotch, ms));
+  setInterval(() => document.visibilityState === "visible" && ajustarNotch(), 2000);
+  window.addEventListener("resize", ajustarNotch);
   instalarJalar();
 }
