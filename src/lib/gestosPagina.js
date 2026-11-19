@@ -56,11 +56,106 @@ function aplicarFondo() {
   html.style.backgroundColor = color;
 }
 
+// Bordes exteriores: el diseño continúa fuera de la pantalla. Capas FIJAS
+// justo afuera de cada borde: arriba la cabecera, abajo el pie (o el
+// cuerpo) y a los lados el cuerpo. Cada una lleva una COPIA del fondo del
+// tema (imágenes, degradados y color) del mismo tamaño que el original,
+// puesta en ESPEJO contra el borde: la orilla de la copia es idéntica a la
+// de la página, así que empalma sin costura. En el celular, al estirar la
+// página más allá de sus bordes, la página y lo fijo se corren juntos y
+// queda a la vista la continuación del diseño en vez del negro. Fuera de
+// la pantalla no se ven ni agregan desplazamiento.
+const EXTRA = "70vh";
+let bordes = null;
+function crearBordes() {
+  if (bordes || !document.body) return bordes;
+  const hacer = (posicion, copia) => {
+    const el = document.createElement("div");
+    el.setAttribute("aria-hidden", "true");
+    el.className = "tz-borde-exterior";
+    Object.assign(el.style, { position: "fixed", pointerEvents: "none", zIndex: "0", overflow: "hidden" }, posicion);
+    const interior = document.createElement("div");
+    Object.assign(interior.style, { position: "absolute", left: "0" }, copia);
+    el.appendChild(interior);
+    document.body.appendChild(el);
+    return { el, interior };
+  };
+  bordes = {
+    // Arriba: la copia se apoya abajo y se voltea (su orilla de arriba
+    // queda pegada a la de arriba de la cabecera).
+    arriba: hacer({ left: "0", right: "0", bottom: "100%", height: EXTRA }, { bottom: "0", transform: "scaleY(-1)" }),
+    // Abajo: se apoya arriba y se voltea (su orilla de abajo, pegada a la
+    // de abajo de la página).
+    abajo: hacer({ left: "0", right: "0", top: "100%", height: EXTRA }, { top: "0", transform: "scaleY(-1)" }),
+    izquierda: hacer({ top: "-" + EXTRA, bottom: "-" + EXTRA, right: "100%", width: "40vw" }, { top: "0", left: "auto", right: "0", transform: "scaleX(-1)" }),
+    derecha: hacer({ top: "-" + EXTRA, bottom: "-" + EXTRA, left: "100%", width: "40vw" }, { top: "0", transform: "scaleX(-1)" }),
+  };
+  return bordes;
+}
+
+// Copia el fondo de `desde` en la capa: el mismo dibujo, del mismo tamaño
+// que el original (así se ve igual), con un color opaco debajo.
+function copiarFondo(capa, desde, colorBase, ancho, alto) {
+  const estilo = {
+    backgroundColor: colorBase,
+    backgroundImage: "none",
+    backgroundSize: "",
+    backgroundRepeat: "",
+    backgroundPosition: "",
+    width: `${Math.round(ancho)}px`,
+    height: `${Math.round(alto)}px`,
+  };
+  if (desde) {
+    const cs = getComputedStyle(desde);
+    if (cs.backgroundImage && cs.backgroundImage !== "none") {
+      estilo.backgroundImage = cs.backgroundImage;
+      estilo.backgroundSize = cs.backgroundSize;
+      estilo.backgroundRepeat = cs.backgroundRepeat;
+      estilo.backgroundPosition = cs.backgroundPosition;
+    }
+  }
+  const clave = [colorBase, estilo.width, estilo.height, estilo.backgroundSize, estilo.backgroundPosition, estilo.backgroundImage.length, estilo.backgroundImage.slice(0, 160)].join("|");
+  if (capa.el.dataset.clave === clave) return;
+  capa.el.dataset.clave = clave;
+  capa.el.style.backgroundColor = colorBase;
+  Object.assign(capa.interior.style, estilo);
+}
+
+function pintarBordes(raiz, escena, colorArriba, colorAbajo) {
+  const b = crearBordes();
+  if (!b) return;
+  const ancho = window.innerWidth;
+  const cabecera = raiz.querySelector(".tz-header");
+  // El pie solo si es lo último de la página (si no, el cuerpo).
+  const pie = raiz.querySelector(".tz-page-footer");
+  const pieAlFinal =
+    !!pie && pie.getBoundingClientRect().bottom + window.scrollY >= document.documentElement.scrollHeight - 4;
+  // El cuerpo: su propio fondo o, si es transparente, la escena del tema.
+  const cuerpo = colorDe(raiz) || !escena ? raiz : escena.firstElementChild || raiz;
+  const altoDe = (el) => Math.max(1, el?.getBoundingClientRect().height || window.innerHeight);
+  copiarFondo(b.arriba, cabecera || cuerpo, colorArriba, ancho, altoDe(cabecera || cuerpo));
+  if (pieAlFinal) copiarFondo(b.abajo, pie, colorDe(pie) || colorAbajo, ancho, altoDe(pie));
+  else copiarFondo(b.abajo, cuerpo, colorAbajo, ancho, altoDe(cuerpo));
+  // A los lados, el cuerpo con el alto de la pantalla (casi nunca se ven).
+  const altoLado = window.innerHeight * 2.4;
+  copiarFondo(b.izquierda, cuerpo, colorAbajo, ancho, altoLado);
+  copiarFondo(b.derecha, cuerpo, colorAbajo, ancho, altoLado);
+}
+
 function pintarFondo() {
   const raiz = document.querySelector(".tz-root");
   if (!raiz) return;
   const escena = document.querySelector(".tz-escena");
   const cuerpo = colorDe(raiz) || colorDe(escena?.firstElementChild);
+  // Los bordes exteriores, siempre (con el color del documento si la
+  // página no tiene fondo propio).
+  const base = opaco(getComputedStyle(document.documentElement).backgroundColor) || "#0a0716";
+  pintarBordes(
+    raiz,
+    escena,
+    colorDe(raiz.querySelector(".tz-header")) || cuerpo || base,
+    cuerpo || base
+  );
   // Si ni el cuerpo ni una escena cubren la pantalla, lo que se ve detrás
   // del contenido ES el fondo del documento: se deja como está.
   if (!cuerpo) {

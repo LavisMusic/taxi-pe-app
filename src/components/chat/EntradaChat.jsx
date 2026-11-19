@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Send, Mic, ImagePlus, Loader2, Trash2, X } from "lucide-react";
+import { Plus, Send, Mic, ImagePlus, Camera, Loader2, Trash2, X } from "lucide-react";
 import { subirAdjunto, minSeg } from "../../lib/adjuntosChat";
 import AuraVoz from "./AuraVoz";
+import CamaraFoto from "./CamaraFoto";
 
 // Campo de escribir de los chats, con fotos y notas de voz:
 //   - "+" dentro del campo, a la derecha: despliega "Subir foto" y "Tomar
@@ -35,6 +36,10 @@ export default function EntradaChat({ onEnviar, onEscribir, validar = null, desh
   const [segundos, setSegundos] = useState(0);
   const inputRef = useRef(null);
   const fileRef = useRef(null);
+  // "Tomar foto": la cámara propia (CamaraFoto) abre directo la cámara; sin
+  // soporte (navegador viejo), el selector del sistema con la cámara.
+  const camaraRef = useRef(null);
+  const [camara, setCamara] = useState(false);
   const grab = useRef(null); // { recorder, stream, ctx, analyser, inicio, partes, x, y, cancelar, raf, tope }
   // Imágenes pegadas por enviar (máximo MAX_PEGADAS): [{ id, file, url }].
   const [pegadas, setPegadas] = useState([]);
@@ -199,6 +204,13 @@ export default function EntradaChat({ onEnviar, onEscribir, validar = null, desh
     if (file) enviarAdjunto({ tipo: "foto", blob: file });
   };
 
+  const abrirCamara = () => {
+    setMenu(false);
+    setError("");
+    if (navigator.mediaDevices?.getUserMedia) setCamara(true);
+    else camaraRef.current?.click();
+  };
+
   return (
     <div className="tz-entrada" onPaste={alPegar}>
       {pegadas.length > 0 && (
@@ -247,10 +259,11 @@ export default function EntradaChat({ onEnviar, onEscribir, validar = null, desh
         </button>
         {menu && (
           <div className="tz-entrada-menu">
-            {/* Solo "Subir foto": en el celular ya ofrece tomar una foto o
-                elegirla de la galería. */}
             <button type="button" className="tz-entrada-menu-btn" onClick={() => fileRef.current?.click()}>
               <ImagePlus size={17} /> Subir foto
+            </button>
+            <button type="button" className="tz-entrada-menu-btn" onClick={abrirCamara}>
+              <Camera size={17} /> Tomar foto
             </button>
           </div>
         )}
@@ -301,6 +314,31 @@ export default function EntradaChat({ onEnviar, onEscribir, validar = null, desh
       )}
 
       {(aviso || error) && <p className="tz-entrada-error">{aviso || error}</p>}
+
+      <input
+        ref={camaraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        onChange={(e) => {
+          elegirFoto(e.target.files?.[0]);
+          e.target.value = "";
+        }}
+      />
+      {camara && (
+        <CamaraFoto
+          onFoto={(file) => {
+            setCamara(false);
+            elegirFoto(file);
+          }}
+          onCerrar={() => setCamara(false)}
+          onFallo={() => {
+            setCamara(false);
+            setError("No se pudo abrir la cámara. Revisa que la app tenga permiso para usarla.");
+          }}
+        />
+      )}
 
       {grabando &&
         createPortal(
