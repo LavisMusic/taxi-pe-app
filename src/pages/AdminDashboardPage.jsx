@@ -49,6 +49,9 @@ import AdminLocalidadesModal from "../components/admin/AdminLocalidadesModal";
 import UsuariosModal from "../components/admin/UsuariosModal";
 import CategoriasModal from "../components/admin/CategoriasModal";
 import PeticionesModal from "../components/admin/PeticionesModal";
+import PanelVentaRegistrada from "../components/PanelVentaRegistrada";
+import { ventaParaPanel } from "../lib/ventaBoleta";
+import { TIPO_ITEM_MEMBRESIA as TIPO_MEMBRESIA_BOLETA } from "../lib/taxiEnums";
 import ReportesAdminModal, { useConteoReportes } from "../components/admin/ReportesAdminModal";
 import { supabase } from "../supabaseClient";
 
@@ -279,6 +282,8 @@ export default function AdminDashboardPage() {
     reordenarLocalidades,
   } = useLocalidades();
   const [peticionesOpen, setPeticionesOpen] = useState(false);
+  // Boleta por WhatsApp al aprobar una recarga en el Centro de Peticiones.
+  const [ventaPanel, setVentaPanel] = useState(null);
   // Centro de reportes (fase 4a): el número son los reportes nuevos.
   const [reportesOpen, setReportesOpen] = useState(false);
   const conteoReportes = useConteoReportes(API_REPORTES.listar);
@@ -724,23 +729,53 @@ export default function AdminDashboardPage() {
           onAprobarRecargaRecolector={(peticion) => {
             const recolector = usuarios.find((u) => u.id === peticion.recolector_id);
             return aprobarRecargaRecolector(peticion, recolector).then((res) => {
-              if (!res.error) refreshUsuarios();
+              if (!res.error) {
+                refreshUsuarios();
+                // Boleta por WhatsApp al recolector (la membresía no
+                // registra una venta: se arma con la petición).
+                setVentaPanel(
+                  ventaParaPanel(
+                    {
+                      detalle: peticion.paquete_nombre || "Membresía de recolector",
+                      monto: peticion.monto,
+                      metodo_pago: peticion.metodo_pago,
+                      tipo_item: TIPO_MEMBRESIA_BOLETA,
+                      created_at: new Date().toISOString(),
+                    },
+                    {
+                      nombre: [recolector?.nombre, recolector?.apellido].filter(Boolean).join(" ") || "Recolector",
+                      telefono: recolector?.telefono,
+                      vencimiento_suscripcion: res.vence,
+                    },
+                    { cajero: "Admin" }
+                  )
+                );
+              }
               return res;
             });
           }}
           onRechazarRecargaRecolector={rechazarRecargaRecolector}
           recargasConductor={recargasConductorPendientes}
-          onAprobarRecargaConductor={(peticion) =>
-            aprobarRecargaConductor(
-              peticion,
-              conductores.find((c) => c.id === peticion.conductor_id),
-              registrarRecargaAdmin
-            )
-          }
+          onAprobarRecargaConductor={(peticion) => {
+            const conductor = conductores.find((c) => c.id === peticion.conductor_id);
+            return aprobarRecargaConductor(peticion, conductor, registrarRecargaAdmin).then(async (res) => {
+              if (!res.error && res.venta) {
+                // Boleta por WhatsApp al conductor, con su vencimiento nuevo.
+                const { data: fresco } = await supabase
+                  .from("conductores")
+                  .select("nombre, telefono, vencimiento_suscripcion")
+                  .eq("id", peticion.conductor_id)
+                  .maybeSingle();
+                setVentaPanel(ventaParaPanel(res.venta, fresco || conductor, { cajero: "Admin" }));
+              }
+              return res;
+            });
+          }}
           onRechazarRecargaConductor={rechazarRecargaConductor}
           onClose={() => setPeticionesOpen(false)}
         />
       )}
+      <PanelVentaRegistrada venta={ventaPanel} onCerrar={() => setVentaPanel(null)} />
     </div>
   );
 }
