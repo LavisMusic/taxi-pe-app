@@ -58,6 +58,7 @@ export default function Styles() {
         --tz-footer-h: 84px;
 
         min-height: 100vh;
+        min-height: 100dvh; /* alto visible real (en el celular 100vh incluye las barras del navegador) */
         width: 100%;
         background:
           radial-gradient(ellipse 900px 500px at 20% -10%, rgba(43,232,255,0.10), transparent 60%),
@@ -111,6 +112,7 @@ export default function Styles() {
         justify-content: center;
         gap: 14px;
         min-height: 100vh;
+        min-height: 100dvh; /* alto visible real (en el celular 100vh incluye las barras del navegador) */
         color: var(--text-dim);
         font-family: 'Rajdhani', sans-serif;
         font-size: 18px;
@@ -126,7 +128,9 @@ export default function Styles() {
         justify-content: center;
         gap: 10px;
         min-height: 100vh;
-        padding: 24px;
+        min-height: 100dvh; /* alto visible real (en el celular 100vh incluye las barras del navegador) */
+        padding: max(24px, env(safe-area-inset-top, 0px)) 24px max(24px, env(safe-area-inset-bottom, 0px));
+        box-sizing: border-box;
         text-align: center;
         color: var(--danger);
       }
