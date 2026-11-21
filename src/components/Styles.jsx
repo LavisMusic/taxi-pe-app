@@ -1028,6 +1028,15 @@ export default function Styles() {
         font-size: 16px;
         background: rgba(20,13,40,0.9);
       }
+      /* El cliente compartiendo su ubicación en vivo (en vez de la banderita). */
+      .tz-radar-marker-destino.tz-entrega-cliente-vivo {
+        --tz-marker-color: #39ffac;
+        animation: tz-entrega-cliente-pulso 1.8s ease-out infinite;
+      }
+      @keyframes tz-entrega-cliente-pulso {
+        0% { box-shadow: 0 0 0 0 rgba(57,255,172,0.6); }
+        100% { box-shadow: 0 0 0 14px rgba(57,255,172,0); }
+      }
 
       /* ---------- TABS ---------- */
       .tz-tabs {
