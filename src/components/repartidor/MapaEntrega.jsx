@@ -8,6 +8,7 @@ import { canalEntrega } from "../../hooks/useEntregasRepartidor";
 import { MAPBOX_TILE_URL, MAPBOX_ATTRIBUTION } from "../../lib/mapboxConfig";
 import { MAPA_NIVEL_COLOR } from "../../lib/nivelServicio";
 import RutaNeon, { divIconLuz, useConexionRuta } from "../RutaNeon";
+import { iconoTienda } from "../../lib/marcadorTienda";
 
 // Mapa en vivo de la entrega — MISMO estilo que el mapa del chat de un
 // viaje en curso (MapaViaje.jsx): contenedor `tz-mapa-viaje`, pines
@@ -29,12 +30,6 @@ const ICONO_DESTINO = {
   html: '<span class="tz-radar-marker tz-radar-marker-destino">🚩</span>',
   iconSize: [28, 28],
   iconAnchor: [14, 14], // al centro: la línea de la ruta empieza/termina en el medio
-};
-const ICONO_ORIGEN = {
-  className: "tz-radar-marker-wrap",
-  html: '<span class="tz-radar-marker">🏪</span>',
-  iconSize: [26, 26],
-  iconAnchor: [13, 13],
 };
 
 function iconoRepartidor(color, iconoUrl) {
@@ -94,7 +89,8 @@ function frescura(atMs) {
   return { txt: `hace ${Math.round(s / 3600)} h`, clase: "tz-fresh-stale" };
 }
 
-export default function MapaEntrega({ entregaId, conductorId = null, destino = null, origen = null, posInicial = null, estado = null, client = supabase }) {
+// `tienda` ({ nombre, logo }): la sucursal con el logo del negocio en un círculo.
+export default function MapaEntrega({ entregaId, conductorId = null, destino = null, origen = null, posInicial = null, estado = null, tienda = null, client = supabase }) {
   const [repartidor, setRepartidor] = useState(
     posInicial && typeof posInicial.lat === "number" ? { lat: posInicial.lat, lng: posInicial.lng } : null
   );
@@ -163,7 +159,10 @@ export default function MapaEntrega({ entregaId, conductorId = null, destino = n
     () => divIconLuz(iconoRepartidor(color, marcador.iconoUrl), color, luces >= 1),
     [color, marcador.iconoUrl, luces >= 1] // eslint-disable-line react-hooks/exhaustive-deps
   );
-  const iconoOrigen = useMemo(() => divIconLuz(ICONO_ORIGEN, color, luzOrigen), [color, luzOrigen]);
+  const iconoOrigen = useMemo(
+    () => divIconLuz(iconoTienda({ nombre: tienda?.nombre, logo: tienda?.logo, tam: 34 }), color, luzOrigen),
+    [color, luzOrigen, tienda?.nombre, tienda?.logo]
+  );
   const iconoDestino = useMemo(() => divIconLuz(ICONO_DESTINO, color, luzDestino), [color, luzDestino]);
 
   return (

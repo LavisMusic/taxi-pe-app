@@ -57,9 +57,22 @@ export default function CalificarModal({ nombre, foto, titulo, detalle, onEnviar
   };
 
   return createPortal(
-    <div className={`tz-calif-fondo ${listo ? "is-listo" : ""}`} onClick={() => !enviando && !listo && onCerrar?.(false)}>
+    // En el "¡Gracias!" un toque en cualquier parte lo salta (no hace falta
+    // esperar a que se cierre solo).
+    <div
+      className={`tz-calif-fondo ${listo ? "is-listo" : ""}`}
+      onClick={() => (listo ? onCerrar?.(true) : !enviando && onCerrar?.(false))}
+    >
       <style>{ESTILO}</style>
-      <div className={`tz-calif ${listo ? "is-listo" : ""}`} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+      <div
+        className={`tz-calif ${listo ? "is-listo" : ""}`}
+        onClick={(e) => {
+          if (listo) return; // sube al fondo: lo cierra
+          e.stopPropagation();
+        }}
+        role="dialog"
+        aria-modal="true"
+      >
         {!listo && (
           <button type="button" className="tz-calif-cerrar" onClick={() => onCerrar?.(false)} aria-label="Calificar después">
             <X size={18} />
@@ -77,6 +90,7 @@ export default function CalificarModal({ nombre, foto, titulo, detalle, onEnviar
             </div>
             <strong>{borrado ? "Calificación borrada" : editando ? "¡Actualizada!" : "¡Gracias!"}</strong>
             <span>{borrado ? "Ya no cuenta en su reputación." : "Tu calificación ayuda a toda la comunidad."}</span>
+            <em className="tz-calif-saltar">Toca para continuar</em>
           </div>
         ) : (
           <>
@@ -145,7 +159,8 @@ const ESTILO = `
 .tz-calif-fondo { position: fixed; inset: 0; z-index: 9000; display: grid; place-items: center; padding: 16px;
   background: rgba(5,3,12,0.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: tz-calif-fade .3s ease both;
   transition: background .5s ease, backdrop-filter .5s ease, -webkit-backdrop-filter .5s ease; }
-.tz-calif-fondo.is-listo { background: rgba(5,3,12,0.5); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.tz-calif-fondo.is-listo { background: rgba(5,3,12,0.5); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); cursor: pointer; }
+.tz-calif-saltar { margin-top: 6px; font-style: normal; font-size: 11.5px; color: rgba(255,255,255,0.6); animation: tz-calif-fade .5s 1s ease both; }
 .tz-calif { position: relative; isolation: isolate; width: min(380px, 100%); display: flex; flex-direction: column; align-items: center; gap: 8px;
   padding: 26px 20px 18px; border-radius: 24px; text-align: center; color: var(--text, #f4f2ff);
   animation: tz-calif-in .55s cubic-bezier(.34,1.56,.64,1) both; }

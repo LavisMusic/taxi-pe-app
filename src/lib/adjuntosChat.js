@@ -26,6 +26,8 @@ export const minSeg = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60))
 
 // Texto corto para las vistas previas de las listas de chats.
 export function previaMensaje(texto) {
+  // Boleta del pedido (Caja, migración 0175): el texto sin la marca.
+  if (String(texto || "").includes("⟦boleta⟧")) return String(texto).replace("⟦boleta⟧", "").trim();
   const a = leerAdjunto(texto);
   if (!a) return texto;
   return a.tipo === "foto" ? "📷 Foto" : `🎤 Nota de voz (${minSeg(a.duracion)})`;

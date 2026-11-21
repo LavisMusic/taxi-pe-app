@@ -272,6 +272,7 @@ export default function EntregaActivaModal({ entrega, conductorId, onClose, avan
             entregaId={entrega.id}
             estado={estado}
             conductorId={entrega.conductor_id || conductorId}
+            tienda={{ nombre: entrega.caja_sucursal, logo: entrega.caja_logo_url }}
             destino={
               entrega.entrega_lat && entrega.entrega_lng
                 ? { lat: Number(entrega.entrega_lat), lng: Number(entrega.entrega_lng) }
