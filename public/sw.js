@@ -32,15 +32,19 @@ self.addEventListener("notificationclick", (event) => {
       for (const ventana of ventanas) {
         if ("focus" in ventana) {
           await ventana.focus();
-          // Anuncio: si la app está en otra pantalla, se va a la que lo muestra.
-          if (anuncio && url && "navigate" in ventana) {
+          // Anuncio o tarjeta de fidelidad: si la app está en otra pantalla,
+          // se va a la que lo muestra (la tienda).
+          const fidelidad = canal === "fidelidad";
+          if ((anuncio || fidelidad) && url && "navigate" in ventana) {
             const destino = new URL(url, self.location.origin);
             if (new URL(ventana.url).pathname !== destino.pathname) {
               await ventana.navigate(destino.href);
               return;
             }
           }
-          ventana.postMessage(anuncio ? { tipo: "abrir-anuncio", id: anuncio } : { tipo: "abrir-mensajes", canal });
+          ventana.postMessage(
+            anuncio ? { tipo: "abrir-anuncio", id: anuncio } : fidelidad ? { tipo: "abrir-fidelidad" } : { tipo: "abrir-mensajes", canal }
+          );
           return;
         }
       }
