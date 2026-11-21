@@ -55,7 +55,7 @@ export function useRecargasRecolector() {
     const { data, error: rpcError } = await supabase.rpc("taxi_aprobar_peticion_recolector", { p_id: String(peticionId) });
     if (rpcError) return { error: rpcError };
     if (data?.estado !== "ok") return { error: new Error(data?.estado === "ya_resuelta" ? "Esa petición ya fue resuelta." : "No se pudo aprobar.") };
-    return { error: null };
+    return { error: null, vence: data?.vence || null };
   };
 
   // `recolector` es la fila completa de `usuarios` (para leer su saldo
@@ -105,11 +105,12 @@ export function useRecargasRecolector() {
   // PeticionesModal (no hace falta un fetch aparte).
   const aprobarPeticion = useCallback(
     async (peticion) => {
-      const { error: beneficioError } = await aplicarBeneficio(peticion.id);
+      const { error: beneficioError, vence } = await aplicarBeneficio(peticion.id);
       if (beneficioError) return { error: beneficioError };
 
       await refresh();
-      return { error: null };
+      // El nuevo vencimiento: para el resumen de la boleta por WhatsApp.
+      return { error: null, vence };
     },
     [refresh]
   );

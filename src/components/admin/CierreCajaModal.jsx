@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { X, Receipt, Download, MessageCircle, AlertTriangle, Loader2, Save, FileSpreadsheet, Clock } from "lucide-react";
 import { formatSoles, formatDate, formatTime } from "../../utils/format";
-import { METODOS_PAGO, METODO_PAGO_EFECTIVO, TIPO_ITEM_CREDITOS, TIPO_ITEM_MEMBRESIA } from "../../lib/taxiEnums";
+import { METODOS_PAGO, METODO_PAGO_EFECTIVO, TIPO_ITEM_MEMBRESIA } from "../../lib/taxiEnums";
 import { downloadXLSX } from "../../lib/xlsxExport";
 import { buildWhatsappLink } from "../../lib/whatsapp";
 

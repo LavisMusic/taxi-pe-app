@@ -118,7 +118,8 @@ export function useRecargasConductorAdmin() {
         })
         .eq("id", peticion.id);
       await refresh();
-      return { error: null };
+      // La venta registrada: para el desplegable con la boleta por WhatsApp.
+      return { error: null, venta: r.venta || null };
     },
     [refresh]
   );

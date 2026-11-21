@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, Wallet, Loader2, Check, Clock, XCircle } from "lucide-react";
 import { formatSoles, formatDate } from "../../utils/format";
 import {
@@ -18,6 +18,7 @@ import { useContactoPlataforma } from "../../hooks/useContactoPlataforma";
 import { supabase } from "../../supabaseClient";
 import CanjeGemas from "../CanjeGemas";
 import IconoGema from "../IconoGema";
+import { useSeguirDespliegue } from "../../lib/seguirDespliegue";
 
 // "Recargar" del pie de página del conductor: pide membresía o gemas por
 // su cuenta (Yape/Plin/Otros + foto del comprobante, obligatoria). La
@@ -218,9 +219,14 @@ export default function RecargarConductorModal({ conductor, onClose }) {
     );
   }
 
+  // Lo que se despliega al elegir (pago, comprobante, enviar) se acompaña
+  // con un desplazamiento suave hacia abajo (lib/seguirDespliegue.js).
+  const modalFlujoRef = useRef(null);
+  useSeguirDespliegue(modalFlujoRef);
+
   return (
     <div className="tz-modal-backdrop">
-      <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
+      <div ref={modalFlujoRef} className="tz-modal" onClick={(e) => e.stopPropagation()}>
         <button className="tz-modal-close" onClick={onClose} aria-label="Cerrar">
           <X size={18} />
         </button>

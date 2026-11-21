@@ -24,11 +24,11 @@ import { useConductorSesion } from "../hooks/useConductorSesion";
 import { useHilosChatConductor } from "../hooks/useChatMensajes";
 import { useCategoriasPublicas } from "../hooks/useCategoriasPublicas";
 import { useGpsBroadcaster } from "../hooks/useGpsBroadcaster";
+import { avisarRepartoDisponible } from "../hooks/useRadarPublico";
 import { useWakeLock } from "../hooks/useWakeLock";
 import { usePaquetes } from "../hooks/usePaquetes";
 import { useBienvenidaNeon } from "../hooks/useBienvenidaNeon";
 import { useMembresiaActivadaNeon } from "../hooks/useMembresiaActivadaNeon";
-import { useCompraCreditosNeon } from "../hooks/useCompraCreditosNeon";
 import {
   ESTADO_CONDUCTOR_ACTIVO,
   ESTADO_CONDUCTOR_OCUPADO,
@@ -122,16 +122,11 @@ export default function ConductorPage() {
   //      otro paquete) — ver useMembresiaActivadaNeon.js. Comparación
   //      por ESTADO (¿es un paquete distinto al de la última vez?),
   //      porque la membresía es "una a la vez".
-  //   C) Compra Confirmada (créditos) — cada vez que se compra un
-  //      paquete de créditos, incluso repitiendo el mismo de siempre —
-  //      ver useCompraCreditosNeon.js. Comparación por EVENTO (¿hay una
-  //      compra más nueva que la última que vimos?), porque los
-  //      créditos se acumulan, no hay un "paquete activo" único que
-  //      comparar como en B.
   //
-  // Si dos quieren mostrarse a la vez, A > B > C en prioridad — la que
+  // Si las dos quieren mostrarse a la vez, A > B en prioridad — la que
   // pierde el turno no se pierde, sigue "pendiente" en su propio hook
-  // hasta que le toque.
+  // hasta que le toque. (La "Compra Confirmada" de créditos se quitó:
+  // el sistema de créditos ya no existe.)
   const { mostrar: mostrarBienvenida, marcarVista: marcarBienvenidaVista } = useBienvenidaNeon(
     usuario?.id,
     !!conductor
@@ -147,13 +142,6 @@ export default function ConductorPage() {
   const paqueteActivado = paquetesMembresia.find((p) => String(p.id) === paqueteIdActivado) ?? null;
   const mostrarMembresiaActivada = !mostrarBienvenida && !!paqueteActivado;
 
-  const { compra: compraCreditos, marcarVista: marcarCompraCreditosVista } = useCompraCreditosNeon(
-    conductor?.id,
-    conductor?.ultima_compra_creditos_at ?? null,
-    conductor?.ultimo_paquete_creditos_nombre,
-    conductor?.ultimo_paquete_creditos_descripcion
-  );
-  const mostrarCompraCreditos = !mostrarBienvenida && !mostrarMembresiaActivada && !!compraCreditos;
 
   // Paywall del Conductor: acceso si tiene membresía vigente O créditos
   // (OR, no AND) — un conductor puede operar bajo cualquiera de los dos
@@ -318,8 +306,11 @@ export default function ConductorPage() {
     if (conductor.modo_delivery && (enCarrera || repartiendo)) return;
     setCambiandoDelivery(true);
     setDeliveryError("");
-    const { error: errDelivery } = await actualizar(conductor.id, { modo_delivery: !conductor.modo_delivery });
+    const encender = !conductor.modo_delivery;
+    const { error: errDelivery } = await actualizar(conductor.id, { modo_delivery: encender });
     setCambiandoDelivery(false);
+    // Los negocios que están eligiendo repartidor lo sacan (o lo suman) en vivo.
+    if (!errDelivery) avisarRepartoDisponible(conductor.id, encender);
     if (errDelivery) {
       setDeliveryError(
         errDelivery.code === "22023" ? errDelivery.message : "No se pudo cambiar el modo delivery. Intenta de nuevo."
@@ -409,14 +400,6 @@ export default function ConductorPage() {
           titulo={paqueteActivado.nombre}
           descripcion={paqueteActivado.descripcion}
           onTerminar={marcarMembresiaVista}
-        />
-      ) : mostrarCompraCreditos ? (
-        <AnimacionNeonBienvenida
-          eyebrow="✦ Compra Confirmada ✦"
-          icono="rayo"
-          titulo={compraCreditos.nombre}
-          descripcion={compraCreditos.descripcion}
-          onTerminar={marcarCompraCreditosVista}
         />
       ) : null}
       {/* Reputación (fase 1a): calificar al pasajero al terminar el viaje. */}

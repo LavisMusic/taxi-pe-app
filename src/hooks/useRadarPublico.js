@@ -9,6 +9,27 @@ import { ESTADO_CONDUCTOR_ACTIVO, ESTADO_CONDUCTOR_OCUPADO } from "../lib/taxiEn
 // movimiento del GPS.
 export const CANAL_RADAR_PUBLICO = "radar_publico";
 
+// Lado Conductor: avisa al toque (evento 'reparto_disponible') que
+// encendió o apagó el modo delivery, para que la lista de repartidores de
+// Caja Tonazo lo saque o lo vuelva a pedir sin esperar su recarga. Va por
+// REST (httpSend): el canal puede ser el mismo que ya usa el GPS
+// (supabase.channel devuelve el existente) y no hay que cerrarlo.
+export async function avisarRepartoDisponible(conductorId, disponible) {
+  if (!conductorId) return;
+  const topic = `realtime:${CANAL_RADAR_PUBLICO}`;
+  const yaEstaba = supabase.getChannels().some((c) => c.topic === topic);
+  const canal = supabase.channel(CANAL_RADAR_PUBLICO);
+  const payload = { conductorId, disponible: !!disponible };
+  try {
+    if (canal.state === "joined") await canal.send({ type: "broadcast", event: "reparto_disponible", payload });
+    else await canal.httpSend("reparto_disponible", payload);
+  } catch {
+    // Sin aviso en vivo: Caja igual lo saca en su próxima recarga (~12 s).
+  } finally {
+    if (!yaEstaba) supabase.removeChannel(canal);
+  }
+}
+
 // Lado Pasajero (RadarGlobal.jsx) — solo escucha broadcast, nunca
 // transmite acá. Devuelve un mapa { [conductorId]: {lat,lng} } con la
 // última posición conocida de cada conductor.

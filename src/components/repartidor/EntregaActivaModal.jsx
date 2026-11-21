@@ -241,9 +241,6 @@ export default function EntregaActivaModal({ entrega, conductorId, onClose, avan
               <Store size={14} /> {entrega.caja_sucursal}
             </p>
           )}
-          {entrega.total != null && (
-            <p className="tz-camera-note" style={{ margin: 0 }}>Total del pedido: {formatSoles(entrega.total)}</p>
-          )}
           <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap", justifyContent: "center" }}>
             <a
               href={mapsUrl}
@@ -275,6 +272,7 @@ export default function EntregaActivaModal({ entrega, conductorId, onClose, avan
             entregaId={entrega.id}
             estado={estado}
             conductorId={entrega.conductor_id || conductorId}
+            tienda={{ nombre: entrega.caja_sucursal, logo: entrega.caja_logo_url }}
             destino={
               entrega.entrega_lat && entrega.entrega_lng
                 ? { lat: Number(entrega.entrega_lat), lng: Number(entrega.entrega_lng) }

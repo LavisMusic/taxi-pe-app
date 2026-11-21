@@ -8,6 +8,7 @@ import { canalEntrega } from "../../hooks/useEntregasRepartidor";
 import { MAPBOX_TILE_URL, MAPBOX_ATTRIBUTION } from "../../lib/mapboxConfig";
 import { MAPA_NIVEL_COLOR } from "../../lib/nivelServicio";
 import RutaNeon, { divIconLuz, useConexionRuta } from "../RutaNeon";
+import { iconoTienda } from "../../lib/marcadorTienda";
 
 // Mapa en vivo de la entrega — MISMO estilo que el mapa del chat de un
 // viaje en curso (MapaViaje.jsx): contenedor `tz-mapa-viaje`, pines
@@ -30,11 +31,13 @@ const ICONO_DESTINO = {
   iconSize: [28, 28],
   iconAnchor: [14, 14], // al centro: la línea de la ruta empieza/termina en el medio
 };
-const ICONO_ORIGEN = {
+
+// Cliente compartiendo su ubicación en vivo: su personita con un pulso.
+const ICONO_CLIENTE_VIVO = {
   className: "tz-radar-marker-wrap",
-  html: '<span class="tz-radar-marker">🏪</span>',
-  iconSize: [26, 26],
-  iconAnchor: [13, 13],
+  html: '<span class="tz-radar-marker tz-radar-marker-destino tz-entrega-cliente-vivo">🙋</span>',
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
 };
 
 function iconoRepartidor(color, iconoUrl) {
@@ -94,12 +97,14 @@ function frescura(atMs) {
   return { txt: `hace ${Math.round(s / 3600)} h`, clase: "tz-fresh-stale" };
 }
 
-export default function MapaEntrega({ entregaId, conductorId = null, destino = null, origen = null, posInicial = null, estado = null, client = supabase }) {
+// `tienda` ({ nombre, logo }): la sucursal con el logo del negocio en un círculo.
+export default function MapaEntrega({ entregaId, conductorId = null, destino = null, origen = null, posInicial = null, estado = null, tienda = null, client = supabase }) {
   const [repartidor, setRepartidor] = useState(
     posInicial && typeof posInicial.lat === "number" ? { lat: posInicial.lat, lng: posInicial.lng } : null
   );
   const [marcador, setMarcador] = useState({ iconoUrl: null, nivel: "economico", estado: null });
   const [oculto, setOculto] = useState(false);
+  const [clienteVivo, setClienteVivo] = useState(null);
   const [posAt, setPosAt] = useState(posInicial?.at ? new Date(posInicial.at).getTime() : 0);
   const [recentrarTick, setRecentrarTick] = useState(0);
   const ultimo = useRef(0);
@@ -138,6 +143,13 @@ export default function MapaEntrega({ entregaId, conductorId = null, destino = n
         setRepartidor({ lat: payload.lat, lng: payload.lng });
         setPosAt(Date.now());
       })
+      // El cliente comparte su ubicación en tiempo real (botón "Tiempo
+      // real" de su seguimiento en Caja): su personita en vez de la banderita.
+      .on("broadcast", { event: "cliente_gps" }, ({ payload }) => {
+        if (typeof payload?.lat !== "number" || typeof payload?.lng !== "number") return;
+        setClienteVivo({ lat: payload.lat, lng: payload.lng });
+      })
+      .on("broadcast", { event: "cliente_gps_off" }, () => setClienteVivo(null))
       .subscribe();
     return () => {
       client.removeChannel(ch);
@@ -145,7 +157,9 @@ export default function MapaEntrega({ entregaId, conductorId = null, destino = n
   }, [entregaId, client]);
 
   const color = MAPA_NIVEL_COLOR[marcador.nivel] || MAPA_NIVEL_COLOR.economico;
-  const puntos = [repartidor, destino, origen];
+  // Con el cliente en vivo, la ruta y el encuadre van a donde está él.
+  const destinoRuta = clienteVivo || destino;
+  const puntos = [repartidor, destinoRuta, origen];
   const centro = repartidor || destino || origen || { lat: -12.0464, lng: -77.0428 };
   const ubicando = !repartidor;
   const fr = frescura(posAt);
@@ -154,8 +168,8 @@ export default function MapaEntrega({ entregaId, conductorId = null, destino = n
   // la previa tienda → cliente; en camino, repartidor → cliente.
   const enRuta = estado === "en_ruta";
   const asignada = estado === "aceptado" || enRuta;
-  const hastaRuta = asignada ? (enRuta ? destino : origen) : null;
-  const previaRuta = asignada && !enRuta && origen && destino ? [origen, destino] : null;
+  const hastaRuta = asignada ? (enRuta ? destinoRuta : origen) : null;
+  const previaRuta = asignada && !enRuta && origen && destinoRuta ? [origen, destinoRuta] : null;
   const { luces, dibujoKey } = useConexionRuta(!!(repartidor && hastaRuta), enRuta ? 1 : 0);
   const luzOrigen = enRuta ? luces >= 3 : luces >= 2;
   const luzDestino = enRuta ? luces >= 2 : luces >= 3;
@@ -163,8 +177,12 @@ export default function MapaEntrega({ entregaId, conductorId = null, destino = n
     () => divIconLuz(iconoRepartidor(color, marcador.iconoUrl), color, luces >= 1),
     [color, marcador.iconoUrl, luces >= 1] // eslint-disable-line react-hooks/exhaustive-deps
   );
-  const iconoOrigen = useMemo(() => divIconLuz(ICONO_ORIGEN, color, luzOrigen), [color, luzOrigen]);
+  const iconoOrigen = useMemo(
+    () => divIconLuz(iconoTienda({ nombre: tienda?.nombre, logo: tienda?.logo, tam: 34 }), color, luzOrigen),
+    [color, luzOrigen, tienda?.nombre, tienda?.logo]
+  );
   const iconoDestino = useMemo(() => divIconLuz(ICONO_DESTINO, color, luzDestino), [color, luzDestino]);
+  const iconoClienteVivo = useMemo(() => divIconLuz(ICONO_CLIENTE_VIVO, color, luzDestino), [color, luzDestino]);
 
   return (
     <div className="tz-entrega-mapa-wrap">
@@ -204,7 +222,8 @@ export default function MapaEntrega({ entregaId, conductorId = null, destino = n
             <TileLayer attribution={MAPBOX_ATTRIBUTION} url={MAPBOX_TILE_URL} />
             <RutaNeon desde={repartidor} hasta={hastaRuta} previa={previaRuta} color={color} dibujoKey={dibujoKey} />
             {origen && <Marker position={[origen.lat, origen.lng]} icon={iconoOrigen} />}
-            {destino && <Marker position={[destino.lat, destino.lng]} icon={iconoDestino} />}
+            {destino && !clienteVivo && <Marker position={[destino.lat, destino.lng]} icon={iconoDestino} />}
+            {clienteVivo && <Marker position={[clienteVivo.lat, clienteVivo.lng]} icon={iconoClienteVivo} />}
             {repartidor && <Marker position={[repartidor.lat, repartidor.lng]} icon={iconoRep} />}
           </MapContainer>
         </div>

@@ -3,7 +3,6 @@ import { supabase } from "../supabaseClient";
 import { subscribeTable } from "../lib/realtime";
 import {
   startOfTodayISO,
-  TIPO_ITEM_CREDITOS,
   TIPO_ITEM_MEMBRESIA,
 } from "../lib/taxiEnums";
 
@@ -74,12 +73,6 @@ export function useVentas() {
   // Créditos Vendidos), así que es un conteo histórico total.
   const membresiasActivas = ventasVigentes.filter((v) => v.tipo_item === TIPO_ITEM_MEMBRESIA).length;
 
-  // "Suma de créditos recargados hoy": no existe columna de cantidad
-  // de créditos, solo `monto` (soles) y `detalle` (texto libre) — se
-  // suma el monto en soles de las ventas de tipo créditos de hoy.
-  const creditosVendidosHoy = ventasHoy
-    .filter((v) => v.tipo_item === TIPO_ITEM_CREDITOS)
-    .reduce((sum, v) => sum + Number(v.monto || 0), 0);
 
   return {
     ventas,
@@ -91,7 +84,6 @@ export function useVentas() {
     metrics: {
       recaudadoHoy,
       membresiasActivas,
-      creditosVendidosHoy,
     },
   };
 }

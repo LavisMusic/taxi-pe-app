@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Wallet, X, Loader2, Camera, RotateCcw } from "lucide-react";
 import BotonPegarComprobante from "../BotonPegarComprobante";
 import ComprobanteScannerModal from "./ComprobanteScannerModal";
@@ -10,6 +10,7 @@ import DatosPagoComprobante from "../DatosPagoComprobante";
 import { useContactoPlataforma } from "../../hooks/useContactoPlataforma";
 import { supabase } from "../../supabaseClient";
 import CanjeGemas from "../CanjeGemas";
+import { useSeguirDespliegue } from "../../lib/seguirDespliegue";
 
 const METODOS_AUTORECARGA = METODOS_PAGO.filter((m) => m.key !== METODO_PAGO_EFECTIVO);
 
@@ -106,9 +107,14 @@ export default function AutorecargaRecolectorModal({ recolector, paquetes, glowP
     setComprobante(null);
   };
 
+  // Lo que se despliega al elegir (pago, comprobante, enviar) se acompaña
+  // con un desplazamiento suave hacia abajo (lib/seguirDespliegue.js).
+  const modalFlujoRef = useRef(null);
+  useSeguirDespliegue(modalFlujoRef);
+
   return (
     <div className="tz-modal-backdrop">
-      <div className="tz-modal" onClick={(e) => e.stopPropagation()}>
+      <div ref={modalFlujoRef} className="tz-modal" onClick={(e) => e.stopPropagation()}>
         <button className="tz-modal-close" onClick={onClose} aria-label="Cerrar">
           <X size={18} />
         </button>

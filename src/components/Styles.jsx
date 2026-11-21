@@ -58,6 +58,7 @@ export default function Styles() {
         --tz-footer-h: 84px;
 
         min-height: 100vh;
+        min-height: 100dvh; /* alto visible real (en el celular 100vh incluye las barras del navegador) */
         width: 100%;
         background:
           radial-gradient(ellipse 900px 500px at 20% -10%, rgba(43,232,255,0.10), transparent 60%),
@@ -111,6 +112,7 @@ export default function Styles() {
         justify-content: center;
         gap: 14px;
         min-height: 100vh;
+        min-height: 100dvh; /* alto visible real (en el celular 100vh incluye las barras del navegador) */
         color: var(--text-dim);
         font-family: 'Rajdhani', sans-serif;
         font-size: 18px;
@@ -126,7 +128,9 @@ export default function Styles() {
         justify-content: center;
         gap: 10px;
         min-height: 100vh;
-        padding: 24px;
+        min-height: 100dvh; /* alto visible real (en el celular 100vh incluye las barras del navegador) */
+        padding: max(24px, env(safe-area-inset-top, 0px)) 24px max(24px, env(safe-area-inset-bottom, 0px));
+        box-sizing: border-box;
         text-align: center;
         color: var(--danger);
       }
@@ -1023,6 +1027,15 @@ export default function Styles() {
         --tz-marker-color: #ffd700;
         font-size: 16px;
         background: rgba(20,13,40,0.9);
+      }
+      /* El cliente compartiendo su ubicación en vivo (en vez de la banderita). */
+      .tz-radar-marker-destino.tz-entrega-cliente-vivo {
+        --tz-marker-color: #39ffac;
+        animation: tz-entrega-cliente-pulso 1.8s ease-out infinite;
+      }
+      @keyframes tz-entrega-cliente-pulso {
+        0% { box-shadow: 0 0 0 0 rgba(57,255,172,0.6); }
+        100% { box-shadow: 0 0 0 14px rgba(57,255,172,0); }
       }
 
       /* ---------- TABS ---------- */

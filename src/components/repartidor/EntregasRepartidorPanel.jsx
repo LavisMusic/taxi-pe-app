@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -7,6 +7,7 @@ import { PackageCheck, Bike, MapPin, Store, Check, X, Loader2, Map as MapIcon, A
 import { useEntregasRepartidor, MAX_REPARTOS } from "../../hooks/useEntregasRepartidor";
 import { useEntregaGpsBroadcaster } from "../../hooks/useEntregaGpsBroadcaster";
 import { MAPBOX_TILE_URL, MAPBOX_ATTRIBUTION } from "../../lib/mapboxConfig";
+import { iconoTienda } from "../../lib/marcadorTienda";
 import EntregaActivaModal from "./EntregaActivaModal";
 import ReputacionEntrega from "./ReputacionEntrega";
 import { formatSoles } from "../../utils/format";
@@ -22,12 +23,6 @@ import { formatSoles } from "../../utils/format";
 
 const TIMEOUT_OFERTA_MS = 30000;
 
-const ICONO_ORIGEN = L.divIcon({
-  className: "tz-radar-marker-wrap",
-  html: '<span class="tz-radar-marker">🏪</span>',
-  iconSize: [26, 26],
-  iconAnchor: [13, 13],
-});
 const ICONO_DESTINO = L.divIcon({
   className: "tz-radar-marker-wrap",
   html: '<span class="tz-radar-marker tz-radar-marker-destino">🚩</span>',
@@ -45,8 +40,13 @@ const ICONO_YO = L.divIcon({
 // al nombre del cliente lo abre, se cierra con la X o tocando afuera).
 // Portal a <body> para superponer TODA la interfaz sin pelearse con el
 // z-index/overflow de la tarjeta.
-function RutaPreviewModal({ origen, destino, miPos, onClose }) {
+function RutaPreviewModal({ origen, destino, miPos, tienda = null, onClose }) {
   const puntos = [origen, destino, miPos].filter(Boolean);
+  // La sucursal con el logo del negocio en un círculo (lib/marcadorTienda.js).
+  const iconoOrigen = useMemo(
+    () => L.divIcon(iconoTienda({ nombre: tienda?.nombre, logo: tienda?.logo, tam: 34 })),
+    [tienda?.nombre, tienda?.logo]
+  );
   const centro = miPos || destino || origen || { lat: -12.0464, lng: -77.0428 };
   return createPortal(
     <div className="tz-ruta-preview-backdrop">
@@ -63,7 +63,7 @@ function RutaPreviewModal({ origen, destino, miPos, onClose }) {
         >
           <AjustarVistaPreview puntos={puntos} />
           <TileLayer url={MAPBOX_TILE_URL} attribution={MAPBOX_ATTRIBUTION} />
-          {origen && <Marker position={[origen.lat, origen.lng]} icon={ICONO_ORIGEN} />}
+          {origen && <Marker position={[origen.lat, origen.lng]} icon={iconoOrigen} />}
           {destino && <Marker position={[destino.lat, destino.lng]} icon={ICONO_DESTINO} />}
           {miPos && <Marker position={[miPos.lat, miPos.lng]} icon={ICONO_YO} />}
         </MapContainer>
@@ -409,6 +409,7 @@ export default function EntregasRepartidorPanel({
               : null
           }
           miPos={miPos}
+          tienda={{ nombre: ofertaConRuta.caja_sucursal, logo: ofertaConRuta.caja_logo_url }}
           onClose={cerrarVistaRuta}
         />
       )}

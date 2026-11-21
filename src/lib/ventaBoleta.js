@@ -27,7 +27,7 @@ export function ventaParaPanel(venta, destinatario, { cajero = "Admin", montoRec
     `• Total: ${formatSoles(monto)} (${metodo})`,
     venta.tipo_item === TIPO_ITEM_MEMBRESIA && vence ? `• Membresía activa hasta el ${formatDate(vence)}.` : "",
     venta.tipo_item !== TIPO_ITEM_MEMBRESIA && creditos != null ? `• Saldo de créditos: ${creditos}.` : "",
-    "¡Gracias por usar Taxi-PE!",
+    "¡Gracias por usar taxi PE!",
   ]
     .filter(Boolean)
     .join("\n");
@@ -42,7 +42,7 @@ export function ventaParaPanel(venta, destinatario, { cajero = "Admin", montoRec
         fecha: fecha.toLocaleDateString("es-PE", { day: "2-digit", month: "2-digit", year: "numeric" }),
         hora: fecha.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" }),
         cajero,
-        subtitulo: "Taxi-PE · Recargas",
+        subtitulo: "taxi PE · Recargas",
       },
       cliente: { nombre },
       productos: [{ cantidad: "1", nombre: concepto, precioUnitario: monto, subtotal: monto }],
