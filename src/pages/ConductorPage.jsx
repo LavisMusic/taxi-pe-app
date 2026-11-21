@@ -24,6 +24,7 @@ import { useConductorSesion } from "../hooks/useConductorSesion";
 import { useHilosChatConductor } from "../hooks/useChatMensajes";
 import { useCategoriasPublicas } from "../hooks/useCategoriasPublicas";
 import { useGpsBroadcaster } from "../hooks/useGpsBroadcaster";
+import { avisarRepartoDisponible } from "../hooks/useRadarPublico";
 import { useWakeLock } from "../hooks/useWakeLock";
 import { usePaquetes } from "../hooks/usePaquetes";
 import { useBienvenidaNeon } from "../hooks/useBienvenidaNeon";
@@ -305,8 +306,11 @@ export default function ConductorPage() {
     if (conductor.modo_delivery && (enCarrera || repartiendo)) return;
     setCambiandoDelivery(true);
     setDeliveryError("");
-    const { error: errDelivery } = await actualizar(conductor.id, { modo_delivery: !conductor.modo_delivery });
+    const encender = !conductor.modo_delivery;
+    const { error: errDelivery } = await actualizar(conductor.id, { modo_delivery: encender });
     setCambiandoDelivery(false);
+    // Los negocios que están eligiendo repartidor lo sacan (o lo suman) en vivo.
+    if (!errDelivery) avisarRepartoDisponible(conductor.id, encender);
     if (errDelivery) {
       setDeliveryError(
         errDelivery.code === "22023" ? errDelivery.message : "No se pudo cambiar el modo delivery. Intenta de nuevo."

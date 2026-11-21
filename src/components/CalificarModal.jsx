@@ -57,7 +57,7 @@ export default function CalificarModal({ nombre, foto, titulo, detalle, onEnviar
   };
 
   return createPortal(
-    <div className="tz-calif-fondo" onClick={() => !enviando && !listo && onCerrar?.(false)}>
+    <div className={`tz-calif-fondo ${listo ? "is-listo" : ""}`} onClick={() => !enviando && !listo && onCerrar?.(false)}>
       <style>{ESTILO}</style>
       <div className={`tz-calif ${listo ? "is-listo" : ""}`} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         {!listo && (
@@ -143,12 +143,17 @@ export default function CalificarModal({ nombre, foto, titulo, detalle, onEnviar
 
 const ESTILO = `
 .tz-calif-fondo { position: fixed; inset: 0; z-index: 9000; display: grid; place-items: center; padding: 16px;
-  background: rgba(5,3,12,0.72); backdrop-filter: blur(6px); animation: tz-calif-fade .3s ease both; }
-.tz-calif { position: relative; width: min(380px, 100%); display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: rgba(5,3,12,0.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: tz-calif-fade .3s ease both;
+  transition: background .5s ease, backdrop-filter .5s ease, -webkit-backdrop-filter .5s ease; }
+.tz-calif-fondo.is-listo { background: rgba(5,3,12,0.5); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.tz-calif { position: relative; isolation: isolate; width: min(380px, 100%); display: flex; flex-direction: column; align-items: center; gap: 8px;
   padding: 26px 20px 18px; border-radius: 24px; text-align: center; color: var(--text, #f4f2ff);
+  animation: tz-calif-in .55s cubic-bezier(.34,1.56,.64,1) both; }
+.tz-calif::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
   background: linear-gradient(160deg, rgba(30,22,58,0.97), rgba(14,9,30,0.97));
   border: 1px solid rgba(255,216,74,0.35); box-shadow: 0 0 40px rgba(255,216,74,0.18), 0 20px 60px rgba(0,0,0,0.5);
-  animation: tz-calif-in .55s cubic-bezier(.34,1.56,.64,1) both; }
+  transition: opacity .45s ease, transform .55s cubic-bezier(.34,1.56,.64,1); }
+.tz-calif.is-listo::before { opacity: 0; transform: scale(1.08); }
 .tz-calif-cerrar { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; border-radius: 50%; border: 0; cursor: pointer;
   display: grid; place-items: center; color: var(--text-dim, #9c93c2); background: rgba(255,255,255,0.06);
   transition: transform .3s cubic-bezier(.34,1.56,.64,1), color .2s ease; }
@@ -201,7 +206,8 @@ const ESTILO = `
 @keyframes tz-calif-tiembla { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 .tz-calif-gracias { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 0 6px; }
 .tz-calif-gracias strong { font-size: 24px; color: #ffd84a; text-shadow: 0 0 16px rgba(255,216,74,0.6); animation: tz-calif-texto .5s .25s cubic-bezier(.34,1.56,.64,1) both; }
-.tz-calif-gracias span { font-size: 13px; color: var(--text-dim, #9c93c2); animation: tz-calif-fade .5s .4s ease both; }
+.tz-calif-gracias span { font-size: 14px; font-weight: 700; color: #f4f2ff; text-shadow: 0 1px 10px rgba(0,0,0,0.6);
+  animation: tz-calif-fade .5s .4s ease both; }
 .tz-calif-explosion { position: relative; width: 120px; height: 110px; display: grid; place-items: center; }
 .tz-calif-explosion svg { position: absolute; width: 16px; height: 16px; fill: #ffd84a; filter: drop-shadow(0 0 6px #ffd84a);
   animation: tz-calif-chispa 1.1s var(--d) cubic-bezier(.2,.8,.3,1) both; }
