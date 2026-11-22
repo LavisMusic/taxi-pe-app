@@ -7762,11 +7762,19 @@ export default function Styles() {
       .tz-adjunto-audio { display: block; width: 230px; max-width: 100%; height: 40px; margin: 2px 0 4px; }
       .tz-adjunto-visor {
         position: fixed; inset: 0; z-index: 4000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
-        padding: 16px; background: rgba(5,3,12,0.92); cursor: zoom-out;
+        padding: 16px; background: rgba(5,3,12,0.42); cursor: zoom-out;
+        -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1);
         animation: tz-adjunto-visor-in 0.35s cubic-bezier(.22,.9,.3,1) both;
       }
-      @keyframes tz-adjunto-visor-in { from { opacity: 0; backdrop-filter: blur(0); } to { opacity: 1; } }
-      .tz-adjunto-visor img {
+      /* El visor es .tz-portal (toma los colores del tema), pero NO la escena
+         del tema de fondo: solo se desenfoca el chat de atrás. */
+      :root .tz-portal.tz-adjunto-visor { background: rgba(5,3,12,0.42) !important; }
+      @keyframes tz-adjunto-visor-in {
+        from { opacity: 0; -webkit-backdrop-filter: blur(0); backdrop-filter: blur(0); }
+        to { opacity: 1; -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1); }
+      }
+      /* Solo la foto del visor (hijo directo): no el logo de la boleta. */
+      .tz-adjunto-visor > img {
         max-width: 100%; max-height: 78vh; border-radius: 14px; cursor: default; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
         animation: tz-adjunto-foto-in 0.45s cubic-bezier(.34,1.56,.64,1) both;
       }
