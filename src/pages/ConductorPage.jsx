@@ -65,6 +65,8 @@ import MetaDiaModal, { gananciaHoy } from "../components/conductor/MetaDiaModal"
 import logo from "../assets/logo.webp";
 import BotonSoporte from "../components/BotonSoporte";
 import { BotonConfiguracion } from "../components/ConfiguracionesModal";
+import GuiaDonPeje from "../components/mascota/GuiaDonPeje";
+import SeccionMascota from "../components/mascota/SeccionMascota";
 import TextoMaquina from "../components/TextoMaquina";
 import AnuncioPopupModal from "../components/AnuncioPopupModal";
 import { useDescripcionesPublico } from "../hooks/useDescripciones";
@@ -430,7 +432,9 @@ export default function ConductorPage() {
           {/* Izquierda: Soporte y, debajo, Configuraciones y permisos. */}
           <div className="tz-header-side tz-header-side-left">
             <BotonSoporte />
-            <BotonConfiguracion usuarioId={usuario?.id} />
+            <BotonConfiguracion usuarioId={usuario?.id}>
+              <SeccionMascota />
+            </BotonConfiguracion>
           </div>
           <div className="tz-header-center">
             <img src={logo} alt="TaxiP" className="tz-logo" />
@@ -787,6 +791,10 @@ export default function ConductorPage() {
         )}
       </main>
 
+      {/* Don Peje: guía del conductor (espera a la bienvenida y a la membresía). */}
+      {conductor && (
+        <GuiaDonPeje rol="conductor" nombre={usuario?.nombre || conductor?.nombre} pausada={mostrarBienvenida || mostrarMembresiaActivada} />
+      )}
       {/* Pie de página del turno — fuera del cubo: no gira al deslizar. */}
       {conductor && (
         <footer className="tz-page-footer">

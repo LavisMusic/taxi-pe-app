@@ -45,6 +45,8 @@ import SaldoGemas from "../components/SaldoGemas";
 import { useMisGemas } from "../hooks/useMisGemas";
 import BotonSoporte from "../components/BotonSoporte";
 import { BotonConfiguracion } from "../components/ConfiguracionesModal";
+import GuiaDonPeje from "../components/mascota/GuiaDonPeje";
+import SeccionMascota from "../components/mascota/SeccionMascota";
 import BotonMensajes from "../components/mensajes/BotonMensajes";
 import CalificacionesViaje from "../components/CalificacionesViaje";
 import { usePendientesReputacion } from "../components/MiReputacion";
@@ -463,7 +465,9 @@ export default function HomePage() {
             {usuario && esPasajero ? (
               <>
                 <BotonSoporte />
-                <BotonConfiguracion usuarioId={usuario.id} />
+                <BotonConfiguracion usuarioId={usuario.id}>
+                  <SeccionMascota />
+                </BotonConfiguracion>
               </>
             ) : (
               <>
@@ -558,6 +562,10 @@ export default function HomePage() {
         </div>
       </header>
       {perfilOpen && <PerfilPasajeroModal onClose={() => setPerfilOpen(false)} />}
+      {/* Don Peje: guía del pasajero (espera a la bienvenida y al festejo del viaje). */}
+      {usuario && esPasajero && (
+        <GuiaDonPeje rol="pasajero" nombre={usuario.nombre} pausada={mostrarBienvenida || viajeFinalizado.festejar} />
+      )}
       {/* Banda con brillo bajo la cabecera, detrás del filtro de localidad
          (igual que la barra de filtros de Caja Tonazo): solo fondo. */}
       <div className="tz-banda-filtros" aria-hidden="true" />
