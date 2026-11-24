@@ -137,6 +137,62 @@ export const PASOS = {
   ],
 };
 
+PASOS.admin = [
+  {
+    id: "hola",
+    texto: "¡Hola! Soy Don Peje, el robot asistente de Taxi PE. Te muestro tu panel de administrador en un minuto. ¿Vamos?",
+    boton: "¡Vamos!",
+    accion: "saludar",
+  },
+  {
+    id: "numeros",
+    objetivo: ".tz-stats",
+    texto: "Aquí ves lo de hoy: las ventas, cuántos usuarios están conectados ahora y el usuario estrella.",
+  },
+  {
+    id: "directorio",
+    objetivo: '[data-guia="admin-directorio"]',
+    texto: "En el directorio manejas a tus conductores: su membresía, su estado y sus datos.",
+  },
+  {
+    id: "peticiones",
+    objetivo: '[aria-label="Centro de Peticiones"]',
+    texto: "En Peticiones apruebas los pagos de membresías y recargas que te envían por Yape o banco.",
+  },
+  {
+    id: "reportes",
+    objetivo: '[aria-label="Centro de reportes"]',
+    texto: "En Reportes revisas las quejas de pasajeros y conductores, y decides qué hacer.",
+  },
+  {
+    id: "usuarios",
+    objetivo: '[aria-label="Usuarios"]',
+    texto: "En Usuarios ves y administras a todos: pasajeros, conductores y recolectores.",
+  },
+  {
+    id: "membresias",
+    objetivo: ".tz-footer-btn-stock",
+    texto: "Aquí configuras las membresías y paquetes que venden tus recolectores.",
+  },
+  {
+    id: "dashboard",
+    objetivo: ".tz-footer-btn-dashboard",
+    texto: "Y en el Dashboard ves cómo va todo: viajes, horas pico, zonas y más.",
+  },
+  {
+    id: "cierre",
+    objetivo: ".tz-footer-btn-cierre",
+    texto: "Al terminar el día, cierra tu caja aquí.",
+  },
+  {
+    id: "fin",
+    texto: "¡Eso es todo! Ya conoces tu panel. Si me necesitas, tócame aquí en la esquina.",
+    boton: "¡Gracias, Don Peje!",
+    accion: "celebrar",
+    emocion: "feliz",
+  },
+];
+
 // Lo que ya tiene cada rol para saltar pasos hechos (en Taxi, nada todavía).
 export function leerEstado() {
   return Promise.resolve({});

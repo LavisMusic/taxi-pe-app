@@ -34,6 +34,7 @@ import { useRankingRepartidores } from "../hooks/useRankingRepartidores";
 import Styles from "../components/Styles";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import { useBienvenidaNeon } from "../hooks/useBienvenidaNeon";
+import GuiaDonPeje from "../components/mascota/GuiaDonPeje";
 import StatsSection from "../components/admin/StatsSection";
 import UsuarioEstrellaChip from "../components/admin/UsuarioEstrellaChip";
 import ConectadosAhoraChip from "../components/admin/ConectadosAhoraChip";
@@ -448,7 +449,9 @@ export default function AdminDashboardPage() {
               <UsuarioEstrellaChip ranking={ranking} />
             </section>
 
-            <h2 style={{ margin: "22px 0 10px" }}>Directorio de Conductores</h2>
+            <h2 style={{ margin: "22px 0 10px" }} data-guia="admin-directorio">
+              Directorio de Conductores
+            </h2>
             <ConductoresDirectorio
               conductores={conductores}
               categorias={categorias}
@@ -478,6 +481,8 @@ export default function AdminDashboardPage() {
          Styles.jsx). El modificador vive aparte de `.tz-page-footer`
          porque esa clase la comparten RecolectorPage.jsx y el App.jsx
          viejo — no se toca su layout flex original. */}
+      {/* Don Peje: guía del admin (espera a la bienvenida). */}
+      <GuiaDonPeje rol="admin" nombre="" pausada={mostrarBienvenida} />
       <footer className="tz-page-footer tz-page-footer-admin-grid">
         <button className={`tz-footer-btn tz-footer-btn-cierre ${turnoVencido ? "tz-btn-aviso" : ""}`} onClick={() => setCierreOpen(true)}>
           <Receipt size={18} />
