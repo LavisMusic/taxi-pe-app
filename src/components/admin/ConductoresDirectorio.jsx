@@ -45,7 +45,7 @@ const TAB_RECOLECTORES = "__recolectores__";
 // lógica acá. La aprobación de conductores nuevos vive en el Centro de
 // Peticiones (PeticionesModal), no acá — este Directorio solo muestra
 // conductores ya aprobados.
-function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar, paquetes = [], enDestacados = false }) {
+function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar, paquetes = [], enDestacados = false, reportes = 0 }) {
   const nivelOrigen = conductor.nivel_servicio || "economico";
   const [editing, setEditing] = useState(false);
   const [etiquetasAbiertas, setEtiquetasAbiertas] = useState(false);
@@ -304,6 +304,11 @@ function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar
                 </span>
               )}
               {rechazado && <span className="tz-tag tz-tag-danger">Rechazado</span>}
+              {reportes > 0 && (
+                <span className="tz-tag tz-tag-reportes" title="Llegó al límite de reportes (Ajustes → Reportes)">
+                  ⚠ {reportes} reportes
+                </span>
+              )}
             </div>
 
 
@@ -362,6 +367,8 @@ export default function ConductoresDirectorio({
   orden = "nivel",
   // Para saber qué membresías tienen "Destacado" encendido.
   paquetes = [],
+  // Umbral de reportes: Map "conductor:id" → total.
+  reportadosUmbral = new Map(),
 }) {
   const aprobados = useMemo(() => conductores.filter((c) => c.aprobado), [conductores]);
   const categoriasConAprobados = useMemo(
@@ -471,6 +478,7 @@ export default function ConductoresDirectorio({
                     onRecargar={onRecargar}
                     paquetes={paquetes}
                     enDestacados={!!g.estrella}
+                    reportes={reportadosUmbral.get(`conductor:${c.id}`) || 0}
                   />
                 ))}
               </div>

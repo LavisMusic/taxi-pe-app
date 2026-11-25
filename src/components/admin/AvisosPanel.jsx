@@ -1,6 +1,35 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Clock, X } from "lucide-react";
+import { supabase } from "../../supabaseClient";
+
+// Umbral de reportes (migración 20261212100000): quiénes llegaron al límite
+// → Map "tipo:id" → total. Se relee al cambiar el umbral, cuando cambian
+// los reportes y cada minuto.
+export function useReportadosUmbral(umbral) {
+  const [mapa, setMapa] = useState(() => new Map());
+  useEffect(() => {
+    if (!umbral) {
+      setMapa(new Map());
+      return undefined;
+    }
+    let vivo = true;
+    const leer = () =>
+      supabase.rpc("taxi_reportados_sobre_umbral").then(({ data, error }) => {
+        if (!vivo || error) return;
+        setMapa(new Map((data || []).map((r) => [`${r.reportado_tipo}:${r.reportado_id}`, r.total])));
+      });
+    leer();
+    const t = setInterval(() => document.visibilityState === "visible" && leer(), 60000);
+    window.addEventListener("tz-reportes-cambio", leer);
+    return () => {
+      vivo = false;
+      clearInterval(t);
+      window.removeEventListener("tz-reportes-cambio", leer);
+    };
+  }, [umbral]);
+  return mapa;
+}
 
 // Avisos del panel del admin (según sus Ajustes): un "ding" y/o una
 // notificación del navegador cuando llega una petición o un reporte nuevo,
@@ -50,12 +79,10 @@ export function useAvisosPanel({ ajustes, peticiones, reportes }) {
     if (peticiones != null) a.peticiones = peticiones;
     if (reportes != null) a.reportes = reportes;
     if (!subioP && !subioR) return;
+    // La notificación la manda el servidor (push, aunque el panel esté
+    // cerrado); acá, con el panel abierto, solo el sonido.
     if (ajustes.avisoSonido) tocarAviso();
-    if (ajustes.avisoNotificacion) {
-      if (subioP) notificar("Nueva petición en Taxi PE", "Tienes una petición por revisar en el Centro de Peticiones.");
-      if (subioR) notificar("Nuevo reporte en Taxi PE", "Llegó un reporte nuevo al Centro de reportes.");
-    }
-  }, [peticiones, reportes, ajustes.avisoSonido, ajustes.avisoNotificacion]);
+  }, [peticiones, reportes, ajustes.avisoSonido]);
 }
 
 const hoyClave = () => new Date().toLocaleDateString("en-CA");

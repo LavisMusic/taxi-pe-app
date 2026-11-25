@@ -223,6 +223,61 @@ Deno.serve(async () => {
     .lt("created_at", new Date(Date.now() - 2 * 86400000).toISOString())
     .not("enviado_at", "is", null);
 
+  // Avisos para el ADMIN (migración 20261212100000): peticiones, reportes y
+  // umbral de reportes, a sus dispositivos (push_suscripciones_admin), solo
+  // si tiene "Con notificación" encendido en Ajustes del panel.
+  const { data: avisosAdmin, error: errAdmin } = await db
+    .from("push_admin_pendientes")
+    .select("id, titulo, cuerpo, ruta, tag, created_at")
+    .is("enviado_at", null)
+    .order("created_at", { ascending: true })
+    .limit(50);
+  if (errAdmin) console.error("[push-enviar] admin", errAdmin.message);
+  if (avisosAdmin?.length) {
+    const { data: subsAdmin } = await db.from("push_suscripciones_admin").select("id, uid, endpoint, p256dh, auth");
+    // ¿Qué admins quieren el aviso? (sus Ajustes, en usuarios o en la tabla aparte)
+    const uids = [...new Set((subsAdmin ?? []).map((s) => s.uid))];
+    const quiere = new Set<string>();
+    if (uids.length) {
+      const [{ data: extra }, { data: filas }] = await Promise.all([
+        db.from("taxi_guia_extra").select("uid, datos").in("uid", uids),
+        db.from("usuarios").select("id, guia_don_peje").in("id", uids),
+      ]);
+      for (const e of extra ?? []) if (e.datos?.ajustes?.avisoNotificacion === true) quiere.add(e.uid);
+      for (const u of filas ?? []) if (u.guia_don_peje?.ajustes?.avisoNotificacion === true) quiere.add(u.id);
+    }
+    const destinos = (subsAdmin ?? []).filter((s) => quiere.has(s.uid));
+    for (const a of avisosAdmin) {
+      const { data: tomado } = await db
+        .from("push_admin_pendientes")
+        .update({ enviado_at: ahora })
+        .eq("id", a.id)
+        .is("enviado_at", null)
+        .select("id");
+      if (!tomado?.length || a.created_at < haceUnaHora) continue;
+      await Promise.all(
+        destinos.map(async (s) => {
+          try {
+            const status = await enviarPush(
+              s,
+              { title: a.titulo, body: String(a.cuerpo || "").slice(0, 200), url: a.ruta || "/admin", tag: a.tag || `admin-${a.id}` },
+              vapid
+            );
+            if (status === 404 || status === 410) await db.from("push_suscripciones_admin").delete().eq("id", s.id);
+            else if (status < 300) enviados++;
+          } catch (err) {
+            console.error("[push-enviar] error enviando (admin)", err);
+          }
+        })
+      );
+    }
+  }
+  await db
+    .from("push_admin_pendientes")
+    .delete()
+    .lt("created_at", new Date(Date.now() - 2 * 86400000).toISOString())
+    .not("enviado_at", "is", null);
+
   return new Response(JSON.stringify({ ok: true, mensajes: pendientes?.length ?? 0, chats: chats?.length ?? 0, enviados }), {
     headers: { "Content-Type": "application/json" },
   });

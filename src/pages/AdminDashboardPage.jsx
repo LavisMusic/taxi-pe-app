@@ -37,7 +37,8 @@ import { useBienvenidaNeon } from "../hooks/useBienvenidaNeon";
 import GuiaDonPeje from "../components/mascota/GuiaDonPeje";
 import AjustesPanelModal from "../components/AjustesPanelModal";
 import { useAjustesPanel } from "../hooks/useAjustesPanel";
-import { useAvisosPanel, RecordatorioCierre } from "../components/admin/AvisosPanel";
+import { useAvisosPanel, RecordatorioCierre, useReportadosUmbral } from "../components/admin/AvisosPanel";
+import { useAjustesPlataforma } from "../lib/ajustesPlataforma";
 import StatsSection from "../components/admin/StatsSection";
 import UsuarioEstrellaChip from "../components/admin/UsuarioEstrellaChip";
 import ConectadosAhoraChip from "../components/admin/ConectadosAhoraChip";
@@ -101,6 +102,9 @@ export default function AdminDashboardPage() {
   const { mostrar: mostrarBienvenida, marcarVista: marcarBienvenidaVista } = useBienvenidaNeon("admin-master", true);
   const [ajustesOpen, setAjustesOpen] = useState(false);
   const [ajustes, cambiarAjustes] = useAjustesPanel();
+  // Umbral de reportes: quiénes llegaron al límite (marca en sus tarjetas).
+  const { umbral_reportes: umbralReportes } = useAjustesPlataforma();
+  const reportadosUmbral = useReportadosUmbral(umbralReportes);
   const {
     ventas,
     ventasVigentes,
@@ -481,6 +485,7 @@ export default function AdminDashboardPage() {
               ocultarSinSaldo={ajustes.dirOcultarSinSaldo}
               orden={ajustes.dirOrden}
               paquetes={paquetes}
+              reportadosUmbral={reportadosUmbral}
             />
           </>
         )}
@@ -633,6 +638,7 @@ export default function AdminDashboardPage() {
           eliminarUsuario={eliminarUsuarioYSync}
           crearConductorConUsuario={crearConductorConUsuario}
           onClose={() => setUsuariosOpen(false)}
+          reportadosUmbral={reportadosUmbral}
         />
       )}
       {gastosOpen && (

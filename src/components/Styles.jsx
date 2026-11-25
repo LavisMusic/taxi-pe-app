@@ -7965,6 +7965,18 @@ export default function Styles() {
       @keyframes tz-estrella-brillo { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.15) rotate(12deg); } }
       .tz-tag.tz-tag-origen { color: var(--origen); border-color: var(--origen); background: color-mix(in srgb, var(--origen) 14%, transparent); }
       /* Ajustes del panel (admin): campos, filas de interruptores y montos ocultos. */
+      .tz-ajustes-campo > span { display: flex; flex-direction: column; gap: 2px; color: var(--text); font-weight: 700; }
+      .tz-ajustes-campo small { font-weight: 400; color: var(--text-dim); font-size: 11.5px; }
+      .tz-ajustes-contador { flex: 0 0 auto !important; display: inline-flex; align-items: center; gap: 4px; padding: 3px; border-radius: 999px;
+        border: 1px solid rgba(43,232,255,0.35); background: rgba(43,232,255,0.06); }
+      .tz-ajustes-contador button { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 999px; border: 0;
+        background: rgba(43,232,255,0.14); color: var(--cyan); cursor: pointer; transition: transform .25s cubic-bezier(.34,1.56,.64,1), opacity .2s; }
+      .tz-ajustes-contador button:active { transform: scale(.85); }
+      .tz-ajustes-contador button:disabled { opacity: .35; cursor: default; }
+      .tz-ajustes-contador strong { min-width: 26px; text-align: center; font-size: 15px; color: var(--cyan);
+        animation: tz-contador-pop .35s cubic-bezier(.34,1.56,.64,1); }
+      @keyframes tz-contador-pop { from { transform: scale(1.35); opacity: .4; } to { transform: none; opacity: 1; } }
+      .tz-tag.tz-tag-reportes { color: #ff9500; border-color: rgba(255,149,0,0.6); background: rgba(255,149,0,0.12); }
       .tz-ajustes-panel .tz-config-seccion + .tz-config-seccion { margin-top: 14px; }
       .tz-ajustes-campo { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; font-size: 12.5px; color: var(--text-dim); }
       .tz-ajustes-campo > :last-child { flex: 0 1 230px; min-width: 0; }

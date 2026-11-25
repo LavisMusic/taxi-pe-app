@@ -19,7 +19,7 @@ const TABS = [
 // mismo patrón que ConductorCard en el Directorio. Solo edita
 // `usuarios` (nombre/dni/teléfono de login) — los datos operativos de
 // un conductor (placa/categoría/estado) se editan en el Directorio.
-function UsuarioRow({ usuario, onUpdate, onDelete, onGenerarCodigo, generandoCodigo }) {
+function UsuarioRow({ usuario, onUpdate, onDelete, onGenerarCodigo, generandoCodigo, reportes = 0 }) {
   const [editing, setEditing] = useState(false);
   const [etiquetasAbiertas, setEtiquetasAbiertas] = useState(false);
   const esPasajero = usuario.rol === "pasajero";
@@ -148,6 +148,11 @@ function UsuarioRow({ usuario, onUpdate, onDelete, onGenerarCodigo, generandoCod
           <span className="tz-nombre-rep">
             <strong style={{ color: "var(--text)" }}>{usuario.nombre}</strong>
             {esPasajero && <ReputacionDe tipo="pasajero" id={usuario.id} tamano="chico" />}
+            {reportes > 0 && (
+              <span className="tz-tag tz-tag-reportes" title="Llegó al límite de reportes (Ajustes → Reportes)">
+                ⚠ {reportes} reportes
+              </span>
+            )}
           </span>
           <span style={{ marginLeft: 8 }}>DNI {usuario.dni} · {formatTelefono(usuario.telefono)}</span>
         </span>
@@ -211,6 +216,8 @@ export default function UsuariosModal({
   eliminarUsuario,
   crearConductorConUsuario,
   onClose,
+  // Umbral de reportes: Map "pasajero:id" → total.
+  reportadosUmbral = new Map(),
 }) {
   const [tab, setTab] = useState("conductor");
   const [addOpen, setAddOpen] = useState(false);
@@ -391,6 +398,7 @@ export default function UsuariosModal({
                   onDelete={eliminarUsuario}
                   onGenerarCodigo={generarCodigo}
                   generandoCodigo={generandoCodigoId === u.id}
+                  reportes={reportadosUmbral.get(`pasajero:${u.id}`) || 0}
                 />
               ))}
             </ul>
