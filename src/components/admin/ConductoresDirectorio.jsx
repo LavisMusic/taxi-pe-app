@@ -45,7 +45,7 @@ const TAB_RECOLECTORES = "__recolectores__";
 // lógica acá. La aprobación de conductores nuevos vive en el Centro de
 // Peticiones (PeticionesModal), no acá — este Directorio solo muestra
 // conductores ya aprobados.
-function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar, enDestacados = false }) {
+function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar, paquetes = [], enDestacados = false }) {
   const nivelOrigen = conductor.nivel_servicio || "economico";
   const [editing, setEditing] = useState(false);
   const [etiquetasAbiertas, setEtiquetasAbiertas] = useState(false);
@@ -64,18 +64,14 @@ function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar
   const [busyEstado, setBusyEstado] = useState(false);
 
   const rechazado = conductor.estado === ESTADO_CONDUCTOR_RECHAZADO;
-  // Bug reportado: el Admin veía "Libre" en el desplegable de un
-  // conductor que en realidad no puede operar (sin membresía vigente
-  // NI créditos — ver el mismo cálculo en ConductorPage.jsx,
-  // `tieneAcceso`). El desplegable sigue mostrando el `estado` real tal
-  // cual está guardado (no lo pisamos con un valor falso), pero este
-  // aviso aparte hace visible que, aunque diga "Libre", ese conductor
-  // está bloqueado por el Paywall hasta que recargue.
+  // Membresía vigente: la etiqueta del plan dice cuál tiene, o "Sin plan" y
+  // "Venció …" si ya no (el aviso de "saldo" se quitó: ya no hay saldos).
   const diasRestantesCard = conductor.vencimiento_suscripcion
     ? Math.ceil((new Date(conductor.vencimiento_suscripcion) - new Date()) / 86400000)
     : null;
   const tieneMembresiaVigenteCard = diasRestantesCard != null && diasRestantesCard >= 0;
-  const sinSaldo = conductor.estado !== ESTADO_CONDUCTOR_INHABILITADO && !tieneMembresiaVigenteCard;
+  // Su plan (membresía) en etiqueta, como en las tarjetas de negocios.
+  const paqueteActual = paquetes.find((p) => p.id === conductor.membresia_paquete_id);
   const subgruposDeSuCategoria = subgrupos.filter((s) => s.categoria_id === conductor.categoria_id);
 
   const startEdit = () => {
@@ -295,17 +291,19 @@ function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar
                   {NIVELES_SERVICIO.find((n) => n.value === nivelOrigen)?.label ?? nivelOrigen}
                 </span>
               )}
+              <span className="tz-tag tz-tag-ok" title="Membresía (plan)">
+                {tieneMembresiaVigenteCard
+                  ? paqueteActual
+                    ? `${paqueteActual.nombre} · ${paqueteActual.dias_membresia} días`
+                    : "Membresía vigente"
+                  : "Sin plan"}
+              </span>
               {conductor.vencimiento_suscripcion && (
-                <span className="tz-tag tz-tag-warn">
-                  Vence {formatDate(conductor.vencimiento_suscripcion)}
+                <span className={`tz-tag ${tieneMembresiaVigenteCard ? "tz-tag-warn" : "tz-tag-danger"}`}>
+                  {tieneMembresiaVigenteCard ? "Vence" : "Venció"} {formatDate(conductor.vencimiento_suscripcion)}
                 </span>
               )}
               {rechazado && <span className="tz-tag tz-tag-danger">Rechazado</span>}
-              {sinSaldo && (
-                <span className="tz-tag tz-tag-danger" title="Sin membresía vigente ni créditos — el Paywall le bloquea el acceso aunque el estado diga otra cosa">
-                  ⚠️ Sin saldo
-                </span>
-              )}
             </div>
 
 
@@ -471,6 +469,7 @@ export default function ConductoresDirectorio({
                     onUpdate={onUpdate}
                     onSetEstado={onSetEstado}
                     onRecargar={onRecargar}
+                    paquetes={paquetes}
                     enDestacados={!!g.estrella}
                   />
                 ))}

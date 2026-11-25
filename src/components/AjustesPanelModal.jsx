@@ -105,8 +105,8 @@ export default function AjustesPanelModal({ ajustes, cambiar, localidades = [], 
               <Interruptor
                 activo={!ajustes.dirOcultarSinSaldo}
                 onClick={() => cambiar({ dirOcultarSinSaldo: !ajustes.dirOcultarSinSaldo })}
-                si="Mostrar a los que no tienen saldo"
-                no="Ocultar a los que no tienen saldo"
+                si="Mostrar a los que no tienen plan vigente"
+                no="Ocultar a los que no tienen plan vigente"
                 iconoSi={Eye}
                 iconoNo={EyeOff}
               />
