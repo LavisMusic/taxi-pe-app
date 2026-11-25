@@ -243,15 +243,17 @@ export async function crearDonPeje(canvas, { url = URL_MODELO } = {}) {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.25;
+  // Menos exposición y menos reflejo del entorno: metal gris, no blanco.
+  renderer.toneMappingExposure = 0.95;
   renderer.setClearColor(0x000000, 0);
 
   const escena = new THREE.Scene();
   const pmrem = new THREE.PMREMGenerator(renderer);
   const entorno = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   escena.environment = entorno;
-  escena.add(new THREE.HemisphereLight(0xdff6ff, 0x221a3a, 1.1));
-  const sol = new THREE.DirectionalLight(0xffffff, 2.2);
+  escena.environmentIntensity = 0.7;
+  escena.add(new THREE.HemisphereLight(0xdff6ff, 0x221a3a, 0.6));
+  const sol = new THREE.DirectionalLight(0xffffff, 1.7);
   sol.position.set(1.5, 3, 3);
   escena.add(sol);
   const borde = new THREE.DirectionalLight(0x2be8ff, 1.6);
@@ -398,17 +400,25 @@ export async function crearDonPeje(canvas, { url = URL_MODELO } = {}) {
           const r = p[i];
           const g = p[i + 1];
           const b = p[i + 2];
-          const led = b > 120 && b > r + 50 && g > 70 && g > r + 20;
-          if (!led) {
-            p[i] = 0;
-            p[i + 1] = 0;
-            p[i + 2] = 0;
-          } else {
-            // Más vivo: lleva el color hacia el cian de la marca.
-            p[i] = Math.min(255, r * 0.6);
-            p[i + 1] = Math.min(255, g * 1.15);
-            p[i + 2] = 255;
+          // Todo lo azul o cian con color (por tono, no solo lo más claro):
+          // franjas del cuerpo, ruedas, cabeza y orejas. El atlas de Tripo
+          // viene en pedacitos, así que se mira píxel por píxel.
+          const mx = Math.max(r, g, b);
+          const mn = Math.min(r, g, b);
+          const sat = mx ? (mx - mn) / mx : 0;
+          let tono = 0;
+          if (mx !== mn) {
+            if (mx === r) tono = ((g - b) / (mx - mn)) % 6;
+            else if (mx === g) tono = (b - r) / (mx - mn) + 2;
+            else tono = (r - g) / (mx - mn) + 4;
+            tono = (tono * 60 + 360) % 360;
           }
+          const led = tono > 168 && tono < 238 && sat > 0.3 && mx > 60;
+          // Luz pareja de LED (no la textura manchada), con borde suave.
+          const k = led ? Math.min(1, (sat - 0.3) / 0.2) * Math.min(1, (mx - 60) / 60) : 0;
+          p[i] = 70 * k;
+          p[i + 1] = 228 * k;
+          p[i + 2] = 255 * k;
         }
         ctx.putImageData(datos, 0, 0);
         const mascara = new THREE.CanvasTexture(c);
@@ -450,7 +460,7 @@ export async function crearDonPeje(canvas, { url = URL_MODELO } = {}) {
       metalness: 0.2,
       emissive: 0xffffff,
       emissiveMap: cara.textura,
-      emissiveIntensity: 1.7,
+      emissiveIntensity: 2.0,
     });
   });
 
@@ -655,7 +665,7 @@ export async function crearDonPeje(canvas, { url = URL_MODELO } = {}) {
     });
     doblarCola?.(Math.sin(t * colaVel) * colaAmp);
     // LEDs que respiran (más suaves dormido).
-    const pulso = (1.45 + Math.sin(t * 2.2) * 0.35) * (1 - vivo.sueno * 0.6);
+    const pulso = (1.9 + Math.sin(t * 2.2) * 0.4) * (1 - vivo.sueno * 0.6);
     materialesLed.forEach((m) => {
       m.emissiveIntensity = pulso;
     });
