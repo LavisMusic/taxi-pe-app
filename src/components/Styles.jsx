@@ -7964,16 +7964,6 @@ export default function Styles() {
         animation: tz-estrella-brillo 2.4s ease-in-out infinite; }
       @keyframes tz-estrella-brillo { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.15) rotate(12deg); } }
       .tz-tag.tz-tag-origen { color: var(--origen); border-color: var(--origen); background: color-mix(in srgb, var(--origen) 14%, transparent); }
-      .tz-destacado-fila { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0; }
-      .tz-destacado-switch { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; cursor: pointer;
-        font: inherit; font-size: 12px; font-weight: 800; color: var(--text-dim); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.14);
-        transition: color .3s ease, background .3s ease, border-color .3s ease, box-shadow .3s ease, transform .3s cubic-bezier(.34,1.56,.64,1); }
-      .tz-destacado-switch:active { transform: scale(.94); }
-      .tz-destacado-switch.is-on { color: #1a1d05; background: linear-gradient(110deg, #d7ff3b, #ffd23b); border-color: transparent;
-        box-shadow: 0 0 14px rgba(215,255,59,0.5); }
-      .tz-destacado-modo { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; opacity: .65; }
-      .tz-destacado-auto { display: inline-flex; align-items: center; gap: 4px; background: none; border: 0; padding: 0; cursor: pointer;
-        font: inherit; font-size: 11px; color: var(--text-dim); text-decoration: underline; }
       /* Ajustes del panel (admin): campos, filas de interruptores y montos ocultos. */
       .tz-ajustes-panel .tz-config-seccion + .tz-config-seccion { margin-top: 14px; }
       .tz-ajustes-campo { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; font-size: 12.5px; color: var(--text-dim); }

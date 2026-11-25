@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Pencil, Save, X, Loader2, Zap, BadgeCheck, Star, RotateCcw } from "lucide-react";
+import { Pencil, Save, X, Loader2, Zap, BadgeCheck } from "lucide-react";
 import ReputacionDe from "../ReputacionDe";
 import EtiquetasManualesModal from "./EtiquetasManualesModal";
 import ProductImage from "../ProductImage";
@@ -18,20 +18,14 @@ import {
 import { agruparPorNivel, NIVEL_COLOR } from "../../lib/nivelServicio";
 
 // Destacados (solo en el panel del admin, para priorizar su atención): los
-// que el admin marcó o —en automático— los que tienen una membresía de 60
-// días o más y vigente. `conductores.destacado`: null = automático.
-export const DIAS_DESTACADO = 60;
+// conductores con membresía vigente de un paquete con "Destacado" encendido
+// (Configurar Membresías, paquetes.destaca).
 function membresiaVigente(c) {
   return !!c.vencimiento_suscripcion && new Date(c.vencimiento_suscripcion).getTime() >= Date.now() - 86400000;
 }
-export function destacadoAutomatico(c, paquetes = []) {
-  const paquete = paquetes.find((p) => p.id === c.membresia_paquete_id);
-  return !!paquete && Number(paquete.dias_membresia || 0) >= DIAS_DESTACADO && membresiaVigente(c);
-}
 export function esDestacado(c, paquetes = []) {
-  if (c.destacado === true) return true;
-  if (c.destacado === false) return false;
-  return destacadoAutomatico(c, paquetes);
+  const paquete = paquetes.find((p) => p.id === c.membresia_paquete_id);
+  return !!paquete?.destaca && membresiaVigente(c);
 }
 import Select from "../Select";
 
@@ -51,17 +45,8 @@ const TAB_RECOLECTORES = "__recolectores__";
 // lógica acá. La aprobación de conductores nuevos vive en el Centro de
 // Peticiones (PeticionesModal), no acá — este Directorio solo muestra
 // conductores ya aprobados.
-function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar, paquetes = [], enDestacados = false }) {
-  const destacado = esDestacado(conductor, paquetes);
-  const auto = destacadoAutomatico(conductor, paquetes);
-  const [cambiandoDestacado, setCambiandoDestacado] = useState(false);
+function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar, enDestacados = false }) {
   const nivelOrigen = conductor.nivel_servicio || "economico";
-  const marcarDestacado = async (valor) => {
-    setCambiandoDestacado(true);
-    const r = await onUpdate(conductor.id, { destacado: valor });
-    setCambiandoDestacado(false);
-    if (r?.error) setError(/destacado/.test(r.error.message || "") ? "Falta correr la migración de destacados." : r.error.message);
-  };
   const [editing, setEditing] = useState(false);
   const [etiquetasAbiertas, setEtiquetasAbiertas] = useState(false);
   const [nombre, setNombre] = useState(conductor.nombre);
@@ -322,25 +307,7 @@ function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar
                 </span>
               )}
             </div>
-            <div className="tz-destacado-fila">
-              <button
-                type="button"
-                className={`tz-destacado-switch ${destacado ? "is-on" : ""}`}
-                onClick={() => marcarDestacado(!destacado)}
-                disabled={cambiandoDestacado}
-                aria-pressed={destacado}
-                title={conductor.destacado == null ? "Automático: membresía de 2 meses o más" : "Lo decidiste tú"}
-              >
-                <Star size={13} fill={destacado ? "currentColor" : "none"} />
-                {destacado ? "Destacado" : "Normal"}
-                <span className="tz-destacado-modo">{conductor.destacado == null ? "auto" : "manual"}</span>
-              </button>
-              {conductor.destacado != null && auto !== conductor.destacado && (
-                <button type="button" className="tz-destacado-auto" onClick={() => marcarDestacado(null)} disabled={cambiandoDestacado}>
-                  <RotateCcw size={11} /> volver a automático
-                </button>
-              )}
-            </div>
+
 
             <Select
               className="tz-estado-select"
@@ -395,7 +362,7 @@ export default function ConductoresDirectorio({
   localidad = "",
   ocultarSinSaldo = false,
   orden = "nivel",
-  // Para el destacado automático (membresía de 60 días o más).
+  // Para saber qué membresías tienen "Destacado" encendido.
   paquetes = [],
 }) {
   const aprobados = useMemo(() => conductores.filter((c) => c.aprobado), [conductores]);
@@ -504,7 +471,6 @@ export default function ConductoresDirectorio({
                     onUpdate={onUpdate}
                     onSetEstado={onSetEstado}
                     onRecargar={onRecargar}
-                    paquetes={paquetes}
                     enDestacados={!!g.estrella}
                   />
                 ))}

@@ -7,6 +7,9 @@ import { subscribeTable } from "../lib/realtime";
 // desde cualquiera de las dos pantallas.
 const GLOW_DURACION_MS = 2600;
 
+const COLS_PAQUETE =
+  "id, tipo_item, nombre, precio, precio_base, descuento_pct, descuento_desde, descuento_hasta, dias_membresia, creditos, descripcion, activo, orden";
+
 // Lista de paquetes configurables (Membresías y Paquetes de Créditos)
 // que el admin arma desde "Configurar Membresías" — reemplaza a la fila
 // única vieja de `configuracion_paquetes`: ahora puede haber varias
@@ -29,11 +32,15 @@ export function usePaquetes() {
   const refresh = useCallback(async () => {
     setLoading(true);
     setError("");
-    const { data, error: fetchError } = await supabase
+    // precio = vigente (con el descuento programado); precio_base y descuento_* para mostrar y editar.
+    // `destaca` (migración 20261211100000): sin ella, se lee sin esa columna.
+    let { data, error: fetchError } = await supabase
       .from("paquetes")
-      // precio = vigente (con el descuento programado); precio_base y descuento_* para mostrar y editar.
-      .select("id, tipo_item, nombre, precio, precio_base, descuento_pct, descuento_desde, descuento_hasta, dias_membresia, creditos, descripcion, activo, orden")
+      .select(`${COLS_PAQUETE}, destaca`)
       .order("orden", { ascending: true });
+    if (fetchError && /destaca/.test(fetchError.message || "")) {
+      ({ data, error: fetchError } = await supabase.from("paquetes").select(COLS_PAQUETE).order("orden", { ascending: true }));
+    }
 
     if (fetchError) {
       setError("No se pudieron cargar los paquetes.");

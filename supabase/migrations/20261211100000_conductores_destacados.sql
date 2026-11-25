@@ -1,27 +1,23 @@
 -- =========================================================================
 -- Destacados (solo en el panel del admin, para priorizar su atención).
 --
--- conductores.destacado: null = automático (membresía de 60 días o más y
--- vigente), true / false = lo decidió el admin. Solo el admin lo cambia
--- (el conductor puede editar su ficha, pero no destacarse a sí mismo).
+-- paquetes.destaca: interruptor en Configurar Membresías. Quien tiene
+-- vigente una membresía con "Destacado" encendido sale en el subgrupo
+-- "Destacados" del directorio del admin. Al crearse la columna se
+-- encienden las membresías de 60 días o más (la regla de hoy).
 --
 -- Proyecto: Taxi-PE. Idempotente.
 -- =========================================================================
 
-alter table public.conductores add column if not exists destacado boolean;
-
-create or replace function public.fn_conductor_destacado_solo_admin()
-returns trigger language plpgsql security definer set search_path = public as $$
+do $$
 begin
-  if NEW.destacado is distinct from OLD.destacado and not public.taxi_es_admin() then
-    NEW.destacado := OLD.destacado;
+  if not exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'paquetes' and column_name = 'destaca'
+  ) then
+    alter table public.paquetes add column destaca boolean not null default false;
+    update public.paquetes set destaca = true where coalesce(dias_membresia, 0) >= 60;
   end if;
-  return NEW;
-end;
-$$;
-drop trigger if exists trg_conductor_destacado_solo_admin on public.conductores;
-create trigger trg_conductor_destacado_solo_admin
-  before update on public.conductores
-  for each row execute function public.fn_conductor_destacado_solo_admin();
+end $$;
 
 notify pgrst, 'reload schema';

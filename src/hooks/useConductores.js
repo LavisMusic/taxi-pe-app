@@ -36,19 +36,6 @@ import {
 // teléfono, DNI, fotos de verificación ni ubicación — migración
 // 20261105120000); el recolector ya no lee la tabla. El Admin sí.
 
-const COLS_CONDUCTOR =
-  "id, nombre, placa, telefono, localidad, foto_url, foto_portada_url, descripcion, estado, creditos, vencimiento_suscripcion, categoria_id, subgrupo_id, nivel_servicio, aprobado, asientos_totales, asientos_ocupados, membresia_paquete_id, nivel_servicio_solicitado, created_at";
-
-// Con `destacado` (migración 20261211100000_conductores_destacados); si
-// todavía no se corrió, se leen sin esa columna (el directorio no se cae).
-async function leerConductores() {
-  const r = await supabase.from("conductores").select(`${COLS_CONDUCTOR}, destacado`).order("created_at", { ascending: false });
-  if (r.error && /destacado/.test(r.error.message || "")) {
-    return supabase.from("conductores").select(COLS_CONDUCTOR).order("created_at", { ascending: false });
-  }
-  return r;
-}
-
 export function useConductores({ recolector = false } = {}) {
   const [conductores, setConductores] = useState([]);
   const [categorias, setCategorias] = useState([]);
@@ -67,7 +54,12 @@ export function useConductores({ recolector = false } = {}) {
     const [conductoresRes, categoriasRes, subgruposRes, privadosRes] = await Promise.all([
       recolector
         ? supabase.rpc("taxi_conductores_para_recolector")
-        : leerConductores(),
+        : supabase
+            .from("conductores")
+            .select(
+              "id, nombre, placa, telefono, localidad, foto_url, foto_portada_url, descripcion, estado, creditos, vencimiento_suscripcion, categoria_id, subgrupo_id, nivel_servicio, aprobado, asientos_totales, asientos_ocupados, membresia_paquete_id, nivel_servicio_solicitado, created_at"
+            )
+            .order("created_at", { ascending: false }),
       supabase.from("categorias").select("id, nombre, orden, icono_url").order("orden", { ascending: true }),
       // Solo lectura acá — el CRUD completo de subgrupos vive en
       // useCategorias.js (usado por CategoriasModal). Esto es para
