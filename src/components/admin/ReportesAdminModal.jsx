@@ -614,7 +614,10 @@ const ESTILO = `
   justify-content: center; line-height: 1; font-size: 10.5px; font-weight: 900; color: #fff; background: #ff2d55; box-shadow: 0 0 10px rgba(255,45,85,0.6);
   animation: tz-radm-pop .5s cubic-bezier(.34,1.56,.64,1) both; }
 @media (max-width: 420px) { .tz-radm-app span { display: none; } }
-.tz-radm-filtros { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+/* Aire para el brillo del filtro activo y su salto al pasar el mouse (el
+   desplazamiento lateral recorta todo lo que sobresale); el margen negativo
+   lo compensa para que la fila no se mueva. */
+.tz-radm-filtros { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 14px 18px; margin: -12px -18px; }
 .tz-radm-filtros::-webkit-scrollbar { display: none; }
 .tz-radm-filtro { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 999px; cursor: pointer;
   font: inherit; font-size: 12.5px; font-weight: 800; color: var(--text-dim); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);

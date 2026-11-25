@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, CreditCard, MapPin, Loader2, MessageSquareText, BarChart3, ShieldAlert } from "lucide-react";
+import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, CreditCard, MapPin, Loader2, MessageSquareText, BarChart3, ShieldAlert, SlidersHorizontal } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useLocalidades } from "../hooks/useLocalidades";
@@ -34,6 +34,11 @@ import { useRankingRepartidores } from "../hooks/useRankingRepartidores";
 import Styles from "../components/Styles";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import { useBienvenidaNeon } from "../hooks/useBienvenidaNeon";
+import GuiaDonPeje from "../components/mascota/GuiaDonPeje";
+import AjustesPanelModal from "../components/AjustesPanelModal";
+import { useAjustesPanel } from "../hooks/useAjustesPanel";
+import { useAvisosPanel, RecordatorioCierre, useReportadosUmbral } from "../components/admin/AvisosPanel";
+import { useAjustesPlataforma } from "../lib/ajustesPlataforma";
 import StatsSection from "../components/admin/StatsSection";
 import UsuarioEstrellaChip from "../components/admin/UsuarioEstrellaChip";
 import ConectadosAhoraChip from "../components/admin/ConectadosAhoraChip";
@@ -95,6 +100,11 @@ export default function AdminDashboardPage() {
   // de los roles. El admin master no tiene fila de usuario propia, así
   // que la clave es fija.
   const { mostrar: mostrarBienvenida, marcarVista: marcarBienvenidaVista } = useBienvenidaNeon("admin-master", true);
+  const [ajustesOpen, setAjustesOpen] = useState(false);
+  const [ajustes, cambiarAjustes] = useAjustesPanel();
+  // Umbral de reportes: quiénes llegaron al límite (marca en sus tarjetas).
+  const { umbral_reportes: umbralReportes } = useAjustesPlataforma();
+  const reportadosUmbral = useReportadosUmbral(umbralReportes);
   const {
     ventas,
     ventasVigentes,
@@ -322,8 +332,12 @@ export default function AdminDashboardPage() {
     recargasRecolectorPendientes.length +
     recargasConductorPendientes.length;
 
+  // Ajustes: sonido/notificación cuando sube el número de peticiones o de
+  // reportes nuevos.
+  useAvisosPanel({ ajustes, peticiones: loading ? null : totalPeticiones, reportes: conteoReportes ? reportesNuevos : null });
+
   return (
-    <div className="tz-root">
+    <div className={`tz-root ${ajustes.ocultarMontos ? "tz-montos-ocultos" : ""}`}>
       <Styles />
       {mostrarBienvenida && (
         <AnimacionNeonBienvenida
@@ -448,7 +462,9 @@ export default function AdminDashboardPage() {
               <UsuarioEstrellaChip ranking={ranking} />
             </section>
 
-            <h2 style={{ margin: "22px 0 10px" }}>Directorio de Conductores</h2>
+            <h2 style={{ margin: "22px 0 10px" }} data-guia="admin-directorio">
+              Directorio de Conductores
+            </h2>
             <ConductoresDirectorio
               conductores={conductores}
               categorias={categorias}
@@ -465,6 +481,11 @@ export default function AdminDashboardPage() {
                 setRecargaRecolector(recolector);
                 setRecargaRecolectorOpen(true);
               }}
+              localidad={ajustes.dirLocalidad}
+              ocultarSinSaldo={ajustes.dirOcultarSinSaldo}
+              orden={ajustes.dirOrden}
+              paquetes={paquetes}
+              reportadosUmbral={reportadosUmbral}
             />
           </>
         )}
@@ -478,6 +499,17 @@ export default function AdminDashboardPage() {
          Styles.jsx). El modificador vive aparte de `.tz-page-footer`
          porque esa clase la comparten RecolectorPage.jsx y el App.jsx
          viejo — no se toca su layout flex original. */}
+      {ajustesOpen && (
+        <AjustesPanelModal
+          ajustes={ajustes}
+          cambiar={cambiarAjustes}
+          localidades={localidades}
+          onClose={() => setAjustesOpen(false)}
+        />
+      )}
+      <RecordatorioCierre hora={ajustes.cierreHora} sonido={ajustes.avisoSonido} cierres={cierres} onCerrarCaja={() => setCierreOpen(true)} />
+      {/* Don Peje: guía del admin (espera a la bienvenida). */}
+      <GuiaDonPeje rol="admin" nombre="" pausada={mostrarBienvenida} />
       <footer className="tz-page-footer tz-page-footer-admin-grid">
         <button className={`tz-footer-btn tz-footer-btn-cierre ${turnoVencido ? "tz-btn-aviso" : ""}`} onClick={() => setCierreOpen(true)}>
           <Receipt size={18} />
@@ -511,6 +543,10 @@ export default function AdminDashboardPage() {
         <button className="tz-footer-btn tz-footer-btn-dashboard" onClick={() => navigate("/admin/dashboard")}>
           <BarChart3 size={18} />
           Dashboard
+        </button>
+        <button className="tz-footer-btn tz-footer-btn-ajustes" onClick={() => setAjustesOpen(true)}>
+          <SlidersHorizontal size={18} />
+          Ajustes
         </button>
         <button className="tz-footer-btn tz-footer-btn-salir" onClick={logout}>
           <LogOut size={18} />
@@ -602,6 +638,7 @@ export default function AdminDashboardPage() {
           eliminarUsuario={eliminarUsuarioYSync}
           crearConductorConUsuario={crearConductorConUsuario}
           onClose={() => setUsuariosOpen(false)}
+          reportadosUmbral={reportadosUmbral}
         />
       )}
       {gastosOpen && (

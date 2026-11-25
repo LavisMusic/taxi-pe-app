@@ -246,6 +246,23 @@ Deno.serve(async (req) => {
       if (error || !data?.signedUrl) return jsonResponse(404, { error: "No se encontró la foto." });
       return jsonResponse(200, { ok: true, url: data.signedUrl });
     }
+    // Ajustes de la plataforma de Taxi PE (modo mantenimiento, umbral de
+    // reportes), desde "Ajustes" del superadmin.
+    case "ajustes.leer": {
+      const { data, error } = await db.from("taxi_plataforma_ajustes").select("*").eq("id", 1).maybeSingle();
+      if (error) return jsonResponse(500, { error: error.message });
+      return jsonResponse(200, { ok: true, ajustes: data });
+    }
+    case "ajustes.guardar": {
+      const p: Datos = {};
+      if (typeof d.mantenimiento === "boolean") p.mantenimiento = d.mantenimiento;
+      if ("mantenimiento_mensaje" in d) p.mantenimiento_mensaje = texto(d.mantenimiento_mensaje, 300) ?? "";
+      const u = Number(d.umbral_reportes);
+      if (d.umbral_reportes != null && Number.isInteger(u) && u >= 0 && u <= 100) p.umbral_reportes = u;
+      const { data, error } = await db.rpc("taxi_guardar_ajustes_plataforma", { p });
+      if (error) return jsonResponse(500, { error: error.message });
+      return jsonResponse(200, { ok: true, ajustes: data });
+    }
     case "anuncios.eliminar": {
       const id = uuid(d.id);
       if (!id) return jsonResponse(400, { error: "datos inválidos" });

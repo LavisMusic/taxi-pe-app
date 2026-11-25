@@ -111,8 +111,10 @@ const ESTILO = `
 .tz-gemrec {
   position: relative; margin: 10px 0; padding: 12px 14px; border-radius: 16px; overflow: hidden;
   border: 1px solid rgba(var(--gr-rgb), 0.35);
-  background: linear-gradient(135deg, rgba(var(--gr-rgb), 0.1), rgba(var(--gr-rgb), 0.03));
-  box-shadow: 0 0 18px rgba(var(--gr-rgb), 0.12);
+  /* Con relleno: sobre los fondos de los temas (pasto, cielo...) el
+     medidor casi transparente no se leía. */
+  background: linear-gradient(135deg, rgba(var(--gr-rgb), 0.14), rgba(var(--gr-rgb), 0.04)), rgba(12, 9, 26, 0.9);
+  box-shadow: 0 0 18px rgba(var(--gr-rgb), 0.12), 0 6px 18px rgba(0, 0, 0, 0.25);
   animation: tz-gemrec-in 0.55s cubic-bezier(.34,1.56,.64,1) both;
 }
 @keyframes tz-gemrec-in { from { opacity: 0; transform: translateY(8px) scale(0.97); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }

@@ -20,6 +20,8 @@ import ConductorPage from './pages/ConductorPage'
 import PerfilConductorPage from './pages/PerfilConductorPage'
 import { instalarDespliegueBotones } from './lib/despliegueBotones'
 import { instalarGestosPagina } from './lib/gestosPagina'
+import { iniciarAjustesPlataforma } from './lib/ajustesPlataforma'
+import CompuertaMantenimiento from './components/CompuertaMantenimiento'
 
 // Router de TaxiP. El árbol viejo (AuthProvider + CatalogPage + App.jsx
 // "caja registradora") queda intacto en el repo sin importarse desde
@@ -32,11 +34,14 @@ instalarGestosPagina()
 
 // Avisos emergentes (Web Push) e instalación de la app.
 registrarServiceWorker()
+// Ajustes de la plataforma (modo mantenimiento).
+iniciarAjustesPlataforma()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <TaxiAuthProvider>
       <BrowserRouter>
+        <CompuertaMantenimiento>
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
@@ -80,6 +85,7 @@ createRoot(document.getElementById('root')).render(
             }
           />
         </Routes>
+        </CompuertaMantenimiento>
       </BrowserRouter>
     </TaxiAuthProvider>
   </StrictMode>,

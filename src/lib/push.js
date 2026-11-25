@@ -66,6 +66,34 @@ export async function activarPush() {
   return estadoPush();
 }
 
+// Panel del ADMIN: suscribe este dispositivo a los avisos del admin
+// (taxi_push_suscribir_admin, migración 20261212100000: peticiones y
+// reportes aunque el panel esté cerrado). Pide el permiso si hace falta.
+export async function activarPushAdmin() {
+  const estado = estadoPush();
+  if (estado === "instalar" || estado === "no_soportado" || estado === "bloqueado") return estado;
+  if (Notification.permission !== "granted") {
+    const permiso = await Notification.requestPermission();
+    if (permiso !== "granted") return estadoPush();
+  }
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const { data: clave } = await supabase.rpc("push_clave_publica");
+      if (!clave) return "no_soportado";
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: claveABytes(clave) });
+    }
+    const { endpoint, keys } = sub.toJSON();
+    const { data, error } = await supabase.rpc("taxi_push_suscribir_admin", { p_endpoint: endpoint, p_p256dh: keys.p256dh, p_auth: keys.auth });
+    if (error) return /does not exist|schema cache/i.test(error.message) ? "falta_migracion" : "error";
+    return data === true ? "activo" : "error";
+  } catch (err) {
+    console.warn("[push] admin:", err?.message || err);
+    return "error";
+  }
+}
+
 // Al cerrar sesión: este dispositivo deja de recibir avisos de esa cuenta
 // (el servicio de push responde 410 y push-enviar borra la fila).
 export function cancelarPushDispositivo() {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Star } from "lucide-react";
 import { NIVEL_COLOR } from "../lib/nivelServicio";
 
 // Grupo desplegable por nivel_servicio: encabezado con puntito de
@@ -8,7 +8,9 @@ import { NIVEL_COLOR } from "../lib/nivelServicio";
 // tarjetas él mismo) — lo usan tanto el Directorio del Admin
 // (tarjetas editables) como la Home pública (tarjetas de solo
 // lectura), mismo look, distinto contenido.
-export default function NivelAccordionGroup({ nivel, label, count, defaultOpen = false, children }) {
+// `estrella`: grupo "Destacados" del panel del admin (estrella amarilla en
+// vez del puntito).
+export default function NivelAccordionGroup({ nivel, label, count, defaultOpen = false, estrella = false, children }) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
@@ -16,6 +18,9 @@ export default function NivelAccordionGroup({ nivel, label, count, defaultOpen =
       <div className="tz-vis-header-row">
         <button type="button" className="tz-vis-category-header" onClick={() => setOpen((prev) => !prev)}>
           <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {estrella ? (
+              <Star size={15} className="tz-destacados-estrella" fill="currentColor" />
+            ) : (
             <span
               style={{
                 width: 10,
@@ -25,6 +30,7 @@ export default function NivelAccordionGroup({ nivel, label, count, defaultOpen =
                 flexShrink: 0,
               }}
             />
+            )}
             {/* Bug de Traducción Automática (Chrome): sin esto, el
                traductor de Chrome confunde "VIP"/"PREMIUM" con palabras
                comunes en inglés y las reemplaza ("Personaje", "De

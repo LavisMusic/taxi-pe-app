@@ -21,6 +21,9 @@ function PaqueteForm({ initial, onGuardar, onCancelar, saving, conCupo = false }
   const [diasMembresia, setDiasMembresia] = useState(String(initial?.dias_membresia ?? "30"));
   const [cupo, setCupo] = useState(String(initial?.cupo_conductores ?? ""));
   const [descripcion, setDescripcion] = useState(initial?.descripcion ?? "");
+  // Destacados: con esta membresía vigente, el conductor sale en
+  // "Destacados" del directorio del admin (prioridad de atención).
+  const [destaca, setDestaca] = useState(!!initial?.destaca);
   const [error, setError] = useState("");
 
   const handleGuardar = () => {
@@ -58,6 +61,8 @@ function PaqueteForm({ initial, onGuardar, onCancelar, saving, conCupo = false }
       dias_membresia: Number(diasMembresia),
       creditos: null,
       ...(conCupo ? { cupo_conductores: Number(cupo) } : {}),
+      // Solo si la base ya tiene la columna (vino al leer) o se encendió.
+      ...(!conCupo && (initial?.destaca !== undefined || destaca) ? { destaca } : {}),
       descripcion: descripcion.trim(),
     });
   };
@@ -104,6 +109,18 @@ function PaqueteForm({ initial, onGuardar, onCancelar, saving, conCupo = false }
         onDesde={setDescDesde}
         onHasta={setDescHasta}
       />
+
+      {!conCupo && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "10px 0 4px" }}>
+          <label className="tz-toggle">
+            <input type="checkbox" checked={destaca} onChange={(e) => setDestaca(e.target.checked)} aria-label="Destacado" />
+            <span className="tz-toggle-slider" />
+          </label>
+          <span style={{ fontSize: 13, color: destaca ? "var(--yellow)" : "var(--text-dim)" }}>
+            {destaca ? "★ Destacado: sus conductores salen en Destacados de tu panel" : "No destacado"}
+          </span>
+        </div>
+      )}
 
       <label className="tz-field-label">Descripción (opcional)</label>
       <input type="text" className="tz-text-input" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
@@ -179,6 +196,7 @@ function PaqueteRow({ paquete, onActualizar, onEliminar, conCupo = false }) {
           {formatSoles(paquete.precio)} ·{" "}
           {`${paquete.dias_membresia} días`}
           {conCupo && paquete.cupo_conductores ? ` · ${paquete.cupo_conductores} conductores` : ""}
+          {!conCupo && paquete.destaca ? " · ★ destacado" : ""}
         </span>
         <ChipDescuento item={paquete} />
       </span>

@@ -37,6 +37,8 @@ import GemasRecolectadas from "../components/GemasRecolectadas";
 import { supabase } from "../supabaseClient";
 import BotonSoporte from "../components/BotonSoporte";
 import { BotonConfiguracion } from "../components/ConfiguracionesModal";
+import GuiaDonPeje from "../components/mascota/GuiaDonPeje";
+import SeccionMascota from "../components/mascota/SeccionMascota";
 import BotonMensajes from "../components/mensajes/BotonMensajes";
 import AnuncioPopupModal from "../components/AnuncioPopupModal";
 import { useAnuncioActivo } from "../hooks/useAnuncioActivo";
@@ -225,7 +227,9 @@ export default function RecolectorPage() {
           {/* Izquierda: Soporte y, debajo, Configuraciones y permisos. */}
           <div className="tz-header-side tz-header-side-left">
             <BotonSoporte />
-            <BotonConfiguracion usuarioId={usuario?.id} />
+            <BotonConfiguracion usuarioId={usuario?.id}>
+              <SeccionMascota />
+            </BotonConfiguracion>
           </div>
 
           <div className="tz-header-center">
@@ -350,6 +354,8 @@ export default function RecolectorPage() {
         )}
       </main>
 
+      {/* Don Peje: guía del recolector (espera a la bienvenida). */}
+      {usuario && <GuiaDonPeje rol="recolector" nombre={usuario.nombre} pausada={mostrarBienvenida} />}
       <footer className="tz-page-footer">
         <button className={`tz-footer-btn tz-footer-btn-cierre ${turnoVencido ? "tz-btn-aviso" : ""}`} onClick={() => setCierreOpen(true)}>
           <Receipt size={18} />

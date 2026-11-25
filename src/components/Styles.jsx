@@ -7785,6 +7785,124 @@ export default function Styles() {
       .tz-adjunto-visor-acciones { animation: tz-entrada-menu-in 0.5s cubic-bezier(.34,1.56,.64,1) 0.12s both; }
       .tz-adjunto-visor-acciones .tz-entrada-menu-btn:disabled { cursor: default; opacity: 0.8; }
       .tz-adjunto-visor-nota { margin: 0; font-size: 12px; color: rgba(255,255,255,0.65); text-align: center; }
+      /* ---------- DON PEJE (mascota y guía de bienvenida) ---------- */
+      /* Taxi no define estos colores en "r,g,b" (Caja sí): sin ellos el fondo
+         del globo quedaba inválido y no se veía el cuadro. Solo para Don Peje. */
+      .tz-donpeje, .tz-guia-globo, .tz-guia-foco {
+        --cyan-rgb: 43, 232, 255; --pink-rgb: 255, 47, 158; --yellow-rgb: 215, 255, 59;
+        --green-rgb: 57, 255, 176; --fg-rgb: 255, 255, 255;
+      }
+      .tz-donpeje { position: fixed; z-index: 3700; padding: 0; margin: 0; border: 0; background: none; cursor: pointer; pointer-events: none;
+        opacity: 0; transform: scale(.6) translateY(30px);
+        transition: left .8s cubic-bezier(.34,1.18,.64,1), top .8s cubic-bezier(.34,1.18,.64,1), width .6s cubic-bezier(.34,1.3,.64,1),
+          height .6s cubic-bezier(.34,1.3,.64,1), opacity .4s ease, transform .6s cubic-bezier(.34,1.56,.64,1); }
+      .tz-donpeje.is-listo { opacity: 1; transform: none; }
+      .tz-donpeje-toque { position: absolute; z-index: 2; left: 18%; right: 18%; top: 30%; bottom: 6%; border: 0; border-radius: 40%;
+        background: none; cursor: pointer; pointer-events: auto;
+        touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+      .tz-donpeje.is-oculto { opacity: 0; transform: scale(.4); }
+      .tz-donpeje-lienzo { position: relative; z-index: 1; display: block; width: 100%; height: 100%; }
+      .tz-donpeje-sombra { position: absolute; left: 18%; right: 18%; bottom: 3%; height: 9%; border-radius: 50%;
+        background: radial-gradient(closest-side, rgba(0,0,0,.45), transparent); filter: blur(2px); }
+      .tz-guia-foco { position: fixed; z-index: 3650; pointer-events: none; border-radius: 14px;
+        box-shadow: 0 0 0 9999px rgba(5,3,12,.5), 0 0 0 3px var(--cyan), 0 0 26px rgba(var(--cyan-rgb), .8);
+        transition: left .35s cubic-bezier(.34,1.3,.64,1), top .35s cubic-bezier(.34,1.3,.64,1), width .35s ease, height .35s ease;
+        animation: tz-guia-foco-in .5s cubic-bezier(.34,1.56,.64,1) both, tz-guia-foco-late 1.8s ease-in-out .5s infinite; }
+      @keyframes tz-guia-foco-in { from { opacity: 0; transform: scale(1.15); } to { opacity: 1; transform: none; } }
+      @keyframes tz-guia-foco-late { 0%, 100% { outline: 0 solid rgba(var(--cyan-rgb), 0); } 50% { outline: 6px solid rgba(var(--cyan-rgb), .18); } }
+      /* Globo de Don Peje: la misma nube glitch de "Hacer cliente" (esquinas en
+         escalón, líneas de pantalla vieja, borde neón y texto con glitch), con
+         la cola pixelada apuntando a su cabeza. */
+      .tz-guia-globo { position: fixed; z-index: 3710; box-sizing: border-box; color: #e8fbff;
+        filter: drop-shadow(0 0 0.7px var(--cyan)) drop-shadow(0 0 0.7px var(--cyan)) drop-shadow(0 0 10px rgba(var(--cyan-rgb), .65));
+        animation: tz-guia-nube-aparece .5s steps(6, end) both, tz-guia-nube-flota 3s .5s ease-in-out infinite;
+        transition: left .6s cubic-bezier(.34,1.2,.64,1), top .6s cubic-bezier(.34,1.2,.64,1), bottom .6s cubic-bezier(.34,1.2,.64,1); }
+      .tz-guia-forma { box-sizing: border-box; padding: 14px 16px 26px;
+        background: repeating-linear-gradient(0deg, rgba(var(--cyan-rgb), .09) 0 1px, transparent 1px 3px), rgba(4, 12, 20, .95); }
+      .tz-guia-globo.is-abajo .tz-guia-forma { padding: 26px 16px 14px; }
+      @keyframes tz-guia-nube-aparece {
+        0% { opacity: 0; transform: translateY(8px) scale(.6); }
+        40% { opacity: 1; transform: translate(4px, -2px) scale(1.04); }
+        60% { opacity: .4; transform: translate(-3px, 0) scale(.98); }
+        100% { opacity: 1; transform: none; } }
+      @keyframes tz-guia-nube-flota { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+      .tz-guia-globo-cabeza { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+      .tz-guia-globo-cabeza strong { margin-right: auto; font-family: 'Orbitron', 'Rajdhani', monospace; font-size: 12px; font-weight: 800;
+        letter-spacing: .16em; color: var(--cyan); text-shadow: 0 0 6px rgba(var(--cyan-rgb), .9); }
+      /* Glitch del texto (igual que la nube): copias magenta y cian que saltan. */
+      .tz-guia-glitch { position: relative; display: inline-block; }
+      .tz-guia-glitch::before, .tz-guia-glitch::after { content: attr(data-texto); position: absolute; inset: 0; pointer-events: none; opacity: .85; }
+      .tz-guia-glitch::before { color: #ff2bd6; animation: tz-nube-glitch-a 3.2s steps(1) infinite; }
+      .tz-guia-glitch::after { color: #2bf0ff; animation: tz-nube-glitch-b 3.2s steps(1) infinite; }
+      .tz-guia-texto .tz-guia-glitch::before, .tz-guia-texto .tz-guia-glitch::after { animation-duration: 5.5s; }
+      .tz-guia-progreso { display: flex; gap: 4px; margin-right: 4px; }
+      .tz-guia-progreso i { width: 7px; height: 7px; background: rgba(var(--cyan-rgb), .2); transition: background .3s ease, transform .3s ease; }
+      .tz-guia-progreso i.is-hecho { background: var(--green); }
+      .tz-guia-progreso i.is-actual { background: var(--cyan); transform: scale(1.3); box-shadow: 0 0 8px var(--cyan); }
+      .tz-guia-icono { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid rgba(var(--cyan-rgb), .45);
+        background: rgba(var(--cyan-rgb), .08); color: var(--cyan); cursor: pointer;
+        clip-path: polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px));
+        transition: transform .25s cubic-bezier(.34,1.56,.64,1), background .2s ease; }
+      .tz-guia-icono:hover { background: rgba(var(--cyan-rgb), .2); }
+      .tz-guia-icono:active { transform: scale(.88); }
+      .tz-guia-texto { margin: 0 0 12px; min-height: 3.2em; font-size: 15.5px; font-weight: 600; line-height: 1.5; cursor: pointer;
+        text-shadow: 0 0 6px rgba(var(--cyan-rgb), .35); }
+      .tz-guia-oido { margin: 0 0 6px; font-size: 12.5px; color: rgba(var(--cyan-rgb), .85); font-style: italic; }
+      .tz-guia-cursor { display: inline-block; width: 8px; height: 1em; margin-left: 2px; vertical-align: -2px; background: var(--cyan);
+        animation: tz-guia-cursor .8s steps(2) infinite; }
+      @keyframes tz-guia-cursor { 50% { opacity: 0; } }
+      .tz-guia-escucha { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; margin: -10px 0 6px;
+        animation: tz-guia-escucha-in .5s cubic-bezier(.34,1.56,.64,1) both; }
+      @keyframes tz-guia-escucha-in { from { opacity: 0; transform: scale(.6); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+      /* El aura, grande y centrada en un espacio fijo (lo que entiende va abajo). */
+      .tz-guia-aura { height: 200px; width: 100%; display: grid; place-items: center; overflow: visible; }
+      .tz-guia-aura .tz-aura { transform: scale(1.45); flex: none; }
+      .tz-guia-escucha-texto { font-family: 'Orbitron', sans-serif; font-size: 11px; font-weight: 800; letter-spacing: .12em; color: #fff; }
+      .tz-guia-acciones { display: flex; gap: 8px; align-items: center; justify-content: flex-start; flex-wrap: nowrap; }
+      .tz-guia-mic { margin-left: auto; }
+      /* El tema del negocio pinta su escena en los .tz-portal: ni el globo ni
+         el foco de luz la llevan. */
+      :root .tz-portal.tz-guia-globo, :root .tz-portal.tz-guia-foco { background: none !important; }
+      /* Celular (9:16): globo, texto y relleno más chicos; los botones igual. */
+      .tz-guia-globo.is-movil .tz-guia-forma { padding: 11px 12px 22px; }
+      .tz-guia-globo.is-movil.is-abajo .tz-guia-forma { padding: 22px 12px 11px; }
+      .tz-guia-globo.is-movil .tz-guia-texto { font-size: 13.5px; min-height: 2.8em; margin-bottom: 9px; }
+      .tz-guia-globo.is-movil .tz-guia-globo-cabeza strong { font-size: 10.5px; }
+      .tz-guia-globo.is-movil .tz-guia-aura { height: 170px; }
+      .tz-guia-globo.is-movil .tz-guia-aura .tz-aura { transform: scale(1.25); }
+      .tz-guia-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 13px; border: 1px solid rgba(var(--cyan-rgb), .5);
+        cursor: pointer; font-family: 'Orbitron', 'Rajdhani', sans-serif; font-weight: 800; font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+        color: var(--cyan); background: rgba(var(--cyan-rgb), .08);
+        clip-path: polygon(0 5px, 5px 5px, 5px 0, calc(100% - 5px) 0, calc(100% - 5px) 5px, 100% 5px, 100% calc(100% - 5px), calc(100% - 5px) calc(100% - 5px), calc(100% - 5px) 100%, 5px 100%, 5px calc(100% - 5px), 0 calc(100% - 5px));
+        transition: transform .3s cubic-bezier(.34,1.56,.64,1), background .2s ease, color .2s ease; }
+      .tz-guia-btn:hover { background: rgba(var(--cyan-rgb), .2); color: #fff; }
+      .tz-guia-btn:active { transform: scale(.94); }
+      .tz-guia-btn.is-principal { color: #03141b; background: linear-gradient(90deg, var(--cyan), #39ffb0); border-color: transparent; }
+      .tz-guia-btn.is-principal:hover { color: #03141b; filter: brightness(1.12); }
+      /* Dormido: "Zzz" que suben y se apagan. */
+      .tz-donpeje-zzz { position: absolute; z-index: 2; left: 60%; top: 30%; pointer-events: none; font-family: 'Orbitron', sans-serif; font-weight: 900;
+        color: var(--cyan); text-shadow: 0 0 10px rgba(var(--cyan-rgb), .9); }
+      .tz-donpeje-zzz i { position: absolute; font-style: normal; opacity: 0; animation: tz-donpeje-zzz 3s ease-in-out infinite; }
+      .tz-donpeje-zzz i:nth-child(1) { font-size: 22px; }
+      .tz-donpeje-zzz i:nth-child(2) { font-size: 17px; animation-delay: 1s; }
+      .tz-donpeje-zzz i:nth-child(3) { font-size: 13px; animation-delay: 2s; }
+      @keyframes tz-donpeje-zzz { 0% { opacity: 0; transform: translate(0, 10px) scale(.6); } 25% { opacity: 1; }
+        100% { opacity: 0; transform: translate(26px, -48px) scale(1.15) rotate(12deg); } }
+      /* Glitch de la nube (igual que en Caja). */
+      @keyframes tz-nube-glitch-a {
+        0%, 86%, 100% { transform: none; clip-path: inset(0 0 100% 0); }
+        87% { transform: translate(-2px, 0); clip-path: inset(10% 0 55% 0); }
+        89% { transform: translate(2px, 0); clip-path: inset(60% 0 5% 0); }
+        91% { transform: translate(-1px, 0); clip-path: inset(30% 0 40% 0); }
+        93% { transform: none; clip-path: inset(0 0 100% 0); }
+      }
+      @keyframes tz-nube-glitch-b {
+        0%, 86%, 100% { transform: none; clip-path: inset(100% 0 0 0); }
+        88% { transform: translate(2px, 0); clip-path: inset(45% 0 20% 0); }
+        90% { transform: translate(-2px, 0); clip-path: inset(5% 0 70% 0); }
+        92% { transform: translate(1px, 0); clip-path: inset(70% 0 0 0); }
+        94% { transform: none; clip-path: inset(100% 0 0 0); }
+      }
       /* Caras en los chats (personas y tiendas): la foto sola, sin marco ni
          fondo, como los logos de Taxi PE y Tonazo; sin foto, solo el sticker. */
       .tz-chat-cara { width: 40px; height: 40px; flex-shrink: 0; object-fit: contain; border: none; border-radius: 0; background: none; }
@@ -7840,6 +7958,48 @@ export default function Styles() {
         background: linear-gradient(110deg, #39ffb0, #2be8ff);
         color: #04161a;
         box-shadow: 0 0 20px rgba(43,232,255,0.45);
+      }
+      /* Destacados (directorio del admin): estrella, etiqueta de origen e interruptor. */
+      .tz-destacados-estrella { color: var(--yellow); filter: drop-shadow(0 0 6px rgba(215,255,59,0.7)); flex-shrink: 0;
+        animation: tz-estrella-brillo 2.4s ease-in-out infinite; }
+      @keyframes tz-estrella-brillo { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.15) rotate(12deg); } }
+      .tz-tag.tz-tag-origen { color: var(--origen); border-color: var(--origen); background: color-mix(in srgb, var(--origen) 14%, transparent); }
+      /* Ajustes del panel (admin): campos, filas de interruptores y montos ocultos. */
+      .tz-ajustes-campo > span { display: flex; flex-direction: column; gap: 2px; color: var(--text); font-weight: 700; }
+      .tz-ajustes-campo small { font-weight: 400; color: var(--text-dim); font-size: 11.5px; }
+      .tz-ajustes-contador { flex: 0 0 auto !important; display: inline-flex; align-items: center; gap: 4px; padding: 3px; border-radius: 999px;
+        border: 1px solid rgba(43,232,255,0.35); background: rgba(43,232,255,0.06); }
+      .tz-ajustes-contador button { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 999px; border: 0;
+        background: rgba(43,232,255,0.14); color: var(--cyan); cursor: pointer; transition: transform .25s cubic-bezier(.34,1.56,.64,1), opacity .2s; }
+      .tz-ajustes-contador button:active { transform: scale(.85); }
+      .tz-ajustes-contador button:disabled { opacity: .35; cursor: default; }
+      .tz-ajustes-contador strong { min-width: 26px; text-align: center; font-size: 15px; color: var(--cyan);
+        animation: tz-contador-pop .35s cubic-bezier(.34,1.56,.64,1); }
+      @keyframes tz-contador-pop { from { transform: scale(1.35); opacity: .4; } to { transform: none; opacity: 1; } }
+      .tz-tag.tz-tag-reportes { color: #ff9500; border-color: rgba(255,149,0,0.6); background: rgba(255,149,0,0.12); }
+      .tz-ajustes-panel .tz-config-seccion + .tz-config-seccion { margin-top: 14px; }
+      .tz-ajustes-campo { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; font-size: 12.5px; color: var(--text-dim); }
+      .tz-ajustes-campo > :last-child { flex: 0 1 230px; min-width: 0; }
+      .tz-ajustes-fila, .tz-mascota-opciones { flex-wrap: wrap; gap: 8px; }
+      .tz-chatfijo-avisos.tz-mascota-accion:not(.is-activo) { border-color: rgba(43,232,255,0.5); color: var(--cyan); }
+      .tz-montos-ocultos .tz-stat-value.tz-pink, .tz-montos-ocultos .tz-stat-value.tz-green, .tz-montos-ocultos .tz-stat-sub,
+      .tz-montos-ocultos .tz-payment-menu-amount {
+        filter: blur(7px); transition: filter .35s ease; user-select: none;
+      }
+      .tz-montos-ocultos .tz-stat-chip:active .tz-stat-value, .tz-montos-ocultos .tz-stat-chip:active .tz-stat-sub { filter: none; }
+      /* Recordatorio de cierre: aviso flotante arriba. */
+      .tz-recordatorio-cierre { position: fixed; z-index: 3650; left: 50%; top: max(14px, env(safe-area-inset-top)); width: min(92vw, 420px);
+        transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 16px;
+        background: rgba(12,9,26,0.96); border: 1px solid var(--yellow); box-shadow: 0 0 24px rgba(215,255,59,0.35);
+        animation: tz-recordatorio-in .55s cubic-bezier(.34,1.56,.64,1) both; }
+      .tz-recordatorio-cierre p { flex: 1; margin: 0; font-size: 13px; }
+      .tz-recordatorio-cierre button { white-space: nowrap; }
+      @keyframes tz-recordatorio-in { from { opacity: 0; transform: translate(-50%, -24px) scale(.94); } to { opacity: 1; transform: translate(-50%, 0); } }
+      /* "Ajustes" del admin: morado, distinto de "Configurar Membresías". */
+      .tz-footer-btn-ajustes {
+        background: linear-gradient(110deg, #b98bff, #6c5bff);
+        color: #120a2a;
+        box-shadow: 0 0 20px rgba(140,110,255,0.45);
       }
       /* Cuentas verificadas (fase 5a). */
       .tz-cuentas-verificadas { margin: 14px 0; }

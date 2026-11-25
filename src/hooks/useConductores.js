@@ -35,6 +35,7 @@ import {
 // `recolector`: la lista sale de taxi_conductores_para_recolector (sin
 // teléfono, DNI, fotos de verificación ni ubicación — migración
 // 20261105120000); el recolector ya no lee la tabla. El Admin sí.
+
 export function useConductores({ recolector = false } = {}) {
   const [conductores, setConductores] = useState([]);
   const [categorias, setCategorias] = useState([]);

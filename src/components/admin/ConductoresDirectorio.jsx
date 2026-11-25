@@ -15,7 +15,18 @@ import {
   ESTADO_CUENTA_ACTIVO,
   NIVELES_SERVICIO,
 } from "../../lib/taxiEnums";
-import { agruparPorNivel } from "../../lib/nivelServicio";
+import { agruparPorNivel, NIVEL_COLOR } from "../../lib/nivelServicio";
+
+// Destacados (solo en el panel del admin, para priorizar su atención): los
+// conductores con membresía vigente de un paquete con "Destacado" encendido
+// (Configurar Membresías, paquetes.destaca).
+function membresiaVigente(c) {
+  return !!c.vencimiento_suscripcion && new Date(c.vencimiento_suscripcion).getTime() >= Date.now() - 86400000;
+}
+export function esDestacado(c, paquetes = []) {
+  const paquete = paquetes.find((p) => p.id === c.membresia_paquete_id);
+  return !!paquete?.destaca && membresiaVigente(c);
+}
 import Select from "../Select";
 
 // Tab sintética, no viene de la tabla `categorias` — "predeterminada e
@@ -34,7 +45,8 @@ const TAB_RECOLECTORES = "__recolectores__";
 // lógica acá. La aprobación de conductores nuevos vive en el Centro de
 // Peticiones (PeticionesModal), no acá — este Directorio solo muestra
 // conductores ya aprobados.
-function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar }) {
+function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar, paquetes = [], enDestacados = false, reportes = 0 }) {
+  const nivelOrigen = conductor.nivel_servicio || "economico";
   const [editing, setEditing] = useState(false);
   const [etiquetasAbiertas, setEtiquetasAbiertas] = useState(false);
   const [nombre, setNombre] = useState(conductor.nombre);
@@ -52,18 +64,14 @@ function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar
   const [busyEstado, setBusyEstado] = useState(false);
 
   const rechazado = conductor.estado === ESTADO_CONDUCTOR_RECHAZADO;
-  // Bug reportado: el Admin veía "Libre" en el desplegable de un
-  // conductor que en realidad no puede operar (sin membresía vigente
-  // NI créditos — ver el mismo cálculo en ConductorPage.jsx,
-  // `tieneAcceso`). El desplegable sigue mostrando el `estado` real tal
-  // cual está guardado (no lo pisamos con un valor falso), pero este
-  // aviso aparte hace visible que, aunque diga "Libre", ese conductor
-  // está bloqueado por el Paywall hasta que recargue.
+  // Membresía vigente: la etiqueta del plan dice cuál tiene, o "Sin plan" y
+  // "Venció …" si ya no (el aviso de "saldo" se quitó: ya no hay saldos).
   const diasRestantesCard = conductor.vencimiento_suscripcion
     ? Math.ceil((new Date(conductor.vencimiento_suscripcion) - new Date()) / 86400000)
     : null;
   const tieneMembresiaVigenteCard = diasRestantesCard != null && diasRestantesCard >= 0;
-  const sinSaldo = conductor.estado !== ESTADO_CONDUCTOR_INHABILITADO && !tieneMembresiaVigenteCard;
+  // Su plan (membresía) en etiqueta, como en las tarjetas de negocios.
+  const paqueteActual = paquetes.find((p) => p.id === conductor.membresia_paquete_id);
   const subgruposDeSuCategoria = subgrupos.filter((s) => s.categoria_id === conductor.categoria_id);
 
   const startEdit = () => {
@@ -278,18 +286,31 @@ function ConductorCard({ conductor, subgrupos, onUpdate, onSetEstado, onRecargar
 
           <div className="tz-card-bottom">
             <div className="tz-card-stockrow">
+              {enDestacados && (
+                <span className="tz-tag tz-tag-origen" style={{ "--origen": NIVEL_COLOR[nivelOrigen] ?? "var(--text-dim)" }} title="Grupo del que viene">
+                  {NIVELES_SERVICIO.find((n) => n.value === nivelOrigen)?.label ?? nivelOrigen}
+                </span>
+              )}
+              <span className="tz-tag tz-tag-ok" title="Membresía (plan)">
+                {tieneMembresiaVigenteCard
+                  ? paqueteActual
+                    ? `${paqueteActual.nombre} · ${paqueteActual.dias_membresia} días`
+                    : "Membresía vigente"
+                  : "Sin plan"}
+              </span>
               {conductor.vencimiento_suscripcion && (
-                <span className="tz-tag tz-tag-warn">
-                  Vence {formatDate(conductor.vencimiento_suscripcion)}
+                <span className={`tz-tag ${tieneMembresiaVigenteCard ? "tz-tag-warn" : "tz-tag-danger"}`}>
+                  {tieneMembresiaVigenteCard ? "Vence" : "Venció"} {formatDate(conductor.vencimiento_suscripcion)}
                 </span>
               )}
               {rechazado && <span className="tz-tag tz-tag-danger">Rechazado</span>}
-              {sinSaldo && (
-                <span className="tz-tag tz-tag-danger" title="Sin membresía vigente ni créditos — el Paywall le bloquea el acceso aunque el estado diga otra cosa">
-                  ⚠️ Sin saldo
+              {reportes > 0 && (
+                <span className="tz-tag tz-tag-reportes" title="Llegó al límite de reportes (Ajustes → Reportes)">
+                  ⚠ {reportes} reportes
                 </span>
               )}
             </div>
+
 
             <Select
               className="tz-estado-select"
@@ -339,6 +360,15 @@ export default function ConductoresDirectorio({
   recolectores = [],
   onUpdateRecolector,
   onRecargarRecolector,
+  // Ajustes del panel: localidad ("" = todas), ocultar a los que no tienen
+  // membresía vigente y el orden dentro de cada nivel.
+  localidad = "",
+  ocultarSinSaldo = false,
+  orden = "nivel",
+  // Para saber qué membresías tienen "Destacado" encendido.
+  paquetes = [],
+  // Umbral de reportes: Map "conductor:id" → total.
+  reportadosUmbral = new Map(),
 }) {
   const aprobados = useMemo(() => conductores.filter((c) => c.aprobado), [conductores]);
   const categoriasConAprobados = useMemo(
@@ -354,8 +384,32 @@ export default function ConductoresDirectorio({
   const tab = activeTab ?? categoriasConAprobados[0]?.id ?? TAB_RECOLECTORES;
 
   const esTabRecolectores = tab === TAB_RECOLECTORES;
-  const visibles = aprobados.filter((c) => String(c.categoria_id) === String(tab));
-  const grupos = agruparPorNivel(visibles);
+  const hoy = Date.now();
+  const vigente = (c) => c.vencimiento_suscripcion && new Date(c.vencimiento_suscripcion).getTime() >= hoy - 86400000;
+  const visibles = aprobados.filter(
+    (c) =>
+      String(c.categoria_id) === String(tab) &&
+      (!localidad || c.localidad === localidad) &&
+      (!ocultarSinSaldo || c.estado === ESTADO_CONDUCTOR_INHABILITADO || vigente(c))
+  );
+  const comparar = {
+    vence: (a, b) =>
+      (a.vencimiento_suscripcion ? new Date(a.vencimiento_suscripcion).getTime() : Infinity) -
+      (b.vencimiento_suscripcion ? new Date(b.vencimiento_suscripcion).getTime() : Infinity),
+    nuevos: (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0),
+    nombre: (a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es"),
+  }[orden];
+  // Los destacados se mudan a su propio grupo (arriba, con estrella); cada
+  // tarjeta lleva la etiqueta del nivel del que viene.
+  const destacados = visibles.filter((c) => esDestacado(c, paquetes));
+  const grupos = [
+    ...(destacados.length
+      ? [{ nivel: "__destacados__", label: "Destacados", estrella: true, conductores: comparar ? destacados.slice().sort(comparar) : destacados }]
+      : []),
+    ...agruparPorNivel(visibles.filter((c) => !esDestacado(c, paquetes))).map((g) =>
+      comparar ? { ...g, conductores: g.conductores.slice().sort(comparar) } : g
+    ),
+  ];
 
   return (
     <section>
@@ -397,11 +451,22 @@ export default function ConductoresDirectorio({
           )
         ) : grupos.length === 0 ? (
           <div className="tz-empty">
-            <p>No hay conductores aprobados en esta categoría todavía.</p>
+            <p>
+              {localidad || ocultarSinSaldo
+                ? "No hay conductores con estos filtros (cámbialos en Ajustes)."
+                : "No hay conductores aprobados en esta categoría todavía."}
+            </p>
           </div>
         ) : (
           grupos.map((g, i) => (
-            <NivelAccordionGroup key={g.nivel} nivel={g.nivel} label={g.label} count={g.conductores.length} defaultOpen={i === 0}>
+            <NivelAccordionGroup
+              key={g.nivel}
+              nivel={g.nivel}
+              label={g.label}
+              count={g.conductores.length}
+              defaultOpen={i === 0}
+              estrella={!!g.estrella}
+            >
               <div className="tz-directorio-grid">
                 {g.conductores.map((c) => (
                   <ConductorCard
@@ -411,6 +476,9 @@ export default function ConductoresDirectorio({
                     onUpdate={onUpdate}
                     onSetEstado={onSetEstado}
                     onRecargar={onRecargar}
+                    paquetes={paquetes}
+                    enDestacados={!!g.estrella}
+                    reportes={reportadosUmbral.get(`conductor:${c.id}`) || 0}
                   />
                 ))}
               </div>
