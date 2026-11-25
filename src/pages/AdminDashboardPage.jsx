@@ -480,6 +480,7 @@ export default function AdminDashboardPage() {
               localidad={ajustes.dirLocalidad}
               ocultarSinSaldo={ajustes.dirOcultarSinSaldo}
               orden={ajustes.dirOrden}
+              paquetes={paquetes}
             />
           </>
         )}
