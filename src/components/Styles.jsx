@@ -7826,6 +7826,16 @@ export default function Styles() {
         60% { opacity: .4; transform: translate(-3px, 0) scale(.98); }
         100% { opacity: 1; transform: none; } }
       @keyframes tz-guia-nube-flota { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+      /* Globo dibujado con SVG (ya medido): sin drop-shadow ni fondo en la
+         forma — el SVG pone halo, fondo con líneas y borde, y se ve igual en
+         celular y en escritorio. */
+      .tz-guia-globo.con-svg { filter: none; }
+      .tz-guia-globo.con-svg .tz-guia-forma { background: none; position: relative; }
+      .tz-guia-nube-svg { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+      .tz-nube-halo { fill: none; stroke: rgba(var(--cyan-rgb), .75); stroke-width: 7; }
+      .tz-nube-fondo { fill: rgba(4, 12, 20, .95); }
+      .tz-nube-linea { fill: rgba(var(--cyan-rgb), .09); }
+      .tz-nube-borde { fill: none; stroke: var(--cyan); stroke-width: 1.5; }
       .tz-guia-globo-cabeza { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
       .tz-guia-globo-cabeza strong { margin-right: auto; font-family: 'Orbitron', 'Rajdhani', monospace; font-size: 12px; font-weight: 800;
         letter-spacing: .16em; color: var(--cyan); text-shadow: 0 0 6px rgba(var(--cyan-rgb), .9); }

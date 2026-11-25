@@ -99,6 +99,48 @@ function formaNube(colaX, colaAbajo) {
     calc(100% - 8px) 100%, 8px 100%, 8px calc(100% - 4px), 4px calc(100% - 4px), 4px calc(100% - 8px), 0 calc(100% - 8px))`;
 }
 
+// La misma nube, en píxeles, para dibujarla con SVG (borde neón, fondo con
+// líneas y brillo). El brillo con "filter: drop-shadow" sobre el globo no
+// se veía en los celulares (Safari/Chrome móvil no lo pintan sobre un
+// recorte con clip-path); el filtro dentro de un SVG sí se ve en todos.
+function puntosNube(w, h, colaX, colaAbajo) {
+  const X = Math.round(colaX);
+  const p = colaAbajo
+    ? [
+        [0, 8], [4, 8], [4, 4], [8, 4], [8, 0], [w - 8, 0], [w - 8, 4], [w - 4, 4], [w - 4, 8], [w, 8],
+        [w, h - 22], [w - 4, h - 22], [w - 4, h - 18], [w - 8, h - 18], [w - 8, h - 14],
+        [X + 14, h - 14], [X + 14, h - 10], [X + 9, h - 10], [X + 9, h - 5], [X + 4, h - 5], [X + 4, h],
+        [X - 4, h], [X - 4, h - 5], [X - 9, h - 5], [X - 9, h - 10], [X - 14, h - 10], [X - 14, h - 14],
+        [8, h - 14], [8, h - 18], [4, h - 18], [4, h - 22], [0, h - 22],
+      ]
+    : [
+        [0, 22], [4, 22], [4, 18], [8, 18], [8, 14], [X - 14, 14], [X - 14, 10], [X - 9, 10], [X - 9, 5],
+        [X - 4, 5], [X - 4, 0], [X + 4, 0], [X + 4, 5], [X + 9, 5], [X + 9, 10], [X + 14, 10], [X + 14, 14],
+        [w - 8, 14], [w - 8, 18], [w - 4, 18], [w - 4, 22], [w, 22], [w, h - 8], [w - 4, h - 8], [w - 4, h - 4],
+        [w - 8, h - 4], [w - 8, h], [8, h], [8, h - 4], [4, h - 4], [4, h - 8], [0, h - 8],
+      ];
+  return p.map(([x, y]) => `${x},${y}`).join(" ");
+}
+
+function NubeSvg({ ancho, alto, puntos }) {
+  return (
+    <svg className="tz-guia-nube-svg" width={ancho} height={alto} viewBox={`0 0 ${ancho} ${alto}`} aria-hidden="true">
+      <defs>
+        <filter id="tz-nube-brillo" filterUnits="userSpaceOnUse" x={-24} y={-24} width={ancho + 48} height={alto + 48}>
+          <feGaussianBlur stdDeviation="5" />
+        </filter>
+        <pattern id="tz-nube-lineas" width="3" height="3" patternUnits="userSpaceOnUse">
+          <rect className="tz-nube-linea" width="3" height="1" />
+        </pattern>
+      </defs>
+      <polygon className="tz-nube-halo" points={puntos} filter="url(#tz-nube-brillo)" />
+      <polygon className="tz-nube-fondo" points={puntos} />
+      <polygon points={puntos} fill="url(#tz-nube-lineas)" />
+      <polygon className="tz-nube-borde" points={puntos} />
+    </svg>
+  );
+}
+
 export default function GuiaDonPeje({ rol = "admin", negocioId, nombre = "", pausada = false }) {
   const pasosRol = PASOS[rol] || [];
   const pantalla = usePantalla();
@@ -330,7 +372,12 @@ export default function GuiaDonPeje({ rol = "admin", negocioId, nombre = "", pau
       : { left, width: anchoGlobo, top: Math.round(donPos.y + tamH * 0.92) };
     // No cabe encima: se pega arriba (sin salirse de la pantalla).
     if (arriba && altoGlobo && topeCabeza - altoGlobo < 8) estilo = { left, width: anchoGlobo, top: 8 };
-    return { estilo, forma: formaNube(colaX, arriba), arriba };
+    return {
+      estilo,
+      forma: formaNube(colaX, arriba),
+      arriba,
+      puntos: altoGlobo ? puntosNube(anchoGlobo, altoGlobo, colaX, arriba) : null,
+    };
   }, [donPos, tam, tamH, pantalla, anchoGlobo, altoGlobo]);
 
   // ---- Acciones.
@@ -514,13 +561,14 @@ export default function GuiaDonPeje({ rol = "admin", negocioId, nombre = "", pau
       {hablando &&
         createPortal(
           <div
-            className={`tz-guia-globo tz-portal ${globo.arriba ? "is-arriba" : "is-abajo"} ${movil ? "is-movil" : ""}`}
+            className={`tz-guia-globo tz-portal ${globo.arriba ? "is-arriba" : "is-abajo"} ${movil ? "is-movil" : ""} ${globo.puntos ? "con-svg" : ""}`}
             style={globo.estilo}
             ref={globoRef}
             key={claveTexto}
             role="dialog"
             aria-label="Don Peje"
           >
+            {globo.puntos && <NubeSvg ancho={anchoGlobo} alto={altoGlobo} puntos={globo.puntos} />}
             <div className="tz-guia-forma" style={{ clipPath: globo.forma }}>
               <div className="tz-guia-globo-cabeza">
                 <strong className="tz-guia-glitch" data-texto="DON PEJE">
