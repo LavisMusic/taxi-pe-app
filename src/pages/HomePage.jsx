@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LogIn, LogOut, Car, Users, MessageCircle, X, Loader2, MapPin, UserRound } from "lucide-react";
+import { LogIn, LogOut, Car, MessageCircle, X, Loader2, MapPin, UserRound } from "lucide-react";
 import PerfilPasajeroModal from "../components/PerfilPasajeroModal";
 import { supabase } from "../supabaseClient";
 import { useConductoresPublicos } from "../hooks/useConductoresPublicos";
@@ -30,7 +30,6 @@ import ConductorPublicCard from "../components/ConductorPublicCard";
 import PasajeroAuthForm from "../components/PasajeroAuthForm";
 import NivelAccordionGroup from "../components/NivelAccordionGroup";
 import AccesoConductorModal from "../components/AccesoConductorModal";
-import AccesoRecolectorModal from "../components/AccesoRecolectorModal";
 import ChatModal, { ChatModalContenido } from "../components/ChatModal";
 import ChatErrorBoundary from "../components/ChatErrorBoundary";
 import AnuncioPopupModal from "../components/AnuncioPopupModal";
@@ -274,7 +273,6 @@ export default function HomePage() {
 
   const [loginOpen, setLoginOpen] = useState(false);
   const [accesoConductorOpen, setAccesoConductorOpen] = useState(false);
-  const [accesoRecolectorOpen, setAccesoRecolectorOpen] = useState(false);
   const [perfilOpen, setPerfilOpen] = useState(false);
   const pendientesReputacion = usePendientesReputacion(usuario && esPasajero ? "pasajero" : null);
   const sancionPasajero = useMiSancion(!!usuario && esPasajero).pasajero;
@@ -478,14 +476,6 @@ export default function HomePage() {
                 >
                   <Car size={19} />
                   <span className="tz-header-btn-label">Conductores</span>
-                </button>
-                <button
-                  className="tz-header-btn"
-                  onClick={() => setAccesoRecolectorOpen(true)}
-                  aria-label="Acceso de recolector"
-                >
-                  <Users size={19} />
-                  <span className="tz-header-btn-label">Recolectores</span>
                 </button>
               </>
             )}
@@ -736,9 +726,7 @@ export default function HomePage() {
 
       {accesoConductorOpen && <AccesoConductorModal onClose={() => setAccesoConductorOpen(false)} />}
 
-      {accesoRecolectorOpen && (
-        <AccesoRecolectorModal onClose={() => setAccesoRecolectorOpen(false)} />
-      )}
+      {/* Recolectores: ya no tienen botón aquí; entran por /recolector. */}
 
       {chatConductor && esPasajero && !chatEnMensajes && (
         <ChatModal

@@ -5,12 +5,34 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <!-- App instalable (necesario para los avisos en iPhone). -->
     <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- Cada entrada se instala como su PROPIA app (con su nombre y abriendo
+         en su dirección): el admin y el recolector tienen su manifiesto; el
+         resto (pasajero, conductor) usa el general. React lo vuelve a
+         elegir al navegar (window.__tzManifiesto). -->
+    <script>
+      (function () {
+        var APPS = {
+          admin: ["/manifest-admin.webmanifest", "TaxiPE Admin"],
+          "login-admin": ["/manifest-admin.webmanifest", "TaxiPE Admin"],
+          recolector: ["/manifest-recolector.webmanifest", "Recolector"],
+        };
+        window.__tzManifiesto = function (ruta) {
+          var seg = String(ruta || "/").split("/")[1] || "";
+          var app = APPS[seg] || ["/manifest.webmanifest", "Taxi PE"];
+          var link = document.querySelector('link[rel="manifest"]');
+          var titulo = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+          if (link && link.getAttribute("href") !== app[0]) link.setAttribute("href", app[0]);
+          if (titulo) titulo.setAttribute("content", app[1]);
+        };
+      })();
+    </script>
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#0a0716" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Taxi PE" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <script>window.__tzManifiesto && window.__tzManifiesto(location.pathname);</script>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, interactive-widget=resizes-content, viewport-fit=cover" />
     <!-- La app ya es oscura: sin esto, el "modo oscuro automático" de
          algunos navegadores (Edge) re-pinta los colores y apaga los textos. -->
