@@ -17,11 +17,13 @@ import AdminDashboardPage from './pages/AdminDashboardPage'
 import AdminDashboardMetricasPage from "./pages/AdminDashboardMetricasPage";
 import RecolectorPage from './pages/RecolectorPage'
 import ConductorPage from './pages/ConductorPage'
+import AccesoRecolectorPage from './pages/AccesoRecolectorPage'
 import PerfilConductorPage from './pages/PerfilConductorPage'
 import { instalarDespliegueBotones } from './lib/despliegueBotones'
 import { instalarGestosPagina } from './lib/gestosPagina'
 import { iniciarAjustesPlataforma } from './lib/ajustesPlataforma'
 import CompuertaMantenimiento from './components/CompuertaMantenimiento'
+import ManifiestoRuta from './components/ManifiestoRuta'
 
 // Router de TaxiP. El árbol viejo (AuthProvider + CatalogPage + App.jsx
 // "caja registradora") queda intacto en el repo sin importarse desde
@@ -41,6 +43,7 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <TaxiAuthProvider>
       <BrowserRouter>
+        <ManifiestoRuta />
         <CompuertaMantenimiento>
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -71,7 +74,7 @@ createRoot(document.getElementById('root')).render(
           <Route
             path="/recolector"
             element={
-              <RequireUsuarioRol rol="recolector">
+              <RequireUsuarioRol rol="recolector" sinSesion={<AccesoRecolectorPage />}>
                 <RecolectorPage />
               </RequireUsuarioRol>
             }

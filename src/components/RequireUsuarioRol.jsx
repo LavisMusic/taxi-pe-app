@@ -14,12 +14,14 @@ import { ESTADO_CUENTA_PENDIENTE } from "../lib/taxiEnums";
 // bloqueo acá: su gate real es `conductores.aprobado`, que ya filtra
 // del lado público (useConductoresPublicos) sin necesidad de sacarlos
 // de su propia pantalla /conductor.
-export default function RequireUsuarioRol({ rol, children }) {
+// `sinSesion`: lo que se muestra en vez de mandar a /login (el recolector
+// tiene su propio ingreso en /recolector: su app instalable aparte).
+export default function RequireUsuarioRol({ rol, children, sinSesion = null }) {
   const { usuario } = useTaxiAuth();
 
-  if (!usuario || usuario.rol !== rol) return <Navigate to="/login" replace />;
+  if (!usuario || usuario.rol !== rol) return sinSesion || <Navigate to="/login" replace />;
   if (rol === "recolector" && usuario.estado_cuenta === ESTADO_CUENTA_PENDIENTE) {
-    return <Navigate to="/login" replace />;
+    return sinSesion || <Navigate to="/login" replace />;
   }
 
   return children;
