@@ -7786,13 +7786,20 @@ export default function Styles() {
       .tz-adjunto-visor-acciones .tz-entrada-menu-btn:disabled { cursor: default; opacity: 0.8; }
       .tz-adjunto-visor-nota { margin: 0; font-size: 12px; color: rgba(255,255,255,0.65); text-align: center; }
       /* ---------- DON PEJE (mascota y guía de bienvenida) ---------- */
+      /* Taxi no define estos colores en "r,g,b" (Caja sí): sin ellos el fondo
+         del globo quedaba inválido y no se veía el cuadro. Solo para Don Peje. */
+      .tz-donpeje, .tz-guia-globo, .tz-guia-foco {
+        --cyan-rgb: 43, 232, 255; --pink-rgb: 255, 47, 158; --yellow-rgb: 215, 255, 59;
+        --green-rgb: 57, 255, 176; --fg-rgb: 255, 255, 255;
+      }
       .tz-donpeje { position: fixed; z-index: 3700; padding: 0; margin: 0; border: 0; background: none; cursor: pointer; pointer-events: none;
         opacity: 0; transform: scale(.6) translateY(30px);
         transition: left .8s cubic-bezier(.34,1.18,.64,1), top .8s cubic-bezier(.34,1.18,.64,1), width .6s cubic-bezier(.34,1.3,.64,1),
           height .6s cubic-bezier(.34,1.3,.64,1), opacity .4s ease, transform .6s cubic-bezier(.34,1.56,.64,1); }
       .tz-donpeje.is-listo { opacity: 1; transform: none; }
       .tz-donpeje-toque { position: absolute; z-index: 2; left: 18%; right: 18%; top: 30%; bottom: 6%; border: 0; border-radius: 40%;
-        background: none; cursor: pointer; pointer-events: auto; }
+        background: none; cursor: pointer; pointer-events: auto;
+        touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
       .tz-donpeje.is-oculto { opacity: 0; transform: scale(.4); }
       .tz-donpeje-lienzo { position: relative; z-index: 1; display: block; width: 100%; height: 100%; }
       .tz-donpeje-sombra { position: absolute; left: 18%; right: 18%; bottom: 3%; height: 9%; border-radius: 50%;
@@ -7951,6 +7958,12 @@ export default function Styles() {
         background: linear-gradient(110deg, #39ffb0, #2be8ff);
         color: #04161a;
         box-shadow: 0 0 20px rgba(43,232,255,0.45);
+      }
+      /* "Ajustes" del admin: morado, distinto de "Configurar Membresías". */
+      .tz-footer-btn-ajustes {
+        background: linear-gradient(110deg, #b98bff, #6c5bff);
+        color: #120a2a;
+        box-shadow: 0 0 20px rgba(140,110,255,0.45);
       }
       /* Cuentas verificadas (fase 5a). */
       .tz-cuentas-verificadas { margin: 14px 0; }

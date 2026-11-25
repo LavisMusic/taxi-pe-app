@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, CreditCard, MapPin, Loader2, MessageSquareText, BarChart3, ShieldAlert } from "lucide-react";
+import { BookOpen, LogOut, Trophy, Users, Receipt, TrendingDown, Settings, LayoutGrid, Inbox, Wallet, CreditCard, MapPin, Loader2, MessageSquareText, BarChart3, ShieldAlert, SlidersHorizontal } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTaxiAuth } from "../contexts/TaxiAuthContext";
 import { useLocalidades } from "../hooks/useLocalidades";
@@ -35,6 +35,7 @@ import Styles from "../components/Styles";
 import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import { useBienvenidaNeon } from "../hooks/useBienvenidaNeon";
 import GuiaDonPeje from "../components/mascota/GuiaDonPeje";
+import AjustesPanelModal from "../components/AjustesPanelModal";
 import StatsSection from "../components/admin/StatsSection";
 import UsuarioEstrellaChip from "../components/admin/UsuarioEstrellaChip";
 import ConectadosAhoraChip from "../components/admin/ConectadosAhoraChip";
@@ -96,6 +97,7 @@ export default function AdminDashboardPage() {
   // de los roles. El admin master no tiene fila de usuario propia, así
   // que la clave es fija.
   const { mostrar: mostrarBienvenida, marcarVista: marcarBienvenidaVista } = useBienvenidaNeon("admin-master", true);
+  const [ajustesOpen, setAjustesOpen] = useState(false);
   const {
     ventas,
     ventasVigentes,
@@ -481,6 +483,7 @@ export default function AdminDashboardPage() {
          Styles.jsx). El modificador vive aparte de `.tz-page-footer`
          porque esa clase la comparten RecolectorPage.jsx y el App.jsx
          viejo — no se toca su layout flex original. */}
+      {ajustesOpen && <AjustesPanelModal onClose={() => setAjustesOpen(false)} />}
       {/* Don Peje: guía del admin (espera a la bienvenida). */}
       <GuiaDonPeje rol="admin" nombre="" pausada={mostrarBienvenida} />
       <footer className="tz-page-footer tz-page-footer-admin-grid">
@@ -516,6 +519,10 @@ export default function AdminDashboardPage() {
         <button className="tz-footer-btn tz-footer-btn-dashboard" onClick={() => navigate("/admin/dashboard")}>
           <BarChart3 size={18} />
           Dashboard
+        </button>
+        <button className="tz-footer-btn tz-footer-btn-ajustes" onClick={() => setAjustesOpen(true)}>
+          <SlidersHorizontal size={18} />
+          Ajustes
         </button>
         <button className="tz-footer-btn tz-footer-btn-salir" onClick={logout}>
           <LogOut size={18} />

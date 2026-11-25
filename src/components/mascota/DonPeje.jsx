@@ -7,13 +7,26 @@ import { createPortal } from "react-dom";
 // en parte fuera de la pantalla). Despierto, al moverse lejos salta y gira
 // hacia donde va. `dormido`: se echa a dormir (con "Zzz") y se desliza sin
 // saltar. `onListo(motor)`: entrega el motor (hacer, mirar, girar, hablar,
-// emocion, dormir).
+// emocion, dormir). `onClick`: qué hacer al tocarlo dormido (despertarlo).
 export default function DonPeje({ pos, tam = 336, dormido = false, onListo, onClick, etiqueta = "Don Peje" }) {
   const lienzo = useRef(null);
   const motor = useRef(null);
   const [listo, setListo] = useState(false);
   const anterior = useRef(null);
+  const gesto = useRef(null);
   const alto = Math.round(tam * 1.15);
+
+  // Dormido, cualquier toque lo despierta (`onClick`). Despierto: tocarlo lo
+  // incomoda (se queja y sacude la cabeza); deslizar el dedo hacia arriba
+  // sobre él lo hace impulsarse con las ruedas y dar una voltereta.
+  const alTocar = () => {
+    if (dormido) onClick?.();
+    else motor.current?.hacer("molesto");
+  };
+  const alDeslizarArriba = () => {
+    if (dormido) onClick?.();
+    else motor.current?.hacer("voltereta");
+  };
 
   useEffect(() => {
     let vivo = true;
@@ -79,7 +92,29 @@ export default function DonPeje({ pos, tam = 336, dormido = false, onListo, onCl
           <i>z</i>
         </span>
       )}
-      {onClick && <button type="button" className="tz-donpeje-toque" onClick={onClick} aria-label={etiqueta} />}
+      <button
+        type="button"
+        className="tz-donpeje-toque"
+        aria-label={etiqueta}
+        onPointerDown={(e) => {
+          gesto.current = { x: e.clientX, y: e.clientY };
+          e.currentTarget.setPointerCapture?.(e.pointerId);
+        }}
+        onPointerUp={(e) => {
+          const g = gesto.current;
+          gesto.current = null;
+          if (!g) return;
+          const dx = e.clientX - g.x;
+          const dy = e.clientY - g.y;
+          if (dy < -40 && -dy > Math.abs(dx)) alDeslizarArriba();
+          else if (Math.hypot(dx, dy) < 16) alTocar();
+        }}
+        onPointerCancel={() => (gesto.current = null)}
+        onClick={(e) => {
+          // Solo teclado (Enter/Espacio): con dedo o mouse ya lo hizo pointerup.
+          if (e.detail === 0) alTocar();
+        }}
+      />
     </div>,
     document.body
   );

@@ -36,6 +36,9 @@ const PIEZAS = {
   colaEn: "tripo_part_8",
 };
 
+// Altura (m) del centro sobre el que da la voltereta.
+const ALTO_CENTRO = 0.45;
+
 const suave = (actual, meta, k) => actual + (meta - actual) * k;
 const campana = (p) => Math.sin(Math.PI * Math.min(Math.max(p, 0), 1));
 const facil = (p) => (p < 0.5 ? 2 * p * p : 1 - (-2 * p + 2) ** 2 / 2);
@@ -119,6 +122,17 @@ function crearCara() {
         ctx.quadraticCurveTo(x, yOjo + altoOjo * 0.55, x - anchoOjo / 2, yOjo + altoOjo * 0.32);
         ctx.closePath();
         ctx.fill();
+      } else if (e === "molesto") {
+        // Ceño fruncido: el borde de arriba baja hacia el medio de la cara.
+        const s = i === 0 ? -1 : 1;
+        const arriba = yOjo - altoOjo * 0.18;
+        ctx.beginPath();
+        ctx.moveTo(x - anchoOjo / 2, arriba + s * 26);
+        ctx.lineTo(x + anchoOjo / 2, arriba - s * 26);
+        ctx.lineTo(x + anchoOjo / 2, yOjo + altoOjo * 0.3);
+        ctx.quadraticCurveTo(x, yOjo + altoOjo * 0.5, x - anchoOjo / 2, yOjo + altoOjo * 0.3);
+        ctx.closePath();
+        ctx.fill();
       } else if (e === "guino" && i === 1) {
         ctx.lineWidth = 24;
         ctx.beginPath();
@@ -149,6 +163,18 @@ function crearCara() {
       const bh = 8 + boca * 34;
       redondeado(W / 2 - bw / 2 + ox * 0.5, H * 0.86 - bh / 2, bw, bh, Math.min(bh / 2, 22));
       ctx.fill();
+    } else if (e === "molesto") {
+      // Refunfuña: boca en zigzag.
+      ctx.lineWidth = 9;
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      for (let k = 0; k <= 6; k++) {
+        const bx = W / 2 - 48 + k * 16 + ox * 0.5;
+        const by = H * 0.86 + (k % 2 ? -7 : 7);
+        if (k) ctx.lineTo(bx, by);
+        else ctx.moveTo(bx, by);
+      }
+      ctx.stroke();
     }
     ctx.shadowBlur = 0;
     textura.needsUpdate = true;
@@ -240,7 +266,12 @@ export async function crearDonPeje(canvas, { url = URL_MODELO } = {}) {
   const modelo = gltf.scene;
   const raiz = new THREE.Group(); // se mueve, salta y gira
   escena.add(raiz);
-  raiz.add(modelo);
+  // Volteretas: gira sobre su centro (a media altura) y no desde las patas.
+  const volteo = new THREE.Group();
+  volteo.position.y = ALTO_CENTRO;
+  raiz.add(volteo);
+  volteo.add(modelo);
+  modelo.position.y -= ALTO_CENTRO;
   modelo.updateWorldMatrix(true, true);
 
   const nodo = (n) => modelo.getObjectByName(n);
@@ -276,6 +307,14 @@ export async function crearDonPeje(canvas, { url = URL_MODELO } = {}) {
     const caja = new THREE.Box3().setFromObject(colaMalla);
     cola = articulacion(cuerpo, new THREE.Vector3((caja.min.x + caja.max.x) / 2, caja.min.y + 0.01, caja.max.z - 0.01), [colaMalla]);
   }
+  // Ruedas: la llanta de cada pata (con su centro y tornillos) gira sobre su
+  // eje. Se usan para impulsarse antes de la voltereta.
+  const ruedas = Object.entries(PIEZAS.patas)
+    .map(([id, p]) => {
+      const llanta = nodo(p.piezas[2]);
+      return llanta ? articulacion(patas[id], centro(llanta), p.piezas.slice(2).map(nodo)) : null;
+    })
+    .filter(Boolean);
 
   // LEDs: todo lo azul de la textura del robot (costados, espalda, ruedas,
   // orejas) brilla. Se arma una máscara emisiva con solo esos píxeles.
@@ -363,17 +402,37 @@ export async function crearDonPeje(canvas, { url = URL_MODELO } = {}) {
   };
   const meta = { mirarX: 0, mirarY: 0, giro: 0.35, hablar: 0, emocion: "normal", dormido: false };
   const vivo = { mirarX: 0, mirarY: 0, giro: 0.35, boca: 0, sueno: 0 };
-  let accion = null; // { nombre, inicio, dur, alTerminar }
+  let accion = null; // { nombre, inicio, dur, alTerminar, fuerza }
+  let pendiente = null; // lo que llegó en plena voltereta (se hace al caer)
   let proximoParpadeo = performance.now() + 2000;
   let parpadeoInicio = 0;
   let cuadro = 0;
   let pausado = false;
+  let ultimoToque = 0;
+  let toques = 0;
+  let ruedaAng = 0;
+  let ultimoT = 0;
 
   const hacer = (nombre, alTerminar) => {
-    const dur = { saltar: 900, saludar: 1700, celebrar: 1900, asentir: 650, negar: 750, sorpresa: 900, senalar: 1500, aterrizar: 500, despertar: 1100 }[nombre] || 800;
-    accion = { nombre, inicio: performance.now(), dur, alTerminar };
-    if (nombre === "celebrar" || nombre === "saludar") cara.estado.emocion = "feliz";
+    // En el aire no se corta la voltereta: lo demás espera a que caiga.
+    if (accion?.nombre === "voltereta") {
+      if (nombre !== "voltereta" && nombre !== "molesto") pendiente = { nombre, alTerminar };
+      return;
+    }
+    const ahora = performance.now();
+    const dur =
+      { saltar: 900, saludar: 1700, celebrar: 1900, asentir: 650, negar: 750, sorpresa: 900, senalar: 1500, aterrizar: 500, despertar: 1100, molesto: 1100, voltereta: 1600 }[nombre] || 800;
+    // Tocarlo seguido lo molesta cada vez más (sacude más fuerte).
+    let fuerza = 1;
+    if (nombre === "molesto") {
+      toques = ahora - ultimoToque < 2500 ? toques + 1 : 1;
+      ultimoToque = ahora;
+      fuerza = Math.min(1 + (toques - 1) * 0.25, 1.75);
+    }
+    accion = { nombre, inicio: ahora, dur, alTerminar, fuerza };
+    if (nombre === "celebrar" || nombre === "saludar" || nombre === "voltereta") cara.estado.emocion = "feliz";
     if (nombre === "sorpresa") cara.estado.emocion = "sorpresa";
+    if (nombre === "molesto") cara.estado.emocion = "molesto";
   };
 
   const reloj = new THREE.Clock();
@@ -381,6 +440,8 @@ export async function crearDonPeje(canvas, { url = URL_MODELO } = {}) {
     if (pausado) return;
     cuadro = requestAnimationFrame(pintar);
     const t = reloj.getElapsedTime();
+    const dt = Math.min(Math.max(t - ultimoT, 0), 0.05);
+    ultimoT = t;
     const ahora = performance.now();
 
     // Valores que siguen a su meta con suavidad.
@@ -401,6 +462,8 @@ export async function crearDonPeje(canvas, { url = URL_MODELO } = {}) {
     let colaVel = 7;
     let colaAmp = 0.35;
     let giroExtra = 0;
+    let volteoX = 0;
+    let ruedaVel = 0;
     const patasRot = { DD: [0, 0], DI: [0, 0], TD: [0, 0], TI: [0, 0] }; // [x, z]
 
     if (accion) {
@@ -459,12 +522,54 @@ export async function crearDonPeje(canvas, { url = URL_MODELO } = {}) {
       } else if (n === "sorpresa") {
         raizY = 0.08 * campana(Math.min(p * 2, 1));
         cuerpoX = -0.2 * campana(p);
+      } else if (n === "molesto") {
+        // Se echa para atrás, refunfuña y sacude la cabeza como quien se
+        // quita algo de encima.
+        const f = accion.fuerza || 1;
+        const q = 1 - p;
+        cuerpoX = -0.14 * campana(Math.min(p * 3, 1)) * f;
+        cuerpoZ = Math.sin(p * Math.PI * 9) * 0.05 * q * f;
+        raizY = 0.035 * campana(Math.min(p * 4, 1));
+        cabezaX -= 0.12 * campana(p);
+        cabezaY += Math.sin(p * Math.PI * 7) * 0.38 * q * f;
+        cabezaZ += Math.sin(p * Math.PI * 7 + 1) * 0.22 * q * f;
+        patasRot.DI[0] = -0.3 * campana(Math.min(p * 2.5, 1)); // pisotón
+        colaVel = 30;
+        colaAmp = 0.18;
+      } else if (n === "voltereta") {
+        if (p < 0.32) {
+          // Se impulsa: se agacha y acelera las ruedas.
+          const q = p / 0.32;
+          raizY = -0.06 * facil(q);
+          cuerpoX = -0.12 * facil(q) + Math.sin(q * Math.PI * 8) * 0.02 * q;
+          cabezaX -= 0.15 * q;
+          ruedaVel = 6 + 34 * q;
+        } else if (p < 0.84) {
+          // En el aire: vuelta completa hacia atrás con las patas recogidas.
+          const q = (p - 0.32) / 0.52;
+          raizY = 0.42 * campana(q);
+          volteoX = -Math.PI * 2 * facil(q);
+          Object.keys(patasRot).forEach((k) => (patasRot[k][0] = (k[0] === "D" ? 0.6 : -0.6) * campana(q)));
+          ruedaVel = 40 * (1 - q * 0.6);
+          colaVel = 20;
+        } else {
+          // Cae y amortigua.
+          const q = (p - 0.84) / 0.16;
+          raizY = -0.06 * campana(q);
+          cuerpoX = 0.1 * campana(q);
+          ruedaVel = 16 * (1 - q);
+        }
       }
       if (p >= 1) {
         const fin = accion.alTerminar;
         accion = null;
         if (cara.estado.emocion !== meta.emocion) cara.estado.emocion = meta.emocion;
         fin?.();
+        if (pendiente) {
+          const sig = pendiente;
+          pendiente = null;
+          hacer(sig.nombre, sig.alTerminar);
+        }
       }
     }
 
@@ -482,6 +587,9 @@ export async function crearDonPeje(canvas, { url = URL_MODELO } = {}) {
     }
     raiz.position.y = base.raizY + raizY;
     raiz.rotation.y = vivo.giro + giroExtra;
+    volteo.rotation.x = volteoX;
+    ruedaAng = (ruedaAng + ruedaVel * dt) % (Math.PI * 2);
+    ruedas.forEach((r) => (r.rotation.x = ruedaAng));
     cuerpo.position.y = base.cuerpoY + cuerpoY;
     cuerpo.rotation.x = cuerpoX;
     cuerpo.rotation.z = cuerpoZ;
