@@ -27,17 +27,20 @@ const PIEZAS = {
   cuello: ["tripo_part_20"],
   cabeza: ["tripo_part_2", "tripo_part_9"],
   pantalla: "tripo_part_9",
+  // `ruedas`: las dos mitades de la goma de cada llanta (lo único que gira).
   patas: {
-    DD: { hombro: "tripo_part_16", piezas: ["tripo_part_16", "tripo_part_5", "tripo_part_13", "tripo_part_11", "tripo_part_21"] },
-    DI: { hombro: "tripo_part_6", piezas: ["tripo_part_6", "tripo_part_15", "tripo_part_3", "tripo_part_12", "tripo_part_22", "tripo_part_24"] },
-    TD: { hombro: "tripo_part_19", piezas: ["tripo_part_19", "tripo_part_17", "tripo_part_4", "tripo_part_8", "tripo_part_23"] },
-    TI: { hombro: "tripo_part_18", piezas: ["tripo_part_18", "tripo_part_7", "tripo_part_14", "tripo_part_10"] },
+    DD: { hombro: "tripo_part_16", piezas: ["tripo_part_16", "tripo_part_5", "tripo_part_13", "tripo_part_11", "tripo_part_21"], ruedas: ["tripo_part_13", "tripo_part_11"] },
+    DI: { hombro: "tripo_part_6", piezas: ["tripo_part_6", "tripo_part_15", "tripo_part_3", "tripo_part_12", "tripo_part_22", "tripo_part_24"], ruedas: ["tripo_part_3", "tripo_part_12"] },
+    TD: { hombro: "tripo_part_19", piezas: ["tripo_part_19", "tripo_part_17", "tripo_part_4", "tripo_part_8", "tripo_part_23"], ruedas: ["tripo_part_4", "tripo_part_8"] },
+    TI: { hombro: "tripo_part_18", piezas: ["tripo_part_18", "tripo_part_7", "tripo_part_14", "tripo_part_10"], ruedas: ["tripo_part_14", "tripo_part_10"] },
   },
   colaEn: "tripo_part_8",
 };
 
 // Altura (m) del centro sobre el que da la voltereta.
 const ALTO_CENTRO = 0.45;
+// Vueltas que dan las ruedas en la voltereta (entero: terminan como empezaron).
+const VUELTAS_RUEDA = 5;
 
 const suave = (actual, meta, k) => actual + (meta - actual) * k;
 const campana = (p) => Math.sin(Math.PI * Math.min(Math.max(p, 0), 1));
@@ -288,13 +291,13 @@ export async function crearDonPeje(canvas, { url = URL_MODELO } = {}) {
       if (o.isMesh && !m) m = o;
     });
     if (m) {
-      colaMalla = separar(m, (x, y, z) => y >= 0.63 && Math.abs(x) < 0.05 && z < -0.1);
+      colaMalla = separar(m, (x, y, z) => y >= 0.615 && Math.abs(x) < 0.05 && z < -0.1);
       placaMalla = separar(m, (x, y) => y > 0.43);
     }
   }
 
   // Esqueleto.
-  const cuerpo = articulacion(modelo, new THREE.Vector3(0, 0.36, 0), [...PIEZAS.cuerpo.map(nodo), placaMalla]);
+  const cuerpo = articulacion(modelo, new THREE.Vector3(0, 0.36, 0), [...PIEZAS.cuerpo.map(nodo), placaMalla, colaMalla]);
   const patas = {};
   Object.entries(PIEZAS.patas).forEach(([id, p]) => {
     const hombro = nodo(p.hombro);
@@ -302,17 +305,74 @@ export async function crearDonPeje(canvas, { url = URL_MODELO } = {}) {
   });
   const cuello = articulacion(cuerpo, new THREE.Vector3(0, 0.5, 0.15), PIEZAS.cuello.map(nodo));
   const cabeza = articulacion(cuello, new THREE.Vector3(0, 0.66, 0.12), PIEZAS.cabeza.map(nodo));
-  let cola = null;
+  // Cola: no gira entera (se veía cortada: la base quedaba quieta y solo la
+  // punta se movía). Se DOBLA: quieta en la raíz y cada vez más hacia la
+  // punta, sin cortes.
+  let doblarCola = null;
   if (colaMalla) {
-    const caja = new THREE.Box3().setFromObject(colaMalla);
-    cola = articulacion(cuerpo, new THREE.Vector3((caja.min.x + caja.max.x) / 2, caja.min.y + 0.01, caja.max.z - 0.01), [colaMalla]);
+    colaMalla.updateWorldMatrix(true, false);
+    const geo = colaMalla.geometry;
+    const pos = geo.attributes.position;
+    const nor = geo.attributes.normal;
+    const usados = geo.index ? [...new Set(geo.index.array)] : Array.from({ length: pos.count }, (_, i) => i);
+    const M = colaMalla.matrixWorld;
+    const inv = M.clone().invert();
+    const w = new THREE.Vector3();
+    const mundo = usados.map((i) => w.fromBufferAttribute(pos, i).applyMatrix4(M).clone());
+    const y0 = Math.min(...mundo.map((p) => p.y));
+    const y1 = Math.max(...mundo.map((p) => p.y));
+    const raizCola = new THREE.Vector3();
+    const base = mundo.filter((p) => p.y < y0 + 0.02);
+    base.forEach((p) => raizCola.add(p));
+    raizCola.divideScalar(base.length || 1).applyMatrix4(inv);
+    const eje = new THREE.Vector3(0, 1, 0).transformDirection(inv);
+    const orig = usados.map((i) => new THREE.Vector3().fromBufferAttribute(pos, i).sub(raizCola));
+    const origN = nor ? usados.map((i) => new THREE.Vector3().fromBufferAttribute(nor, i)) : null;
+    const peso = mundo.map((p) => {
+      const t = Math.min(Math.max((p.y - y0) / (y1 - y0 || 1), 0), 1);
+      return t * t * (3 - 2 * t);
+    });
+    const q = new THREE.Quaternion();
+    const v = new THREE.Vector3();
+    colaMalla.frustumCulled = false;
+    doblarCola = (ang) => {
+      for (let k = 0; k < usados.length; k++) {
+        const i = usados[k];
+        q.setFromAxisAngle(eje, ang * peso[k]);
+        v.copy(orig[k]).applyQuaternion(q).add(raizCola);
+        pos.setXYZ(i, v.x, v.y, v.z);
+        if (origN) {
+          v.copy(origN[k]).applyQuaternion(q);
+          nor.setXYZ(i, v.x, v.y, v.z);
+        }
+      }
+      pos.needsUpdate = true;
+      if (nor) nor.needsUpdate = true;
+    };
   }
-  // Ruedas: la llanta de cada pata (con su centro y tornillos) gira sobre su
-  // eje. Se usan para impulsarse antes de la voltereta.
+  // Ruedas: cada llanta viene en DOS piezas (las dos mitades de la goma) y
+  // gira entera sobre su eje (de costado, x), con el centro medido de las
+  // dos juntas. Los brazos y tornillos que la sostienen no se mueven.
+  const cajaUsada = (objs) => {
+    const caja = new THREE.Box3();
+    const v = new THREE.Vector3();
+    objs.filter(Boolean).forEach((o) =>
+      o.traverse((m) => {
+        if (!m.isMesh) return;
+        m.updateWorldMatrix(true, false);
+        const pos = m.geometry.attributes.position;
+        const idx = m.geometry.index;
+        const n = idx ? idx.count : pos.count;
+        for (let k = 0; k < n; k++) caja.expandByPoint(v.fromBufferAttribute(pos, idx ? idx.getX(k) : k).applyMatrix4(m.matrixWorld));
+      })
+    );
+    return caja;
+  };
   const ruedas = Object.entries(PIEZAS.patas)
     .map(([id, p]) => {
-      const llanta = nodo(p.piezas[2]);
-      return llanta ? articulacion(patas[id], centro(llanta), p.piezas.slice(2).map(nodo)) : null;
+      const piezas = p.ruedas.map(nodo).filter(Boolean);
+      if (!piezas.length) return null;
+      return articulacion(patas[id], cajaUsada(piezas).getCenter(new THREE.Vector3()), piezas);
     })
     .filter(Boolean);
 
@@ -410,8 +470,6 @@ export async function crearDonPeje(canvas, { url = URL_MODELO } = {}) {
   let pausado = false;
   let ultimoToque = 0;
   let toques = 0;
-  let ruedaAng = 0;
-  let ultimoT = 0;
 
   const hacer = (nombre, alTerminar) => {
     // En el aire no se corta la voltereta: lo demás espera a que caiga.
@@ -440,8 +498,6 @@ export async function crearDonPeje(canvas, { url = URL_MODELO } = {}) {
     if (pausado) return;
     cuadro = requestAnimationFrame(pintar);
     const t = reloj.getElapsedTime();
-    const dt = Math.min(Math.max(t - ultimoT, 0), 0.05);
-    ultimoT = t;
     const ahora = performance.now();
 
     // Valores que siguen a su meta con suavidad.
@@ -463,7 +519,7 @@ export async function crearDonPeje(canvas, { url = URL_MODELO } = {}) {
     let colaAmp = 0.35;
     let giroExtra = 0;
     let volteoX = 0;
-    let ruedaVel = 0;
+    let ruedaAng = 0;
     const patasRot = { DD: [0, 0], DI: [0, 0], TD: [0, 0], TI: [0, 0] }; // [x, z]
 
     if (accion) {
@@ -537,27 +593,27 @@ export async function crearDonPeje(canvas, { url = URL_MODELO } = {}) {
         colaVel = 30;
         colaAmp = 0.18;
       } else if (n === "voltereta") {
+        // Ruedas: 5 vueltas exactas (aceleran al impulsarse y frenan al
+        // caer), así terminan justo como empezaron. Brazos y patas quietos.
+        const avance = p < 0.32 ? 0.25 * (p / 0.32) ** 2 : 0.25 + 0.75 * (1 - (1 - (p - 0.32) / 0.68) ** 2);
+        ruedaAng = avance * VUELTAS_RUEDA * Math.PI * 2;
         if (p < 0.32) {
           // Se impulsa: se agacha y acelera las ruedas.
           const q = p / 0.32;
           raizY = -0.06 * facil(q);
           cuerpoX = -0.12 * facil(q) + Math.sin(q * Math.PI * 8) * 0.02 * q;
           cabezaX -= 0.15 * q;
-          ruedaVel = 6 + 34 * q;
         } else if (p < 0.84) {
-          // En el aire: vuelta completa hacia atrás con las patas recogidas.
+          // En el aire: vuelta completa hacia atrás.
           const q = (p - 0.32) / 0.52;
           raizY = 0.42 * campana(q);
           volteoX = -Math.PI * 2 * facil(q);
-          Object.keys(patasRot).forEach((k) => (patasRot[k][0] = (k[0] === "D" ? 0.6 : -0.6) * campana(q)));
-          ruedaVel = 40 * (1 - q * 0.6);
           colaVel = 20;
         } else {
           // Cae y amortigua.
           const q = (p - 0.84) / 0.16;
           raizY = -0.06 * campana(q);
           cuerpoX = 0.1 * campana(q);
-          ruedaVel = 16 * (1 - q);
         }
       }
       if (p >= 1) {
@@ -588,7 +644,6 @@ export async function crearDonPeje(canvas, { url = URL_MODELO } = {}) {
     raiz.position.y = base.raizY + raizY;
     raiz.rotation.y = vivo.giro + giroExtra;
     volteo.rotation.x = volteoX;
-    ruedaAng = (ruedaAng + ruedaVel * dt) % (Math.PI * 2);
     ruedas.forEach((r) => (r.rotation.x = ruedaAng));
     cuerpo.position.y = base.cuerpoY + cuerpoY;
     cuerpo.rotation.x = cuerpoX;
@@ -598,7 +653,7 @@ export async function crearDonPeje(canvas, { url = URL_MODELO } = {}) {
       g.rotation.x = base.hombros[k].x + patasRot[k][0];
       g.rotation.z = base.hombros[k].z + patasRot[k][1];
     });
-    if (cola) cola.rotation.y = Math.sin(t * colaVel) * colaAmp;
+    doblarCola?.(Math.sin(t * colaVel) * colaAmp);
     // LEDs que respiran (más suaves dormido).
     const pulso = (1.45 + Math.sin(t * 2.2) * 0.35) * (1 - vivo.sueno * 0.6);
     materialesLed.forEach((m) => {
