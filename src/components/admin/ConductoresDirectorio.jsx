@@ -339,6 +339,11 @@ export default function ConductoresDirectorio({
   recolectores = [],
   onUpdateRecolector,
   onRecargarRecolector,
+  // Ajustes del panel: localidad ("" = todas), ocultar a los que no tienen
+  // membresía vigente y el orden dentro de cada nivel.
+  localidad = "",
+  ocultarSinSaldo = false,
+  orden = "nivel",
 }) {
   const aprobados = useMemo(() => conductores.filter((c) => c.aprobado), [conductores]);
   const categoriasConAprobados = useMemo(
@@ -354,8 +359,24 @@ export default function ConductoresDirectorio({
   const tab = activeTab ?? categoriasConAprobados[0]?.id ?? TAB_RECOLECTORES;
 
   const esTabRecolectores = tab === TAB_RECOLECTORES;
-  const visibles = aprobados.filter((c) => String(c.categoria_id) === String(tab));
-  const grupos = agruparPorNivel(visibles);
+  const hoy = Date.now();
+  const vigente = (c) => c.vencimiento_suscripcion && new Date(c.vencimiento_suscripcion).getTime() >= hoy - 86400000;
+  const visibles = aprobados.filter(
+    (c) =>
+      String(c.categoria_id) === String(tab) &&
+      (!localidad || c.localidad === localidad) &&
+      (!ocultarSinSaldo || c.estado === ESTADO_CONDUCTOR_INHABILITADO || vigente(c))
+  );
+  const comparar = {
+    vence: (a, b) =>
+      (a.vencimiento_suscripcion ? new Date(a.vencimiento_suscripcion).getTime() : Infinity) -
+      (b.vencimiento_suscripcion ? new Date(b.vencimiento_suscripcion).getTime() : Infinity),
+    nuevos: (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0),
+    nombre: (a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es"),
+  }[orden];
+  const grupos = agruparPorNivel(visibles).map((g) =>
+    comparar ? { ...g, conductores: g.conductores.slice().sort(comparar) } : g
+  );
 
   return (
     <section>
@@ -397,7 +418,11 @@ export default function ConductoresDirectorio({
           )
         ) : grupos.length === 0 ? (
           <div className="tz-empty">
-            <p>No hay conductores aprobados en esta categoría todavía.</p>
+            <p>
+              {localidad || ocultarSinSaldo
+                ? "No hay conductores con estos filtros (cámbialos en Ajustes)."
+                : "No hay conductores aprobados en esta categoría todavía."}
+            </p>
           </div>
         ) : (
           grupos.map((g, i) => (

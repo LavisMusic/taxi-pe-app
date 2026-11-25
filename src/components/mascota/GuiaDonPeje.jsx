@@ -21,9 +21,14 @@ import { useEscucha, entenderOrden } from "./useEscucha";
 
 export const EVENTO_GUIA_ABRIR = "tz-guia-abrir";
 export const EVENTO_MASCOTA = "tz-mascota-visible";
+// Desde Configuraciones: repetir la guía desde el inicio, y prender o apagar
+// sus sonidos ({ detail: { on } }).
+export const EVENTO_GUIA_REPETIR = "tz-guia-repetir";
+export const EVENTO_SONIDO = "tz-donpeje-sonido-cambio";
+export const CLAVE_SONIDO_DONPEJE = "tz-donpeje-sonido";
 const abrir = (detalle) => window.dispatchEvent(new CustomEvent(EVENTO_GUIA_ABRIR, { detail: detalle }));
 
-const CLAVE_SONIDO = "tz-donpeje-sonido";
+const CLAVE_SONIDO = CLAVE_SONIDO_DONPEJE;
 const leerSonido = () => {
   try {
     return localStorage.getItem(CLAVE_SONIDO) !== "0";
@@ -391,6 +396,24 @@ export default function GuiaDonPeje({ rol = "admin", negocioId, nombre = "", pau
     guardar({ dormido: false });
     setModo(guia?.terminada ? "charla" : "guia");
   };
+
+  // Desde Configuraciones: "Repetir la guía" y los sonidos.
+  const empezarRef = useRef(empezarGuia);
+  empezarRef.current = empezarGuia;
+  useEffect(() => {
+    const repetir = () => {
+      setOculta(false);
+      motor.current?.hacer("despertar");
+      empezarRef.current();
+    };
+    const sonidoCambio = (e) => setSonido(!!e.detail?.on);
+    window.addEventListener(EVENTO_GUIA_REPETIR, repetir);
+    window.addEventListener(EVENTO_SONIDO, sonidoCambio);
+    return () => {
+      window.removeEventListener(EVENTO_GUIA_REPETIR, repetir);
+      window.removeEventListener(EVENTO_SONIDO, sonidoCambio);
+    };
+  }, []);
 
   // En la charla, si nadie le hace caso, se vuelve a dormir.
   useEffect(() => {

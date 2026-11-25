@@ -36,6 +36,8 @@ import AnimacionNeonBienvenida from "../components/AnimacionNeonBienvenida";
 import { useBienvenidaNeon } from "../hooks/useBienvenidaNeon";
 import GuiaDonPeje from "../components/mascota/GuiaDonPeje";
 import AjustesPanelModal from "../components/AjustesPanelModal";
+import { useAjustesPanel } from "../hooks/useAjustesPanel";
+import { useAvisosPanel, RecordatorioCierre } from "../components/admin/AvisosPanel";
 import StatsSection from "../components/admin/StatsSection";
 import UsuarioEstrellaChip from "../components/admin/UsuarioEstrellaChip";
 import ConectadosAhoraChip from "../components/admin/ConectadosAhoraChip";
@@ -98,6 +100,7 @@ export default function AdminDashboardPage() {
   // que la clave es fija.
   const { mostrar: mostrarBienvenida, marcarVista: marcarBienvenidaVista } = useBienvenidaNeon("admin-master", true);
   const [ajustesOpen, setAjustesOpen] = useState(false);
+  const [ajustes, cambiarAjustes] = useAjustesPanel();
   const {
     ventas,
     ventasVigentes,
@@ -325,8 +328,12 @@ export default function AdminDashboardPage() {
     recargasRecolectorPendientes.length +
     recargasConductorPendientes.length;
 
+  // Ajustes: sonido/notificación cuando sube el número de peticiones o de
+  // reportes nuevos.
+  useAvisosPanel({ ajustes, peticiones: loading ? null : totalPeticiones, reportes: conteoReportes ? reportesNuevos : null });
+
   return (
-    <div className="tz-root">
+    <div className={`tz-root ${ajustes.ocultarMontos ? "tz-montos-ocultos" : ""}`}>
       <Styles />
       {mostrarBienvenida && (
         <AnimacionNeonBienvenida
@@ -470,6 +477,9 @@ export default function AdminDashboardPage() {
                 setRecargaRecolector(recolector);
                 setRecargaRecolectorOpen(true);
               }}
+              localidad={ajustes.dirLocalidad}
+              ocultarSinSaldo={ajustes.dirOcultarSinSaldo}
+              orden={ajustes.dirOrden}
             />
           </>
         )}
@@ -483,7 +493,15 @@ export default function AdminDashboardPage() {
          Styles.jsx). El modificador vive aparte de `.tz-page-footer`
          porque esa clase la comparten RecolectorPage.jsx y el App.jsx
          viejo — no se toca su layout flex original. */}
-      {ajustesOpen && <AjustesPanelModal onClose={() => setAjustesOpen(false)} />}
+      {ajustesOpen && (
+        <AjustesPanelModal
+          ajustes={ajustes}
+          cambiar={cambiarAjustes}
+          localidades={localidades}
+          onClose={() => setAjustesOpen(false)}
+        />
+      )}
+      <RecordatorioCierre hora={ajustes.cierreHora} sonido={ajustes.avisoSonido} cierres={cierres} onCerrarCaja={() => setCierreOpen(true)} />
       {/* Don Peje: guía del admin (espera a la bienvenida). */}
       <GuiaDonPeje rol="admin" nombre="" pausada={mostrarBienvenida} />
       <footer className="tz-page-footer tz-page-footer-admin-grid">

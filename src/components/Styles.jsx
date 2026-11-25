@@ -7959,6 +7959,25 @@ export default function Styles() {
         color: #04161a;
         box-shadow: 0 0 20px rgba(43,232,255,0.45);
       }
+      /* Ajustes del panel (admin): campos, filas de interruptores y montos ocultos. */
+      .tz-ajustes-panel .tz-config-seccion + .tz-config-seccion { margin-top: 14px; }
+      .tz-ajustes-campo { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; font-size: 12.5px; color: var(--text-dim); }
+      .tz-ajustes-campo > :last-child { flex: 0 1 230px; min-width: 0; }
+      .tz-ajustes-fila, .tz-mascota-opciones { flex-wrap: wrap; gap: 8px; }
+      .tz-chatfijo-avisos.tz-mascota-accion:not(.is-activo) { border-color: rgba(43,232,255,0.5); color: var(--cyan); }
+      .tz-montos-ocultos .tz-stat-value.tz-pink, .tz-montos-ocultos .tz-stat-value.tz-green, .tz-montos-ocultos .tz-stat-sub,
+      .tz-montos-ocultos .tz-payment-menu-amount {
+        filter: blur(7px); transition: filter .35s ease; user-select: none;
+      }
+      .tz-montos-ocultos .tz-stat-chip:active .tz-stat-value, .tz-montos-ocultos .tz-stat-chip:active .tz-stat-sub { filter: none; }
+      /* Recordatorio de cierre: aviso flotante arriba. */
+      .tz-recordatorio-cierre { position: fixed; z-index: 3650; left: 50%; top: max(14px, env(safe-area-inset-top)); width: min(92vw, 420px);
+        transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 16px;
+        background: rgba(12,9,26,0.96); border: 1px solid var(--yellow); box-shadow: 0 0 24px rgba(215,255,59,0.35);
+        animation: tz-recordatorio-in .55s cubic-bezier(.34,1.56,.64,1) both; }
+      .tz-recordatorio-cierre p { flex: 1; margin: 0; font-size: 13px; }
+      .tz-recordatorio-cierre button { white-space: nowrap; }
+      @keyframes tz-recordatorio-in { from { opacity: 0; transform: translate(-50%, -24px) scale(.94); } to { opacity: 1; transform: translate(-50%, 0); } }
       /* "Ajustes" del admin: morado, distinto de "Configurar Membresías". */
       .tz-footer-btn-ajustes {
         background: linear-gradient(110deg, #b98bff, #6c5bff);
